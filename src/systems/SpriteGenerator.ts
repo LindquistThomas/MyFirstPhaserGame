@@ -11,6 +11,7 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateTileSprites(scene);
   generateAUTokenSprites(scene);
   generateElevatorSprites(scene);
+  generateRoomElevatorSprite(scene);
   generateDoorSprites(scene);
   generateParticleSprite(scene);
 }
@@ -257,6 +258,23 @@ function generateElevatorSprites(scene: Phaser.Scene): void {
   sGfx.lineBetween(0, sh / 2, sw, sh / 2);
   sGfx.generateTexture('elevator_shaft', sw, sh);
   sGfx.destroy();
+}
+
+/* ------------------------------------------------------------------ */
+/*  In-room elevator platform (smaller, for level scenes)             */
+/* ------------------------------------------------------------------ */
+function generateRoomElevatorSprite(scene: Phaser.Scene): void {
+  const w = 72;
+  const h = 12;
+  const gfx = scene.make.graphics({ x: 0, y: 0 }, false);
+  gfx.fillStyle(0x00aaff); gfx.fillRect(0, 0, w, h);
+  gfx.fillStyle(0x0088cc); gfx.fillRect(3, 3, w - 6, h - 6);
+  gfx.fillStyle(0x00ccff);
+  gfx.fillRect(0, 0, w, 2);       // top highlight
+  gfx.fillRect(0, 0, 4, h);       // left edge
+  gfx.fillRect(w - 4, 0, 4, h);   // right edge
+  gfx.generateTexture('room_elevator_platform', w, h);
+  gfx.destroy();
 }
 
 /* ------------------------------------------------------------------ */
