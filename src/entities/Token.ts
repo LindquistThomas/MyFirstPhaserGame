@@ -38,7 +38,9 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
     this.collected = true;
 
     // Disable physics body immediately to prevent duplicate overlap callbacks
-    this.body?.enable && ((this.body as Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody).enable = false);
+    if (this.body) {
+      (this.body as Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody).enable = false;
+    }
     this.floatTween?.stop();
 
     // Collection animation
