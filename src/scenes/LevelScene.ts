@@ -55,6 +55,13 @@ export class LevelScene extends Phaser.Scene {
   /** Which room-lift is the player currently riding? (-1 = none) */
   private activeRoomLift = -1;
 
+  /** Interactive elevator button state (driven by on-screen buttons). */
+  private liftBtnUp = false;
+  private liftBtnDown = false;
+
+  /** On-screen elevator button container. */
+  private liftBtnContainer?: Phaser.GameObjects.Container;
+
   constructor(key: string, floorId: FloorId) {
     super({ key });
     this.floorId = floorId;
@@ -67,6 +74,8 @@ export class LevelScene extends Phaser.Scene {
     this.auCollected = 0;
     this.roomLifts = [];
     this.activeRoomLift = -1;
+    this.liftBtnUp = false;
+    this.liftBtnDown = false;
   }
 
   create(): void {
@@ -207,6 +216,83 @@ export class LevelScene extends Phaser.Scene {
   /* ---- UI ---- */
   protected createUI(): void {
     this.hud = new HUD(this, this.progression);
+    this.createLiftButtons();
+  }
+
+  /* ---- on-screen lift buttons ---- */
+  private createLiftButtons(): void {
+    const btnSize = 48;
+    const margin = 12;
+    const rightEdge = GAME_WIDTH - margin - btnSize;
+    const bottomEdge = GAME_HEIGHT - margin - btnSize * 2 - 8;
+
+    this.liftBtnContainer = this.add.container(rightEdge, bottomEdge);
+    this.liftBtnContainer.setDepth(60);
+    this.liftBtnContainer.setScrollFactor(0);
+    this.liftBtnContainer.setVisible(false);
+
+    // Up button
+    const upBg = this.add.graphics();
+    upBg.fillStyle(0x00aaff, 0.8);
+    upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    this.liftBtnContainer.add(upBg);
+
+    const upArrow = this.add.text(btnSize / 2, btnSize / 2, '▲', {
+      fontFamily: 'monospace', fontSize: '24px', color: '#ffffff',
+    }).setOrigin(0.5);
+    this.liftBtnContainer.add(upArrow);
+
+    const upHit = this.add.rectangle(btnSize / 2, btnSize / 2, btnSize, btnSize)
+      .setInteractive({ useHandCursor: true }).setAlpha(0.001);
+    this.liftBtnContainer.add(upHit);
+
+    upHit.on('pointerdown', () => {
+      this.liftBtnUp = true;
+      upBg.clear(); upBg.fillStyle(0x44ccff, 0.95);
+      upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    });
+    upHit.on('pointerup', () => {
+      this.liftBtnUp = false;
+      upBg.clear(); upBg.fillStyle(0x00aaff, 0.8);
+      upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    });
+    upHit.on('pointerout', () => {
+      this.liftBtnUp = false;
+      upBg.clear(); upBg.fillStyle(0x00aaff, 0.8);
+      upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    });
+
+    // Down button
+    const downY = btnSize + 8;
+    const downBg = this.add.graphics();
+    downBg.fillStyle(0x00aaff, 0.8);
+    downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    this.liftBtnContainer.add(downBg);
+
+    const downArrow = this.add.text(btnSize / 2, downY + btnSize / 2, '▼', {
+      fontFamily: 'monospace', fontSize: '24px', color: '#ffffff',
+    }).setOrigin(0.5);
+    this.liftBtnContainer.add(downArrow);
+
+    const downHit = this.add.rectangle(btnSize / 2, downY + btnSize / 2, btnSize, btnSize)
+      .setInteractive({ useHandCursor: true }).setAlpha(0.001);
+    this.liftBtnContainer.add(downHit);
+
+    downHit.on('pointerdown', () => {
+      this.liftBtnDown = true;
+      downBg.clear(); downBg.fillStyle(0x44ccff, 0.95);
+      downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    });
+    downHit.on('pointerup', () => {
+      this.liftBtnDown = false;
+      downBg.clear(); downBg.fillStyle(0x00aaff, 0.8);
+      downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    });
+    downHit.on('pointerout', () => {
+      this.liftBtnDown = false;
+      downBg.clear(); downBg.fillStyle(0x00aaff, 0.8);
+      downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    });
   }
 
   /* ---- banner ---- */
@@ -281,6 +367,9 @@ export class LevelScene extends Phaser.Scene {
       }
     }
 
+    // Show / hide lift buttons
+    this.liftBtnContainer?.setVisible(onLift);
+
     if (!onLift) {
       this.activeRoomLift = -1;
       // Stop all lifts
@@ -290,13 +379,15 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
-    // Ride the active lift with Up/Down
+    // Ride the active lift with Up/Down keys or on-screen buttons
     const input = this.player.getInputManager().getState();
     const lift = this.roomLifts[this.activeRoomLift];
+    const up = input.up || this.liftBtnUp;
+    const down = input.down || this.liftBtnDown;
 
-    if (input.up) {
+    if (up) {
       lift.platform.setVelocityY(-ELEVATOR_SPEED);
-    } else if (input.down) {
+    } else if (down) {
       lift.platform.setVelocityY(ELEVATOR_SPEED);
     } else {
       lift.platform.setVelocityY(0);

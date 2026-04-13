@@ -24,6 +24,13 @@ export class HubScene extends Phaser.Scene {
   /** Is the player currently standing on the elevator? */
   private playerOnElevator = false;
 
+  /** Interactive elevator button state (driven by on-screen buttons). */
+  private elevatorBtnUp = false;
+  private elevatorBtnDown = false;
+
+  /** On-screen elevator button container. */
+  private elevatorBtnContainer?: Phaser.GameObjects.Container;
+
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
 
@@ -165,9 +172,93 @@ export class HubScene extends Phaser.Scene {
     this.hud = new HUD(this, this.progression);
 
     // Instruction text (scroll-fixed)
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '↑↓  Ride Elevator  |  ← →  Walk  |  SPACE  Jump', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '↑↓  Ride Elevator  |  ← →  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '13px', color: '#556677',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
+
+    this.createElevatorButtons();
+  }
+
+  /* ---- on-screen elevator buttons ---- */
+  private createElevatorButtons(): void {
+    const btnSize = 56;
+    const margin = 16;
+    const rightEdge = GAME_WIDTH - margin - btnSize;
+    const bottomEdge = GAME_HEIGHT - margin - btnSize * 2 - 8;
+
+    this.elevatorBtnContainer = this.add.container(rightEdge, bottomEdge);
+    this.elevatorBtnContainer.setDepth(60);
+    this.elevatorBtnContainer.setScrollFactor(0);
+    this.elevatorBtnContainer.setVisible(false);
+
+    // Up button
+    const upBg = this.add.graphics();
+    upBg.fillStyle(0x00aaff, 0.8);
+    upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    this.elevatorBtnContainer.add(upBg);
+
+    const upArrow = this.add.text(btnSize / 2, btnSize / 2, '▲', {
+      fontFamily: 'monospace', fontSize: '28px', color: '#ffffff',
+    }).setOrigin(0.5);
+    this.elevatorBtnContainer.add(upArrow);
+
+    const upHit = this.add.rectangle(btnSize / 2, btnSize / 2, btnSize, btnSize)
+      .setInteractive({ useHandCursor: true }).setAlpha(0.001);
+    this.elevatorBtnContainer.add(upHit);
+
+    upHit.on('pointerdown', () => {
+      this.elevatorBtnUp = true;
+      upBg.clear();
+      upBg.fillStyle(0x44ccff, 0.95);
+      upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    });
+    upHit.on('pointerup', () => {
+      this.elevatorBtnUp = false;
+      upBg.clear();
+      upBg.fillStyle(0x00aaff, 0.8);
+      upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    });
+    upHit.on('pointerout', () => {
+      this.elevatorBtnUp = false;
+      upBg.clear();
+      upBg.fillStyle(0x00aaff, 0.8);
+      upBg.fillRoundedRect(0, 0, btnSize, btnSize, 6);
+    });
+
+    // Down button
+    const downY = btnSize + 8;
+    const downBg = this.add.graphics();
+    downBg.fillStyle(0x00aaff, 0.8);
+    downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    this.elevatorBtnContainer.add(downBg);
+
+    const downArrow = this.add.text(btnSize / 2, downY + btnSize / 2, '▼', {
+      fontFamily: 'monospace', fontSize: '28px', color: '#ffffff',
+    }).setOrigin(0.5);
+    this.elevatorBtnContainer.add(downArrow);
+
+    const downHit = this.add.rectangle(btnSize / 2, downY + btnSize / 2, btnSize, btnSize)
+      .setInteractive({ useHandCursor: true }).setAlpha(0.001);
+    this.elevatorBtnContainer.add(downHit);
+
+    downHit.on('pointerdown', () => {
+      this.elevatorBtnDown = true;
+      downBg.clear();
+      downBg.fillStyle(0x44ccff, 0.95);
+      downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    });
+    downHit.on('pointerup', () => {
+      this.elevatorBtnDown = false;
+      downBg.clear();
+      downBg.fillStyle(0x00aaff, 0.8);
+      downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    });
+    downHit.on('pointerout', () => {
+      this.elevatorBtnDown = false;
+      downBg.clear();
+      downBg.fillStyle(0x00aaff, 0.8);
+      downBg.fillRoundedRect(0, downY, btnSize, btnSize, 6);
+    });
   }
 
   /* ---- helpers ---- */
@@ -192,10 +283,15 @@ export class HubScene extends Phaser.Scene {
 
     this.playerOnElevator = onElevator;
 
-    // Ride elevator with Up/Down when standing on it
+    // Show / hide elevator buttons
+    this.elevatorBtnContainer?.setVisible(this.playerOnElevator);
+
+    // Ride elevator with Up/Down keys or on-screen buttons when standing on it
     if (this.playerOnElevator) {
       const input = this.player.getInputManager().getState();
-      this.elevator.ride(input.up, input.down);
+      const up = input.up || this.elevatorBtnUp;
+      const down = input.down || this.elevatorBtnDown;
+      this.elevator.ride(up, down);
     } else {
       // Stop elevator movement when player steps off
       this.elevator.ride(false, false);

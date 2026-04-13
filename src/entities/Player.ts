@@ -1,8 +1,14 @@
 import * as Phaser from 'phaser';
-import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
+import { PLAYER_SPEED } from '../config/gameConfig';
 import { InputManager } from '../systems/InputManager';
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip';
+
+/** Flip (jump) parameters */
+const FLIP_DISTANCE = 256;                  // horizontal pixels traveled
+const FLIP_HEIGHT = FLIP_DISTANCE / 2;      // peak height = half the distance
+const FLIP_DURATION = 800;                  // total ms for the flip arc
+const FLIP_FRAME_COUNT = 8;                 // animation frames in a flip
 
 export class Player {
   public sprite: Phaser.Physics.Arcade.Sprite;
@@ -10,15 +16,21 @@ export class Player {
   private scene: Phaser.Scene;
   private currentAnim: PlayerAnimState = 'idle';
   private facingRight = true;
-  private jumpCooldown = 0;
   private dustEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
+
+  /** True while the player is mid-flip (scripted arc). */
+  private isFlipping = false;
+  private flipElapsed = 0;
+  private flipStartX = 0;
+  private flipStartY = 0;
+  private flipDirection = 1; // 1 = right, -1 = left
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
     this.inputManager = new InputManager(scene);
 
     this.sprite = scene.physics.add.sprite(x, y, 'player', 0);
-    this.sprite.setSize(40, 110);
+    this.sprite.setSize(40, 140);
     this.sprite.setOffset(12, 16);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(10);
@@ -48,13 +60,13 @@ export class Player {
       });
     }
 
-    // Front-flip: 4 rotation frames that loop once per jump
+    // Front-flip: 8 rotation frames, plays once per jump
     if (!anims.exists('player_flip')) {
       anims.create({
         key: 'player_flip',
-        frames: anims.generateFrameNumbers('player', { start: 6, end: 9 }),
-        frameRate: 12,
-        repeat: -1,
+        frames: anims.generateFrameNumbers('player', { start: 6, end: 13 }),
+        frameRate: (FLIP_FRAME_COUNT / FLIP_DURATION) * 1000,
+        repeat: 0, // single run, no loop
       });
     }
   }
@@ -76,9 +88,16 @@ export class Player {
   }
 
   update(delta: number): void {
-    const input = this.inputManager.getState();
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
+
+    // ---- Scripted flip in progress ----
+    if (this.isFlipping) {
+      this.updateFlip(delta);
+      return;
+    }
+
+    const input = this.inputManager.getState();
 
     // Horizontal movement
     if (input.left) {
@@ -98,20 +117,64 @@ export class Player {
     // Flip sprite based on direction
     this.sprite.setFlipX(!this.facingRight);
 
-    // Jump cooldown
-    if (this.jumpCooldown > 0) {
-      this.jumpCooldown -= delta;
-    }
-
-    // Jump
-    if (this.inputManager.isJumpJustPressed() && onGround && this.jumpCooldown <= 0) {
-      this.sprite.setVelocityY(PLAYER_JUMP_VELOCITY);
-      this.jumpCooldown = 200;
-      this.emitDust();
+    // Jump → initiate forward flip
+    if (this.inputManager.isJumpJustPressed() && onGround) {
+      this.startFlip();
+      return;
     }
 
     // Animations
     this.updateAnimation(onGround);
+  }
+
+  /* ---- Scripted forward flip ---- */
+  private startFlip(): void {
+    this.isFlipping = true;
+    this.flipElapsed = 0;
+    this.flipStartX = this.sprite.x;
+    this.flipStartY = this.sprite.y;
+    this.flipDirection = this.facingRight ? 1 : -1;
+
+    // Disable physics gravity during flip — we control position manually
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    body.setAllowGravity(false);
+    this.sprite.setVelocity(0, 0);
+
+    // Play flip animation once
+    this.currentAnim = 'flip';
+    this.sprite.anims.play('player_flip', true);
+    this.sprite.setFlipX(!this.facingRight);
+
+    this.emitDust();
+  }
+
+  private updateFlip(delta: number): void {
+    this.flipElapsed += delta;
+
+    const t = Math.min(this.flipElapsed / FLIP_DURATION, 1); // 0→1
+
+    // Horizontal: linear interpolation
+    const dx = FLIP_DISTANCE * t * this.flipDirection;
+
+    // Vertical: parabolic arc — peak at t=0.5, height = FLIP_HEIGHT
+    // y = -4 * FLIP_HEIGHT * t * (1 - t)   (negative = upward in screen)
+    const dy = -4 * FLIP_HEIGHT * t * (1 - t);
+
+    this.sprite.setPosition(this.flipStartX + dx, this.flipStartY + dy);
+
+    // End flip
+    if (t >= 1) {
+      this.isFlipping = false;
+      const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+      body.setAllowGravity(true);
+      this.sprite.setVelocity(0, 0);
+
+      // Reset to idle
+      this.currentAnim = 'idle';
+      this.sprite.anims.play('player_idle', true);
+
+      this.emitDust();
+    }
   }
 
   private updateAnimation(onGround: boolean): void {
@@ -119,7 +182,7 @@ export class Player {
     let newAnim: PlayerAnimState;
 
     if (!onGround) {
-      // Front-flip while airborne
+      // While airborne (not during scripted flip — that's handled separately)
       newAnim = 'flip';
     } else if (vx > 20) {
       newAnim = 'walk';
@@ -135,7 +198,7 @@ export class Player {
 
   private emitDust(): void {
     if (this.dustEmitter) {
-      this.dustEmitter.setPosition(this.sprite.x, this.sprite.y + 56);
+      this.dustEmitter.setPosition(this.sprite.x, this.sprite.y + 70);
       this.dustEmitter.explode(5);
     }
   }
@@ -147,5 +210,10 @@ export class Player {
   setPosition(x: number, y: number): void {
     this.sprite.setPosition(x, y);
     this.sprite.setVelocity(0, 0);
+  }
+
+  /** Whether the player is currently performing a scripted flip. */
+  getIsFlipping(): boolean {
+    return this.isFlipping;
   }
 }
