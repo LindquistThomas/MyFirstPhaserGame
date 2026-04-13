@@ -104,7 +104,7 @@ export class Elevator {
       this.scene.tweens.add({
         targets: this.platform,
         y: snapY,
-        duration: bestDist / ELEVATOR_SPEED * 1000,
+        duration: (bestDist / ELEVATOR_SPEED) * 1000,
         ease: 'Sine.easeOut',
         onComplete: () => {
           this.isMoving = false;
@@ -128,7 +128,7 @@ export class Elevator {
     this.scene.tweens.add({
       targets: this.platform,
       y: targetY,
-      duration: Math.abs(this.platform.y - targetY) / ELEVATOR_SPEED * 1000,
+      duration: (Math.abs(this.platform.y - targetY) / ELEVATOR_SPEED) * 1000,
       ease: 'Sine.easeInOut',
       onComplete: () => {
         this.isMoving = false;
