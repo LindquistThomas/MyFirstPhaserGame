@@ -4,6 +4,7 @@ import { LEVEL_DATA } from '../config/levelData';
 import { Player } from '../entities/Player';
 import { Elevator } from '../entities/Elevator';
 import { HUD } from '../ui/HUD';
+import { ElevatorButtons } from '../ui/ElevatorButtons';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 
 /**
@@ -23,6 +24,9 @@ export class HubScene extends Phaser.Scene {
 
   /** Is the player currently standing on the elevator? */
   private playerOnElevator = false;
+
+  /** On-screen elevator buttons (shared component). */
+  private elevatorButtons?: ElevatorButtons;
 
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
@@ -165,9 +169,11 @@ export class HubScene extends Phaser.Scene {
     this.hud = new HUD(this, this.progression);
 
     // Instruction text (scroll-fixed)
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '↑↓  Ride Elevator  |  ← →  Walk  |  SPACE  Jump', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '↑↓  Ride Elevator  |  ← →  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '13px', color: '#556677',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
+
+    this.elevatorButtons = new ElevatorButtons(this, 56);
   }
 
   /* ---- helpers ---- */
@@ -192,10 +198,16 @@ export class HubScene extends Phaser.Scene {
 
     this.playerOnElevator = onElevator;
 
-    // Ride elevator with Up/Down when standing on it
+    // Show / hide elevator buttons (resets pressed state when hiding)
+    this.elevatorButtons?.setVisible(this.playerOnElevator);
+
+    // Ride elevator with Up/Down keys or on-screen buttons when standing on it
     if (this.playerOnElevator) {
       const input = this.player.getInputManager().getState();
-      this.elevator.ride(input.up, input.down);
+      const btnState = this.elevatorButtons?.getState();
+      const up = input.up || (btnState?.up ?? false);
+      const down = input.down || (btnState?.down ?? false);
+      this.elevator.ride(up, down);
     } else {
       // Stop elevator movement when player steps off
       this.elevator.ride(false, false);

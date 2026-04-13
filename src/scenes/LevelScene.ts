@@ -4,6 +4,7 @@ import { LEVEL_DATA, FloorData } from '../config/levelData';
 import { Player } from '../entities/Player';
 import { Token } from '../entities/Token';
 import { HUD } from '../ui/HUD';
+import { ElevatorButtons } from '../ui/ElevatorButtons';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 
 export interface RoomElevator {
@@ -54,6 +55,9 @@ export class LevelScene extends Phaser.Scene {
 
   /** Which room-lift is the player currently riding? (-1 = none) */
   private activeRoomLift = -1;
+
+  /** On-screen elevator buttons (shared component). */
+  private liftButtons?: ElevatorButtons;
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
@@ -207,6 +211,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- UI ---- */
   protected createUI(): void {
     this.hud = new HUD(this, this.progression);
+    this.liftButtons = new ElevatorButtons(this, 48);
   }
 
   /* ---- banner ---- */
@@ -281,6 +286,9 @@ export class LevelScene extends Phaser.Scene {
       }
     }
 
+    // Show / hide lift buttons (resets pressed state when hiding)
+    this.liftButtons?.setVisible(onLift);
+
     if (!onLift) {
       this.activeRoomLift = -1;
       // Stop all lifts
@@ -290,13 +298,16 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
-    // Ride the active lift with Up/Down
+    // Ride the active lift with Up/Down keys or on-screen buttons
     const input = this.player.getInputManager().getState();
     const lift = this.roomLifts[this.activeRoomLift];
+    const btnState = this.liftButtons?.getState();
+    const up = input.up || (btnState?.up ?? false);
+    const down = input.down || (btnState?.down ?? false);
 
-    if (input.up) {
+    if (up) {
       lift.platform.setVelocityY(-ELEVATOR_SPEED);
-    } else if (input.down) {
+    } else if (down) {
       lift.platform.setVelocityY(ELEVATOR_SPEED);
     } else {
       lift.platform.setVelocityY(0);

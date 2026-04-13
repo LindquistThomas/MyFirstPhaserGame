@@ -17,26 +17,26 @@ export function generateSprites(scene: Phaser.Scene): void {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Player — SIDE-VIEW profile (64 × 128, facing right)               */
-/*  Frames: idle×2, walk×4, flip×4 (front-flip rotation)              */
+/*  Player — SIDE-VIEW profile (64 × 160, facing right)               */
+/*  Frames: idle×2, walk×4, flip×8 (front-flip rotation at 45° steps) */
 /* ------------------------------------------------------------------ */
 function generatePlayerSprites(scene: Phaser.Scene): void {
   const W = 64;
-  const H = 128;
-  const FRAMES = 10; // idle×2, walk×4, flip×4
+  const H = 160;
+  const FRAMES = 14; // idle×2, walk×4, flip×8
 
   const canvas = document.createElement('canvas');
   canvas.width = W * FRAMES;
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  const S = 4; // scale factor (16×4 = 64, 32×4 = 128)
+  const S = 4; // scale factor
   const px = (frame: number, x: number, y: number, w: number, h: number, color: string) => {
     ctx.fillStyle = color;
     ctx.fillRect(frame * W + x * S, y * S, w * S, h * S);
   };
 
-  /* ---------- side-view character (facing right) ---------- */
+  /* ---------- side-view character (facing right, taller) ---------- */
   const drawSideChar = (
     f: number,
     bodyY: number,
@@ -59,24 +59,24 @@ function generatePlayerSprites(scene: Phaser.Scene): void {
     px(f, 6, 4 + by, 6, 1, '#666666');
     px(f, 6, 3 + by, 1, 3, '#666666');
 
-    // Torso / shirt (narrower side-view)
-    px(f, 5, 8 + by, 6, 8, '#4a90d9');
+    // Torso / shirt (taller torso)
+    px(f, 5, 8 + by, 6, 11, '#4a90d9');
     // Tie (on the near side)
-    px(f, 9, 8 + by, 2, 6, '#cc3333');
+    px(f, 9, 8 + by, 2, 8, '#cc3333');
     // Belt
-    px(f, 5, 16 + by, 6, 1, '#222222');
+    px(f, 5, 19 + by, 6, 1, '#222222');
 
     // Arm (one visible, in front) – shirt sleeve + hand
-    px(f, 8, 9 + by + armSwing, 2, 6, '#4a90d9');
-    px(f, 8, 15 + by + armSwing, 2, 2, '#f5c5a3');
+    px(f, 8, 9 + by + armSwing, 2, 8, '#4a90d9');
+    px(f, 8, 17 + by + armSwing, 2, 2, '#f5c5a3');
 
-    // Back leg (partially hidden)
-    px(f, 5, 17 + by, 3, 7 + backLeg, '#2a2a3a');
-    px(f, 4, 24 + by + backLeg, 4, 2, '#141414');
+    // Back leg (partially hidden, longer)
+    px(f, 5, 20 + by, 3, 10 + backLeg, '#2a2a3a');
+    px(f, 4, 30 + by + backLeg, 4, 2, '#141414');
 
-    // Front leg
-    px(f, 8, 17 + by, 3, 7 + frontLeg, '#333344');
-    px(f, 8, 24 + by + frontLeg, 4, 2, '#1a1a1a');
+    // Front leg (longer)
+    px(f, 8, 20 + by, 3, 10 + frontLeg, '#333344');
+    px(f, 8, 30 + by + frontLeg, 4, 2, '#1a1a1a');
   };
 
   // idle 0-1 (slight breathing bob)
@@ -89,14 +89,17 @@ function generatePlayerSprites(scene: Phaser.Scene): void {
   drawSideChar(4, 0, 1, -1, 1);
   drawSideChar(5, -1, -1, 1, -1);
 
-  /* ---------- front-flip frames 6-9 ----------
-   * Four rotation poses at 90° increments:
-   *   6 = 0°   (upright, start of flip)
-   *   7 = 90°  (rotated clockwise)
-   *   8 = 180° (upside-down)
-   *   9 = 270° (coming back around)                            */
+  /* ---------- front-flip frames 6-13 ----------
+   * Eight rotation poses at 45° increments:
+   *   6 = 0°    (upright, start of flip)
+   *   7 = 45°   (tilting forward)
+   *   8 = 90°   (horizontal)
+   *   9 = 135°  (past horizontal)
+   *  10 = 180°  (upside-down)
+   *  11 = 225°  (coming back around)
+   *  12 = 270°  (near-upright inverted)
+   *  13 = 315°  (almost complete)              */
   const drawFlipFrame = (f: number, rotation: number) => {
-    // Save / translate to center of frame, rotate, draw a compact figure
     const cx = f * W + W / 2;
     const cy = H / 2;
     ctx.save();
@@ -110,29 +113,28 @@ function generatePlayerSprites(scene: Phaser.Scene): void {
     };
 
     // Head
-    p(-3, -10, 5, 5, '#f5c5a3');
-    p(-3, -12, 5, 3, '#4a3728'); // hair
-    p(-1, -9, 1, 1, '#222222');  // eye
-    p(0, -9, 2, 1, '#666666');   // glasses
-    // Torso
-    p(-3, -5, 6, 6, '#4a90d9');
-    p(0, -5, 2, 5, '#cc3333');   // tie
+    p(-3, -12, 5, 5, '#f5c5a3');
+    p(-3, -14, 5, 3, '#4a3728'); // hair
+    p(-1, -11, 1, 1, '#222222'); // eye
+    p(0, -11, 2, 1, '#666666');  // glasses
+    // Torso (tucked but slightly taller)
+    p(-3, -7, 6, 8, '#4a90d9');
+    p(0, -7, 2, 6, '#cc3333');   // tie
     // Arm
-    p(2, -4, 2, 5, '#4a90d9');
+    p(2, -6, 2, 6, '#4a90d9');
     // Legs (tucked)
-    p(-3, 1, 3, 5, '#333344');
-    p(1, 1, 3, 5, '#333344');
+    p(-3, 1, 3, 6, '#333344');
+    p(1, 1, 3, 6, '#333344');
     // Shoes
-    p(-3, 6, 3, 2, '#1a1a1a');
-    p(1, 6, 3, 2, '#1a1a1a');
+    p(-3, 7, 3, 2, '#1a1a1a');
+    p(1, 7, 3, 2, '#1a1a1a');
 
     ctx.restore();
   };
 
-  drawFlipFrame(6, 0);                      // start of flip
-  drawFlipFrame(7, Math.PI * 0.5);          // 90°
-  drawFlipFrame(8, Math.PI);                // 180° upside-down
-  drawFlipFrame(9, Math.PI * 1.5);          // 270°
+  for (let i = 0; i < 8; i++) {
+    drawFlipFrame(6 + i, Math.PI * 0.25 * i);
+  }
 
   scene.textures.addSpriteSheet('player', canvas as unknown as HTMLImageElement, { frameWidth: W, frameHeight: H });
 }

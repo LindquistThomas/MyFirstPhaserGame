@@ -42,13 +42,13 @@ export class InputManager {
       right: this.cursors?.right?.isDown || this.wasd?.D?.isDown || false,
       up: this.cursors?.up?.isDown || this.wasd?.W?.isDown || false,
       down: this.cursors?.down?.isDown || this.wasd?.S?.isDown || false,
-      jump: this.spaceKey?.isDown || this.cursors?.up?.isDown || this.wasd?.W?.isDown || false,
+      jump: this.spaceKey?.isDown || false,
       interact: this.interactKey?.isDown || false,
     };
   }
 
   isJumpJustPressed(): boolean {
-    const jumpDown = this.spaceKey?.isDown || this.cursors?.up?.isDown || this.wasd?.W?.isDown || false;
+    const jumpDown = this.spaceKey?.isDown || false;
     if (jumpDown && !this.jumpJustPressedFlag) {
       this.jumpJustPressedFlag = true;
       return true;

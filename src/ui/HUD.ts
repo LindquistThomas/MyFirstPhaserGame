@@ -49,7 +49,7 @@ export class HUD {
 
     // Game title (center)
     this.container.add(
-      this.scene.add.text(GAME_WIDTH / 2, 10, 'ARCHITECTURE ELEVATOR', {
+      this.scene.add.text(GAME_WIDTH / 2, 10, 'SO YOU WANT TO BE AN ARCHITECT', {
         fontFamily: 'monospace', fontSize: '14px', color: '#556677',
       }).setOrigin(0.5, 0),
     );

@@ -12,12 +12,17 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(COLORS.background);
 
     // Title
-    this.add.text(cx, cy - 200, 'ARCHITECTURE', {
-      fontFamily: 'monospace', fontSize: '56px',
+    this.add.text(cx, cy - 220, 'SO YOU WANT', {
+      fontFamily: 'monospace', fontSize: '40px',
       color: COLORS.titleText, fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.add.text(cx, cy - 130, 'ELEVATOR', {
+    this.add.text(cx, cy - 165, 'TO BE AN', {
+      fontFamily: 'monospace', fontSize: '40px',
+      color: COLORS.titleText, fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    this.add.text(cx, cy - 100, 'ARCHITECT', {
       fontFamily: 'monospace', fontSize: '64px',
       color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
