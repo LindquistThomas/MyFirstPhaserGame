@@ -1,5 +1,5 @@
 {
-  "name": "architecture-elevator",
+  "name": "so-you-want-to-be-an-architect",
   "version": "0.1.0",
   "description": "A 2D platformer about being an IT architect, built with Phaser 3",
   "type": "module",

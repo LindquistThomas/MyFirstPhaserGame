@@ -9,6 +9,15 @@ const FLIP_DISTANCE = 256;                  // horizontal pixels traveled
 const FLIP_HEIGHT = FLIP_DISTANCE / 2;      // peak height = half the distance
 const FLIP_DURATION = 800;                  // total ms for the flip arc
 const FLIP_FRAME_COUNT = 8;                 // animation frames in a flip
+const FLIP_FRAME_RATE = (FLIP_FRAME_COUNT / FLIP_DURATION) * 1000; // frames per second
+
+/** Sprite dimensions — must match SpriteGenerator. */
+const SPRITE_WIDTH = 64;
+const SPRITE_HEIGHT = 160;
+const HITBOX_MARGIN_X = 12;
+const HITBOX_MARGIN_Y = 16;
+const HITBOX_WIDTH = 40;
+const HITBOX_HEIGHT = SPRITE_HEIGHT - HITBOX_MARGIN_Y - 4; // 140
 
 export class Player {
   public sprite: Phaser.Physics.Arcade.Sprite;
@@ -30,8 +39,8 @@ export class Player {
     this.inputManager = new InputManager(scene);
 
     this.sprite = scene.physics.add.sprite(x, y, 'player', 0);
-    this.sprite.setSize(40, 140);
-    this.sprite.setOffset(12, 16);
+    this.sprite.setSize(HITBOX_WIDTH, HITBOX_HEIGHT);
+    this.sprite.setOffset(HITBOX_MARGIN_X, HITBOX_MARGIN_Y);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(10);
 
@@ -65,7 +74,7 @@ export class Player {
       anims.create({
         key: 'player_flip',
         frames: anims.generateFrameNumbers('player', { start: 6, end: 13 }),
-        frameRate: (FLIP_FRAME_COUNT / FLIP_DURATION) * 1000,
+        frameRate: FLIP_FRAME_RATE,
         repeat: 0, // single run, no loop
       });
     }

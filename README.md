@@ -1,4 +1,4 @@
-# Architecture Elevator
+# So You Want to Be an Architect
 
 A 2D pixel-art platformer about rising through the ranks of IT architecture, built with **Phaser 3**, **TypeScript**, and **Vite**.
 
