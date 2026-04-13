@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
 import { InputManager } from '../systems/InputManager';
 
-type PlayerAnimState = 'idle' | 'walk' | 'jump' | 'fall';
+type PlayerAnimState = 'idle' | 'walk' | 'flip';
 
 export class Player {
   public sprite: Phaser.Physics.Arcade.Sprite;
@@ -48,19 +48,13 @@ export class Player {
       });
     }
 
-    if (!anims.exists('player_jump')) {
+    // Front-flip: 4 rotation frames that loop once per jump
+    if (!anims.exists('player_flip')) {
       anims.create({
-        key: 'player_jump',
-        frames: [{ key: 'player', frame: 6 }],
-        frameRate: 1,
-      });
-    }
-
-    if (!anims.exists('player_fall')) {
-      anims.create({
-        key: 'player_fall',
-        frames: [{ key: 'player', frame: 7 }],
-        frameRate: 1,
+        key: 'player_flip',
+        frames: anims.generateFrameNumbers('player', { start: 6, end: 9 }),
+        frameRate: 12,
+        repeat: -1,
       });
     }
   }
@@ -122,11 +116,11 @@ export class Player {
 
   private updateAnimation(onGround: boolean): void {
     const vx = Math.abs(this.sprite.body!.velocity.x);
-    const vy = this.sprite.body!.velocity.y;
     let newAnim: PlayerAnimState;
 
     if (!onGround) {
-      newAnim = vy < 0 ? 'jump' : 'fall';
+      // Front-flip while airborne
+      newAnim = 'flip';
     } else if (vx > 20) {
       newAnim = 'walk';
     } else {

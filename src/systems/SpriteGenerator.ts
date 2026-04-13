@@ -11,98 +11,128 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateTileSprites(scene);
   generateAUTokenSprites(scene);
   generateElevatorSprites(scene);
+  generateRoomElevatorSprite(scene);
   generateDoorSprites(scene);
   generateParticleSprite(scene);
 }
 
 /* ------------------------------------------------------------------ */
-/*  Player (64 × 128 — one tile wide, one tile tall)                  */
+/*  Player — SIDE-VIEW profile (64 × 128, facing right)               */
+/*  Frames: idle×2, walk×4, flip×4 (front-flip rotation)              */
 /* ------------------------------------------------------------------ */
 function generatePlayerSprites(scene: Phaser.Scene): void {
   const W = 64;
   const H = 128;
-  const FRAMES = 8; // idle×2, walk×4, jump, fall
+  const FRAMES = 10; // idle×2, walk×4, flip×4
 
   const canvas = document.createElement('canvas');
   canvas.width = W * FRAMES;
   canvas.height = H;
   const ctx = canvas.getContext('2d')!;
 
-  /** Pixel helper – fills a rectangle whose coords are in a 16×32 "design grid"
-   *  and scales them up to the actual 64×128 canvas frame.                       */
-  const S = 4;                       // scale factor  (16*4 = 64, 32*4 = 128)
+  const S = 4; // scale factor (16×4 = 64, 32×4 = 128)
   const px = (frame: number, x: number, y: number, w: number, h: number, color: string) => {
     ctx.fillStyle = color;
     ctx.fillRect(frame * W + x * S, y * S, w * S, h * S);
   };
 
-  const drawChar = (
-    f: number,       // frame index
-    bodyY: number,   // vertical body shift (breathing / bobbing)
-    legL: number,    // left-leg length offset
-    legR: number,    // right-leg length offset
-    armL: number,    // left-arm y-offset
-    armR: number,    // right-arm y-offset
-    jump: boolean,
+  /* ---------- side-view character (facing right) ---------- */
+  const drawSideChar = (
+    f: number,
+    bodyY: number,
+    backLeg: number,   // back-leg extension
+    frontLeg: number,  // front-leg extension
+    armSwing: number,  // arm y-offset
   ) => {
     const by = bodyY;
 
-    // Hair
-    px(f, 4, 0 + by, 8, 3, '#4a3728');
-    // Head / skin
-    px(f, 5, 2 + by, 6, 6, '#f5c5a3');
-    // Eyes (white)
-    px(f, 6, 4 + by, 2, 2, '#ffffff');
-    px(f, 9, 4 + by, 2, 2, '#ffffff');
-    // Pupils
-    px(f, 7, 5 + by, 1, 1, '#222222');
-    px(f, 10, 5 + by, 1, 1, '#222222');
-    // Glasses frame (architect!)
-    px(f, 5, 4 + by, 7, 1, '#666666');
-    px(f, 5, 3 + by, 1, 3, '#666666');
-    px(f, 11, 3 + by, 1, 3, '#666666');
+    // Hair (side profile – thinner)
+    px(f, 5, 0 + by, 6, 3, '#4a3728');
+    // Head side-profile (facing right)
+    px(f, 6, 2 + by, 5, 6, '#f5c5a3');
+    // Nose (protrudes right)
+    px(f, 11, 4 + by, 2, 2, '#e8b090');
+    // Eye (single, side-view)
+    px(f, 8, 4 + by, 2, 2, '#ffffff');
+    px(f, 9, 4 + by, 1, 1, '#222222');
+    // Glasses (side)
+    px(f, 6, 4 + by, 6, 1, '#666666');
+    px(f, 6, 3 + by, 1, 3, '#666666');
 
-    // Torso / shirt
-    px(f, 4, 8 + by, 8, 8, '#4a90d9');
-    // Tie
-    px(f, 7, 8 + by, 2, 7, '#cc3333');
+    // Torso / shirt (narrower side-view)
+    px(f, 5, 8 + by, 6, 8, '#4a90d9');
+    // Tie (on the near side)
+    px(f, 9, 8 + by, 2, 6, '#cc3333');
     // Belt
-    px(f, 4, 16 + by, 8, 1, '#222222');
+    px(f, 5, 16 + by, 6, 1, '#222222');
 
-    // Left arm
-    px(f, 2, 9 + by + armL, 2, 6, '#4a90d9');
-    px(f, 2, 15 + by + armL, 2, 2, '#f5c5a3');
-    // Right arm
-    px(f, 12, 9 + by + armR, 2, 6, '#4a90d9');
-    px(f, 12, 15 + by + armR, 2, 2, '#f5c5a3');
+    // Arm (one visible, in front) – shirt sleeve + hand
+    px(f, 8, 9 + by + armSwing, 2, 6, '#4a90d9');
+    px(f, 8, 15 + by + armSwing, 2, 2, '#f5c5a3');
 
-    // Legs / trousers
-    if (jump) {
-      px(f, 4, 17 + by, 3, 6, '#333344');
-      px(f, 9, 17 + by, 3, 6, '#333344');
-      px(f, 3, 23 + by, 4, 2, '#1a1a1a');
-      px(f, 9, 23 + by, 4, 2, '#1a1a1a');
-    } else {
-      px(f, 4, 17 + by, 3, 7 + legL, '#333344');
-      px(f, 9, 17 + by, 3, 7 + legR, '#333344');
-      // Shoes
-      px(f, 3, 24 + by + legL, 4, 2, '#1a1a1a');
-      px(f, 9, 24 + by + legR, 4, 2, '#1a1a1a');
-    }
+    // Back leg (partially hidden)
+    px(f, 5, 17 + by, 3, 7 + backLeg, '#2a2a3a');
+    px(f, 4, 24 + by + backLeg, 4, 2, '#141414');
+
+    // Front leg
+    px(f, 8, 17 + by, 3, 7 + frontLeg, '#333344');
+    px(f, 8, 24 + by + frontLeg, 4, 2, '#1a1a1a');
   };
 
-  // idle 0-1
-  drawChar(0, 0, 0, 0, 0, 0, false);
-  drawChar(1, 1, 0, 0, 0, 0, false);
-  // walk 2-5
-  drawChar(2, 0, -1, 1, -1, 1, false);
-  drawChar(3, -1, 1, -1, 1, -1, false);
-  drawChar(4, 0, -1, 1, 1, -1, false);
-  drawChar(5, -1, 1, -1, -1, 1, false);
-  // jump 6
-  drawChar(6, -1, 0, 0, -2, -2, true);
-  // fall 7
-  drawChar(7, 1, 0, 0, 1, 1, false);
+  // idle 0-1 (slight breathing bob)
+  drawSideChar(0, 0, 0, 0, 0);
+  drawSideChar(1, 1, 0, 0, 0);
+
+  // walk 2-5 (leg & arm swing cycle)
+  drawSideChar(2, 0, -1, 1, -1);
+  drawSideChar(3, -1, 1, -1, 1);
+  drawSideChar(4, 0, 1, -1, 1);
+  drawSideChar(5, -1, -1, 1, -1);
+
+  /* ---------- front-flip frames 6-9 ----------
+   * Four rotation poses at 90° increments:
+   *   6 = 0°   (upright, start of flip)
+   *   7 = 90°  (rotated clockwise)
+   *   8 = 180° (upside-down)
+   *   9 = 270° (coming back around)                            */
+  const drawFlipFrame = (f: number, rotation: number) => {
+    // Save / translate to center of frame, rotate, draw a compact figure
+    const cx = f * W + W / 2;
+    const cy = H / 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rotation);
+
+    // Compact body (tucked) — draw relative to center
+    const p = (x: number, y: number, w: number, h: number, color: string) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(x * S, y * S, w * S, h * S);
+    };
+
+    // Head
+    p(-3, -10, 5, 5, '#f5c5a3');
+    p(-3, -12, 5, 3, '#4a3728'); // hair
+    p(-1, -9, 1, 1, '#222222');  // eye
+    p(0, -9, 2, 1, '#666666');   // glasses
+    // Torso
+    p(-3, -5, 6, 6, '#4a90d9');
+    p(0, -5, 2, 5, '#cc3333');   // tie
+    // Arm
+    p(2, -4, 2, 5, '#4a90d9');
+    // Legs (tucked)
+    p(-3, 1, 3, 5, '#333344');
+    p(1, 1, 3, 5, '#333344');
+    // Shoes
+    p(-3, 6, 3, 2, '#1a1a1a');
+    p(1, 6, 3, 2, '#1a1a1a');
+
+    ctx.restore();
+  };
+
+  drawFlipFrame(6, 0);                      // start of flip
+  drawFlipFrame(7, Math.PI * 0.5);          // 90°
+  drawFlipFrame(8, Math.PI);                // 180° upside-down
+  drawFlipFrame(9, Math.PI * 1.5);          // 270°
 
   scene.textures.addSpriteSheet('player', canvas as unknown as HTMLImageElement, { frameWidth: W, frameHeight: H });
 }
@@ -196,30 +226,55 @@ function generateAUTokenSprites(scene: Phaser.Scene): void {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Elevator                                                          */
+/*  Elevator — Impossible-Mission style                               */
 /* ------------------------------------------------------------------ */
 function generateElevatorSprites(scene: Phaser.Scene): void {
   // Platform (wider for 128-px world)
   const ew = 160;
   const eh = 16;
   const eGfx = scene.make.graphics({ x: 0, y: 0 }, false);
-  eGfx.fillStyle(0x0f3460); eGfx.fillRect(0, 0, ew, eh);
-  eGfx.fillStyle(0x1a5276); eGfx.fillRect(4, 4, ew - 8, eh - 8);
-  eGfx.fillStyle(0x0f3460);
-  eGfx.fillRect(0, 0, 6, eh);
-  eGfx.fillRect(ew - 6, 0, 6, eh);
+  // Bright cyan platform like Impossible Mission
+  eGfx.fillStyle(0x00aaff); eGfx.fillRect(0, 0, ew, eh);
+  eGfx.fillStyle(0x0088cc); eGfx.fillRect(4, 4, ew - 8, eh - 8);
+  eGfx.fillStyle(0x00ccff);
+  eGfx.fillRect(0, 0, ew, 3);         // top highlight
+  eGfx.fillRect(0, 0, 6, eh);         // left edge
+  eGfx.fillRect(ew - 6, 0, 6, eh);    // right edge
   eGfx.generateTexture('elevator_platform', ew, eh);
   eGfx.destroy();
 
-  // Shaft background strip
+  // Shaft background strip (darker, more contrast)
   const sw = 200;
   const sh = TILE_SIZE;
   const sGfx = scene.make.graphics({ x: 0, y: 0 }, false);
-  sGfx.fillStyle(0x0a0a1a); sGfx.fillRect(0, 0, sw, sh);
-  sGfx.lineStyle(1, 0x1a1a3a, 0.5);
-  sGfx.lineBetween(0, 0, sw, 0);
+  sGfx.fillStyle(0x060610); sGfx.fillRect(0, 0, sw, sh);
+  // Subtle vertical lines for depth
+  sGfx.lineStyle(1, 0x101030, 0.6);
+  sGfx.lineBetween(sw / 4, 0, sw / 4, sh);
+  sGfx.lineBetween(sw / 2, 0, sw / 2, sh);
+  sGfx.lineBetween(sw * 3 / 4, 0, sw * 3 / 4, sh);
+  // Horizontal dashes
+  sGfx.lineStyle(1, 0x0a0a2a, 0.4);
+  sGfx.lineBetween(0, sh / 2, sw, sh / 2);
   sGfx.generateTexture('elevator_shaft', sw, sh);
   sGfx.destroy();
+}
+
+/* ------------------------------------------------------------------ */
+/*  In-room elevator platform (smaller, for level scenes)             */
+/* ------------------------------------------------------------------ */
+function generateRoomElevatorSprite(scene: Phaser.Scene): void {
+  const w = 72;
+  const h = 12;
+  const gfx = scene.make.graphics({ x: 0, y: 0 }, false);
+  gfx.fillStyle(0x00aaff); gfx.fillRect(0, 0, w, h);
+  gfx.fillStyle(0x0088cc); gfx.fillRect(3, 3, w - 6, h - 6);
+  gfx.fillStyle(0x00ccff);
+  gfx.fillRect(0, 0, w, 2);       // top highlight
+  gfx.fillRect(0, 0, 4, h);       // left edge
+  gfx.fillRect(w - 4, 0, 4, h);   // right edge
+  gfx.generateTexture('room_elevator_platform', w, h);
+  gfx.destroy();
 }
 
 /* ------------------------------------------------------------------ */

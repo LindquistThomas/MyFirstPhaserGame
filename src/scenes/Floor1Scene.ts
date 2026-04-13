@@ -1,59 +1,66 @@
 import { GAME_HEIGHT, FLOORS } from '../config/gameConfig';
 import { LevelScene, LevelConfig } from './LevelScene';
 
+/**
+ * Floor 1 — Platform Team.
+ *
+ * Single-screen room (Impossible Mission style) with multiple platform
+ * tiers connected by two in-room elevators.
+ */
 export class Floor1Scene extends LevelScene {
   constructor() {
     super('Floor1Scene', FLOORS.PLATFORM_TEAM);
-    this.levelWidth = 4096;
   }
 
   protected getLevelConfig(): LevelConfig {
-    const ground = GAME_HEIGHT - 64;
+    const G = GAME_HEIGHT - 64;  // ground
+    const T1 = G - 220;          // tier 1
+    const T2 = G - 440;          // tier 2
+    const T3 = G - 660;          // tier 3 (top)
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
-      playerStart: { x: 150, y: ground - 140 },
-      exitPosition: { x: 100, y: ground - 56 },
+      playerStart: { x: 150, y: G - 100 },
+      exitPosition: { x: 80, y: G - 56 },
+
       platforms: [
-        // Ground spans most of the level
-        { x: 0, y: ground, width: 30 },
+        // Ground floor — full width
+        { x: 0, y: G, width: 10 },
 
-        // Lower stepping platforms
-        { x: 512, y: ground - 180, width: 3 },
-        { x: 900, y: ground - 260, width: 2 },
-        { x: 1280, y: ground - 180, width: 4 },
-        { x: 1800, y: ground - 300, width: 3 },
+        // Tier 1 — two platforms with a gap for elevator
+        { x: 0, y: T1, width: 3 },
+        { x: 640, y: T1, width: 5 },
 
-        // Mid platforms
-        { x: 256, y: ground - 420, width: 3 },
-        { x: 768, y: ground - 460, width: 3 },
-        { x: 1400, y: ground - 500, width: 2 },
-        { x: 1920, y: ground - 440, width: 3 },
+        // Tier 2 — offset platforms
+        { x: 128, y: T2, width: 4 },
+        { x: 768, y: T2, width: 3 },
 
-        // Upper platforms
-        { x: 2400, y: ground - 280, width: 4 },
-        { x: 2900, y: ground - 380, width: 3 },
-        { x: 3400, y: ground - 300, width: 3 },
-
-        // High challenge platforms
-        { x: 1024, y: ground - 620, width: 2 },
-        { x: 2000, y: ground - 640, width: 2 },
-        { x: 3000, y: ground - 560, width: 2 },
+        // Tier 3 — top platforms
+        { x: 0, y: T3, width: 3 },
+        { x: 512, y: T3, width: 4 },
+        { x: 896, y: T3, width: 3 },
       ],
+
+      roomElevators: [
+        // Left elevator: connects ground to tier 3
+        { x: 460, minY: T3, maxY: G - 8, startY: G - 8 },
+        // Right elevator: connects tier 1 to tier 3
+        { x: 1100, minY: T3, maxY: T1 - 8, startY: T1 - 8 },
+      ],
+
       tokens: [
-        // Easy ground-adjacent
-        { x: 600, y: ground - 220 },
-        { x: 1400, y: ground - 220 },
-
-        // Mid difficulty
-        { x: 380, y: ground - 460 },
-        { x: 860, y: ground - 500 },
-        { x: 1980, y: ground - 480 },
-        { x: 2520, y: ground - 320 },
-
-        // Hard – high platforms
-        { x: 1090, y: ground - 660 },
-        { x: 2060, y: ground - 680 },
+        // Ground level
+        { x: 900, y: G - 40 },
+        // Tier 1
+        { x: 200, y: T1 - 40 },
+        { x: 850, y: T1 - 40 },
+        // Tier 2
+        { x: 350, y: T2 - 40 },
+        { x: 920, y: T2 - 40 },
+        // Tier 3
+        { x: 150, y: T3 - 40 },
+        { x: 700, y: T3 - 40 },
+        { x: 1050, y: T3 - 40 },
       ],
     };
   }
