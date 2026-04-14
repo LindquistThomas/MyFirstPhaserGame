@@ -19,8 +19,10 @@ export class InputManager {
   };
   private spaceKey!: Phaser.Input.Keyboard.Key;
   private interactKey!: Phaser.Input.Keyboard.Key;
+  private infoKey!: Phaser.Input.Keyboard.Key;
   private jumpJustPressedFlag = false;
   private interactJustPressedFlag = false;
+  private infoJustPressedFlag = false;
 
   constructor(scene: Phaser.Scene) {
     if (!scene.input.keyboard) return;
@@ -34,6 +36,7 @@ export class InputManager {
     };
     this.spaceKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.interactKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    this.infoKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.I);
   }
 
   getState(): InputState {
@@ -67,6 +70,18 @@ export class InputManager {
     }
     if (!interactDown) {
       this.interactJustPressedFlag = false;
+    }
+    return false;
+  }
+
+  isInfoJustPressed(): boolean {
+    const infoDown = this.infoKey?.isDown || false;
+    if (infoDown && !this.infoJustPressedFlag) {
+      this.infoJustPressedFlag = true;
+      return true;
+    }
+    if (!infoDown) {
+      this.infoJustPressedFlag = false;
     }
     return false;
   }

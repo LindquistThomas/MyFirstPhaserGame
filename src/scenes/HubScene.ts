@@ -6,6 +6,31 @@ import { Elevator } from '../entities/Elevator';
 import { HUD } from '../ui/HUD';
 import { ElevatorButtons } from '../ui/ElevatorButtons';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
+import { InfoDialog, InfoDialogContent } from '../ui/InfoDialog';
+import { InfoIcon } from '../ui/InfoIcon';
+import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
+
+const ELEVATOR_INFO_ID = 'architecture-elevator';
+
+const ELEVATOR_INFO_CONTENT: InfoDialogContent = {
+  id: ELEVATOR_INFO_ID,
+  title: 'The Architecture Elevator',
+  body:
+    'Gregor Hohpe coined the term "Architecture Elevator" to describe ' +
+    'how software architects must ride between the penthouse \u2014 where ' +
+    'business strategy and organizational decisions are made \u2014 and the ' +
+    'engine room \u2014 where the technology is built and operated.\n\n' +
+    'An effective architect doesn\'t just live on one floor. They translate ' +
+    'between executives who speak in business outcomes and engineers who ' +
+    'speak in systems and code. The elevator ride connects these worlds.\n\n' +
+    'In this game you literally ride the elevator between floors \u2014 each ' +
+    'one representing a different team and set of architectural challenges.',
+  links: [
+    { label: 'The Software Architect Elevator (Book)', url: 'https://architectelevator.com/book/' },
+    { label: 'Gregor Hohpe\u2019s Blog', url: 'https://architectelevator.com/' },
+    { label: 'Architecture Elevator Article', url: 'https://martinfowler.com/articles/architect-elevator.html' },
+  ],
+};
 
 /**
  * Hub / Elevator-shaft scene — Impossible-Mission style.
@@ -27,6 +52,11 @@ export class HubScene extends Phaser.Scene {
 
   /** On-screen elevator buttons (shared component). */
   private elevatorButtons?: ElevatorButtons;
+
+  private showElevatorInfoOnFirstRide = false;
+  private dialogOpen = false;
+  private activeDialog?: InfoDialog;
+  private infoIcon?: InfoIcon;
 
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
@@ -65,6 +95,8 @@ export class HubScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
     this.cameras.main.setBounds(0, 0, GAME_WIDTH, worldHeight);
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.setupElevatorInfo();
   }
 
   /* ---- background ---- */
@@ -195,6 +227,11 @@ export class HubScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
 
+    const inputMgr = this.player.getInputManager();
+    const infoPressed = inputMgr.isInfoJustPressed();
+
+    if (this.dialogOpen) return;
+
     this.player.update(delta);
     this.hud.update();
 
@@ -204,12 +241,23 @@ export class HubScene extends Phaser.Scene {
 
     this.playerOnElevator = onElevator;
 
+    if (this.playerOnElevator && this.showElevatorInfoOnFirstRide) {
+      this.showElevatorInfoOnFirstRide = false;
+      this.openElevatorInfoDialog();
+      return;
+    }
+
+    if (infoPressed && this.infoIcon && !this.dialogOpen) {
+      this.openElevatorInfoDialog();
+      return;
+    }
+
     // Show / hide elevator buttons (resets pressed state when hiding)
     this.elevatorButtons?.setVisible(this.playerOnElevator);
 
     // Ride elevator with Up/Down keys or on-screen buttons when standing on it
     if (this.playerOnElevator) {
-      const input = this.player.getInputManager().getState();
+      const input = inputMgr.getState();
       const btnState = this.elevatorButtons?.getState();
       const up = input.up || (btnState?.up ?? false);
       const down = input.down || (btnState?.down ?? false);
@@ -265,6 +313,37 @@ export class HubScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  /* ---- info dialog ---- */
+  private setupElevatorInfo(): void {
+    if (hasBeenSeen(ELEVATOR_INFO_ID)) {
+      this.showElevatorInfoOnFirstRide = false;
+      this.createInfoIcon();
+    } else {
+      this.showElevatorInfoOnFirstRide = true;
+    }
+  }
+
+  private openElevatorInfoDialog(): void {
+    if (this.dialogOpen) return;
+    this.dialogOpen = true;
+
+    this.activeDialog = new InfoDialog(this, ELEVATOR_INFO_CONTENT, () => {
+      this.dialogOpen = false;
+      this.activeDialog = undefined;
+
+      if (!this.infoIcon) {
+        markSeen(ELEVATOR_INFO_ID);
+        this.createInfoIcon();
+      }
+    });
+  }
+
+  private createInfoIcon(): void {
+    this.infoIcon = new InfoIcon(this, GAME_WIDTH / 2 + 310, GAME_HEIGHT - 30, () => {
+      this.openElevatorInfoDialog();
+    });
   }
 
   private enterFloor(floorId: FloorId): void {
