@@ -61,6 +61,15 @@ vite.config.js       # Vite configuration
 3. **Add an asset** — Place it in `public/assets/` and load it in the `Preloader` scene.
 4. **Add a dependency** — Run `npm install <package>` and import it where needed.
 
+### Persistence / Save System
+
+Player progress is saved to localStorage via `src/systems/SaveManager.ts`. When adding new features that introduce persistent state (new collectibles, unlockables, stats, etc.):
+
+1. Add the new data to `SaveData` in `SaveManager.ts` and to `ProgressionState` in `ProgressionSystem.ts`.
+2. Update `defaultState()`, `persist()`, and `loadFromSave()` in `ProgressionSystem` to handle the new fields.
+3. Call `this.persist()` in ProgressionSystem after any state mutation that should survive a reload.
+4. **Do not** import `SaveManager` from scene code — interact with persistence only through `ProgressionSystem`'s public API. The one exception is `hasSave()` for UI checks (e.g. showing a "Continue" button).
+
 ## Vibe Coding Workflow
 
 This project is developed through conversational AI assistance. When prompting:

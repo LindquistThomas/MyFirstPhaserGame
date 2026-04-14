@@ -35,9 +35,15 @@ export class HubScene extends Phaser.Scene {
     super({ key: 'HubScene' });
   }
 
-  init(): void {
+  init(data?: { loadSave?: boolean }): void {
     if (!this.registry.get('progression')) {
-      this.registry.set('progression', new ProgressionSystem());
+      const progression = new ProgressionSystem();
+      if (data?.loadSave) {
+        progression.loadFromSave();
+      } else if (data?.loadSave === false) {
+        progression.reset();
+      }
+      this.registry.set('progression', progression);
     }
     this.progression = this.registry.get('progression') as ProgressionSystem;
   }

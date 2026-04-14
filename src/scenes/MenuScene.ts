@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig';
+import { hasSave } from '../systems/SaveManager';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -49,6 +50,20 @@ export class MenuScene extends Phaser.Scene {
 
     this.tweens.add({ targets: btn, alpha: 0.6, duration: 800, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
 
+    if (hasSave()) {
+      const contBtn = this.add.text(cx, cy + 160, '[ CONTINUE ]', {
+        fontFamily: 'monospace', fontSize: '24px', color: COLORS.titleText,
+        padding: { x: 24, y: 12 },
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+      contBtn.on('pointerover', () => contBtn.setColor('#ffffff').setScale(1.1));
+      contBtn.on('pointerout', () => contBtn.setColor(COLORS.titleText).setScale(1.0));
+      contBtn.on('pointerdown', () => this.continueGame());
+
+      this.tweens.add({ targets: contBtn, alpha: 0.6, duration: 800, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+      this.input.keyboard?.once('keydown-ENTER', () => this.continueGame());
+    }
+
     // Controls
     this.add.text(cx, GAME_HEIGHT - 100, 'WASD / Arrows: Move  |  Space: Jump  |  E: Interact', {
       fontFamily: 'monospace', fontSize: '14px', color: '#556677',
@@ -68,6 +83,11 @@ export class MenuScene extends Phaser.Scene {
 
   private startGame(): void {
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('HubScene'));
+    this.time.delayedCall(500, () => this.scene.start('HubScene', { loadSave: false }));
+  }
+
+  private continueGame(): void {
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(500, () => this.scene.start('HubScene', { loadSave: true }));
   }
 }

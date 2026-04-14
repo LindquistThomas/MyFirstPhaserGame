@@ -181,8 +181,11 @@ export class LevelScene extends Phaser.Scene {
     this.tokenGroup = this.physics.add.group({ allowGravity: false });
     const config = this.getLevelConfig();
     const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
-    for (const pos of config.tokens) {
-      this.tokenGroup.add(new Token(this, pos.x, pos.y, tokenKey));
+    for (let i = 0; i < config.tokens.length; i++) {
+      if (this.progression.isTokenCollected(this.floorId, i)) continue;
+      const token = new Token(this, config.tokens[i].x, config.tokens[i].y, tokenKey);
+      token.setData('tokenIndex', i);
+      this.tokenGroup.add(token);
     }
   }
 
@@ -236,8 +239,9 @@ export class LevelScene extends Phaser.Scene {
     tokenObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
   ): void {
     const token = tokenObj as Token;
+    const tokenIndex = token.getData('tokenIndex') as number;
     token.collect();
-    this.progression.collectAU(this.floorId);
+    this.progression.collectAU(this.floorId, tokenIndex);
     this.auCollected++;
     this.cameras.main.flash(100, 255, 215, 0, false, undefined, this);
   }
