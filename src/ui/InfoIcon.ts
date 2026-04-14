@@ -2,11 +2,9 @@ import * as Phaser from 'phaser';
 
 export class InfoIcon {
   private container: Phaser.GameObjects.Container;
-  private scene: Phaser.Scene;
   private pulseTween: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void) {
-    this.scene = scene;
     this.container = scene.add.container(x, y);
     this.container.setDepth(55);
     this.container.setScrollFactor(0);

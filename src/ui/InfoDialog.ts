@@ -56,9 +56,14 @@ export class InfoDialog {
     const LINK_LINE_H = 30;
     const CLOSE_BAR_H = 44;
 
-    const bodyMeasure = this.scene.add.text(0, 0, content.body, {
-      fontFamily: 'monospace', fontSize: '15px', color: '#c0c8d4',
-      wordWrap: { width: panelW - PADDING * 2 }, lineSpacing: 6,
+    const bodyMeasure = this.scene.make.text({
+      x: 0, y: 0,
+      text: content.body,
+      style: {
+        fontFamily: 'monospace', fontSize: '15px', color: '#c0c8d4',
+        wordWrap: { width: panelW - PADDING * 2 }, lineSpacing: 6,
+      },
+      add: false,
     });
     const bodyH = bodyMeasure.height;
     bodyMeasure.destroy();
@@ -66,8 +71,9 @@ export class InfoDialog {
     const linksCount = content.links?.length ?? 0;
     const linksSectionH = linksCount > 0 ? 28 + linksCount * LINK_LINE_H + 8 : 0;
 
-    panelH = 28 + 18 + bodyH + 16 + linksSectionH + CLOSE_BAR_H + PADDING * 2;
-    const panelY = (GAME_HEIGHT - panelH) / 2;
+    const MAX_PANEL_H = GAME_HEIGHT - 40;
+    panelH = Math.min(28 + 18 + bodyH + 16 + linksSectionH + CLOSE_BAR_H + PADDING * 2, MAX_PANEL_H);
+    const panelY = Math.max(20, (GAME_HEIGHT - panelH) / 2);
 
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a0a2a, 0.95);
@@ -106,7 +112,7 @@ export class InfoDialog {
         linkText.on('pointerover', () => linkText.setColor('#88ddff'));
         linkText.on('pointerout', () => linkText.setColor('#44aaff'));
         linkText.on('pointerdown', () => {
-          window.open(link.url, '_blank');
+          window.open(link.url, '_blank', 'noopener,noreferrer');
         });
 
         this.container.add(linkText);
