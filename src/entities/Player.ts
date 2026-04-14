@@ -28,6 +28,7 @@ export class Player {
   private facingRight = true;
   private dustEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
   private audio: AudioManager;
+  private footstepToggle = false;
 
   /** True while the player is mid-flip (scripted arc). */
   private isFlipping = false;
@@ -53,6 +54,7 @@ export class Player {
     this.audio = audio;
 
     this.createAnimations();
+    this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.onAnimationFrame, this);
     this.createDustEmitter();
   }
 
@@ -202,6 +204,17 @@ export class Player {
       this.sprite.anims.play('player_idle', true);
 
       this.emitDust();
+    }
+  }
+
+  private onAnimationFrame(
+    _anim: Phaser.Animations.Animation,
+    frame: Phaser.Animations.AnimationFrame,
+  ): void {
+    if (this.currentAnim !== 'walk') return;
+    if (frame.index === 0 || frame.index === 2) {
+      this.footstepToggle = !this.footstepToggle;
+      this.audio.playSfx(this.footstepToggle ? 'footstep_a' : 'footstep_b');
     }
   }
 

@@ -11,6 +11,8 @@ const SAMPLE_RATE = 44100;
 /** Generate all game sounds and queue them for Phaser's audio loader. */
 export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'jump', generateJumpSound());
+  loadWav(scene, 'footstep_a', generateFootstepSound(100));
+  loadWav(scene, 'footstep_b', generateFootstepSound(85));
 }
 
 function loadWav(scene: Phaser.Scene, key: string, wav: ArrayBuffer): void {
@@ -37,6 +39,28 @@ function loadWav(scene: Phaser.Scene, key: string, wav: ArrayBuffer): void {
   scene.load.on('loaderror', onLoadError);
 
   scene.load.audio(key, url);
+}
+
+/** Short percussive footstep — low thud + noise scuff. */
+function generateFootstepSound(baseFreq: number): ArrayBuffer {
+  const duration = 0.04;
+  const numSamples = Math.floor(SAMPLE_RATE * duration);
+  const samples = new Float32Array(numSamples);
+
+  let phase = 0;
+  for (let i = 0; i < numSamples; i++) {
+    const progress = numSamples > 1 ? i / (numSamples - 1) : 1;
+    // Exponential decay envelope
+    const envelope = Math.exp(-progress * 8);
+    // Low-frequency square wave thud
+    phase += (2 * Math.PI * baseFreq) / SAMPLE_RATE;
+    const tonal = Math.sign(Math.sin(phase)) * 0.6;
+    // Noise component (scuff)
+    const noise = (Math.random() * 2 - 1) * 0.4;
+    samples[i] = (tonal + noise) * envelope * 0.15;
+  }
+
+  return encodeWAV(samples, SAMPLE_RATE);
 }
 
 /** Short upward frequency sweep — retro 8-bit jump "bwip". */
