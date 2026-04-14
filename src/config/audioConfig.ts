@@ -17,7 +17,9 @@ export const SCENE_MUSIC: Record<string, string> = {
 
 /** EventBus event name → Phaser SFX audio key. */
 export const SFX_EVENTS: Record<string, string> = {
-  'sfx:jump': 'jump',
+  'sfx:jump':       'jump',
+  'sfx:footstep_a': 'footstep_a',
+  'sfx:footstep_b': 'footstep_b',
 };
 
 /** Default volume for background music (0–1). */
