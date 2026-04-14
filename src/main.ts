@@ -5,6 +5,7 @@ import { MenuScene } from './scenes/MenuScene';
 import { HubScene } from './scenes/HubScene';
 import { Floor1Scene } from './scenes/Floor1Scene';
 import { Floor2Scene } from './scenes/Floor2Scene';
+import { MusicPlugin } from './plugins/MusicPlugin';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -26,6 +27,9 @@ const config: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   scene: [BootScene, MenuScene, HubScene, Floor1Scene, Floor2Scene],
+  plugins: {
+    scene: [{ key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' }],
+  },
 };
 
 new Phaser.Game(config);

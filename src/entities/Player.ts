@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { PLAYER_SPEED } from '../config/gameConfig';
 import { InputManager } from '../systems/InputManager';
-import type { AudioManager } from '../systems/AudioManager';
+import { eventBus } from '../systems/EventBus';
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall';
 
@@ -27,7 +27,6 @@ export class Player {
   private currentAnim: PlayerAnimState = 'idle';
   private facingRight = true;
   private dustEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
-  private audio: AudioManager;
   private footstepToggle = false;
 
   /** True while the player is mid-flip (scripted arc). */
@@ -46,12 +45,6 @@ export class Player {
     this.sprite.setOffset(HITBOX_MARGIN_X, HITBOX_MARGIN_Y);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(10);
-
-    const audio = scene.registry.get('audio') as AudioManager | undefined;
-    if (!audio) {
-      throw new Error('AudioManager is not registered in the scene registry under "audio".');
-    }
-    this.audio = audio;
 
     this.createAnimations();
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.onAnimationFrame, this);
@@ -175,7 +168,7 @@ export class Player {
     this.sprite.setFlipX(!this.facingRight);
 
     this.emitDust();
-    this.audio.playSfx('jump');
+    eventBus.emit('sfx:jump');
   }
 
   private updateFlip(delta: number): void {
@@ -214,7 +207,7 @@ export class Player {
     if (this.currentAnim !== 'walk') return;
     if (frame.index === 0 || frame.index === 2) {
       this.footstepToggle = !this.footstepToggle;
-      this.audio.playSfx(this.footstepToggle ? 'footstep_a' : 'footstep_b');
+      eventBus.emit(this.footstepToggle ? 'sfx:footstep_a' : 'sfx:footstep_b');
     }
   }
 

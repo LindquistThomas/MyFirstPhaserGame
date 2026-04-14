@@ -15,7 +15,7 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'footstep_b', generateFootstepSound(85));
 }
 
-function loadWav(scene: Phaser.Scene, key: string, wav: ArrayBuffer): void {
+export function loadWav(scene: Phaser.Scene, key: string, wav: ArrayBuffer): void {
   const blob = new Blob([wav], { type: 'audio/wav' });
   const url = URL.createObjectURL(blob);
 
@@ -86,7 +86,7 @@ function generateJumpSound(): ArrayBuffer {
 }
 
 /** Encode raw Float32 samples as a 16-bit PCM WAV file. */
-function encodeWAV(samples: Float32Array, sampleRate: number): ArrayBuffer {
+export function encodeWAV(samples: Float32Array, sampleRate: number): ArrayBuffer {
   const numChannels = 1;
   const bitsPerSample = 16;
   const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
