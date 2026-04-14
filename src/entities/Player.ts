@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { PLAYER_SPEED } from '../config/gameConfig';
 import { InputManager } from '../systems/InputManager';
-import type { AudioManager } from '../systems/AudioManager';
+import { eventBus } from '../systems/EventBus';
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall';
 
@@ -27,7 +27,6 @@ export class Player {
   private currentAnim: PlayerAnimState = 'idle';
   private facingRight = true;
   private dustEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
-  private audio: AudioManager;
 
   /** True while the player is mid-flip (scripted arc). */
   private isFlipping = false;
@@ -45,12 +44,6 @@ export class Player {
     this.sprite.setOffset(HITBOX_MARGIN_X, HITBOX_MARGIN_Y);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(10);
-
-    const audio = scene.registry.get('audio') as AudioManager | undefined;
-    if (!audio) {
-      throw new Error('AudioManager is not registered in the scene registry under "audio".');
-    }
-    this.audio = audio;
 
     this.createAnimations();
     this.createDustEmitter();
@@ -173,7 +166,7 @@ export class Player {
     this.sprite.setFlipX(!this.facingRight);
 
     this.emitDust();
-    this.audio.playSfx('jump');
+    eventBus.emit('sfx:jump');
   }
 
   private updateFlip(delta: number): void {

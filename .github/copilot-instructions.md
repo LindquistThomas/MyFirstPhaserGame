@@ -70,6 +70,49 @@ Player progress is saved to localStorage via `src/systems/SaveManager.ts`. When 
 3. Call `this.persist()` in ProgressionSystem after any state mutation that should survive a reload.
 4. **Do not** import `SaveManager` from scene code — interact with persistence only through `ProgressionSystem`'s public API. The one exception is `hasSave()` for UI checks (e.g. showing a "Continue" button).
 
+### EventBus Pattern
+
+The project uses a standalone `EventBus` (`src/systems/EventBus.ts`) for loose coupling between game systems. It has no Phaser dependency and is imported as a singleton.
+
+**When to use the EventBus:**
+- Triggering side effects (audio, particles, UI feedback) from gameplay actions
+- Any case where the emitter shouldn't know about the consumer
+- Cross-system communication where direct imports create circular or tight coupling
+
+**When NOT to use the EventBus:**
+- Direct parent-child communication (pass callbacks or use Phaser's built-in scene events)
+- Single-use wiring where a direct function call is clearer
+- Performance-critical per-frame logic (event dispatch has overhead vs direct calls)
+
+**Audio events follow this convention:**
+- `sfx:<action>` — sound effects (e.g., `sfx:jump`, `sfx:collect`)
+- `music:play` — play a music track by key
+- `music:stop` — stop current music
+
+**To add a new sound effect:**
+1. Generate the sound in `SoundGenerator.ts` and register it in `generateSounds()`
+2. Add the event→key mapping in `src/config/audioConfig.ts` under `SFX_EVENTS`
+3. Emit the event from the relevant entity/system: `eventBus.emit('sfx:myevent')`
+
+**To add music for a new scene:**
+1. Generate the track in `MusicGenerator.ts` and register it in `generateMusic()`
+2. Add the scene→music mapping in `src/config/audioConfig.ts` under `SCENE_MUSIC`
+3. The `MusicPlugin` handles playback automatically — no scene code changes needed
+
+### Audio Architecture
+
+Audio is fully decoupled via the EventBus. `AudioManager` is a purely reactive subscriber — no module calls it directly. Music is triggered automatically by `MusicPlugin` (a Phaser ScenePlugin) on scene transitions. SFX are triggered by entities emitting events on the EventBus.
+
+All audio (SFX and music) is procedurally generated at runtime in `SoundGenerator.ts` and `MusicGenerator.ts` — the project has zero external audio files.
+
+### AI Collaboration Guidelines
+
+When responding to ideas or feature requests:
+- **Always challenge ideas critically** — identify trade-offs, edge cases, and simpler alternatives before implementing
+- **Provide options with pros and cons** — don't just implement the first approach; present at least 2 options for non-trivial decisions
+- **Push back on over-engineering** — if a simpler solution exists, present it alongside the complex one
+- **Question assumptions** — ask "do we actually need this?" before building abstractions
+
 ## Vibe Coding Workflow
 
 This project is developed through conversational AI assistance. When prompting:
