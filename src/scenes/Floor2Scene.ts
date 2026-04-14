@@ -74,6 +74,10 @@ export class Floor2Scene extends LevelScene {
         { x: 450, y: T4 - 40 },
         { x: 900, y: T4 - 40 },
       ],
+
+      infoPoints: [
+        { x: 900, y: G, contentId: 'cloud-architecture' },
+      ],
     };
   }
 }

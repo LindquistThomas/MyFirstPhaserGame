@@ -1,11 +1,18 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, ELEVATOR_SPEED, FLOORS, FloorId } from '../config/gameConfig';
 import { LEVEL_DATA, FloorData } from '../config/levelData';
+import { INFO_POINTS } from '../config/infoContent';
+import { QUIZ_DATA } from '../config/quizData';
 import { Player } from '../entities/Player';
 import { Token } from '../entities/Token';
 import { HUD } from '../ui/HUD';
 import { ElevatorButtons } from '../ui/ElevatorButtons';
+import { InfoDialog } from '../ui/InfoDialog';
+import { QuizDialog } from '../ui/QuizDialog';
+import { InfoIcon } from '../ui/InfoIcon';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
+import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
+import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
 export interface RoomElevator {
   x: number;
@@ -22,6 +29,8 @@ export interface LevelConfig {
   playerStart: { x: number; y: number };
   /** Small in-room elevators connecting platform tiers. */
   roomElevators: RoomElevator[];
+  /** Info points placed in the level. */
+  infoPoints?: Array<{ x: number; y: number; contentId: string }>;
 }
 
 /**
@@ -59,6 +68,10 @@ export class LevelScene extends Phaser.Scene {
   /** On-screen elevator buttons (shared component). */
   private liftButtons?: ElevatorButtons;
 
+  /** Info / quiz dialog state. */
+  private dialogOpen = false;
+  private infoIcons: Array<{ icon: InfoIcon; contentId: string }> = [];
+
   constructor(key: string, floorId: FloorId) {
     super({ key });
     this.floorId = floorId;
@@ -71,6 +84,8 @@ export class LevelScene extends Phaser.Scene {
     this.auCollected = 0;
     this.roomLifts = [];
     this.activeRoomLift = -1;
+    this.dialogOpen = false;
+    this.infoIcons = [];
   }
 
   create(): void {
@@ -86,6 +101,7 @@ export class LevelScene extends Phaser.Scene {
     this.createExit();
     this.createPlayer();
     this.createUI();
+    this.createInfoPoints();
 
     // Fixed camera (no follow, no scroll)
     this.cameras.main.setScroll(0, 0);
@@ -193,7 +209,7 @@ export class LevelScene extends Phaser.Scene {
   protected createExit(): void {
     const c = this.getLevelConfig();
     this.exitDoor = this.add.image(c.exitPosition.x, c.exitPosition.y, 'door_exit').setDepth(4);
-    this.add.text(c.exitPosition.x, c.exitPosition.y - 70, '← ELEVATOR', {
+    this.add.text(c.exitPosition.x, c.exitPosition.y - 70, '\u2190 ELEVATOR', {
       fontFamily: 'monospace', fontSize: '14px', color: '#aaddff',
     }).setOrigin(0.5).setDepth(5);
   }
@@ -215,6 +231,76 @@ export class LevelScene extends Phaser.Scene {
   protected createUI(): void {
     this.hud = new HUD(this, this.progression);
     this.liftButtons = new ElevatorButtons(this, 48);
+  }
+
+  /* ---- info points ---- */
+  protected createInfoPoints(): void {
+    const config = this.getLevelConfig();
+    if (!config.infoPoints) return;
+
+    for (const ip of config.infoPoints) {
+      const icon = new InfoIcon(this, ip.x, ip.y - 40, () => {
+        this.openInfoDialog(ip.contentId);
+      });
+
+      // Auto-show if already seen (icon always visible); update badge
+      if (QUIZ_DATA[ip.contentId]) {
+        icon.setQuizBadge(this, isQuizPassed(ip.contentId));
+      }
+
+      this.infoIcons.push({ icon, contentId: ip.contentId });
+    }
+  }
+
+  private openInfoDialog(contentId: string): void {
+    if (this.dialogOpen) return;
+    this.dialogOpen = true;
+
+    const infoDef = INFO_POINTS[contentId];
+    if (!infoDef) { this.dialogOpen = false; return; }
+
+    markSeen(contentId);
+
+    const hasQuiz = !!QUIZ_DATA[contentId];
+
+    new InfoDialog(
+      this,
+      infoDef.content,
+      () => {
+        this.dialogOpen = false;
+      },
+      hasQuiz ? {
+        onQuizStart: () => this.openQuizDialog(contentId),
+        quizStatus: {
+          passed: isQuizPassed(contentId),
+          canRetry: canRetryQuiz(contentId),
+          cooldownSeconds: Math.ceil(getCooldownRemaining(contentId) / 1000),
+        },
+      } : undefined,
+    );
+  }
+
+  private openQuizDialog(contentId: string): void {
+    if (this.dialogOpen) return;
+    this.dialogOpen = true;
+
+    const infoDef = INFO_POINTS[contentId];
+    if (!infoDef) { this.dialogOpen = false; return; }
+
+    new QuizDialog(this, {
+      infoId: contentId,
+      floorId: infoDef.floorId,
+      progression: this.progression,
+      onClose: () => {
+        this.dialogOpen = false;
+        // Update badges
+        for (const entry of this.infoIcons) {
+          if (entry.contentId === contentId && QUIZ_DATA[contentId]) {
+            entry.icon.setQuizBadge(this, isQuizPassed(contentId));
+          }
+        }
+      },
+    });
   }
 
   /* ---- banner ---- */
@@ -261,6 +347,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- update loop ---- */
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
+    if (this.dialogOpen) return;
 
     this.player.update(delta);
     this.hud.update();
@@ -335,7 +422,7 @@ export class LevelScene extends Phaser.Scene {
       this.exitDoor.x, this.exitDoor.y,
     );
     if (d < 90) {
-      this.interactPrompt?.setText('Press E → Elevator').setPosition(
+      this.interactPrompt?.setText('Press E \u2192 Elevator').setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.player.getInputManager().isInteractJustPressed()) this.returnToHub();

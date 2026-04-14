@@ -1,36 +1,20 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FLOORS, TILE_SIZE, COLORS, FloorId } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
+import { INFO_POINTS } from '../config/infoContent';
+import { QUIZ_DATA } from '../config/quizData';
 import { Player } from '../entities/Player';
 import { Elevator } from '../entities/Elevator';
 import { HUD } from '../ui/HUD';
 import { ElevatorButtons } from '../ui/ElevatorButtons';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
-import { InfoDialog, InfoDialogContent } from '../ui/InfoDialog';
+import { InfoDialog } from '../ui/InfoDialog';
+import { QuizDialog } from '../ui/QuizDialog';
 import { InfoIcon } from '../ui/InfoIcon';
 import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
+import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
 const ELEVATOR_INFO_ID = 'architecture-elevator';
-
-const ELEVATOR_INFO_CONTENT: InfoDialogContent = {
-  id: ELEVATOR_INFO_ID,
-  title: 'The Architecture Elevator',
-  body:
-    'Gregor Hohpe coined the term "Architecture Elevator" to describe ' +
-    'how software architects must ride between the penthouse \u2014 where ' +
-    'business strategy and organizational decisions are made \u2014 and the ' +
-    'engine room \u2014 where the technology is built and operated.\n\n' +
-    'An effective architect doesn\'t just live on one floor. They translate ' +
-    'between executives who speak in business outcomes and engineers who ' +
-    'speak in systems and code. The elevator ride connects these worlds.\n\n' +
-    'In this game you literally ride the elevator between floors \u2014 each ' +
-    'one representing a different team and set of architectural challenges.',
-  links: [
-    { label: 'The Software Architect Elevator (Book)', url: 'https://architectelevator.com/book/' },
-    { label: 'Gregor Hohpe\u2019s Blog', url: 'https://architectelevator.com/' },
-    { label: 'Architecture Elevator Article', url: 'https://martinfowler.com/articles/architect-elevator.html' },
-  ],
-};
 
 /**
  * Hub / Elevator-shaft scene — Impossible-Mission style.
@@ -56,6 +40,7 @@ export class HubScene extends Phaser.Scene {
   private showElevatorInfoOnFirstRide = false;
   private dialogOpen = false;
   private activeDialog?: InfoDialog;
+  private activeQuiz?: QuizDialog;
   private infoIcon?: InfoIcon;
 
   /** The shaft is wider in the 128-px world. */
@@ -81,6 +66,7 @@ export class HubScene extends Phaser.Scene {
   create(): void {
     this.isTransitioning = false;
     this.playerOnElevator = false;
+    this.dialogOpen = false;
     this.cameras.main.setBackgroundColor(COLORS.background);
 
     const worldHeight = 1600;
@@ -168,7 +154,7 @@ export class HubScene extends Phaser.Scene {
       // Floor opening label (right side, next to shaft)
       if (fId !== FLOORS.LOBBY) {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
-        const label = unlocked ? '→ ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
+        const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
         this.add.text(cx + sw / 2 + 20, y - 50, label, {
           fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
         }).setDepth(5);
@@ -207,7 +193,7 @@ export class HubScene extends Phaser.Scene {
     this.hud = new HUD(this, this.progression);
 
     // Instruction text (scroll-fixed)
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '↑↓  Ride Elevator  |  ← →  Walk  |  SPACE  Flip', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '13px', color: '#556677',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
@@ -243,12 +229,12 @@ export class HubScene extends Phaser.Scene {
 
     if (this.playerOnElevator && this.showElevatorInfoOnFirstRide) {
       this.showElevatorInfoOnFirstRide = false;
-      this.openElevatorInfoDialog();
+      this.openInfoDialog(ELEVATOR_INFO_ID);
       return;
     }
 
     if (infoPressed && this.infoIcon && !this.dialogOpen) {
-      this.openElevatorInfoDialog();
+      this.openInfoDialog(ELEVATOR_INFO_ID);
       return;
     }
 
@@ -325,25 +311,70 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  private openElevatorInfoDialog(): void {
+  private openInfoDialog(infoId: string): void {
     if (this.dialogOpen) return;
     this.dialogOpen = true;
 
-    this.activeDialog = new InfoDialog(this, ELEVATOR_INFO_CONTENT, () => {
-      this.dialogOpen = false;
-      this.activeDialog = undefined;
+    const infoDef = INFO_POINTS[infoId];
+    if (!infoDef) { this.dialogOpen = false; return; }
 
-      if (!this.infoIcon) {
-        markSeen(ELEVATOR_INFO_ID);
-        this.createInfoIcon();
-      }
+    const hasQuiz = !!QUIZ_DATA[infoId];
+
+    this.activeDialog = new InfoDialog(
+      this,
+      infoDef.content,
+      () => {
+        this.dialogOpen = false;
+        this.activeDialog = undefined;
+
+        if (!this.infoIcon) {
+          markSeen(infoId);
+          this.createInfoIcon();
+        }
+      },
+      hasQuiz ? {
+        onQuizStart: () => this.openQuizDialog(infoId),
+        quizStatus: {
+          passed: isQuizPassed(infoId),
+          canRetry: canRetryQuiz(infoId),
+          cooldownSeconds: Math.ceil(getCooldownRemaining(infoId) / 1000),
+        },
+      } : undefined,
+    );
+  }
+
+  private openQuizDialog(infoId: string): void {
+    if (this.dialogOpen) return;
+    this.dialogOpen = true;
+
+    const infoDef = INFO_POINTS[infoId];
+    if (!infoDef) { this.dialogOpen = false; return; }
+
+    this.activeQuiz = new QuizDialog(this, {
+      infoId,
+      floorId: infoDef.floorId,
+      progression: this.progression,
+      onClose: () => {
+        this.dialogOpen = false;
+        this.activeQuiz = undefined;
+        // Update the info icon badge after quiz
+        this.updateInfoIconBadge(infoId);
+      },
     });
   }
 
   private createInfoIcon(): void {
     this.infoIcon = new InfoIcon(this, GAME_WIDTH / 2 + 310, GAME_HEIGHT - 30, () => {
-      this.openElevatorInfoDialog();
+      this.openInfoDialog(ELEVATOR_INFO_ID);
     });
+    this.updateInfoIconBadge(ELEVATOR_INFO_ID);
+  }
+
+  private updateInfoIconBadge(infoId: string): void {
+    if (!this.infoIcon) return;
+    if (QUIZ_DATA[infoId]) {
+      this.infoIcon.setQuizBadge(this, isQuizPassed(infoId));
+    }
   }
 
   private enterFloor(floorId: FloorId): void {

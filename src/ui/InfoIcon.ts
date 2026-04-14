@@ -3,6 +3,7 @@ import * as Phaser from 'phaser';
 export class InfoIcon {
   private container: Phaser.GameObjects.Container;
   private pulseTween: Phaser.Tweens.Tween;
+  private badge?: Phaser.GameObjects.Container;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void) {
     this.container = scene.add.container(x, y);
@@ -35,6 +36,34 @@ export class InfoIcon {
       targets: this.container, alpha: { from: 1, to: 0.55 },
       duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
+  }
+
+  /** Show a small badge on the info icon indicating quiz status. */
+  setQuizBadge(scene: Phaser.Scene, passed: boolean): void {
+    if (this.badge) {
+      this.badge.destroy();
+      this.badge = undefined;
+    }
+
+    this.badge = scene.add.container(10, -10);
+
+    const badgeBg = scene.add.graphics();
+    if (passed) {
+      badgeBg.fillStyle(0x228b22, 1);
+      badgeBg.fillCircle(0, 0, 7);
+    } else {
+      badgeBg.fillStyle(0xdaa520, 1);
+      badgeBg.fillCircle(0, 0, 7);
+    }
+    this.badge.add(badgeBg);
+
+    const badgeLabel = scene.add.text(0, 0, passed ? '\u2713' : '?', {
+      fontFamily: 'monospace', fontSize: passed ? '10px' : '11px',
+      color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.badge.add(badgeLabel);
+
+    this.container.add(this.badge);
   }
 
   setVisible(visible: boolean): void {

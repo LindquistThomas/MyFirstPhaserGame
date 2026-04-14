@@ -62,6 +62,10 @@ export class Floor1Scene extends LevelScene {
         { x: 700, y: T3 - 40 },
         { x: 1050, y: T3 - 40 },
       ],
+
+      infoPoints: [
+        { x: 300, y: G, contentId: 'platform-engineering' },
+      ],
     };
   }
 }
