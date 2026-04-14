@@ -6,7 +6,11 @@ import { loadWav, encodeWAV } from './SoundGenerator';
  * from mathematical waveforms. No external audio files needed.
  */
 
-const SAMPLE_RATE = 44100;
+/**
+ * 22050 Hz is plenty for retro synth & lounge music, and keeps
+ * synchronous generation fast (~330 k samples per 15 s track).
+ */
+const SAMPLE_RATE = 22050;
 
 /* ------------------------------------------------------------------ */
 /*  Waveform primitives                                               */
@@ -86,7 +90,7 @@ export function generateMusic(scene: Phaser.Scene): void {
 function generateRetroSynth(): ArrayBuffer {
   const bpm = 128;
   const beatsPerChord = 8; // 2 bars per chord
-  // Chord progression: Cm - Ab - Eb - Bb (repeat twice = 64 beats)
+  // Chord progression: Cm - Ab - Eb - Bb (single pass, loops via Phaser)
   const chordProgression = [
     { bass: C2,  arp: [C4, Eb4, G4, C5, G4, Eb4] },
     { bass: Ab2, arp: [Ab3, C4, Eb4, Ab4, Eb4, C4] },
@@ -94,9 +98,9 @@ function generateRetroSynth(): ArrayBuffer {
     { bass: Bb2, arp: [Bb3, D4, F4, Bb4, F4, D4] },
   ];
 
-  const totalBeats = chordProgression.length * beatsPerChord * 2; // 64 beats
+  const totalBeats = chordProgression.length * beatsPerChord; // 32 beats — one pass
   const beatDur = 60 / bpm;
-  const duration = totalBeats * beatDur; // 30 seconds
+  const duration = totalBeats * beatDur; // ~15 seconds
   const numSamples = Math.floor(SAMPLE_RATE * duration);
   const samples = new Float32Array(numSamples);
 
@@ -165,9 +169,9 @@ function generateElevatorJazz(): ArrayBuffer {
     { bass: [G2, Bb3, D3, G2],    pad: [G3, Bb3, D4, F4] },  // Gm7
   ];
 
-  const totalBeats = chordProgression.length * beatsPerChord; // 48 beats
+  const totalBeats = chordProgression.length * beatsPerChord / 2; // 24 beats — 3 chords
   const beatDur = 60 / bpm;
-  const duration = totalBeats * beatDur; // ~30.3 seconds
+  const duration = totalBeats * beatDur; // ~15.2 seconds
   const numSamples = Math.floor(SAMPLE_RATE * duration);
   const samples = new Float32Array(numSamples);
 
