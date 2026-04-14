@@ -36,6 +36,15 @@ npm run dev      # Start dev server (localhost:3000)
 npm run build    # Production build → dist/
 ```
 
+## Claude GitHub App Integration
+
+To install the Claude GitHub App on a personal account:
+
+1. Go to https://github.com/apps/claude/installations/select_target
+2. Select your personal account (not an organization)
+3. Choose either **All repositories** or **Select repositories**
+4. Confirm the installation
+
 ### Tech Stack
 
 - **Phaser 3** — 2D game framework (Arcade Physics)
