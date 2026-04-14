@@ -27,6 +27,7 @@ export class Player {
   private currentAnim: PlayerAnimState = 'idle';
   private facingRight = true;
   private dustEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
+  private audio?: AudioManager;
 
   /** True while the player is mid-flip (scripted arc). */
   private isFlipping = false;
@@ -44,6 +45,8 @@ export class Player {
     this.sprite.setOffset(HITBOX_MARGIN_X, HITBOX_MARGIN_Y);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setDepth(10);
+
+    this.audio = scene.registry.get('audio') as AudioManager | undefined;
 
     this.createAnimations();
     this.createDustEmitter();
@@ -166,7 +169,7 @@ export class Player {
     this.sprite.setFlipX(!this.facingRight);
 
     this.emitDust();
-    (this.scene.registry.get('audio') as AudioManager)?.playSfx('jump');
+    this.audio?.playSfx('jump');
   }
 
   private updateFlip(delta: number): void {

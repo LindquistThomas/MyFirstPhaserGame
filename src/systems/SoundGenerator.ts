@@ -16,6 +16,13 @@ export function generateSounds(scene: Phaser.Scene): void {
 function loadWav(scene: Phaser.Scene, key: string, wav: ArrayBuffer): void {
   const blob = new Blob([wav], { type: 'audio/wav' });
   const url = URL.createObjectURL(blob);
+
+  const revoke = (): void => URL.revokeObjectURL(url);
+  scene.load.once(`filecomplete-audio-${key}`, revoke);
+  scene.load.on('loaderror', (file: Phaser.Loader.File) => {
+    if (file.key === key) revoke();
+  });
+
   scene.load.audio(key, url);
 }
 
@@ -27,7 +34,7 @@ function generateJumpSound(): ArrayBuffer {
 
   let phase = 0;
   for (let i = 0; i < numSamples; i++) {
-    const progress = i / numSamples;
+    const progress = numSamples > 1 ? i / (numSamples - 1) : 1;
     // Frequency sweep 200 Hz → 600 Hz
     const freq = 200 + 400 * progress;
     phase += (2 * Math.PI * freq) / SAMPLE_RATE;
@@ -75,7 +82,8 @@ function encodeWAV(samples: Float32Array, sampleRate: number): ArrayBuffer {
   // PCM samples (float → 16-bit int)
   for (let i = 0; i < samples.length; i++) {
     const clamped = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(headerSize + i * 2, clamped * 0x7fff, true);
+    const pcmSample = Math.round(clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff);
+    view.setInt16(headerSize + i * 2, pcmSample, true);
   }
 
   return buffer;
