@@ -11,6 +11,7 @@ import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { InfoDialog } from '../ui/InfoDialog';
 import { QuizDialog } from '../ui/QuizDialog';
 import { InfoIcon } from '../ui/InfoIcon';
+import { ZoneManager } from '../systems/ZoneManager';
 import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
@@ -41,7 +42,12 @@ export class HubScene extends Phaser.Scene {
   private dialogOpen = false;
   private activeDialog?: InfoDialog;
   private activeQuiz?: QuizDialog;
-  private infoIcon?: InfoIcon;
+
+  /**
+   * Zone manager controls which info icon is visible based on where the
+   * player is. Each zone defines its own check() and contentId.
+   */
+  private zoneManager = new ZoneManager();
 
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
@@ -61,6 +67,7 @@ export class HubScene extends Phaser.Scene {
       this.registry.set('progression', progression);
     }
     this.progression = this.registry.get('progression') as ProgressionSystem;
+    this.zoneManager.clear();
   }
 
   create(): void {
@@ -226,14 +233,17 @@ export class HubScene extends Phaser.Scene {
       return;
     }
 
-    if (infoPressed && this.infoIcon && !this.dialogOpen && this.playerOnElevator) {
-      this.openInfoDialog(ELEVATOR_INFO_ID);
+    // Each zone's icon visibility is updated here. activeZone is the
+    // contentId of whichever zone the player is currently inside, or null.
+    const activeZone = this.zoneManager.update();
+
+    if (infoPressed && activeZone && !this.dialogOpen) {
+      this.openInfoDialog(activeZone);
       return;
     }
 
-    // Show / hide elevator buttons and info icon only when on the elevator
+    // Show / hide elevator buttons (resets pressed state when hiding)
     this.elevatorButtons?.setVisible(this.playerOnElevator);
-    this.infoIcon?.setVisible(this.playerOnElevator);
 
     // Ride elevator with Up/Down keys or on-screen buttons when standing on it
     if (this.playerOnElevator) {
@@ -289,15 +299,44 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  /* ---- info dialog ---- */
+  /* ---- info zone setup ---- */
+
   private setupElevatorInfo(): void {
     if (hasBeenSeen(ELEVATOR_INFO_ID)) {
       this.showElevatorInfoOnFirstRide = false;
-      this.createInfoIcon();
+      this.registerElevatorZone();
     } else {
+      // Zone icon registered after the first dialog is closed (see openInfoDialog).
       this.showElevatorInfoOnFirstRide = true;
     }
   }
+
+  /**
+   * Register the elevator as a named zone.
+   * The zone is active whenever the player is standing on the elevator cab.
+   * Extend this pattern to add more hub zones: each gets its own check()
+   * lambda, contentId, and icon position.
+   */
+  private registerElevatorZone(): void {
+    const icon = new InfoIcon(
+      this,
+      GAME_WIDTH / 2 + 310,
+      GAME_HEIGHT - 30,
+      () => this.openInfoDialog(ELEVATOR_INFO_ID),
+    );
+
+    this.zoneManager.register(
+      {
+        contentId: ELEVATOR_INFO_ID,
+        check: () => this.playerOnElevator,
+      },
+      icon,
+    );
+
+    this.zoneManager.refreshBadge(this, ELEVATOR_INFO_ID);
+  }
+
+  /* ---- info / quiz dialogs ---- */
 
   private openInfoDialog(infoId: string): void {
     if (this.dialogOpen) return;
@@ -315,9 +354,11 @@ export class HubScene extends Phaser.Scene {
         this.dialogOpen = false;
         this.activeDialog = undefined;
 
-        if (!this.infoIcon) {
+        // First time closing: mark seen and register the zone so the icon
+        // appears on subsequent elevator rides.
+        if (!hasBeenSeen(infoId)) {
           markSeen(infoId);
-          this.createInfoIcon();
+          this.registerElevatorZone();
         }
       },
       hasQuiz ? {
@@ -345,23 +386,9 @@ export class HubScene extends Phaser.Scene {
       onClose: () => {
         this.dialogOpen = false;
         this.activeQuiz = undefined;
-        this.updateInfoIconBadge(infoId);
+        this.zoneManager.refreshBadge(this, infoId);
       },
     });
-  }
-
-  private createInfoIcon(): void {
-    this.infoIcon = new InfoIcon(this, GAME_WIDTH / 2 + 310, GAME_HEIGHT - 30, () => {
-      this.openInfoDialog(ELEVATOR_INFO_ID);
-    });
-    this.updateInfoIconBadge(ELEVATOR_INFO_ID);
-  }
-
-  private updateInfoIconBadge(infoId: string): void {
-    if (!this.infoIcon) return;
-    if (QUIZ_DATA[infoId]) {
-      this.infoIcon.setQuizBadge(this, isQuizPassed(infoId));
-    }
   }
 
   private enterFloor(floorId: FloorId): void {

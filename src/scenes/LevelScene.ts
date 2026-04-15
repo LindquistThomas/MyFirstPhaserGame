@@ -10,6 +10,7 @@ import { ElevatorButtons } from '../ui/ElevatorButtons';
 import { InfoDialog } from '../ui/InfoDialog';
 import { QuizDialog } from '../ui/QuizDialog';
 import { InfoIcon } from '../ui/InfoIcon';
+import { ZoneManager } from '../systems/ZoneManager';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
@@ -29,8 +30,12 @@ export interface LevelConfig {
   playerStart: { x: number; y: number };
   /** Small in-room elevators connecting platform tiers. */
   roomElevators: RoomElevator[];
-  /** Info points placed in the level. */
-  infoPoints?: Array<{ x: number; y: number; contentId: string }>;
+  /**
+   * Info zones placed in the level.
+   * Each zone shows its icon and allows its dialog to open only when the
+   * player is within zoneRadius pixels (default: 250).
+   */
+  infoPoints?: Array<{ x: number; y: number; contentId: string; zoneRadius?: number }>;
 }
 
 /**
@@ -70,7 +75,12 @@ export class LevelScene extends Phaser.Scene {
 
   /** Info / quiz dialog state. */
   private dialogOpen = false;
-  private infoIcons: Array<{ icon: InfoIcon; contentId: string }> = [];
+
+  /**
+   * Zone manager: each info point in the level config becomes a zone whose
+   * icon is only visible when the player is within that zone's radius.
+   */
+  private zoneManager = new ZoneManager();
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
@@ -85,7 +95,7 @@ export class LevelScene extends Phaser.Scene {
     this.roomLifts = [];
     this.activeRoomLift = -1;
     this.dialogOpen = false;
-    this.infoIcons = [];
+    this.zoneManager.clear();
   }
 
   create(): void {
@@ -101,7 +111,7 @@ export class LevelScene extends Phaser.Scene {
     this.createExit();
     this.createPlayer();
     this.createUI();
-    this.createInfoPoints();
+    this.createInfoZones();
 
     // Fixed camera (no follow, no scroll)
     this.cameras.main.setScroll(0, 0);
@@ -229,22 +239,45 @@ export class LevelScene extends Phaser.Scene {
     this.liftButtons = new ElevatorButtons(this, 48);
   }
 
-  /* ---- info points ---- */
-  protected createInfoPoints(): void {
+  /* ---- info zones ---- */
+
+  /**
+   * Convert each info point in the level config into a named zone.
+   * The zone's check is a proximity circle: the icon appears when the player
+   * walks within zoneRadius pixels of the info point position.
+   *
+   * To add a new zone with a different activation shape (e.g. a rectangle or
+   * a physics-body trigger), provide a custom check() in the infoPoints array
+   * or extend this method in a subclass.
+   */
+  protected createInfoZones(): void {
     const config = this.getLevelConfig();
     if (!config.infoPoints) return;
 
+    const DEFAULT_ZONE_RADIUS = 250;
+
     for (const ip of config.infoPoints) {
+      const radius = ip.zoneRadius ?? DEFAULT_ZONE_RADIUS;
+
       const icon = new InfoIcon(this, ip.x, ip.y - 40, () => {
         this.openInfoDialog(ip.contentId);
       });
 
-      // Update quiz badge if quiz data exists for this info point
-      if (QUIZ_DATA[ip.contentId]) {
-        icon.setQuizBadge(this, isQuizPassed(ip.contentId));
-      }
+      this.zoneManager.register(
+        {
+          contentId: ip.contentId,
+          check: () =>
+            Phaser.Math.Distance.Between(
+              this.player.sprite.x,
+              this.player.sprite.y,
+              ip.x,
+              ip.y,
+            ) < radius,
+        },
+        icon,
+      );
 
-      this.infoIcons.push({ icon, contentId: ip.contentId });
+      this.zoneManager.refreshBadge(this, ip.contentId);
     }
   }
 
@@ -289,11 +322,7 @@ export class LevelScene extends Phaser.Scene {
       progression: this.progression,
       onClose: () => {
         this.dialogOpen = false;
-        for (const entry of this.infoIcons) {
-          if (entry.contentId === contentId && QUIZ_DATA[contentId]) {
-            entry.icon.setQuizBadge(this, isQuizPassed(contentId));
-          }
-        }
+        this.zoneManager.refreshBadge(this, contentId);
       },
     });
   }
@@ -347,6 +376,8 @@ export class LevelScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
     this.updateRoomElevators();
+    // Update zone icon visibility each frame based on player proximity.
+    this.zoneManager.update();
     this.checkExitProximity();
   }
 
