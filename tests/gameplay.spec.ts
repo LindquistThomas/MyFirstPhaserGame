@@ -118,12 +118,23 @@ test.describe('Gameplay screenshots', () => {
     await page.keyboard.press('Space');
     await waitForScene(page, 'HubScene');
 
-    // Step onto the elevator and wait for the first-time info dialog.
-    await page.waitForTimeout(500);
+    // Hold ArrowUp to ensure the player boards the elevator, then wait until
+    // HubScene's own dialogOpen flag becomes true — avoids flaky fixed-timeout
+    // waits on slow CI runners where the physics may not have settled yet.
     await page.keyboard.down('ArrowUp');
-    await page.waitForTimeout(600);
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const hub = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
+        return hub != null && hub['dialogOpen'] === true;
+      },
+      undefined,
+      { timeout: 15_000 },
+    );
     await page.keyboard.up('ArrowUp');
-    await page.waitForTimeout(1000);
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/03-elevator-info-dialog.png` });
   });
