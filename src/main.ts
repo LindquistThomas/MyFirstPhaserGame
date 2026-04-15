@@ -32,4 +32,10 @@ const config: Phaser.Types.Core.GameConfig = {
   },
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+// In dev mode, expose the game instance on `window` so E2E tests
+// (Playwright) can drive scene transitions and capture screenshots.
+if (import.meta.env.DEV) {
+  (window as unknown as { __game?: Phaser.Game }).__game = game;
+}

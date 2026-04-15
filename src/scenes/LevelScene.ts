@@ -46,7 +46,7 @@ export class LevelScene extends Phaser.Scene {
   protected hud!: HUD;
   protected progression!: ProgressionSystem;
   protected platformGroup!: Phaser.Physics.Arcade.StaticGroup;
-  protected tokenGroup!: Phaser.Physics.Arcade.Group;
+  protected tokenGroup!: Phaser.Physics.Arcade.StaticGroup;
   protected exitDoor!: Phaser.GameObjects.Image;
   protected floorData!: FloorData;
   protected floorId!: FloorId;
@@ -188,7 +188,9 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- tokens ---- */
   protected createTokens(): void {
-    this.tokenGroup = this.physics.add.group({ allowGravity: false });
+    // Token sprites use static bodies (see Token.ts), so a StaticGroup
+    // is the correct container — avoids dynamic-body method calls on add().
+    this.tokenGroup = this.physics.add.staticGroup();
     const config = this.getLevelConfig();
     const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
     for (let i = 0; i < config.tokens.length; i++) {

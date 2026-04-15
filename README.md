@@ -36,6 +36,21 @@ npm run dev      # Start dev server (localhost:3000)
 npm run build    # Production build → dist/
 ```
 
+### Playwright screenshot tests
+
+End-to-end tests that boot the game in a real browser and save PNG
+screenshots of each scene into `tests/screenshots/` (handy for visually
+reviewing how implemented features look):
+
+```bash
+npx playwright install chromium   # one-time browser download
+npm test                          # run all tests headless
+npm run test:headed               # run with a visible browser
+npm run test:ui                   # interactive Playwright UI
+```
+
+After a run, view the HTML report with `npm run test:report`.
+
 ## Claude GitHub App Integration
 
 To install the Claude GitHub App on a personal account:
