@@ -29,7 +29,7 @@ export class Floor0Scene extends Phaser.Scene {
       0.9,
     ).setStrokeStyle(2, 0xffffff, 0.9);
 
-    const label = this.add.text(GAME_WIDTH / 2, buttonY, 'Go back', {
+    this.add.text(GAME_WIDTH / 2, buttonY, 'Go back', {
       fontFamily: 'monospace',
       fontSize: '30px',
       color: '#ffffff',
@@ -46,7 +46,15 @@ export class Floor0Scene extends Phaser.Scene {
       this.scene.start('HubScene');
     });
 
-    this.input.keyboard?.on('keydown-ESC', () => this.scene.start('HubScene'));
-    this.input.keyboard?.on('keydown-ENTER', () => this.scene.start('HubScene'));
+    const keyboard = this.input.keyboard;
+    const goBack = () => this.scene.start('HubScene');
+
+    keyboard?.on('keydown-ESC', goBack);
+    keyboard?.on('keydown-ENTER', goBack);
+
+    this.events.once('shutdown', () => {
+      keyboard?.off('keydown-ESC', goBack);
+      keyboard?.off('keydown-ENTER', goBack);
+    });
   }
 }

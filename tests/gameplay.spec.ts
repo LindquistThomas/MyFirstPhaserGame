@@ -145,7 +145,7 @@ test.describe('Gameplay screenshots', () => {
     await waitForScene(page, 'HubScene');
   });
 
-  test('elevator info dialog pops on first ride', async ({ page }) => {
+  test('elevator info dialog opens from hub info action', async ({ page }) => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');

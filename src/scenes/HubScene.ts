@@ -279,7 +279,7 @@ export class HubScene extends Phaser.Scene {
 
     const dx = Math.abs(this.player.sprite.x - this.elevator.platform.x);
     // Distance from player's body-bottom (feet) to elevator platform center.
-    const dy = this.player.sprite.y + body.halfHeight - this.elevator.platform.y;
+    const dy = body.bottom - this.elevator.platform.y;
     return (
       dx < HubScene.ELEVATOR_STAND_X_TOLERANCE
       && dy >= HubScene.ELEVATOR_STAND_Y_MIN
