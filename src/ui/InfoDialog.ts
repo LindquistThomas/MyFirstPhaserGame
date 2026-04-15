@@ -150,6 +150,9 @@ export class InfoDialog {
       }
     }
 
+    let quizBtnRef: Phaser.GameObjects.Text | null = null;
+    let closeTextRef: Phaser.GameObjects.Text | null = null;
+
     if (hasExtended && content.extendedInfo) {
       const extInfo = content.extendedInfo;
       curY += 4;
@@ -178,6 +181,7 @@ export class InfoDialog {
 
       toggleText.on('pointerdown', () => {
         this.extendedExpanded = !this.extendedExpanded;
+        const shift = extBodyH + 36;
 
         if (this.extendedExpanded) {
           toggleText.setText('[-]  Deep Dive');
@@ -203,6 +207,9 @@ export class InfoDialog {
 
           extContainer.setVisible(true);
 
+          if (quizBtnRef) quizBtnRef.y += shift;
+          if (closeTextRef) closeTextRef.y += shift;
+
           const newPanelH = Math.min(panelH + extBodyH + 36, MAX_PANEL_H);
           bg.clear();
           bg.fillStyle(0x0a0a2a, 0.95);
@@ -213,6 +220,9 @@ export class InfoDialog {
           toggleText.setText('[+]  Deep Dive');
           extContainer.removeAll(true);
           extContainer.setVisible(false);
+
+          if (quizBtnRef) quizBtnRef.y -= shift;
+          if (closeTextRef) closeTextRef.y -= shift;
 
           bg.clear();
           bg.fillStyle(0x0a0a2a, 0.95);
@@ -247,6 +257,7 @@ export class InfoDialog {
       const quizBtn = this.scene.add.text(GAME_WIDTH / 2, curY, quizLabel, {
         fontFamily: 'monospace', fontSize: '15px', color: quizColor, fontStyle: 'bold',
       }).setOrigin(0.5, 0).setScrollFactor(0);
+      quizBtnRef = quizBtn;
       this.container.add(quizBtn);
 
       if (clickable) {
@@ -295,6 +306,7 @@ export class InfoDialog {
     const closeText = this.scene.add.text(GAME_WIDTH / 2, curY, '[ESC]  Close', {
       fontFamily: 'monospace', fontSize: '14px', color: '#556677',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
+    closeTextRef = closeText;
 
     closeText.on('pointerover', () => closeText.setColor('#88aacc'));
     closeText.on('pointerout', () => closeText.setColor('#556677'));

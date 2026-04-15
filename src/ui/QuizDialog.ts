@@ -75,7 +75,7 @@ export class QuizDialog {
       GAME_WIDTH, GAME_HEIGHT,
       0x000000, 0.65,
     );
-    overlay.setInteractive(); // block clicks through
+    overlay.setScrollFactor(0).setInteractive(); // block clicks through
     this.container.add(overlay);
   }
 
@@ -159,7 +159,7 @@ export class QuizDialog {
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
-    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
     xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
     xBtn.on('pointerout', () => xBtn.setColor('#556677'));
     xBtn.on('pointerdown', () => this.close());
@@ -187,6 +187,7 @@ export class QuizDialog {
     this.container.add(btnText);
 
     const hitArea = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h)
+      .setScrollFactor(0)
       .setInteractive({ useHandCursor: true })
       .setAlpha(0.001);
     this.container.add(hitArea);
@@ -358,7 +359,7 @@ export class QuizDialog {
 
     const nextBtn = this.scene.add.text(GAME_WIDTH / 2, curY, nextLabel, {
       fontFamily: 'monospace', fontSize: '16px', color: '#00d4ff', fontStyle: 'bold',
-    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
     nextBtn.on('pointerover', () => nextBtn.setColor('#88ddff'));
     nextBtn.on('pointerout', () => nextBtn.setColor('#00d4ff'));
@@ -374,7 +375,7 @@ export class QuizDialog {
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
-    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
     xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
     xBtn.on('pointerout', () => xBtn.setColor('#556677'));
     xBtn.on('pointerdown', () => this.close());
@@ -482,7 +483,7 @@ export class QuizDialog {
 
     const closeBtn = this.scene.add.text(GAME_WIDTH / 2, curY + 10, '[  CLOSE  ]', {
       fontFamily: 'monospace', fontSize: '16px', color: '#00d4ff', fontStyle: 'bold',
-    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
     closeBtn.on('pointerover', () => closeBtn.setColor('#88ddff'));
     closeBtn.on('pointerout', () => closeBtn.setColor('#00d4ff'));
