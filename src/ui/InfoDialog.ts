@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
+import { eventBus } from '../systems/EventBus';
 
 export interface InfoDialogLink {
   label: string;
@@ -56,6 +57,7 @@ export class InfoDialog {
     this.buildPanel(content, options);
     this.registerEscKey();
 
+    eventBus.emit('sfx:info_open');
     scene.tweens.add({ targets: this.container, alpha: 1, duration: 200 });
   }
 
@@ -142,6 +144,7 @@ export class InfoDialog {
         linkText.on('pointerover', () => linkText.setColor('#88ddff'));
         linkText.on('pointerout', () => linkText.setColor('#44aaff'));
         linkText.on('pointerdown', () => {
+          eventBus.emit('sfx:link_click');
           window.open(link.url, '_blank', 'noopener,noreferrer');
         });
 
