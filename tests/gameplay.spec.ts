@@ -17,18 +17,11 @@ const SCREENSHOT_DIR = 'tests/screenshots';
 /** Minimal shape of the bits of the Phaser Game we touch from tests. */
 interface PhaserSceneLike {
   sys: { settings: { key: string } };
-  scene: { start: (key: string, data?: unknown) => void };
 }
 interface PhaserLike {
   scene: {
     getScenes: (active?: boolean) => PhaserSceneLike[];
     isActive: (key: string) => boolean;
-    stop: (key: string) => void;
-    start: (key: string, data?: unknown) => void;
-  };
-  registry: {
-    get: (key: string) => unknown;
-    set: (key: string, value: unknown) => void;
   };
 }
 
@@ -54,28 +47,6 @@ async function waitForScene(page: Page, sceneKey: string): Promise<void> {
   );
   // Give Phaser a few frames to finish fading in / rendering.
   await page.waitForTimeout(800);
-}
-
-/**
- * Jump to a scene from the currently-active scene using Phaser's
- * ScenePlugin — this follows the same path the game itself uses for
- * in-game transitions (e.g. `this.scene.start(fd.sceneKey)` in HubScene).
- */
-async function gotoScene(page: Page, sceneKey: string, data?: unknown): Promise<void> {
-  await page.evaluate(
-    ({ key, payload }) => {
-      const g = window.__game;
-      if (!g) throw new Error('game not ready');
-      const active = g.scene
-        .getScenes(true)
-        .filter((s) => s.sys.settings.key !== 'BootScene');
-      const from = active[active.length - 1];
-      if (!from) throw new Error('no active scene to transition from');
-      from.scene.start(key, payload);
-    },
-    { key: sceneKey, payload: data },
-  );
-  await waitForScene(page, sceneKey);
 }
 
 /**
