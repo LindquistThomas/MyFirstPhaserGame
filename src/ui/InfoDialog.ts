@@ -65,7 +65,7 @@ export class InfoDialog {
       GAME_WIDTH, GAME_HEIGHT,
       0x000000, 0.65,
     );
-    overlay.setInteractive();
+    overlay.setScrollFactor(0).setInteractive();
     this.container.add(overlay);
   }
 
@@ -137,7 +137,7 @@ export class InfoDialog {
       for (const link of content.links) {
         const linkText = this.scene.add.text(panelX + PADDING + 10, curY, `\u25b8 ${link.label}`, {
           fontFamily: 'monospace', fontSize: '14px', color: '#44aaff',
-        }).setInteractive({ useHandCursor: true });
+        }).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
         linkText.on('pointerover', () => linkText.setColor('#88ddff'));
         linkText.on('pointerout', () => linkText.setColor('#44aaff'));
@@ -157,7 +157,7 @@ export class InfoDialog {
       const toggleY = curY;
       const toggleText = this.scene.add.text(panelX + PADDING, toggleY, '[+]  Deep Dive', {
         fontFamily: 'monospace', fontSize: '14px', color: '#00aaff', fontStyle: 'bold',
-      }).setInteractive({ useHandCursor: true });
+      }).setScrollFactor(0).setInteractive({ useHandCursor: true });
       this.container.add(toggleText);
 
       toggleText.on('pointerover', () => toggleText.setColor('#88ddff'));
@@ -246,7 +246,7 @@ export class InfoDialog {
 
       const quizBtn = this.scene.add.text(GAME_WIDTH / 2, curY, quizLabel, {
         fontFamily: 'monospace', fontSize: '15px', color: quizColor, fontStyle: 'bold',
-      }).setOrigin(0.5, 0);
+      }).setOrigin(0.5, 0).setScrollFactor(0);
       this.container.add(quizBtn);
 
       if (clickable) {
@@ -294,7 +294,7 @@ export class InfoDialog {
     curY = panelY + panelH - CLOSE_BAR_H - 4;
     const closeText = this.scene.add.text(GAME_WIDTH / 2, curY, '[ESC]  Close', {
       fontFamily: 'monospace', fontSize: '14px', color: '#556677',
-    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
     closeText.on('pointerover', () => closeText.setColor('#88aacc'));
     closeText.on('pointerout', () => closeText.setColor('#556677'));
@@ -303,7 +303,7 @@ export class InfoDialog {
 
     const xBtn = this.scene.add.text(panelX + panelW - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
-    }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
+    }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
     xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
     xBtn.on('pointerout', () => xBtn.setColor('#556677'));
