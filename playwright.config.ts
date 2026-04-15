@@ -29,7 +29,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // Spread the Desktop Chrome preset for its user-agent, then re-assert
+      // the viewport — the preset bundles `viewport: 1280×720` which would
+      // otherwise override the global 1280×960 and letterbox the 4:3 canvas.
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 960 } },
     },
   ],
 
