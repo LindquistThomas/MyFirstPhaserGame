@@ -92,11 +92,9 @@ export class InfoDialog {
     const linksCount = content.links?.length ?? 0;
     const linksSectionH = linksCount > 0 ? 28 + linksCount * LINK_LINE_H + 8 : 0;
 
-    // Extended info toggle adds a small line
     const hasExtended = !!content.extendedInfo;
     const extendedToggleH = hasExtended ? 36 : 0;
 
-    // Quiz button adds a line
     const hasQuiz = !!options?.onQuizStart;
     const quizBtnH = hasQuiz ? 40 : 0;
 
@@ -152,7 +150,6 @@ export class InfoDialog {
       }
     }
 
-    // Extended info toggle
     if (hasExtended && content.extendedInfo) {
       const extInfo = content.extendedInfo;
       curY += 4;
@@ -165,7 +162,6 @@ export class InfoDialog {
       toggleText.on('pointerover', () => toggleText.setColor('#88ddff'));
       toggleText.on('pointerout', () => toggleText.setColor('#00aaff'));
 
-      // Extended content container (initially hidden)
       const extContainer = this.scene.add.container(0, 0);
       extContainer.setVisible(false);
       this.container.add(extContainer);
@@ -185,7 +181,6 @@ export class InfoDialog {
         if (this.extendedExpanded) {
           toggleText.setText('[-]  Deep Dive');
 
-          // Build extended content
           let ey = curY + 28;
 
           const extTitle = this.scene.add.text(panelX + PADDING + 12, ey, extInfo.title, {
@@ -207,7 +202,6 @@ export class InfoDialog {
 
           extContainer.setVisible(true);
 
-          // Resize panel
           const newPanelH = Math.min(panelH + extBodyH + 36, MAX_PANEL_H);
           bg.clear();
           bg.fillStyle(0x0a0a2a, 0.95);
@@ -219,7 +213,6 @@ export class InfoDialog {
           extContainer.removeAll(true);
           extContainer.setVisible(false);
 
-          // Restore panel
           bg.clear();
           bg.fillStyle(0x0a0a2a, 0.95);
           bg.fillRoundedRect(panelX, panelY, panelW, panelH, 10);

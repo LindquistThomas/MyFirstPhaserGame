@@ -101,7 +101,6 @@ export class QuizDialog {
     const CHOICE_H = 52;
     const CHOICE_GAP = 8;
 
-    // Measure question text height
     const qMeasure = this.scene.make.text({
       x: 0, y: 0,
       text: q.question,
@@ -112,14 +111,12 @@ export class QuizDialog {
     const qHeight = qMeasure.height;
     qMeasure.destroy();
 
-    // Calculate panel height
     const headerH = 70;
     const choicesH = 4 * CHOICE_H + 3 * CHOICE_GAP;
     const closeBarH = 44;
     const panelH = Math.min(headerH + qHeight + 20 + choicesH + closeBarH + PADDING * 2, GAME_HEIGHT - 40);
     const panelY = Math.max(20, (GAME_HEIGHT - panelH) / 2);
 
-    // Panel background
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a0a2a, 0.95);
     bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
@@ -129,7 +126,6 @@ export class QuizDialog {
 
     let curY = panelY + PADDING;
 
-    // Header: "Question X / N"
     const header = this.scene.add.text(
       GAME_WIDTH / 2, curY,
       `Question ${this.currentIndex + 1} / ${this.questions.length}`,
@@ -137,7 +133,6 @@ export class QuizDialog {
     ).setOrigin(0.5, 0);
     this.container.add(header);
 
-    // Difficulty badge
     const diffColors: Record<QuizDifficulty, string> = {
       easy: '#44ff88', medium: '#ffdd44', hard: '#ff6644',
     };
@@ -150,7 +145,6 @@ export class QuizDialog {
 
     curY += headerH;
 
-    // Question text
     const qText = this.scene.add.text(panelX + PADDING, curY, q.question, {
       fontFamily: 'monospace', fontSize: '16px', color: '#c0c8d4',
       wordWrap: { width: PANEL_W - PADDING * 2 }, lineSpacing: 6,
@@ -158,13 +152,11 @@ export class QuizDialog {
     this.container.add(qText);
     curY += qHeight + 20;
 
-    // Answer choices
     for (let i = 0; i < q.choices.length; i++) {
       const choiceY = curY + i * (CHOICE_H + CHOICE_GAP);
       this.createChoiceButton(panelX + PADDING, choiceY, PANEL_W - PADDING * 2, CHOICE_H, i, q);
     }
 
-    // X button
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
@@ -194,7 +186,6 @@ export class QuizDialog {
     }).setOrigin(0, 0.5);
     this.container.add(btnText);
 
-    // Hit area
     const hitArea = this.scene.add.rectangle(x + w / 2, y + h / 2, w, h)
       .setInteractive({ useHandCursor: true })
       .setAlpha(0.001);
@@ -231,10 +222,7 @@ export class QuizDialog {
     const correct = selectedIndex === question.correctIndex;
     if (correct) this.score++;
 
-    // Play sound
     eventBus.emit(correct ? 'sfx:quiz_correct' : 'sfx:quiz_wrong');
-
-    // Rebuild panel to show result state
     this.showAnswerFeedback(question, selectedIndex);
   }
 
@@ -248,7 +236,6 @@ export class QuizDialog {
     const CHOICE_H = 52;
     const CHOICE_GAP = 8;
 
-    // Measure question + explanation text
     const qMeasure = this.scene.make.text({
       x: 0, y: 0, text: question.question,
       style: { fontFamily: 'monospace', fontSize: '16px', color: '#c0c8d4',
@@ -277,7 +264,6 @@ export class QuizDialog {
     );
     const panelY = Math.max(20, (GAME_HEIGHT - panelH) / 2);
 
-    // Panel background
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a0a2a, 0.95);
     bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
@@ -287,7 +273,6 @@ export class QuizDialog {
 
     let curY = panelY + PADDING;
 
-    // Result header
     const diffColors: Record<QuizDifficulty, string> = {
       easy: '#44ff88', medium: '#ffdd44', hard: '#ff6644',
     };
@@ -309,7 +294,6 @@ export class QuizDialog {
 
     curY += headerH;
 
-    // Question text
     const qText = this.scene.add.text(panelX + PADDING, curY, question.question, {
       fontFamily: 'monospace', fontSize: '16px', color: '#8899aa',
       wordWrap: { width: PANEL_W - PADDING * 2 }, lineSpacing: 6,
@@ -317,7 +301,6 @@ export class QuizDialog {
     this.container.add(qText);
     curY += qHeight + 20;
 
-    // Answer choices (with correct/wrong indicators)
     for (let i = 0; i < question.choices.length; i++) {
       const choiceY = curY + i * (CHOICE_H + CHOICE_GAP);
       const prefix = String.fromCharCode(65 + i);
@@ -357,14 +340,12 @@ export class QuizDialog {
 
     curY += 4 * CHOICE_H + 3 * CHOICE_GAP + 16;
 
-    // Explanation
     const expText = this.scene.add.text(panelX + PADDING + 6, curY, question.explanation, {
       fontFamily: 'monospace', fontSize: '13px', color: '#8899aa',
       wordWrap: { width: PANEL_W - PADDING * 2 - 12 }, lineSpacing: 4,
     });
     this.container.add(expText);
 
-    // Left border for explanation
     const expBorder = this.scene.add.graphics();
     expBorder.fillStyle(correct ? 0x44ff88 : 0xff4444, 0.6);
     expBorder.fillRect(panelX + PADDING, curY - 2, 3, expHeight + 4);
@@ -372,7 +353,6 @@ export class QuizDialog {
 
     curY += explanationH;
 
-    // Next button
     const isLast = this.currentIndex >= this.questions.length - 1;
     const nextLabel = isLast ? '[  SEE RESULTS  ]' : '[  NEXT QUESTION  ]';
 
@@ -392,7 +372,6 @@ export class QuizDialog {
     });
     this.container.add(nextBtn);
 
-    // X button
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
@@ -402,8 +381,6 @@ export class QuizDialog {
     this.container.add(xBtn);
   }
 
-  /* ---- results ---- */
-
   private showResults(): void {
     this.clearPanel();
 
@@ -411,10 +388,9 @@ export class QuizDialog {
     const passed = this.score >= 2;
     const perfect = this.score === total;
 
-    // Save result
     saveQuizResult(this.options.infoId, this.score, total);
 
-    // Award AU only if this is the first pass
+    // AU only awarded on first pass
     let auAwarded = 0;
     if (passed && !this.alreadyPassed) {
       auAwarded = perfect ? QUIZ_REWARDS.perfect : QUIZ_REWARDS.pass;
@@ -423,7 +399,6 @@ export class QuizDialog {
       }
     }
 
-    // Play sound
     eventBus.emit(passed ? 'sfx:quiz_success' : 'sfx:quiz_fail');
 
     const PANEL_W = 620;
@@ -432,7 +407,6 @@ export class QuizDialog {
     const panelH = passed ? 340 : 280;
     const panelY = (GAME_HEIGHT - panelH) / 2;
 
-    // Panel background
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a0a2a, 0.95);
     bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
@@ -442,7 +416,6 @@ export class QuizDialog {
 
     let curY = panelY + PADDING;
 
-    // Result title
     const titleText = passed
       ? (perfect ? 'PERFECT SCORE!' : 'QUIZ PASSED!')
       : 'NOT QUITE...';
@@ -453,7 +426,6 @@ export class QuizDialog {
     }).setOrigin(0.5, 0);
     this.container.add(title);
 
-    // Animate title
     if (passed) {
       this.scene.tweens.add({
         targets: title, scaleX: 1.15, scaleY: 1.15,
@@ -463,7 +435,6 @@ export class QuizDialog {
 
     curY += 50;
 
-    // Score
     const scoreText = this.scene.add.text(
       GAME_WIDTH / 2, curY,
       `Score:  ${this.score} / ${total}`,
@@ -473,7 +444,6 @@ export class QuizDialog {
 
     curY += 40;
 
-    // AU reward
     if (passed && auAwarded > 0) {
       const auText = this.scene.add.text(
         GAME_WIDTH / 2, curY,
@@ -482,7 +452,6 @@ export class QuizDialog {
       ).setOrigin(0.5, 0);
       this.container.add(auText);
 
-      // Gold pulsing glow
       this.scene.tweens.add({
         targets: auText, alpha: { from: 1, to: 0.6 },
         duration: 600, yoyo: true, repeat: 2, ease: 'Sine.easeInOut',
@@ -490,7 +459,6 @@ export class QuizDialog {
 
       curY += 40;
 
-      // Camera flash
       this.scene.cameras.main.flash(200, 255, 215, 0);
     } else if (passed && this.alreadyPassed) {
       const alreadyText = this.scene.add.text(
@@ -510,12 +478,10 @@ export class QuizDialog {
       curY += 40;
     }
 
-    // Particle burst on pass
     if (passed) {
       this.spawnCelebrationParticles();
     }
 
-    // Close button
     const closeBtn = this.scene.add.text(GAME_WIDTH / 2, curY + 10, '[  CLOSE  ]', {
       fontFamily: 'monospace', fontSize: '16px', color: '#00d4ff', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
@@ -527,7 +493,6 @@ export class QuizDialog {
   }
 
   private spawnCelebrationParticles(): void {
-    // Create a small texture for particles if it doesn't exist
     if (!this.scene.textures.exists('quiz_particle')) {
       const g = this.scene.add.graphics();
       g.fillStyle(0xffffff);
@@ -553,7 +518,6 @@ export class QuizDialog {
 
     emitter.explode(30);
 
-    // Clean up after particles die
     this.scene.time.delayedCall(1500, () => {
       emitter.destroy();
     });

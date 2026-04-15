@@ -90,7 +90,6 @@ export class HubScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     const sw = HubScene.SHAFT_WIDTH;
 
-    // Dark shaft interior
     for (let y = 0; y < worldHeight; y += TILE_SIZE) {
       this.add.tileSprite(cx, y, sw, TILE_SIZE, 'elevator_shaft').setDepth(0);
     }
@@ -100,7 +99,6 @@ export class HubScene extends Phaser.Scene {
     rail.fillStyle(0x00aaff, 0.6);
     rail.fillRect(cx - sw / 2 - 8, 0, 8, worldHeight);
     rail.fillRect(cx + sw / 2, 0, 8, worldHeight);
-    // Inner rail lines
     rail.lineStyle(2, 0x005588, 0.4);
     rail.lineBetween(cx - sw / 2 + 20, 0, cx - sw / 2 + 20, worldHeight);
     rail.lineBetween(cx + sw / 2 - 20, 0, cx + sw / 2 - 20, worldHeight);
@@ -127,18 +125,15 @@ export class HubScene extends Phaser.Scene {
       const fd = LEVEL_DATA[fId];
       const unlocked = this.progression.isFloorUnlocked(fId);
 
-      // Left-side platforms
       for (let x = 0; x < cx - sw / 2; x += TILE_SIZE) {
         const t = this.platforms.create(x + TILE_SIZE / 2, y, 'platform_tile') as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
       }
-      // Right-side platforms
       for (let x = cx + sw / 2; x < GAME_WIDTH; x += TILE_SIZE) {
         const t = this.platforms.create(x + TILE_SIZE / 2, y, 'platform_tile') as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
       }
 
-      // Floor label (left side)
       this.add.text(20, y - 60, `F${fId}`, {
         fontFamily: 'monospace', fontSize: '28px',
         color: COLORS.hudText, fontStyle: 'bold',
@@ -151,7 +146,6 @@ export class HubScene extends Phaser.Scene {
         }).setDepth(5);
       }
 
-      // Floor opening label (right side, next to shaft)
       if (fId !== FLOORS.LOBBY) {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
         const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
@@ -221,7 +215,6 @@ export class HubScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
 
-    // Check if player is on elevator
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     const onElevator = body.blocked.down && this.isOverElevator();
 
@@ -249,14 +242,10 @@ export class HubScene extends Phaser.Scene {
       const down = input.down || (btnState?.down ?? false);
       this.elevator.ride(up, down);
     } else {
-      // Stop elevator movement when player steps off
       this.elevator.ride(false, false);
     }
 
-    // Update cab visuals
     this.elevator.updateVisuals();
-
-    // Check if player walked off the elevator onto a floor platform
     this.checkFloorEntry();
   }
 
@@ -283,7 +272,6 @@ export class HubScene extends Phaser.Scene {
     // Player must be outside the shaft
     if (px > cx - sw / 2 + 20 && px < cx + sw / 2 - 20) return;
 
-    // Find closest floor
     const worldHeight = 1600;
     const positions = this.getFloorYPositions(worldHeight);
 
@@ -291,7 +279,6 @@ export class HubScene extends Phaser.Scene {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
 
-      // Player's feet should be near the floor platform
       if (Math.abs(py - (floorY - 64)) < 40) {
         if (this.progression.isFloorUnlocked(fId)) {
           this.enterFloor(fId);
@@ -357,7 +344,6 @@ export class HubScene extends Phaser.Scene {
       onClose: () => {
         this.dialogOpen = false;
         this.activeQuiz = undefined;
-        // Update the info icon badge after quiz
         this.updateInfoIconBadge(infoId);
       },
     });

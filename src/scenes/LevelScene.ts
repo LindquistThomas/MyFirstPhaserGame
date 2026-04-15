@@ -115,7 +115,6 @@ export class LevelScene extends Phaser.Scene {
       this,
     );
 
-    // Colliders for each room elevator
     for (let i = 0; i < this.roomLifts.length; i++) {
       const idx = i;
       this.physics.add.collider(this.player.sprite, this.roomLifts[i].platform, () => {
@@ -129,10 +128,8 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- background ---- */
   protected createBackground(): void {
-    // Room walls
     const g = this.add.graphics().setDepth(0);
 
-    // Fill background
     g.fillStyle(this.floorData.theme.backgroundColor);
     g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
@@ -172,17 +169,14 @@ export class LevelScene extends Phaser.Scene {
   protected createRoomElevators(): void {
     const config = this.getLevelConfig();
     for (const re of config.roomElevators) {
-      // Shaft background
       const shaft = this.add.graphics().setDepth(1);
       const shaftW = 80;
       shaft.fillStyle(0x060610, 0.85);
       shaft.fillRect(re.x - shaftW / 2, re.minY, shaftW, re.maxY - re.minY + 16);
-      // Shaft rails
       shaft.lineStyle(2, 0x00aaff, 0.5);
       shaft.lineBetween(re.x - shaftW / 2, re.minY, re.x - shaftW / 2, re.maxY + 16);
       shaft.lineBetween(re.x + shaftW / 2, re.minY, re.x + shaftW / 2, re.maxY + 16);
 
-      // Elevator platform
       const plat = this.physics.add.image(re.x, re.startY, 'room_elevator_platform');
       plat.setImmovable(true);
       (plat.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
@@ -293,7 +287,6 @@ export class LevelScene extends Phaser.Scene {
       progression: this.progression,
       onClose: () => {
         this.dialogOpen = false;
-        // Update badges
         for (const entry of this.infoIcons) {
           if (entry.contentId === contentId && QUIZ_DATA[contentId]) {
             entry.icon.setQuizBadge(this, isQuizPassed(contentId));
@@ -382,7 +375,6 @@ export class LevelScene extends Phaser.Scene {
 
     if (!onLift) {
       this.activeRoomLift = -1;
-      // Stop all lifts
       for (const lift of this.roomLifts) {
         lift.platform.setVelocityY(0);
       }
@@ -404,7 +396,6 @@ export class LevelScene extends Phaser.Scene {
       lift.platform.setVelocityY(0);
     }
 
-    // Clamp to shaft bounds
     if (lift.platform.y <= lift.minY) {
       lift.platform.y = lift.minY;
       lift.platform.setVelocityY(0);
