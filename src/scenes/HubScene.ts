@@ -37,6 +37,9 @@ export class HubScene extends Phaser.Scene {
   /** Is the player currently standing on the elevator? */
   private playerOnElevator = false;
 
+  /** Was the elevator moving last frame? Used to detect start/stop for music. */
+  private wasElevatorMoving = false;
+
   /** On-screen elevator buttons — shown/hidden by zone events. */
   private elevatorButtons?: ElevatorButtons;
 
@@ -92,6 +95,7 @@ export class HubScene extends Phaser.Scene {
   create(): void {
     this.isTransitioning = false;
     this.playerOnElevator = false;
+    this.wasElevatorMoving = false;
     this.dialogOpen = false;
     this.cameras.main.setBackgroundColor(COLORS.background);
 
@@ -341,9 +345,24 @@ export class HubScene extends Phaser.Scene {
       const down = input.down || (btnState?.down ?? false);
       this.elevator.ride(up, down);
       this.constrainPlayerToElevatorCab();
+
+      // Sync player Y velocity with the elevator for smooth riding
+      const platBody = this.elevator.platform.body as Phaser.Physics.Arcade.Body;
+      if (platBody.velocity.y !== 0) {
+        (this.player.sprite.body as Phaser.Physics.Arcade.Body).setVelocityY(platBody.velocity.y);
+      }
     } else {
       this.elevator.ride(false, false);
     }
+
+    // Switch music when the elevator starts / stops moving
+    const elevatorMoving = this.elevator.getIsMoving();
+    if (elevatorMoving && !this.wasElevatorMoving) {
+      eventBus.emit('music:play', 'music_elevator_ride');
+    } else if (!elevatorMoving && this.wasElevatorMoving) {
+      eventBus.emit('music:play', 'music_elevator_jazz');
+    }
+    this.wasElevatorMoving = elevatorMoving;
 
     this.elevator.updateVisuals();
     this.checkFloorEntry();

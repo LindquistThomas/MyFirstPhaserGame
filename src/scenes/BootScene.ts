@@ -52,6 +52,7 @@ export class BootScene extends Phaser.Scene {
     // Load background music from MP3 files (distinct per scene)
     this.load.audio('music_menu', 'music/8bit-chiptune/bgm_menu.mp3');
     this.load.audio('music_elevator_jazz', 'music/elevator-jazz/elevator_jazz.mp3');
+    this.load.audio('music_elevator_ride', 'music/8bit-chiptune/bgm_action_3.mp3');
     this.load.audio('music_floor1', 'music/8bit-chiptune/bgm_action_1.mp3');
     this.load.audio('music_floor2', 'music/8bit-chiptune/bgm_action_2.mp3');
   }
