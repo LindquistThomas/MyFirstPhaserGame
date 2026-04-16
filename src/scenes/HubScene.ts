@@ -111,6 +111,7 @@ export class HubScene extends Phaser.Scene {
     this.createShaftBackground(wh);
     this.createPlatforms();
     this.createLobbyDecorations();
+    this.createFloorDecorations();
     this.createPlayer();
     this.createElevator();
     this.createUI();
@@ -259,6 +260,37 @@ export class HubScene extends Phaser.Scene {
 
     // Info board — between player spawn and elevator shaft
     this.add.image(300, floorBottom - 60, 'info_board').setDepth(3);
+  }
+
+  /* ---- floor decorations ---- */
+  private createFloorDecorations(): void {
+    const positions = this.getFloorYPositions();
+    const cx = GAME_WIDTH / 2;
+    const sw = HubScene.SHAFT_WIDTH;
+    const rightEdge = cx + sw / 2;
+
+    // F1 — Platform Team: server racks, desks, and networking gear
+    const f1Bottom = positions[FLOORS.PLATFORM_TEAM] + HubScene.FLOOR_H;
+    // Left side
+    this.add.image(120, f1Bottom - 50, 'server_rack').setDepth(3);
+    this.add.image(180, f1Bottom - 50, 'server_rack').setDepth(3);
+    this.add.image(300, f1Bottom - 36, 'desk_monitor').setDepth(3);
+    this.add.image(150, f1Bottom - 10, 'router').setDepth(3);
+    this.add.image(120, f1Bottom - 10, 'cables').setDepth(1);
+    // Right side
+    this.add.image(rightEdge + 80, f1Bottom - 50, 'server_rack').setDepth(3);
+    this.add.image(rightEdge + 200, f1Bottom - 36, 'desk_monitor').setDepth(11);
+    this.add.image(rightEdge + 320, f1Bottom - 22, 'monitor_dash').setDepth(3);
+    this.add.image(rightEdge + 440, f1Bottom - 10, 'router').setDepth(3);
+
+    // F2 — Cloud Team: monitors and dashboards (lighter touch)
+    const f2Bottom = positions[FLOORS.CLOUD_TEAM] + HubScene.FLOOR_H;
+    // Left side
+    this.add.image(150, f2Bottom - 22, 'monitor_dash').setDepth(3);
+    this.add.image(350, f2Bottom - 36, 'desk_monitor').setDepth(3);
+    // Right side
+    this.add.image(rightEdge + 120, f2Bottom - 22, 'monitor_dash').setDepth(11);
+    this.add.image(rightEdge + 300, f2Bottom - 36, 'desk_monitor').setDepth(3);
   }
 
   /* ---- elevator ---- */
