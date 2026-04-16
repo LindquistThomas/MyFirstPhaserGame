@@ -14,6 +14,32 @@ export interface InfoPointDef {
 }
 
 export const INFO_POINTS: Record<string, InfoPointDef> = {
+  'welcome-board': {
+    floorId: FLOORS.LOBBY,
+    content: {
+      id: 'welcome-board',
+      title: 'Welcome to Architecture Elevator!',
+      body:
+        'You are a software architect who must ride the elevator between ' +
+        'floors — each one home to a different team with its own architectural ' +
+        'challenges.\n\n' +
+        'CONTROLS\n' +
+        '  ← →   Walk\n' +
+        '  ↑ ↓   Ride the elevator (stand on it first)\n' +
+        '  SPACE  Front-flip!\n' +
+        '  I      Open info panels\n' +
+        '  D      Toggle debug overlay\n\n' +
+        'HOW TO PLAY\n' +
+        'Walk right from the lobby onto the elevator platform. Use Up/Down to ' +
+        'ride between floors. Step off at any floor to enter that team\'s room, ' +
+        'collect AU tokens, read info panels, and take quizzes to test your ' +
+        'knowledge.\n\n' +
+        'The game is inspired by Gregor Hohpe\'s "Architecture Elevator" — the ' +
+        'idea that great architects connect the penthouse (strategy) with the ' +
+        'engine room (technology). Good luck on your ride!',
+    },
+  },
+
   'architecture-elevator': {
     floorId: FLOORS.LOBBY,
     content: {

@@ -17,6 +17,7 @@ import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
 const ELEVATOR_INFO_ID = 'architecture-elevator';
+const WELCOME_BOARD_ID = 'welcome-board';
 const FLOOR0_TEST_SCENE_KEY = 'Floor0Scene';
 
 /**
@@ -48,6 +49,9 @@ export class HubScene extends Phaser.Scene {
    * is closed, then shown/hidden by the same zone events as elevatorButtons.
    */
   private infoIcon?: InfoIcon;
+
+  /** Info icon for the lobby welcome board. */
+  private lobbyBoardIcon?: InfoIcon;
 
   private showElevatorInfoOnFirstRide = false;
   private dialogOpen = false;
@@ -243,15 +247,18 @@ export class HubScene extends Phaser.Scene {
     const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
 
-    // Plants on the left side of the lobby
+    // Plants behind the player (depth < 10)
     this.add.image(80, floorBottom - 32, 'plant_tall').setDepth(3);
-    this.add.image(leftEdge - 60, floorBottom - 32, 'plant_small').setDepth(3);
     this.add.image(leftEdge - 140, floorBottom - 40, 'plant_tall').setDepth(3);
-
-    // Plants on the right side of the lobby
-    this.add.image(GAME_WIDTH - 80, floorBottom - 32, 'plant_tall').setDepth(3);
-    this.add.image(rightEdge + 60, floorBottom - 32, 'plant_small').setDepth(3);
     this.add.image(rightEdge + 140, floorBottom - 40, 'plant_tall').setDepth(3);
+
+    // Plants in front of the player (depth > 10)
+    this.add.image(leftEdge - 60, floorBottom - 32, 'plant_small').setDepth(11);
+    this.add.image(rightEdge + 60, floorBottom - 32, 'plant_small').setDepth(11);
+    this.add.image(GAME_WIDTH - 80, floorBottom - 32, 'plant_tall').setDepth(11);
+
+    // Info board — left of player spawn so it's the first thing they see
+    this.add.image(100, floorBottom - 60, 'info_board').setDepth(3);
   }
 
   /* ---- elevator ---- */
@@ -326,11 +333,33 @@ export class HubScene extends Phaser.Scene {
     // (once it is created after the first dialog close).
     this.zoneManager.register(ELEVATOR_INFO_ID, () => this.playerOnElevator);
 
+    // --- Welcome board zone ---
+    // Active when player is within 120px of the info board (x=100).
+    const positions = this.getFloorYPositions();
+    const boardX = 100;
+    const boardY = positions[FLOORS.LOBBY] + HubScene.FLOOR_H - 60;
+    const BOARD_RADIUS = 120;
+    this.zoneManager.register(WELCOME_BOARD_ID, () =>
+      Phaser.Math.Distance.Between(
+        this.player.sprite.x, this.player.sprite.y,
+        boardX, boardY,
+      ) < BOARD_RADIUS,
+    );
+
+    // Create the info icon floating above the board
+    this.lobbyBoardIcon = new InfoIcon(
+      this, boardX, boardY - 70,
+      () => this.openInfoDialog(WELCOME_BOARD_ID),
+    );
+    this.lobbyBoardIcon.setVisible(false);
+
     const onEnter = (...args: unknown[]) => {
       const zoneId = args[0] as string;
       if (zoneId === ELEVATOR_INFO_ID) {
         this.elevatorButtons?.setVisible(true);
         this.infoIcon?.setVisible(true);
+      } else if (zoneId === WELCOME_BOARD_ID) {
+        this.lobbyBoardIcon?.setVisible(true);
       }
     };
 
@@ -339,6 +368,8 @@ export class HubScene extends Phaser.Scene {
       if (zoneId === ELEVATOR_INFO_ID) {
         this.elevatorButtons?.setVisible(false);
         this.infoIcon?.setVisible(false);
+      } else if (zoneId === WELCOME_BOARD_ID) {
+        this.lobbyBoardIcon?.setVisible(false);
       }
     };
 
