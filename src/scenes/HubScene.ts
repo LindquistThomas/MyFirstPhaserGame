@@ -54,7 +54,7 @@ export class HubScene extends Phaser.Scene {
   private zoneManager = new ZoneManager();
 
   /** Total scrollable world height for the hub shaft. */
-  private static readonly WORLD_HEIGHT = 2300;
+  private static readonly WORLD_HEIGHT = 1700;
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
   /** Number of tile rows stacked per floor slab. */
@@ -244,9 +244,9 @@ export class HubScene extends Phaser.Scene {
   /* ---- helpers ---- */
   private getFloorYPositions(): Record<number, number> {
     return {
-      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 530,
-      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 1060,
-      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1590,
+      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 310,
+      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 840,
+      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1370,
     };
   }
 
