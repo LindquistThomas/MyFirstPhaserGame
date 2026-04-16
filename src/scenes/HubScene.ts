@@ -257,8 +257,8 @@ export class HubScene extends Phaser.Scene {
     this.add.image(rightEdge + 60, floorBottom - 32, 'plant_small').setDepth(11);
     this.add.image(GAME_WIDTH - 80, floorBottom - 32, 'plant_tall').setDepth(11);
 
-    // Info board — left of player spawn so it's the first thing they see
-    this.add.image(100, floorBottom - 60, 'info_board').setDepth(3);
+    // Info board — between player spawn and elevator shaft
+    this.add.image(300, floorBottom - 60, 'info_board').setDepth(3);
   }
 
   /* ---- elevator ---- */
@@ -334,9 +334,9 @@ export class HubScene extends Phaser.Scene {
     this.zoneManager.register(ELEVATOR_INFO_ID, () => this.playerOnElevator);
 
     // --- Welcome board zone ---
-    // Active when player is within 120px of the info board (x=100).
+    // Active when player is within 120px of the info board (x=300).
     const positions = this.getFloorYPositions();
-    const boardX = 100;
+    const boardX = 300;
     const boardY = positions[FLOORS.LOBBY] + HubScene.FLOOR_H - 60;
     const BOARD_RADIUS = 120;
     this.zoneManager.register(WELCOME_BOARD_ID, () =>
@@ -346,10 +346,11 @@ export class HubScene extends Phaser.Scene {
       ) < BOARD_RADIUS,
     );
 
-    // Create the info icon floating above the board
+    // Create the info icon floating above the board (world-space, scrolls with camera)
     this.lobbyBoardIcon = new InfoIcon(
       this, boardX, boardY - 70,
       () => this.openInfoDialog(WELCOME_BOARD_ID),
+      true,
     );
     this.lobbyBoardIcon.setVisible(false);
 

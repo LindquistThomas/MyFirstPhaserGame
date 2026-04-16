@@ -5,10 +5,10 @@ export class InfoIcon {
   private pulseTween: Phaser.Tweens.Tween;
   private badge?: Phaser.GameObjects.Container;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void) {
+  constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void, worldSpace = false) {
     this.container = scene.add.container(x, y);
     this.container.setDepth(55);
-    this.container.setScrollFactor(0);
+    if (!worldSpace) this.container.setScrollFactor(0);
 
     const circle = scene.add.graphics();
     circle.fillStyle(0x0a0a2a, 0.85);
