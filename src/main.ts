@@ -7,6 +7,7 @@ import { Floor0Scene } from './scenes/Floor0Scene';
 import { Floor1Scene } from './scenes/Floor1Scene';
 import { Floor2Scene } from './scenes/Floor2Scene';
 import { MusicPlugin } from './plugins/MusicPlugin';
+import { DebugPlugin } from './plugins/DebugPlugin';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -29,7 +30,8 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   scene: [BootScene, MenuScene, HubScene, Floor0Scene, Floor1Scene, Floor2Scene],
   plugins: {
-    scene: [{ key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' }],
+    scene: [{ key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },
+            { key: 'DebugPlugin', plugin: DebugPlugin, mapping: 'debug' }],
   },
 };
 
