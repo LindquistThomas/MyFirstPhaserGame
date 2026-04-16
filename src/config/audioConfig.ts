@@ -24,6 +24,8 @@ export const SFX_EVENTS: Record<string, string> = {
   'sfx:quiz_wrong':   'quiz_wrong',
   'sfx:quiz_success': 'quiz_success',
   'sfx:quiz_fail':    'quiz_fail',
+  'sfx:info_open':    'info_open',
+  'sfx:link_click':   'link_click',
 };
 
 /** Default volume for background music (0–1). */

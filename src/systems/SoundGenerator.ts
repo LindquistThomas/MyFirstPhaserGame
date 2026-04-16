@@ -17,6 +17,8 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'quiz_wrong', generateQuizWrongSound());
   loadWav(scene, 'quiz_success', generateQuizSuccessSound());
   loadWav(scene, 'quiz_fail', generateQuizFailSound());
+  loadWav(scene, 'info_open', generateInfoOpenSound());
+  loadWav(scene, 'link_click', generateLinkClickSound());
 }
 
 export function loadWav(scene: Phaser.Scene, key: string, wav: ArrayBuffer): void {
@@ -185,6 +187,46 @@ function generateQuizFailSound(): ArrayBuffer {
     const attack = Math.min(noteProgress * 15, 1);
     const envelope = attack * Math.exp(-noteProgress * 3);
     samples[i] = wave * envelope * 0.2;
+  }
+
+  return encodeWAV(samples, SAMPLE_RATE);
+}
+
+/** Short ascending UI blip — triangle wave for opening an info card. */
+function generateInfoOpenSound(): ArrayBuffer {
+  const duration = 0.1;
+  const numSamples = Math.floor(SAMPLE_RATE * duration);
+  const samples = new Float32Array(numSamples);
+
+  let phase = 0;
+  for (let i = 0; i < numSamples; i++) {
+    const progress = numSamples > 1 ? i / (numSamples - 1) : 1;
+    // Ascending sweep 500 → 800 Hz (triangle wave)
+    const freq = 500 + 300 * progress;
+    phase += (2 * Math.PI * freq) / SAMPLE_RATE;
+    const wave = (2 / Math.PI) * Math.asin(Math.sin(phase));
+    // Linear decay envelope
+    const envelope = 1 - progress;
+    samples[i] = wave * envelope * 0.2;
+  }
+
+  return encodeWAV(samples, SAMPLE_RATE);
+}
+
+/** Short damped click — square wave for link activation. */
+function generateLinkClickSound(): ArrayBuffer {
+  const duration = 0.05;
+  const numSamples = Math.floor(SAMPLE_RATE * duration);
+  const samples = new Float32Array(numSamples);
+
+  let phase = 0;
+  for (let i = 0; i < numSamples; i++) {
+    const progress = numSamples > 1 ? i / (numSamples - 1) : 1;
+    phase += (2 * Math.PI * 1000) / SAMPLE_RATE;
+    const wave = Math.sign(Math.sin(phase));
+    // Exponential decay for a sharp click
+    const envelope = Math.exp(-progress * 12);
+    samples[i] = wave * envelope * 0.15;
   }
 
   return encodeWAV(samples, SAMPLE_RATE);

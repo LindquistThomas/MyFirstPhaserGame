@@ -17,6 +17,7 @@ import { hasBeenSeen, markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 
 const ELEVATOR_INFO_ID = 'architecture-elevator';
+const FLOOR0_TEST_SCENE_KEY = 'Floor0Scene';
 
 /**
  * Hub / Elevator-shaft scene — Impossible-Mission style.
@@ -54,6 +55,14 @@ export class HubScene extends Phaser.Scene {
 
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
+  private static readonly ELEVATOR_STEP_OUT_X_MARGIN = 12;
+  private static readonly FLOOR0_EDGE_TRIGGER_X = 36;
+  private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 92;
+  private static readonly ELEVATOR_STAND_X_TOLERANCE = 96;
+  private static readonly ELEVATOR_STAND_Y_MIN = -16;
+  private static readonly ELEVATOR_STAND_Y_MAX = 24;
+  private static readonly FLOOR_DETECTION_TOLERANCE = 18;
+  private static readonly ELEVATOR_CAB_HALF_WIDTH = 70;
 
   constructor() {
     super({ key: 'HubScene' });
@@ -135,12 +144,23 @@ export class HubScene extends Phaser.Scene {
       const fd = LEVEL_DATA[fId];
       const unlocked = this.progression.isFloorUnlocked(fId);
 
-      for (let x = 0; x < cx - sw / 2; x += TILE_SIZE) {
-        const t = this.platforms.create(x + TILE_SIZE / 2, y, 'platform_tile') as Phaser.Physics.Arcade.Image;
+      const leftEdge = cx - sw / 2;
+      const rightEdge = cx + sw / 2;
+
+      for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
+        const t = this.platforms.create(
+          tileLeft + TILE_SIZE / 2,
+          y,
+          'platform_tile',
+        ) as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
       }
-      for (let x = cx + sw / 2; x < GAME_WIDTH; x += TILE_SIZE) {
-        const t = this.platforms.create(x + TILE_SIZE / 2, y, 'platform_tile') as Phaser.Physics.Arcade.Image;
+      for (let tileLeft = rightEdge; tileLeft < GAME_WIDTH; tileLeft += TILE_SIZE) {
+        const t = this.platforms.create(
+          tileLeft + TILE_SIZE / 2,
+          y,
+          'platform_tile',
+        ) as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
       }
 
@@ -159,7 +179,7 @@ export class HubScene extends Phaser.Scene {
       if (fId !== FLOORS.LOBBY) {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
         const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
-        this.add.text(cx + sw / 2 + 20, y - 50, label, {
+        this.add.text(rightEdge + 20, y - 50, label, {
           fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
         }).setDepth(5);
       }
@@ -186,7 +206,8 @@ export class HubScene extends Phaser.Scene {
   /* ---- player ---- */
   private createPlayer(worldHeight: number): void {
     const positions = this.getFloorYPositions(worldHeight);
-    const y = positions[this.progression.getCurrentFloor()] - 80;
+    // Spawn with body-bottom aligned to elevator platform top (16px platform).
+    const y = positions[this.progression.getCurrentFloor()] - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
 
     this.player = new Player(this, GAME_WIDTH / 2, y);
     this.physics.add.collider(this.player.sprite, this.platforms);
@@ -271,8 +292,8 @@ export class HubScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
 
-    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    this.playerOnElevator = body.blocked.down && this.isOverElevator();
+    const onElevator = this.isStandingOnElevator();
+    this.playerOnElevator = onElevator;
 
     if (this.playerOnElevator && this.showElevatorInfoOnFirstRide) {
       this.showElevatorInfoOnFirstRide = false;
@@ -299,19 +320,45 @@ export class HubScene extends Phaser.Scene {
       const up = input.up || (btnState?.up ?? false);
       const down = input.down || (btnState?.down ?? false);
       this.elevator.ride(up, down);
+      this.constrainPlayerToElevatorCab();
     } else {
       this.elevator.ride(false, false);
     }
 
     this.elevator.updateVisuals();
     this.checkFloorEntry();
+    this.checkFloor0Transition();
   }
 
-  /** Is the player horizontally within the elevator shaft? */
-  private isOverElevator(): boolean {
-    const px = this.player.sprite.x;
-    const ex = this.elevator.platform.x;
-    return Math.abs(px - ex) < 90;
+  /** Is the player standing on the elevator platform this frame? */
+  private isStandingOnElevator(): boolean {
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    const onGround = body.blocked.down || body.touching.down;
+    if (!onGround) return false;
+
+    const dx = Math.abs(this.player.sprite.x - this.elevator.platform.x);
+    // Distance from player's body-bottom (feet) to elevator platform center.
+    const dy = body.bottom - this.elevator.platform.y;
+    return (
+      dx < HubScene.ELEVATOR_STAND_X_TOLERANCE
+      && dy >= HubScene.ELEVATOR_STAND_Y_MIN
+      && dy <= HubScene.ELEVATOR_STAND_Y_MAX
+    );
+  }
+
+  /** Prevent stepping out of the cab while the elevator is between floors. */
+  private constrainPlayerToElevatorCab(): void {
+    if (this.elevator.getFloorAtCurrentPosition() !== null) return;
+
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    const left = this.elevator.platform.x - HubScene.ELEVATOR_CAB_HALF_WIDTH + HubScene.ELEVATOR_STEP_OUT_X_MARGIN;
+    const right = this.elevator.platform.x + HubScene.ELEVATOR_CAB_HALF_WIDTH - HubScene.ELEVATOR_STEP_OUT_X_MARGIN;
+    const clampedX = Phaser.Math.Clamp(this.player.sprite.x, left, right);
+
+    if (clampedX !== this.player.sprite.x) {
+      this.player.sprite.setX(clampedX);
+      body.setVelocityX(0);
+    }
   }
 
   /** Detect player stepping onto a floor platform (not elevator, not lobby). */
@@ -321,7 +368,7 @@ export class HubScene extends Phaser.Scene {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     if (!body.blocked.down) return;
 
-    const py = this.player.sprite.y;
+    // Player is on solid ground (platform, not elevator) — check which floor
     const px = this.player.sprite.x;
     const cx = GAME_WIDTH / 2;
     const sw = HubScene.SHAFT_WIDTH;
@@ -330,12 +377,14 @@ export class HubScene extends Phaser.Scene {
 
     const worldHeight = 1600;
     const positions = this.getFloorYPositions(worldHeight);
+    const bodyBottom = body.bottom;
 
     for (const [floorId, floorY] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
 
-      if (Math.abs(py - (floorY - 64)) < 40) {
+      const floorTop = floorY - TILE_SIZE / 2;
+      if (Math.abs(bodyBottom - floorTop) < HubScene.FLOOR_DETECTION_TOLERANCE) {
         if (this.progression.isFloorUnlocked(fId)) {
           this.enterFloor(fId);
           return;
@@ -344,7 +393,27 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
+  /** At lobby level, walking to the far left/right opens the Floor 0 test scene. */
+  private checkFloor0Transition(): void {
+    if (this.playerOnElevator) return;
+
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    if (!(body.blocked.down || body.touching.down)) return;
+
+    const worldHeight = 1600;
+    const positions = this.getFloorYPositions(worldHeight);
+    const lobbyY = positions[FLOORS.LOBBY];
+    const lobbyTop = lobbyY - TILE_SIZE / 2;
+    if (Math.abs(body.bottom - lobbyTop) >= HubScene.FLOOR_DETECTION_TOLERANCE) return;
+
+    const px = this.player.sprite.x;
+    if (px <= HubScene.FLOOR0_EDGE_TRIGGER_X || px >= GAME_WIDTH - HubScene.FLOOR0_EDGE_TRIGGER_X) {
+      this.enterFloor0Test();
+    }
+  }
+
   /* ---- info setup ---- */
+
 
   private setupElevatorInfo(): void {
     if (hasBeenSeen(ELEVATOR_INFO_ID)) {
@@ -441,5 +510,12 @@ export class HubScene extends Phaser.Scene {
     const fd = LEVEL_DATA[floorId];
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(fd.sceneKey));
+  }
+
+  private enterFloor0Test(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(500, () => this.scene.start(FLOOR0_TEST_SCENE_KEY));
   }
 }

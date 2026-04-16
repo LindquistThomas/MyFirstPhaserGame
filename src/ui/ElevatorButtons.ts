@@ -19,10 +19,17 @@ export class ElevatorButtons {
   private downBg: Phaser.GameObjects.Graphics;
   private btnSize: number;
   private downY: number;
+  private scene: Phaser.Scene;
+  private releaseAllButtons: () => void;
 
   constructor(scene: Phaser.Scene, btnSize = 56) {
+    this.scene = scene;
     this.btnSize = btnSize;
     this.downY = btnSize + 8;
+    this.releaseAllButtons = () => {
+      if (!this.container.visible) return;
+      this.resetState();
+    };
 
     const margin = 16;
     const rightEdge = GAME_WIDTH - margin - btnSize;
@@ -56,6 +63,11 @@ export class ElevatorButtons {
     this.container.add(downArrow);
 
     this.createHitArea(scene, this.downY, (pressed) => { this.state.down = pressed; });
+
+    // Register scene-level release listeners once per button component instance.
+    scene.input.on('pointerup', this.releaseAllButtons);
+    scene.input.on('gameout', this.releaseAllButtons);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.destroy, this);
   }
 
   /* ---- public API ---- */
@@ -107,5 +119,11 @@ export class ElevatorButtons {
     hit.on('pointerdown', () => setPressed(true));
     hit.on('pointerup', () => setPressed(false));
     hit.on('pointerout', () => setPressed(false));
+    hit.on('pointerupoutside', () => setPressed(false));
+  }
+
+  private destroy(): void {
+    this.scene.input.off('pointerup', this.releaseAllButtons);
+    this.scene.input.off('gameout', this.releaseAllButtons);
   }
 }

@@ -1,6 +1,13 @@
 # Music Assets
 
-Background music is currently generated procedurally at runtime (see `src/systems/MusicGenerator.ts`). To replace with higher-quality tracks, download CC0/royalty-free MP3s from the sources below and update `BootScene.preload()` to load them via `this.load.audio()` instead of `generateMusic()`.
+Background music is loaded from the MP3 files in this directory:
+
+- `retro-synth/retro_synth.mp3` — default game music (MenuScene, Floor1Scene, Floor2Scene)
+- `elevator-jazz/elevator_jazz.mp3` — elevator shaft (HubScene)
+
+These are loaded in `src/scenes/BootScene.ts` via `this.load.audio(...)`. SFX (jumps, footsteps, quiz feedback, info-card and link clicks) remain procedurally generated in `src/systems/SoundGenerator.ts`.
+
+The procedural music generator `src/systems/MusicGenerator.ts` is retained for reference / fallback but is no longer called.
 
 ## 80s Retro Synth (default game music)
 
@@ -28,16 +35,9 @@ Used in: HubScene (elevator shaft)
 | Archive.org — Elevator Music (Kevin MacLeod, CC0) | https://archive.org/details/elevator-musicchosic.com |
 | Archive.org — Elevator Music Bossa Nova | https://archive.org/details/elevator-music-bossa-nova-background-music-version-60s |
 
-## How to replace procedural music with MP3 files
+## Swapping in a different track
 
-1. Download tracks and save them as `public/music/retro_synth.mp3` and `public/music/elevator_jazz.mp3`
-2. In `src/scenes/BootScene.ts`, replace `generateMusic(this)` with:
-   ```typescript
-   this.load.audio('music_retro_synth', 'music/retro_synth.mp3');
-   this.load.audio('music_elevator_jazz', 'music/elevator_jazz.mp3');
-   ```
-3. Remove the `generateMusic` import from BootScene
-4. Everything else (EventBus, MusicPlugin, AudioManager) works unchanged
+To switch to a different MP3, drop it into the appropriate subdirectory and update the path in `src/scenes/BootScene.ts` (the `this.load.audio(...)` calls in `preload()`). The EventBus, MusicPlugin and AudioManager will pick up the new file with no further changes.
 
 ## Licensing
 

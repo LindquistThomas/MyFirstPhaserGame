@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { generateSprites } from '../systems/SpriteGenerator';
 import { generateSounds } from '../systems/SoundGenerator';
-import { generateMusic } from '../systems/MusicGenerator';
 import { AudioManager } from '../systems/AudioManager';
 import { COLORS } from '../config/gameConfig';
 
@@ -47,9 +46,12 @@ export class BootScene extends Phaser.Scene {
       percentText.destroy();
     });
 
-    // Generate procedural audio and queue for Phaser's loader
+    // Generate procedural SFX and queue for Phaser's loader
     generateSounds(this);
-    generateMusic(this);
+
+    // Background music loads from MP3 files in public/music/
+    this.load.audio('music_retro_synth', 'music/retro-synth/retro_synth.mp3');
+    this.load.audio('music_elevator_jazz', 'music/elevator-jazz/elevator_jazz.mp3');
   }
 
   create(): void {
