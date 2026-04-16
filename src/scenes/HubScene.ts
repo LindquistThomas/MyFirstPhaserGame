@@ -106,6 +106,7 @@ export class HubScene extends Phaser.Scene {
 
     this.createShaftBackground(wh);
     this.createPlatforms();
+    this.createLobbyDecorations();
     this.createPlayer();
     this.createElevator();
     this.createUI();
@@ -232,6 +233,27 @@ export class HubScene extends Phaser.Scene {
     this.platforms.add(shaftNet);
   }
 
+  /* ---- lobby decorations ---- */
+  private createLobbyDecorations(): void {
+    const positions = this.getFloorYPositions();
+    const lobbyY = positions[FLOORS.LOBBY];
+    const floorBottom = lobbyY + HubScene.FLOOR_H;
+    const cx = GAME_WIDTH / 2;
+    const sw = HubScene.SHAFT_WIDTH;
+    const leftEdge = cx - sw / 2;
+    const rightEdge = cx + sw / 2;
+
+    // Plants on the left side of the lobby
+    this.add.image(80, floorBottom - 32, 'plant_tall').setDepth(3);
+    this.add.image(leftEdge - 60, floorBottom - 32, 'plant_small').setDepth(3);
+    this.add.image(leftEdge - 140, floorBottom - 40, 'plant_tall').setDepth(3);
+
+    // Plants on the right side of the lobby
+    this.add.image(GAME_WIDTH - 80, floorBottom - 32, 'plant_tall').setDepth(3);
+    this.add.image(rightEdge + 60, floorBottom - 32, 'plant_small').setDepth(3);
+    this.add.image(rightEdge + 140, floorBottom - 40, 'plant_tall').setDepth(3);
+  }
+
   /* ---- elevator ---- */
   private createElevator(): void {
     const positions = this.getFloorYPositions();
@@ -254,10 +276,12 @@ export class HubScene extends Phaser.Scene {
   /* ---- player ---- */
   private createPlayer(): void {
     const positions = this.getFloorYPositions();
-    // Spawn with body-bottom near the walking surface (slab bottom).
-    const y = positions[this.progression.getCurrentFloor()] + HubScene.FLOOR_H - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+    const lobbyY = positions[FLOORS.LOBBY];
+    // Spawn on the lobby floor to the left of the shaft.
+    const spawnX = 200;
+    const spawnY = lobbyY + HubScene.FLOOR_H - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
 
-    this.player = new Player(this, GAME_WIDTH / 2, y);
+    this.player = new Player(this, spawnX, spawnY);
     this.physics.add.collider(this.player.sprite, this.platforms);
   }
 
