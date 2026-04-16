@@ -12,6 +12,36 @@ export class Floor1Scene extends LevelScene {
     super('Floor1Scene', FLOORS.PLATFORM_TEAM);
   }
 
+  protected override createDecorations(): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const T1 = G - 220;
+    const T2 = G - 440;
+    const T3 = G - 660;
+
+    // Ground floor — server room feel
+    this.add.image(500, G - 50, 'server_rack').setDepth(3);
+    this.add.image(560, G - 50, 'server_rack').setDepth(3);
+    this.add.image(620, G - 10, 'router').setDepth(3);
+    this.add.image(750, G - 36, 'desk_monitor').setDepth(3);
+    this.add.image(500, G - 10, 'cables').setDepth(1);
+
+    // Tier 1 — workstations
+    this.add.image(700, T1 - 36, 'desk_monitor').setDepth(3);
+    this.add.image(900, T1 - 22, 'monitor_dash').setDepth(3);
+    this.add.image(1000, T1 - 10, 'router').setDepth(3);
+
+    // Tier 2 — monitoring station
+    this.add.image(250, T2 - 22, 'monitor_dash').setDepth(3);
+    this.add.image(850, T2 - 50, 'server_rack').setDepth(3);
+    this.add.image(850, T2 - 10, 'cables').setDepth(1);
+
+    // Tier 3 — top level ops
+    this.add.image(600, T3 - 36, 'desk_monitor').setDepth(11);
+    this.add.image(750, T3 - 22, 'monitor_dash').setDepth(3);
+    this.add.image(1000, T3 - 50, 'server_rack').setDepth(3);
+    this.add.image(1060, T3 - 10, 'router').setDepth(3);
+  }
+
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;  // ground (full tile visible)
     const T1 = G - 220;                 // tier 1

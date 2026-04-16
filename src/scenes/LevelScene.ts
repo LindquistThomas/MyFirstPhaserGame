@@ -119,6 +119,7 @@ export class LevelScene extends Phaser.Scene {
     this.createBackground();
     this.createPlatforms();
     this.createRoomElevators();
+    this.createDecorations();
     this.createTokens();
     this.createExit();
     this.createPlayer();
@@ -205,6 +206,9 @@ export class LevelScene extends Phaser.Scene {
       this.roomLifts.push({ platform: plat, shaft, minY: re.minY, maxY: re.maxY });
     }
   }
+
+  /* ---- decorations (override in subclass to add floor-specific props) ---- */
+  protected createDecorations(): void { /* no-op by default */ }
 
   /* ---- tokens ---- */
   protected createTokens(): void {
