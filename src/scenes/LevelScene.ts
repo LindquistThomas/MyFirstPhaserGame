@@ -286,6 +286,10 @@ export class LevelScene extends Phaser.Scene {
       const icon = new InfoIcon(this, ip.x, ip.y - 40, () => {
         this.openInfoDialog(ip.contentId);
       });
+      // Hidden by default — zone:enter will reveal it when the player enters
+      // the zone. ZoneManager starts zones inactive and never emits an initial
+      // zone:exit, so we must explicitly set the starting state here.
+      icon.setVisible(false);
       // Direct call: initial badge state is scene-internal, not a cross-system event.
       if (QUIZ_DATA[ip.contentId]) {
         icon.setQuizBadge(this, isQuizPassed(ip.contentId));

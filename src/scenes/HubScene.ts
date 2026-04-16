@@ -368,6 +368,10 @@ export class HubScene extends Phaser.Scene {
       GAME_HEIGHT - 30,
       () => this.openInfoDialog(ELEVATOR_INFO_ID),
     );
+    // Hidden by default — zone:enter will reveal it when the player returns
+    // to the elevator. ZoneManager starts zones inactive and never emits an
+    // initial zone:exit, so we must explicitly set the starting state.
+    this.infoIcon.setVisible(false);
     // Direct call: badge is scene-internal state, not a cross-system concern.
     if (QUIZ_DATA[ELEVATOR_INFO_ID]) {
       this.infoIcon.setQuizBadge(this, isQuizPassed(ELEVATOR_INFO_ID));
