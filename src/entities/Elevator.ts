@@ -17,6 +17,7 @@ export class Elevator {
   private scene: Phaser.Scene;
   private floorStops: Map<number, number> = new Map();
   private isMoving = false;
+  private snapping = false;
   private currentFloor = 0;
   private direction: -1 | 0 | 1 = 0;
 
@@ -65,21 +66,25 @@ export class Elevator {
     if (up && !down) {
       this.direction = -1;
       this.isMoving = true;
+      this.snapping = false;
+      this.scene.tweens.killTweensOf(this.platform);
       this.platform.setVelocityY(-ELEVATOR_SPEED);
     } else if (down && !up) {
       this.direction = 1;
       this.isMoving = true;
+      this.snapping = false;
+      this.scene.tweens.killTweensOf(this.platform);
       this.platform.setVelocityY(ELEVATOR_SPEED);
     } else {
       this.stopAndSnap();
     }
 
-    // Clamp to shaft bounds
-    if (this.platform.y <= this.minY) {
+    // Clamp to shaft bounds — only block movement in the out-of-bounds direction
+    if (this.platform.y <= this.minY && this.platform.body!.velocity.y < 0) {
       this.platform.y = this.minY;
       this.platform.setVelocityY(0);
     }
-    if (this.platform.y >= this.maxY) {
+    if (this.platform.y >= this.maxY && this.platform.body!.velocity.y > 0) {
       this.platform.y = this.maxY;
       this.platform.setVelocityY(0);
     }
@@ -89,6 +94,9 @@ export class Elevator {
   private stopAndSnap(): void {
     this.platform.setVelocityY(0);
     this.direction = 0;
+
+    // If a snap tween is already running, let it finish
+    if (this.snapping) return;
 
     let bestId = this.currentFloor;
     let bestDist = Infinity;
@@ -103,12 +111,14 @@ export class Elevator {
     // If close enough to a stop, tween-snap to it
     const snapY = this.floorStops.get(bestId)!;
     if (bestDist < 60 && bestDist > 1) {
+      this.snapping = true;
       this.scene.tweens.add({
         targets: this.platform,
         y: snapY,
         duration: (bestDist / ELEVATOR_SPEED) * 1000,
         ease: 'Sine.easeOut',
         onComplete: () => {
+          this.snapping = false;
           this.isMoving = false;
           this.currentFloor = bestId;
         },
