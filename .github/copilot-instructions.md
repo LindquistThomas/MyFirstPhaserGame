@@ -84,10 +84,12 @@ The project uses a standalone `EventBus` (`src/systems/EventBus.ts`) for loose c
 - Single-use wiring where a direct function call is clearer
 - Performance-critical per-frame logic (event dispatch has overhead vs direct calls)
 
-**Audio events follow this convention:**
+**Event naming conventions:**
 - `sfx:<action>` — sound effects (e.g., `sfx:jump`, `sfx:collect`)
 - `music:play` — play a music track by key
 - `music:stop` — stop current music
+- `zone:enter` — player entered a named content zone (payload: `zoneId: string`)
+- `zone:exit` — player left a named content zone (payload: `zoneId: string`)
 
 **To add a new sound effect:**
 1. Generate the sound in `SoundGenerator.ts` and register it in `generateSounds()`
@@ -98,6 +100,50 @@ The project uses a standalone `EventBus` (`src/systems/EventBus.ts`) for loose c
 1. Generate the track in `MusicGenerator.ts` and register it in `generateMusic()`
 2. Add the scene→music mapping in `src/config/audioConfig.ts` under `SCENE_MUSIC`
 3. The `MusicPlugin` handles playback automatically — no scene code changes needed
+
+### Zone System
+
+Content zones gate which info cards, quizzes, and zone-specific UI (e.g. ElevatorButtons) are accessible. **This is the default pattern for any feature that should only appear in a specific area of a scene.**
+
+**How it works:**
+
+1. `ZoneManager` (`src/systems/ZoneManager.ts`) tracks named zones. Each zone has an ID and a `check: () => boolean` lambda — the check can be anything (physics body contact, proximity distance, rectangle overlap, custom state).
+2. `zoneManager.update()` is called once per frame. It emits `zone:enter` or `zone:exit` on the EventBus **only when the state changes** — not every frame.
+3. UI components subscribe to those events and show/hide themselves. The scene's update loop has no `setVisible()` calls for zone-gated elements.
+4. `zoneManager.getActiveZone()` provides a synchronous query for keyboard input handlers that need the current zone immediately (no event latency needed).
+
+**Adding a new zone (e.g. a lobby kiosk):**
+
+```typescript
+// In create() — register the zone:
+zoneManager.register('lobby-kiosk', () => Phaser.Math.Distance.Between(...) < 200);
+
+// In create() — subscribe once, unsubscribe on shutdown:
+const onEnter = (...args: unknown[]) => {
+  if ((args[0] as string) === 'lobby-kiosk') myIcon.setVisible(true);
+};
+const onExit = (...args: unknown[]) => {
+  if ((args[0] as string) === 'lobby-kiosk') myIcon.setVisible(false);
+};
+eventBus.on('zone:enter', onEnter);
+eventBus.on('zone:exit', onExit);
+this.events.once('shutdown', () => {
+  eventBus.off('zone:enter', onEnter);
+  eventBus.off('zone:exit', onExit);
+});
+
+// In update() — one call drives all zones:
+zoneManager.update();
+```
+
+**Rules:**
+- Always unsubscribe from the EventBus in the scene's `shutdown` event. EventBus is a singleton; Phaser scenes are not destroyed between start/stop, so handlers accumulate if not cleaned up.
+- Info icons (`InfoIcon`) start hidden; zone events reveal them. Never initialise a zone-gated icon as visible.
+- Badge refresh (quiz result on an icon) is a direct parent-to-child call — use `icon.setQuizBadge()` directly in the dialog close callback. No event needed.
+- Gameplay mechanics that happen to use the same button (e.g. in-room lift buttons in `LevelScene`) are **not** content zones. Drive them with direct `setVisible()` calls from physics state — not via ZoneManager.
+- `LevelConfig.infoPoints` accepts an optional `zoneRadius` per point (default 250 px). Override `createInfoZones()` in a subclass for non-circular zones.
+
+**Zone IDs match content IDs** (`infoContent.ts` keys) so the same string identifies both the zone and the dialog to open.
 
 ### Audio Architecture
 
