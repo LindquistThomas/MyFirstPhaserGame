@@ -346,11 +346,10 @@ export class HubScene extends Phaser.Scene {
       ) < BOARD_RADIUS,
     );
 
-    // Create the info icon floating above the board (world-space, scrolls with camera)
+    // Create the info icon in the bottom bar (screen-fixed, same position as elevator icon)
     this.lobbyBoardIcon = new InfoIcon(
-      this, boardX, boardY - 70,
+      this, GAME_WIDTH / 2 + 310, GAME_HEIGHT - 30,
       () => this.openInfoDialog(WELCOME_BOARD_ID),
-      true,
     );
     this.lobbyBoardIcon.setVisible(false);
 
