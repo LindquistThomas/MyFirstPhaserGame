@@ -54,9 +54,13 @@ export class HubScene extends Phaser.Scene {
   private zoneManager = new ZoneManager();
 
   /** Total scrollable world height for the hub shaft. */
-  private static readonly WORLD_HEIGHT = 2100;
+  private static readonly WORLD_HEIGHT = 2300;
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
+  /** Number of tile rows stacked per floor slab. */
+  private static readonly FLOOR_TILE_ROWS = 2;
+  /** Pixel height of one floor slab. */
+  private static readonly FLOOR_H = HubScene.FLOOR_TILE_ROWS * TILE_SIZE; // 256
   private static readonly ELEVATOR_STEP_OUT_X_MARGIN = 12;
   private static readonly FLOOR0_EDGE_TRIGGER_X = 36;
   private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 56;
@@ -141,6 +145,7 @@ export class HubScene extends Phaser.Scene {
     const cx = GAME_WIDTH / 2;
     const sw = HubScene.SHAFT_WIDTH;
     const WALK_H = 8;
+    const floorH = HubScene.FLOOR_H;
 
     for (const [floorId, y] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
@@ -150,20 +155,19 @@ export class HubScene extends Phaser.Scene {
       const leftEdge = cx - sw / 2;
       const rightEdge = cx + sw / 2;
 
-      // Visual header tiles (no physics) — ceiling / identity for this floor
-      for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
-        this.add.image(
-          tileLeft + TILE_SIZE / 2, y + TILE_SIZE / 2, 'platform_tile',
-        ).setDepth(2);
-      }
-      for (let tileLeft = rightEdge; tileLeft < GAME_WIDTH; tileLeft += TILE_SIZE) {
-        this.add.image(
-          tileLeft + TILE_SIZE / 2, y + TILE_SIZE / 2, 'platform_tile',
-        ).setDepth(2);
+      // Visual floor slab — stacked tile rows (no physics)
+      for (let row = 0; row < HubScene.FLOOR_TILE_ROWS; row++) {
+        const tileY = y + row * TILE_SIZE + TILE_SIZE / 2;
+        for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
+          this.add.image(tileLeft + TILE_SIZE / 2, tileY, 'platform_tile').setDepth(2);
+        }
+        for (let tileLeft = rightEdge; tileLeft < GAME_WIDTH; tileLeft += TILE_SIZE) {
+          this.add.image(tileLeft + TILE_SIZE / 2, tileY, 'platform_tile').setDepth(2);
+        }
       }
 
-      // Thin walking surface at tile bottom (the actual floor the player walks on)
-      const walkY = y + TILE_SIZE;
+      // Thin walking surface at slab bottom
+      const walkY = y + floorH;
       const addWalkSurface = (rx: number, rw: number) => {
         const rect = this.add.rectangle(
           rx, walkY + WALK_H / 2, rw, WALK_H, 0x444466, 1,
@@ -174,7 +178,7 @@ export class HubScene extends Phaser.Scene {
       addWalkSurface(leftEdge / 2, leftEdge);
       addWalkSurface((rightEdge + GAME_WIDTH) / 2, GAME_WIDTH - rightEdge);
 
-      // Floor label — inside the tile row
+      // Floor label — inside the tile slab
       this.add.text(20, y + 10, `F${fId}`, {
         fontFamily: 'monospace', fontSize: '28px',
         color: COLORS.hudText, fontStyle: 'bold',
@@ -201,13 +205,14 @@ export class HubScene extends Phaser.Scene {
   private createElevator(): void {
     const positions = this.getFloorYPositions();
     const cx = GAME_WIDTH / 2;
-    // Elevator platform top aligns with the walking surface (tile bottom).
-    const startY = positions[this.progression.getCurrentFloor()] + TILE_SIZE + 8;
+    const floorH = HubScene.FLOOR_H;
+    // Elevator platform top aligns with the walking surface (slab bottom).
+    const startY = positions[this.progression.getCurrentFloor()] + floorH + 8;
 
     this.elevator = new Elevator(this, cx, startY);
 
     for (const [id, y] of Object.entries(positions)) {
-      this.elevator.addFloor(Number(id), y + TILE_SIZE + 8);
+      this.elevator.addFloor(Number(id), y + floorH + 8);
     }
 
     this.physics.add.collider(this.player.sprite, this.elevator.platform, () => {
@@ -218,8 +223,8 @@ export class HubScene extends Phaser.Scene {
   /* ---- player ---- */
   private createPlayer(): void {
     const positions = this.getFloorYPositions();
-    // Spawn with body-bottom near the walking surface (tile bottom).
-    const y = positions[this.progression.getCurrentFloor()] + TILE_SIZE - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+    // Spawn with body-bottom near the walking surface (slab bottom).
+    const y = positions[this.progression.getCurrentFloor()] + HubScene.FLOOR_H - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
 
     this.player = new Player(this, GAME_WIDTH / 2, y);
     this.physics.add.collider(this.player.sprite, this.platforms);
@@ -239,9 +244,9 @@ export class HubScene extends Phaser.Scene {
   /* ---- helpers ---- */
   private getFloorYPositions(): Record<number, number> {
     return {
-      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 400,
-      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 800,
-      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1200,
+      [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 530,
+      [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 1060,
+      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1590,
     };
   }
 
@@ -397,7 +402,7 @@ export class HubScene extends Phaser.Scene {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
 
-      const walkingSurface = floorY + TILE_SIZE;
+      const walkingSurface = floorY + HubScene.FLOOR_H;
       if (Math.abs(bodyBottom - walkingSurface) < HubScene.FLOOR_DETECTION_TOLERANCE) {
         if (this.progression.isFloorUnlocked(fId)) {
           this.enterFloor(fId);
@@ -416,7 +421,7 @@ export class HubScene extends Phaser.Scene {
 
     const positions = this.getFloorYPositions();
     const lobbyY = positions[FLOORS.LOBBY];
-    const lobbySurface = lobbyY + TILE_SIZE;
+    const lobbySurface = lobbyY + HubScene.FLOOR_H;
     if (Math.abs(body.bottom - lobbySurface) >= HubScene.FLOOR_DETECTION_TOLERANCE) return;
 
     const px = this.player.sprite.x;
