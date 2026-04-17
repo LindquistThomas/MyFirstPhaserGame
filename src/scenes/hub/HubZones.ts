@@ -1,5 +1,4 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { QUIZ_DATA } from '../../config/quizData';
 import { eventBus } from '../../systems/EventBus';
 import { ZoneManager } from '../../systems/ZoneManager';
@@ -14,8 +13,12 @@ export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
 
 const BOARD_RADIUS = 120;
-const INFO_ICON_X_OFFSET = 310;
-const INFO_ICON_Y = GAME_HEIGHT - 30;
+/**
+ * Info icons live in the HUD top bar (top bar is 44 px tall, center y = 22).
+ * Placed left of the title and right of the AU counter.
+ */
+const INFO_ICON_X = 210;
+const INFO_ICON_Y = 22;
 
 export interface HubZonesOptions {
   scene: Phaser.Scene;
@@ -73,8 +76,9 @@ export class HubZones {
 
     this.lobbyBoardIcon = new InfoIcon(
       scene,
-      GAME_WIDTH / 2 + INFO_ICON_X_OFFSET, INFO_ICON_Y,
+      INFO_ICON_X, INFO_ICON_Y,
       () => dialogs.open(WELCOME_BOARD_ID),
+      WELCOME_BOARD_ID,
     );
     this.lobbyBoardIcon.setVisible(false);
 
@@ -126,8 +130,9 @@ export class HubZones {
     const { scene, dialogs } = this.opts;
     this.elevatorInfoIcon = new InfoIcon(
       scene,
-      GAME_WIDTH / 2 + INFO_ICON_X_OFFSET, INFO_ICON_Y,
+      INFO_ICON_X, INFO_ICON_Y,
       () => dialogs.open(ELEVATOR_INFO_ID),
+      ELEVATOR_INFO_ID,
     );
     this.elevatorInfoIcon.setVisible(false);
     if (QUIZ_DATA[ELEVATOR_INFO_ID]) {

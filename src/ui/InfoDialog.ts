@@ -110,14 +110,14 @@ export class InfoDialog extends ModalBase {
 
     if (content.links && content.links.length > 0) {
       const linksHeader = this.scene.add.text(panelX + PADDING, curY, 'Learn more:', {
-        fontFamily: 'monospace', fontSize: '13px', color: '#7799aa', fontStyle: 'bold',
+        fontFamily: 'monospace', fontSize: '14px', color: '#a0b8cc', fontStyle: 'bold',
       });
       this.container.add(linksHeader);
       curY += 24;
 
       for (const link of content.links) {
         const linkText = this.scene.add.text(panelX + PADDING + 10, curY, `\u25b8 ${link.label}`, {
-          fontFamily: 'monospace', fontSize: '14px', color: '#44aaff',
+          fontFamily: 'monospace', fontSize: '15px', color: '#44aaff',
         }).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
         linkText.on('pointerover', () => linkText.setColor('#88ddff'));
@@ -141,7 +141,7 @@ export class InfoDialog extends ModalBase {
 
       const toggleY = curY;
       const toggleText = this.scene.add.text(panelX + PADDING, toggleY, '[+]  Deep Dive', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#00aaff', fontStyle: 'bold',
+        fontFamily: 'monospace', fontSize: '15px', color: '#00aaff', fontStyle: 'bold',
       }).setScrollFactor(0).setInteractive({ useHandCursor: true });
       this.container.add(toggleText);
 
@@ -154,7 +154,7 @@ export class InfoDialog extends ModalBase {
 
       const extBodyMeasure = this.scene.make.text({
         x: 0, y: 0, text: extInfo.body,
-        style: { fontFamily: 'monospace', fontSize: '14px', color: '#a0b0c0',
+        style: { fontFamily: 'monospace', fontSize: '15px', color: '#a0b0c0',
           wordWrap: { width: panelW - PADDING * 2 - 16 }, lineSpacing: 5 },
         add: false,
       });
@@ -182,7 +182,7 @@ export class InfoDialog extends ModalBase {
           extContainer.add(extBorder);
 
           const extBody = this.scene.add.text(panelX + PADDING + 16, ey, extInfo.body, {
-            fontFamily: 'monospace', fontSize: '14px', color: '#a0b0c0',
+            fontFamily: 'monospace', fontSize: '15px', color: '#a0b0c0',
             wordWrap: { width: panelW - PADDING * 2 - 16 }, lineSpacing: 5,
           });
           extContainer.add(extBody);
@@ -229,7 +229,7 @@ export class InfoDialog extends ModalBase {
         quizColor = '#44ff88';
       } else if (quizStatus && !quizStatus.canRetry && quizStatus.cooldownSeconds > 0) {
         quizLabel = `[RETRY IN ${quizStatus.cooldownSeconds}s]`;
-        quizColor = '#556677';
+        quizColor = '#8899aa';
         clickable = false;
       } else {
         quizLabel = '[\u2606  TAKE QUIZ]';
@@ -286,21 +286,21 @@ export class InfoDialog extends ModalBase {
 
     curY = panelY + panelH - CLOSE_BAR_H - 4;
     const closeText = this.scene.add.text(GAME_WIDTH / 2, curY, '[ESC]  Close', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#556677',
+      fontFamily: 'monospace', fontSize: '15px', color: '#8899aa',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
     closeTextRef = closeText;
 
     closeText.on('pointerover', () => closeText.setColor('#88aacc'));
-    closeText.on('pointerout', () => closeText.setColor('#556677'));
+    closeText.on('pointerout', () => closeText.setColor('#8899aa'));
     closeText.on('pointerdown', () => this.close());
     this.container.add(closeText);
 
     const xBtn = this.scene.add.text(panelX + panelW - 18, panelY + 10, 'X', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
     xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
-    xBtn.on('pointerout', () => xBtn.setColor('#556677'));
+    xBtn.on('pointerout', () => xBtn.setColor('#8899aa'));
     xBtn.on('pointerdown', () => this.close());
     this.container.add(xBtn);
   }

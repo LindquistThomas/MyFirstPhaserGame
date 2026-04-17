@@ -117,7 +117,7 @@ export class QuizDialog extends ModalBase {
     const badge = this.scene.add.text(
       GAME_WIDTH / 2, curY + 30,
       `[${q.difficulty.toUpperCase()}]`,
-      { fontFamily: 'monospace', fontSize: '13px', color: diffColors[q.difficulty], fontStyle: 'bold' },
+      { fontFamily: 'monospace', fontSize: '14px', color: diffColors[q.difficulty], fontStyle: 'bold' },
     ).setOrigin(0.5, 0);
     this.container.add(badge);
 
@@ -136,10 +136,10 @@ export class QuizDialog extends ModalBase {
     }
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
     xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
-    xBtn.on('pointerout', () => xBtn.setColor('#556677'));
+    xBtn.on('pointerout', () => xBtn.setColor('#8899aa'));
     xBtn.on('pointerdown', () => this.close());
     this.container.add(xBtn);
   }
@@ -159,7 +159,7 @@ export class QuizDialog extends ModalBase {
     this.container.add(btnBg);
 
     const btnText = this.scene.add.text(x + 16, y + h / 2, label, {
-      fontFamily: 'monospace', fontSize: '14px', color: '#c0c8d4',
+      fontFamily: 'monospace', fontSize: '15px', color: '#c0c8d4',
       wordWrap: { width: w - 32 },
     }).setOrigin(0, 0.5);
     this.container.add(btnText);
@@ -226,7 +226,7 @@ export class QuizDialog extends ModalBase {
 
     const expMeasure = this.scene.make.text({
       x: 0, y: 0, text: question.explanation,
-      style: { fontFamily: 'monospace', fontSize: '13px', color: '#8899aa',
+      style: { fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
         wordWrap: { width: PANEL_W - PADDING * 2 - 12 }, lineSpacing: 4 },
       add: false,
     });
@@ -267,7 +267,7 @@ export class QuizDialog extends ModalBase {
     const badge = this.scene.add.text(
       GAME_WIDTH / 2, curY + 30,
       `Question ${this.currentIndex + 1} / ${this.questions.length}  [${question.difficulty.toUpperCase()}]`,
-      { fontFamily: 'monospace', fontSize: '13px', color: diffColors[question.difficulty] },
+      { fontFamily: 'monospace', fontSize: '14px', color: diffColors[question.difficulty] },
     ).setOrigin(0.5, 0);
     this.container.add(badge);
 
@@ -311,7 +311,7 @@ export class QuizDialog extends ModalBase {
       const btnText = this.scene.add.text(
         panelX + PADDING + 16, choiceY + CHOICE_H / 2,
         `${prefix}. ${marker} ${question.choices[i]}`,
-        { fontFamily: 'monospace', fontSize: '14px', color: textColor,
+        { fontFamily: 'monospace', fontSize: '15px', color: textColor,
           wordWrap: { width: PANEL_W - PADDING * 2 - 32 } },
       ).setOrigin(0, 0.5);
       this.container.add(btnText);
@@ -320,7 +320,7 @@ export class QuizDialog extends ModalBase {
     curY += 4 * CHOICE_H + 3 * CHOICE_GAP + 16;
 
     const expText = this.scene.add.text(panelX + PADDING + 6, curY, question.explanation, {
-      fontFamily: 'monospace', fontSize: '13px', color: '#8899aa',
+      fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
       wordWrap: { width: PANEL_W - PADDING * 2 - 12 }, lineSpacing: 4,
     });
     this.container.add(expText);
@@ -352,10 +352,10 @@ export class QuizDialog extends ModalBase {
     this.container.add(nextBtn);
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#556677', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
     xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
-    xBtn.on('pointerout', () => xBtn.setColor('#556677'));
+    xBtn.on('pointerout', () => xBtn.setColor('#8899aa'));
     xBtn.on('pointerdown', () => this.close());
     this.container.add(xBtn);
   }
@@ -441,7 +441,7 @@ export class QuizDialog extends ModalBase {
       const alreadyText = this.scene.add.text(
         GAME_WIDTH / 2, curY,
         'Quiz already completed \u2014 no additional AU',
-        { fontFamily: 'monospace', fontSize: '14px', color: '#556677' },
+        { fontFamily: 'monospace', fontSize: '15px', color: '#8899aa' },
       ).setOrigin(0.5, 0);
       this.container.add(alreadyText);
       curY += 40;

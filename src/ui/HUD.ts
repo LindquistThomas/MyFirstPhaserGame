@@ -49,8 +49,8 @@ export class HUD {
 
     // Game title (center)
     this.container.add(
-      this.scene.add.text(GAME_WIDTH / 2, 10, 'SO YOU WANT TO BE AN ARCHITECT', {
-        fontFamily: 'monospace', fontSize: '14px', color: '#556677',
+      this.scene.add.text(GAME_WIDTH / 2, 9, 'SO YOU WANT TO BE AN ARCHITECT', {
+        fontFamily: 'monospace', fontSize: '18px', color: '#b8c8dc', fontStyle: 'bold',
       }).setOrigin(0.5, 0),
     );
   }

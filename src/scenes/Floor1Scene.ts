@@ -96,6 +96,8 @@ export class Floor1Scene extends LevelScene {
 
       infoPoints: [
         { x: 300, y: G, contentId: 'platform-engineering' },
+        // Right-hand ground zone — near the server racks / ops desk.
+        { x: 900, y: G, contentId: 'you-build-you-run' },
       ],
     };
   }

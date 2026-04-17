@@ -44,7 +44,7 @@ export class ElevatorPanel {
     // Title
     const title = this.scene.add.text(panelWidth / 2, 12, 'ELEVATOR', {
       fontFamily: 'monospace',
-      fontSize: '14px',
+      fontSize: '15px',
       color: COLORS.titleText,
       fontStyle: 'bold',
     }).setOrigin(0.5, 0);
@@ -77,7 +77,7 @@ export class ElevatorPanel {
       // Floor name
       const floorName = this.scene.add.text(10, 24, floorData.name, {
         fontFamily: 'monospace',
-        fontSize: '11px',
+        fontSize: '15px',
         color: isUnlocked ? '#aabbcc' : '#664444',
       });
       btnContainer.add(floorName);

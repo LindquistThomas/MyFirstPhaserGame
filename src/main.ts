@@ -9,6 +9,30 @@ import { Floor2Scene } from './scenes/Floor2Scene';
 import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
 
+// Render all Text objects at 2x internal resolution so glyphs stay crisp
+// after the canvas is FIT-scaled to the viewport. Applies to both
+// `scene.add.text(...)` and `scene.make.text(...)` unless a resolution is
+// explicitly set by the caller.
+const TEXT_RESOLUTION = 2;
+const factoryProto = Phaser.GameObjects.GameObjectFactory.prototype as unknown as {
+  text: (x: number, y: number, text: string | string[], style?: Phaser.Types.GameObjects.Text.TextStyle) => Phaser.GameObjects.Text;
+};
+const origAddText = factoryProto.text;
+factoryProto.text = function (x, y, text, style) {
+  const t = origAddText.call(this, x, y, text, style);
+  if (!style || style.resolution === undefined) t.setResolution(TEXT_RESOLUTION);
+  return t;
+};
+const creatorProto = Phaser.GameObjects.GameObjectCreator.prototype as unknown as {
+  text: (config: Phaser.Types.GameObjects.Text.TextConfig, addToScene?: boolean) => Phaser.GameObjects.Text;
+};
+const origMakeText = creatorProto.text;
+creatorProto.text = function (config, addToScene) {
+  const t = origMakeText.call(this, config, addToScene);
+  if (config?.style?.resolution === undefined) t.setResolution(TEXT_RESOLUTION);
+  return t;
+};
+
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game-container',

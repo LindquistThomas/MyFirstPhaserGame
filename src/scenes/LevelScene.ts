@@ -110,6 +110,11 @@ export class LevelScene extends Phaser.Scene {
       progression: this.progression,
       getIconForContent: (id) => this.infoIconsByZone.get(id),
       onOpen: (id) => markSeen(id),
+      onClose: (id) => {
+        // Dialog was just read — switch the icon (if still visible in its
+        // zone) from the eye-catching "unseen" animation to the subtle pulse.
+        this.infoIconsByZone.get(id)?.markAsSeen();
+      },
     });
   }
 
@@ -230,7 +235,7 @@ export class LevelScene extends Phaser.Scene {
     const c = this.getLevelConfig();
     this.exitDoor = this.add.image(c.exitPosition.x, c.exitPosition.y, 'door_exit').setDepth(4);
     this.add.text(c.exitPosition.x, c.exitPosition.y - 70, '\u2190 ELEVATOR', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#aaddff',
+      fontFamily: 'monospace', fontSize: '15px', color: '#aaddff',
     }).setOrigin(0.5).setDepth(5);
   }
 
@@ -290,12 +295,13 @@ export class LevelScene extends Phaser.Scene {
     for (const ip of config.infoPoints) {
       const radius = ip.zoneRadius ?? DEFAULT_ZONE_RADIUS;
 
-      const icon = new InfoIcon(this, ip.x, ip.y - 40, () => {
+      // Icons live in the HUD top bar (shared fixed position) rather than
+      // floating above the info point. Only one zone is active at a time,
+      // so the icons never overlap. The contentId drives the "unseen"
+      // attention animation on first visit.
+      const icon = new InfoIcon(this, 210, 22, () => {
         this.dialogs.open(ip.contentId);
-      });
-      // Hidden by default — zone:enter will reveal it when the player enters
-      // the zone. ZoneManager starts zones inactive and never emits an initial
-      // zone:exit, so we must explicitly set the starting state here.
+      }, ip.contentId);
       icon.setVisible(false);
       // Direct call: initial badge state is scene-internal, not a cross-system event.
       if (QUIZ_DATA[ip.contentId]) {

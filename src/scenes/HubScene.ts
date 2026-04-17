@@ -94,10 +94,14 @@ export class HubScene extends Phaser.Scene {
     this.dialogs = new DialogController(this, {
       progression: this.progression,
       getIconForContent: () => this.zones.elevatorInfoIcon,
+      onOpen: (id) => markSeen(id),
       onClose: (id) => {
         if (id === ELEVATOR_INFO_ID && !this.zones.elevatorInfoIcon) {
-          markSeen(id);
           this.zones.onElevatorInfoSeen();
+        } else if (id === ELEVATOR_INFO_ID) {
+          this.zones.elevatorInfoIcon?.markAsSeen();
+        } else if (id === WELCOME_BOARD_ID) {
+          this.zones.lobbyBoardIcon?.markAsSeen();
         }
       },
     });
@@ -217,7 +221,7 @@ export class HubScene extends Phaser.Scene {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
         const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.progression.getAUNeededForFloor(fId)} AU`;
         this.add.text(rightEdge + 20, walkY + 20, label, {
-          fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
+          fontFamily: 'monospace', fontSize: '15px', color: arrowColor,
         }).setDepth(5);
       }
     }
@@ -310,7 +314,7 @@ export class HubScene extends Phaser.Scene {
     this.hud = new HUD(this, this.progression);
 
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#556677',
+      fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
     this.elevatorButtons = new ElevatorButtons(this, 56);

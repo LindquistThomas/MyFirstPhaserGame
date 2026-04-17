@@ -292,6 +292,135 @@ export const QUIZ_DATA: Record<string, QuizDefinition> = {
   },
 
   /* --------------------------------------------------------- */
+  /*  You Build It, You Run It                                  */
+  /* --------------------------------------------------------- */
+  'you-build-you-run': {
+    infoId: 'you-build-you-run',
+    questions: [
+      // ---- EASY ----
+      {
+        id: 'ybyr-e1',
+        difficulty: 'easy',
+        question: 'Who coined the phrase "You build it, you run it"?',
+        choices: [
+          'Martin Fowler',
+          'Werner Vogels (Amazon CTO)',
+          'Kent Beck',
+          'Gene Kim',
+        ],
+        correctIndex: 1,
+        explanation: 'Werner Vogels coined the phrase in a 2006 ACM Queue interview to describe how AWS teams work.',
+      },
+      {
+        id: 'ybyr-e2',
+        difficulty: 'easy',
+        question: 'In "you build it, you run it," who carries the pager when a service breaks in production?',
+        choices: [
+          'A separate 24/7 operations team',
+          'The developers who wrote the service',
+          'The security team',
+          'The CTO',
+        ],
+        correctIndex: 1,
+        explanation: 'The team that built the service also operates it — closing the feedback loop between design and production behaviour.',
+      },
+      {
+        id: 'ybyr-e3',
+        difficulty: 'easy',
+        question: 'Which model does "you build it, you run it" replace?',
+        choices: [
+          'Agile sprints',
+          'Test-driven development',
+          'The "throw code over the wall" handoff between dev and ops',
+          'Pair programming',
+        ],
+        correctIndex: 2,
+        explanation: 'It replaces the old relay race where developers handed finished code to a separate ops team that hadn\'t designed it.',
+      },
+      // ---- MEDIUM ----
+      {
+        id: 'ybyr-m1',
+        difficulty: 'medium',
+        question: 'Why does being on-call for your own service tend to improve its design?',
+        choices: [
+          'It forces developers to work longer hours',
+          'On-call hours count toward performance reviews',
+          'When you personally get paged at 3 a.m., you invest in reliability and fix root causes',
+          'On-call rotations generate more commits',
+        ],
+        correctIndex: 2,
+        explanation: 'The pager is a direct feedback signal: pain felt by the author becomes reliability improvements in the next release.',
+      },
+      {
+        id: 'ybyr-m2',
+        difficulty: 'medium',
+        question: 'Which advantage for a dev team does "you build it, you run it" NOT directly provide?',
+        choices: [
+          'Faster feedback from production',
+          'Tighter ownership and autonomy',
+          'A guarantee that the team never needs other teams',
+          'Growth of SRE / deployment skills across the team',
+        ],
+        correctIndex: 2,
+        explanation: 'Ownership is end-to-end, but teams still collaborate — typically with a Platform team that makes "running it" easy.',
+      },
+      {
+        id: 'ybyr-m3',
+        difficulty: 'medium',
+        question: 'Which real-world analogy best captures "you build it, you run it"?',
+        choices: [
+          'A novelist who hires a ghostwriter',
+          'A restaurant chef who also works the dining room and hears customers directly',
+          'A courier who only delivers pre-packaged boxes',
+          'A librarian organizing other people\'s books',
+        ],
+        correctIndex: 1,
+        explanation: 'The chef hears complaints in real time and iterates the menu — a tight feedback loop the factory-canteen model lacks.',
+      },
+      // ---- HARD ----
+      {
+        id: 'ybyr-h1',
+        difficulty: 'hard',
+        question: 'Which research programme links end-to-end team ownership to the "four key metrics" (deployment frequency, lead time, change failure rate, MTTR)?',
+        choices: [
+          'ISO 9001',
+          'DORA / State of DevOps (Accelerate)',
+          'ITIL',
+          'CMMI',
+        ],
+        correctIndex: 1,
+        explanation: 'DORA\'s Accelerate research shows teams practicing "you build it, you run it" consistently outperform on all four key delivery metrics.',
+      },
+      {
+        id: 'ybyr-h2',
+        difficulty: 'hard',
+        question: 'What is the main risk of adopting "you build it, you run it" without a supporting Platform team?',
+        choices: [
+          'Developers become too specialized in one area',
+          'Cognitive overload — every team must also master Kubernetes, tracing and incident response',
+          'Code reviews become mandatory',
+          'Services are deployed too infrequently',
+        ],
+        correctIndex: 1,
+        explanation: 'Without a "thinnest viable platform" to reduce cognitive load, full ownership can crush product teams — Team Topologies pairs the two patterns deliberately.',
+      },
+      {
+        id: 'ybyr-h3',
+        difficulty: 'hard',
+        question: 'Which complementary practice is NOT typically listed alongside "you build it, you run it"?',
+        choices: [
+          'Blameless post-mortems and error budgets',
+          'Feature flags and progressive (canary / blue-green) deployment',
+          'Production-grade observability built in from day one',
+          'Quarterly "big bang" release windows managed by a change board',
+        ],
+        correctIndex: 3,
+        explanation: 'Quarterly change-board releases are the opposite pattern — they recreate the dev/ops wall the principle is designed to remove.',
+      },
+    ],
+  },
+
+  /* --------------------------------------------------------- */
   /*  Cloud-Native Architecture                                 */
   /* --------------------------------------------------------- */
   'cloud-architecture': {

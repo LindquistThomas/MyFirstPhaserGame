@@ -15,7 +15,7 @@ const HUD_BOTTOM_TOP = 915;
  *  - Shows FPS counter in the top-left corner
  */
 export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
-  private fpsText?: Phaser.GameObjects.Text;
+  private legendText?: Phaser.GameObjects.Text;
   private debugKey?: Phaser.Input.Keyboard.Key;
   private active = false;
   private gfx?: Phaser.GameObjects.Graphics;
@@ -46,18 +46,21 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
 
   private createOverlay(): void {
     if (!this.scene) return;
+    // Depth high enough to draw on top of sprites/tiles so tiny or
+    // overlapping physics bodies are never hidden behind scenery.
     this.gfx = this.scene.add.graphics().setDepth(998);
 
     // Screen-space HUD zone indicators
     this.hudGfx = this.scene.add.graphics().setDepth(998).setScrollFactor(0);
     this.drawHudZones();
 
-    this.fpsText = this.scene.add.text(8, 8, '', {
+    this.legendText = this.scene.add.text(8, 8, '', {
       fontFamily: 'monospace',
-      fontSize: '14px',
-      color: '#ff4444',
-      backgroundColor: '#00000099',
-      padding: { x: 6, y: 3 },
+      fontSize: '13px',
+      color: '#ffffff',
+      backgroundColor: '#000000cc',
+      padding: { x: 6, y: 4 },
+      lineSpacing: 2,
     })
       .setDepth(999)
       .setScrollFactor(0)
@@ -77,7 +80,7 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   }
 
   private applyDebugState(): void {
-    this.fpsText?.setVisible(this.active);
+    this.legendText?.setVisible(this.active);
     this.gfx?.setVisible(this.active);
     this.hudGfx?.setVisible(this.active);
     if (!this.active) this.gfx?.clear();
@@ -94,27 +97,134 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
     if (!world || !g) return;
     g.clear();
 
-    // Static bodies — green outlines
-    for (const b of world.staticBodies.entries) {
-      const body = b as Phaser.Physics.Arcade.StaticBody;
-      g.lineStyle(2, 0x00ff00, 0.8);
-      g.strokeRect(body.x, body.y, body.width, body.height);
+    // --- World bounds — magenta (invisible wall at canvas edges) ---
+    if (world.bounds) {
+      g.lineStyle(2, 0xff00ff, 0.9);
+      g.strokeRect(world.bounds.x, world.bounds.y, world.bounds.width, world.bounds.height);
     }
 
-    // Dynamic bodies — red outlines with labels
+    let staticCount = 0;
+    let dynamicCount = 0;
+    let disabledCount = 0;
+
+    // --- Static bodies — translucent green fill + outline ---
+    for (const b of world.staticBodies.entries) {
+      const body = b as Phaser.Physics.Arcade.StaticBody;
+      if (!body.enable) {
+        this.drawDisabledBody(g, body.x, body.y, body.width, body.height);
+        disabledCount++;
+        continue;
+      }
+      staticCount++;
+      g.fillStyle(0x00ff00, 0.18);
+      g.fillRect(body.x, body.y, body.width, body.height);
+      g.lineStyle(2, 0x00ff00, 0.95);
+      g.strokeRect(body.x, body.y, body.width, body.height);
+      this.markDisabledSides(g, body);
+    }
+
+    // --- Dynamic bodies — translucent red fill + outline + sprite-vs-body indicators ---
     for (const b of world.bodies.entries) {
       const body = b as Phaser.Physics.Arcade.Body;
-      g.lineStyle(2, 0xff0000, 0.9);
+      if (!body.enable) {
+        this.drawDisabledBody(g, body.x, body.y, body.width, body.height);
+        disabledCount++;
+        continue;
+      }
+      dynamicCount++;
+
+      g.fillStyle(0xff0000, 0.18);
+      g.fillRect(body.x, body.y, body.width, body.height);
+      g.lineStyle(2, 0xff2222, 0.95);
       g.strokeRect(body.x, body.y, body.width, body.height);
+      this.markDisabledSides(g, body);
+
+      // Body center
+      const cx = body.x + body.width / 2;
+      const cy = body.y + body.height / 2;
+      g.fillStyle(0xffff00, 1);
+      g.fillCircle(cx, cy, 2.5);
+
+      // Game-object position (sprite origin). If this is offset from the
+      // body, it exposes the hitbox-vs-sprite mismatch that can feel like
+      // "being blocked by nothing".
+      const go = body.gameObject as (Phaser.GameObjects.GameObject & { x?: number; y?: number }) | undefined;
+      if (go && typeof go.x === 'number' && typeof go.y === 'number') {
+        g.fillStyle(0x00ffff, 1);
+        g.fillCircle(go.x, go.y, 2.5);
+        if (Phaser.Math.Distance.Between(go.x, go.y, cx, cy) > 1) {
+          g.lineStyle(1, 0x00ffff, 0.8);
+          g.lineBetween(go.x, go.y, cx, cy);
+        }
+      }
 
       // Velocity indicator
       if (body.velocity.x !== 0 || body.velocity.y !== 0) {
-        g.lineStyle(1, 0xffff00, 0.7);
-        const cx = body.x + body.width / 2;
-        const cy = body.y + body.height / 2;
+        g.lineStyle(1, 0xffff00, 0.9);
         g.lineBetween(cx, cy, cx + body.velocity.x * 0.1, cy + body.velocity.y * 0.1);
       }
     }
+
+    this.updateLegend(staticCount, dynamicCount, disabledCount);
+  }
+
+  /** Faint dashed grey outline for disabled bodies (not currently blocking). */
+  private drawDisabledBody(g: Phaser.GameObjects.Graphics, x: number, y: number,
+                           w: number, h: number): void {
+    g.lineStyle(1, 0x888888, 0.4);
+    const dash = 4;
+    // Top / bottom
+    for (let dx = 0; dx < w; dx += dash * 2) {
+      g.lineBetween(x + dx, y, x + Math.min(dx + dash, w), y);
+      g.lineBetween(x + dx, y + h, x + Math.min(dx + dash, w), y + h);
+    }
+    // Left / right
+    for (let dy = 0; dy < h; dy += dash * 2) {
+      g.lineBetween(x, y + dy, x, y + Math.min(dy + dash, h));
+      g.lineBetween(x + w, y + dy, x + w, y + Math.min(dy + dash, h));
+    }
+  }
+
+  /** Overlay an "X" on any side with checkCollision disabled. */
+  private markDisabledSides(g: Phaser.GameObjects.Graphics,
+                            body: Phaser.Physics.Arcade.Body | Phaser.Physics.Arcade.StaticBody): void {
+    const c = body.checkCollision;
+    if (c.up && c.down && c.left && c.right) return;
+    g.lineStyle(2, 0xff9900, 0.95);
+    const s = 6;
+    if (!c.up) {
+      const mx = body.x + body.width / 2;
+      g.lineBetween(mx - s, body.y - s, mx + s, body.y + s);
+      g.lineBetween(mx - s, body.y + s, mx + s, body.y - s);
+    }
+    if (!c.down) {
+      const mx = body.x + body.width / 2;
+      const y = body.y + body.height;
+      g.lineBetween(mx - s, y - s, mx + s, y + s);
+      g.lineBetween(mx - s, y + s, mx + s, y - s);
+    }
+    if (!c.left) {
+      const my = body.y + body.height / 2;
+      g.lineBetween(body.x - s, my - s, body.x + s, my + s);
+      g.lineBetween(body.x - s, my + s, body.x + s, my - s);
+    }
+    if (!c.right) {
+      const my = body.y + body.height / 2;
+      const x = body.x + body.width;
+      g.lineBetween(x - s, my - s, x + s, my + s);
+      g.lineBetween(x - s, my + s, x + s, my - s);
+    }
+  }
+
+  private updateLegend(staticCount: number, dynamicCount: number, disabledCount: number): void {
+    if (!this.legendText) return;
+    this.legendText.setText([
+      `FPS: ${Math.round(this.game?.loop.actualFps ?? 0)}`,
+      `static: ${staticCount}  dynamic: ${dynamicCount}  disabled: ${disabledCount}`,
+      'green=static  red=dynamic  magenta=world bounds',
+      'cyan dot=sprite origin  yellow dot=body center',
+      'orange X=disabled side  grey dashed=disabled body',
+    ].join('\n'));
   }
 
   private onUpdate(): void {
@@ -126,18 +236,13 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
 
     if (this.active && this.game) {
       this.drawBodies();
-
-      if (this.fpsText) {
-        const fps = Math.round(this.game.loop.actualFps);
-        this.fpsText.setText(`FPS: ${fps}`);
-      }
     }
   }
 
   private onShutdown(): void {
     this.systems?.events.off('update', this.onUpdate, this);
-    this.fpsText?.destroy();
-    this.fpsText = undefined;
+    this.legendText?.destroy();
+    this.legendText = undefined;
     this.gfx?.destroy();
     this.gfx = undefined;
     this.hudGfx?.destroy();

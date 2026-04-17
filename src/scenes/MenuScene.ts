@@ -66,15 +66,15 @@ export class MenuScene extends Phaser.Scene {
 
     // Controls
     this.add.text(cx, GAME_HEIGHT - 100, 'WASD / Arrows: Move  |  Space: Jump  |  E: Interact', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#556677',
+      fontFamily: 'monospace', fontSize: '15px', color: '#8899aa',
     }).setOrigin(0.5);
 
     this.add.text(cx, GAME_HEIGHT - 65, 'Collect AU (Architecture Utility) to unlock new floors!', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#445566',
+      fontFamily: 'monospace', fontSize: '14px', color: '#8ea0b5',
     }).setOrigin(0.5);
 
     this.add.text(cx, GAME_HEIGHT - 35, 'Inspired by Impossible Mission (C64)', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#334455',
+      fontFamily: 'monospace', fontSize: '14px', color: '#8ea0b5',
     }).setOrigin(0.5);
 
     this.input.keyboard?.once('keydown-SPACE', () => this.startGame());

@@ -24,8 +24,10 @@
       align-items: center;
     }
     canvas {
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
+      /* Smooth scaling keeps text crisp when the 1280x960 canvas is
+         FIT-scaled to the viewport. Large (128px) pixel-art tiles still
+         look fine under bilinear filtering. */
+      image-rendering: auto;
     }
   </style>
 </head>
