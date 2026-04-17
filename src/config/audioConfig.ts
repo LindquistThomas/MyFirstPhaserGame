@@ -3,9 +3,14 @@
  *
  * To add a new sound effect:
  *   1. Generate or load the sound in SoundGenerator / BootScene.preload()
- *   2. Add the event-to-key mapping in SFX_EVENTS below
- *   3. Emit the event from the relevant entity / system via eventBus
+ *   2. Declare the event in `GameEvents` (src/systems/EventBus.ts)
+ *   3. Add the event-to-key mapping in SFX_EVENTS below
+ *   4. Emit the event from the relevant entity / system via eventBus
  */
+import type { GameEventName } from '../systems/EventBus';
+
+/** SFX-style events map onto Phaser sound keys. */
+type SfxEventName = Extract<GameEventName, `sfx:${string}`>;
 
 /** Scene key → background music Phaser audio key. */
 export const SCENE_MUSIC: Record<string, string> = {
@@ -17,7 +22,7 @@ export const SCENE_MUSIC: Record<string, string> = {
 };
 
 /** EventBus event name → Phaser SFX audio key. */
-export const SFX_EVENTS: Record<string, string> = {
+export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:jump':         'jump',
   'sfx:footstep_a':   'footstep_a',
   'sfx:footstep_b':   'footstep_b',

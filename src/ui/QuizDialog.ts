@@ -4,6 +4,7 @@ import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_REWARDS, QUIZ_PASS_THRESH
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { saveQuizResult, isQuizPassed } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
+import { ModalBase } from './ModalBase';
 
 export interface QuizDialogOptions {
   infoId: string;
@@ -15,38 +16,25 @@ export interface QuizDialogOptions {
 /**
  * Multiple-choice quiz overlay.
  *
- * Follows the same Phaser Container + overlay pattern as InfoDialog:
- * depth 200, scrollFactor 0, fade in/out tweens.
+ * Uses the shared ModalBase for container, overlay, Esc handling, and fade
+ * lifecycle; this class adds question flow, answer feedback, and results.
  */
-export class QuizDialog {
-  private scene: Phaser.Scene;
-  private container: Phaser.GameObjects.Container;
-  private options: QuizDialogOptions;
+export class QuizDialog extends ModalBase {
+  private readonly options: QuizDialogOptions;
   private questions: QuizQuestion[];
   private currentIndex = 0;
   private score = 0;
   private answered = false;
-  private destroyed = false;
-  private escKey: Phaser.Input.Keyboard.Key | null = null;
-  private escHandler: (() => void) | null = null;
   private alreadyPassed: boolean;
 
   constructor(scene: Phaser.Scene, options: QuizDialogOptions) {
-    this.scene = scene;
+    super(scene);
     this.options = options;
     this.alreadyPassed = isQuizPassed(options.infoId);
     this.questions = this.selectQuestions(options.infoId);
 
-    this.container = scene.add.container(0, 0);
-    this.container.setDepth(200);
-    this.container.setScrollFactor(0);
-    this.container.setAlpha(0);
-
-    this.buildOverlay();
     this.showQuestion();
-    this.registerEscKey();
-
-    scene.tweens.add({ targets: this.container, alpha: 1, duration: 200 });
+    this.fadeIn();
   }
 
   /** Pick 1 easy + 1 medium + 1 hard from the question pool. */
@@ -67,16 +55,6 @@ export class QuizDialog {
     if (byDiff.medium.length) selected.push(pick(byDiff.medium));
     if (byDiff.hard.length) selected.push(pick(byDiff.hard));
     return selected;
-  }
-
-  private buildOverlay(): void {
-    const overlay = this.scene.add.rectangle(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2,
-      GAME_WIDTH, GAME_HEIGHT,
-      0x000000, 0.65,
-    );
-    overlay.setScrollFactor(0).setInteractive(); // block clicks through
-    this.container.add(overlay);
   }
 
   private clearPanel(): void {
@@ -522,32 +500,7 @@ export class QuizDialog {
     });
   }
 
-  /* ---- lifecycle ---- */
-
-  private registerEscKey(): void {
-    if (!this.scene.input.keyboard) return;
-    this.escKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    this.escHandler = () => {
-      if (this.escKey?.isDown) this.close();
-    };
-    this.scene.events.on('update', this.escHandler);
-  }
-
-  close(): void {
-    if (this.destroyed) return;
-    this.destroyed = true;
-    if (this.escHandler) {
-      this.scene.events.off('update', this.escHandler);
-    }
-    if (this.escKey) {
-      this.escKey.destroy();
-    }
-    this.scene.tweens.add({
-      targets: this.container, alpha: 0, duration: 150,
-      onComplete: () => {
-        this.container.destroy();
-        this.options.onClose?.();
-      },
-    });
+  protected override onAfterClose(): void {
+    this.options.onClose?.();
   }
 }

@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
+import { ModalBase } from './ModalBase';
 
 export interface InfoDialogLink {
   label: string;
@@ -29,13 +30,8 @@ export interface InfoDialogOptions {
   quizStatus?: QuizButtonState;
 }
 
-export class InfoDialog {
-  private scene: Phaser.Scene;
-  private container: Phaser.GameObjects.Container;
-  private escKey: Phaser.Input.Keyboard.Key | null = null;
-  private escHandler: (() => void) | null = null;
-  private onClose?: () => void;
-  private destroyed = false;
+export class InfoDialog extends ModalBase {
+  private readonly onCloseCallback?: () => void;
   private extendedExpanded = false;
   private cooldownTimer?: Phaser.Time.TimerEvent;
 
@@ -45,30 +41,13 @@ export class InfoDialog {
     onClose?: () => void,
     options?: InfoDialogOptions,
   ) {
-    this.scene = scene;
-    this.onClose = onClose;
+    super(scene);
+    this.onCloseCallback = onClose;
 
-    this.container = scene.add.container(0, 0);
-    this.container.setDepth(200);
-    this.container.setScrollFactor(0);
-    this.container.setAlpha(0);
-
-    this.buildOverlay();
     this.buildPanel(content, options);
-    this.registerEscKey();
 
     eventBus.emit('sfx:info_open');
-    scene.tweens.add({ targets: this.container, alpha: 1, duration: 200 });
-  }
-
-  private buildOverlay(): void {
-    const overlay = this.scene.add.rectangle(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2,
-      GAME_WIDTH, GAME_HEIGHT,
-      0x000000, 0.65,
-    );
-    overlay.setScrollFactor(0).setInteractive();
-    this.container.add(overlay);
+    this.fadeIn();
   }
 
   private buildPanel(content: InfoDialogContent, options?: InfoDialogOptions): void {
@@ -326,33 +305,13 @@ export class InfoDialog {
     this.container.add(xBtn);
   }
 
-  private registerEscKey(): void {
-    if (!this.scene.input.keyboard) return;
-    this.escKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    this.escHandler = () => {
-      if (this.escKey?.isDown) this.close();
-    };
-    this.scene.events.on('update', this.escHandler);
-  }
-
-  close(): void {
-    if (this.destroyed) return;
-    this.destroyed = true;
+  protected override onBeforeClose(): void {
     if (this.cooldownTimer) {
       this.cooldownTimer.destroy();
     }
-    if (this.escHandler) {
-      this.scene.events.off('update', this.escHandler);
-    }
-    if (this.escKey) {
-      this.escKey.destroy();
-    }
-    this.scene.tweens.add({
-      targets: this.container, alpha: 0, duration: 150,
-      onComplete: () => {
-        this.container.destroy();
-        this.onClose?.();
-      },
-    });
+  }
+
+  protected override onAfterClose(): void {
+    this.onCloseCallback?.();
   }
 }

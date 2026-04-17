@@ -1,32 +1,53 @@
 /**
  * Standalone event bus — zero framework dependencies.
  *
- * Provides pub/sub for loose coupling between game systems.
- * Imported as a singleton so any module can emit or listen
- * without needing a Phaser scene or game reference.
+ * Provides typed pub/sub for loose coupling between game systems.
+ * The `GameEvents` map below is the single source of truth for every
+ * event name and its payload tuple — add new events here and call sites
+ * are type-checked automatically.
  */
 
-type Callback = (...args: unknown[]) => void;
+/** Event name → payload tuple. Each event's handler arguments are derived from this map. */
+export interface GameEvents {
+  'music:play': [key: string];
+  'music:stop': [];
+
+  'zone:enter': [zoneId: string];
+  'zone:exit': [zoneId: string];
+
+  'sfx:info_open': [];
+  'sfx:link_click': [];
+  'sfx:jump': [];
+  'sfx:footstep_a': [];
+  'sfx:footstep_b': [];
+  'sfx:quiz_correct': [];
+  'sfx:quiz_wrong': [];
+  'sfx:quiz_success': [];
+  'sfx:quiz_fail': [];
+}
+
+export type GameEventName = keyof GameEvents;
+export type GameEventHandler<K extends GameEventName> = (...args: GameEvents[K]) => void;
 
 class EventBus {
-  private listeners = new Map<string, Set<Callback>>();
+  private listeners = new Map<GameEventName, Set<GameEventHandler<GameEventName>>>();
 
   /** Subscribe to an event. */
-  on(event: string, fn: Callback): this {
+  on<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
-    this.listeners.get(event)!.add(fn);
+    this.listeners.get(event)!.add(fn as GameEventHandler<GameEventName>);
     return this;
   }
 
   /** Unsubscribe from an event. */
-  off(event: string, fn: Callback): this {
-    this.listeners.get(event)?.delete(fn);
+  off<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
+    this.listeners.get(event)?.delete(fn as GameEventHandler<GameEventName>);
     return this;
   }
 
   /** Emit an event to all subscribers. */
-  emit(event: string, ...args: unknown[]): this {
-    this.listeners.get(event)?.forEach(fn => fn(...args));
+  emit<K extends GameEventName>(event: K, ...args: GameEvents[K]): this {
+    this.listeners.get(event)?.forEach(fn => (fn as GameEventHandler<K>)(...args));
     return this;
   }
 }

@@ -1,20 +1,18 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, ELEVATOR_SPEED, FLOORS, FloorId } from '../config/gameConfig';
 import { LEVEL_DATA, FloorData } from '../config/levelData';
-import { INFO_POINTS } from '../config/infoContent';
 import { QUIZ_DATA } from '../config/quizData';
 import { Player } from '../entities/Player';
 import { Token } from '../entities/Token';
 import { HUD } from '../ui/HUD';
 import { ElevatorButtons } from '../ui/ElevatorButtons';
-import { InfoDialog } from '../ui/InfoDialog';
-import { QuizDialog } from '../ui/QuizDialog';
 import { InfoIcon } from '../ui/InfoIcon';
+import { DialogController } from '../ui/DialogController';
 import { ZoneManager } from '../systems/ZoneManager';
 import { eventBus } from '../systems/EventBus';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { markSeen } from '../systems/InfoDialogManager';
-import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
+import { isQuizPassed } from '../systems/QuizManager';
 
 export interface RoomElevator {
   x: number;
@@ -78,8 +76,8 @@ export class LevelScene extends Phaser.Scene {
    */
   private liftButtons?: ElevatorButtons;
 
-  /** Info / quiz dialog state. */
-  private dialogOpen = false;
+  /** Info + quiz dialog orchestration. */
+  private dialogs!: DialogController;
 
   /**
    * Zone manager: each info point in the level config becomes a proximity
@@ -106,9 +104,13 @@ export class LevelScene extends Phaser.Scene {
     this.auCollected = 0;
     this.roomLifts = [];
     this.activeRoomLift = -1;
-    this.dialogOpen = false;
     this.zoneManager.clear();
     this.infoIconsByZone.clear();
+    this.dialogs = new DialogController(this, {
+      progression: this.progression,
+      getIconForContent: (id) => this.infoIconsByZone.get(id),
+      onOpen: (id) => markSeen(id),
+    });
   }
 
   create(): void {
@@ -289,7 +291,7 @@ export class LevelScene extends Phaser.Scene {
       const radius = ip.zoneRadius ?? DEFAULT_ZONE_RADIUS;
 
       const icon = new InfoIcon(this, ip.x, ip.y - 40, () => {
-        this.openInfoDialog(ip.contentId);
+        this.dialogs.open(ip.contentId);
       });
       // Hidden by default — zone:enter will reveal it when the player enters
       // the zone. ZoneManager starts zones inactive and never emits an initial
@@ -309,54 +311,6 @@ export class LevelScene extends Phaser.Scene {
         ) < radius,
       );
     }
-  }
-
-  private openInfoDialog(contentId: string): void {
-    if (this.dialogOpen) return;
-    this.dialogOpen = true;
-
-    const infoDef = INFO_POINTS[contentId];
-    if (!infoDef) { this.dialogOpen = false; return; }
-
-    markSeen(contentId);
-
-    const hasQuiz = !!QUIZ_DATA[contentId];
-
-    new InfoDialog(
-      this,
-      infoDef.content,
-      () => { this.dialogOpen = false; },
-      hasQuiz ? {
-        onQuizStart: () => this.openQuizDialog(contentId),
-        quizStatus: {
-          passed: isQuizPassed(contentId),
-          canRetry: canRetryQuiz(contentId),
-          cooldownSeconds: Math.ceil(getCooldownRemaining(contentId) / 1000),
-        },
-      } : undefined,
-    );
-  }
-
-  private openQuizDialog(contentId: string): void {
-    if (this.dialogOpen) return;
-    this.dialogOpen = true;
-
-    const infoDef = INFO_POINTS[contentId];
-    if (!infoDef) { this.dialogOpen = false; return; }
-
-    new QuizDialog(this, {
-      infoId: contentId,
-      floorId: infoDef.floorId,
-      progression: this.progression,
-      onClose: () => {
-        this.dialogOpen = false;
-        // Direct call: badge refresh is parent-to-child, no cross-system event needed.
-        const icon = this.infoIconsByZone.get(contentId);
-        if (icon && QUIZ_DATA[contentId]) {
-          icon.setQuizBadge(this, isQuizPassed(contentId));
-        }
-      },
-    });
   }
 
   /* ---- banner ---- */
@@ -403,7 +357,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- update loop ---- */
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
-    if (this.dialogOpen) return;
+    if (this.dialogs.isOpen) return;
 
     this.player.update(delta);
     this.hud.update();

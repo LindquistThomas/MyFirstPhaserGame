@@ -23,15 +23,12 @@ export class AudioManager {
    * Call once after construction (from BootScene).
    */
   registerEventListeners(): void {
-    eventBus.on('music:play', (key: unknown) => {
-      if (typeof key === 'string') this.playMusic(key);
-    });
+    eventBus.on('music:play', (key) => this.playMusic(key));
+    eventBus.on('music:stop', () => this.stopMusic());
 
-    eventBus.on('music:stop', () => {
-      this.stopMusic();
-    });
-
-    for (const [event, sfxKey] of Object.entries(SFX_EVENTS)) {
+    const events = Object.keys(SFX_EVENTS) as Array<keyof typeof SFX_EVENTS>;
+    for (const event of events) {
+      const sfxKey = SFX_EVENTS[event];
       eventBus.on(event, () => this.playSfx(sfxKey));
     }
   }
