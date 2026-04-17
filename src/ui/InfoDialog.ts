@@ -30,10 +30,25 @@ export interface InfoDialogOptions {
   quizStatus?: QuizButtonState;
 }
 
+interface Focusable {
+  text: Phaser.GameObjects.Text;
+  normalColor: string;
+  focusColor: string;
+}
+
 export class InfoDialog extends ModalBase {
   private readonly onCloseCallback?: () => void;
   private extendedExpanded = false;
   private cooldownTimer?: Phaser.Time.TimerEvent;
+
+  /** Keyboard-focusable buttons in visual order (links, deep-dive, quiz, close). */
+  private focusables: Focusable[] = [];
+  private focusIndex = -1;
+  private focusArrow?: Phaser.GameObjects.Text;
+  private upKey?: Phaser.Input.Keyboard.Key;
+  private downKey?: Phaser.Input.Keyboard.Key;
+  private enterKey?: Phaser.Input.Keyboard.Key;
+  private navHandler?: () => void;
 
   constructor(
     scene: Phaser.Scene,
@@ -45,6 +60,7 @@ export class InfoDialog extends ModalBase {
     this.onCloseCallback = onClose;
 
     this.buildPanel(content, options);
+    this.registerKeyboardNav();
 
     eventBus.emit('sfx:info_open');
     this.fadeIn();
@@ -128,6 +144,7 @@ export class InfoDialog extends ModalBase {
         });
 
         this.container.add(linkText);
+        this.focusables.push({ text: linkText, normalColor: '#44aaff', focusColor: '#88ddff' });
         curY += LINK_LINE_H;
       }
     }
@@ -144,6 +161,7 @@ export class InfoDialog extends ModalBase {
         fontFamily: 'monospace', fontSize: '15px', color: '#00aaff', fontStyle: 'bold',
       }).setScrollFactor(0).setInteractive({ useHandCursor: true });
       this.container.add(toggleText);
+      this.focusables.push({ text: toggleText, normalColor: '#00aaff', focusColor: '#88ddff' });
 
       toggleText.on('pointerover', () => toggleText.setColor('#88ddff'));
       toggleText.on('pointerout', () => toggleText.setColor('#00aaff'));
@@ -212,6 +230,8 @@ export class InfoDialog extends ModalBase {
           bg.lineStyle(2, 0x00aaff, 0.7);
           bg.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
         }
+        // Arrow indicator must follow the button that just moved.
+        this.refreshFocusArrow();
       });
 
       curY += extendedToggleH;
@@ -253,6 +273,7 @@ export class InfoDialog extends ModalBase {
           // Slight delay so close animation finishes before quiz opens
           this.scene.time.delayedCall(200, () => onQuizStart());
         });
+        this.focusables.push({ text: quizBtn, normalColor: quizColor, focusColor: hoverColor });
       }
 
       // If on cooldown, update the label every second
@@ -274,6 +295,11 @@ export class InfoDialog extends ModalBase {
                 this.close();
                 this.scene.time.delayedCall(200, () => onQuizStart());
               });
+              // Promote the now-clickable quiz button into the focus ring,
+              // slotting it just before the close button at the end.
+              this.focusables.splice(this.focusables.length - 1, 0, {
+                text: quizBtn, normalColor: '#ffd700', focusColor: '#ffed4a',
+              });
             } else {
               quizBtn.setText(`[RETRY IN ${remaining}s]`);
             }
@@ -285,8 +311,8 @@ export class InfoDialog extends ModalBase {
     }
 
     curY = panelY + panelH - CLOSE_BAR_H - 4;
-    const closeText = this.scene.add.text(GAME_WIDTH / 2, curY, '[ESC]  Close', {
-      fontFamily: 'monospace', fontSize: '15px', color: '#8899aa',
+    const closeText = this.scene.add.text(GAME_WIDTH / 2, curY, '[\u2190\u2193\u2191] Navigate   [Enter] Select   [Esc] Close', {
+      fontFamily: 'monospace', fontSize: '13px', color: '#8899aa',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
     closeTextRef = closeText;
 
@@ -294,6 +320,7 @@ export class InfoDialog extends ModalBase {
     closeText.on('pointerout', () => closeText.setColor('#8899aa'));
     closeText.on('pointerdown', () => this.close());
     this.container.add(closeText);
+    this.focusables.push({ text: closeText, normalColor: '#8899aa', focusColor: '#88aacc' });
 
     const xBtn = this.scene.add.text(panelX + panelW - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
@@ -305,10 +332,75 @@ export class InfoDialog extends ModalBase {
     this.container.add(xBtn);
   }
 
+  /** Set up arrow-key navigation and Enter-to-activate. */
+  private registerKeyboardNav(): void {
+    if (!this.scene.input.keyboard || this.focusables.length === 0) return;
+
+    const kb = this.scene.input.keyboard;
+    this.upKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+    this.downKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+    this.enterKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+
+    // Arrow pointer drawn to the left of the focused button.
+    this.focusArrow = this.scene.add.text(0, 0, '\u25b6', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#ffd700', fontStyle: 'bold',
+    }).setOrigin(0.5, 0.5).setScrollFactor(0).setVisible(false);
+    this.container.add(this.focusArrow);
+
+    this.setFocus(0);
+
+    const up = this.upKey, down = this.downKey, enter = this.enterKey;
+    this.navHandler = () => {
+      if (Phaser.Input.Keyboard.JustDown(up)) {
+        this.setFocus((this.focusIndex - 1 + this.focusables.length) % this.focusables.length);
+      } else if (Phaser.Input.Keyboard.JustDown(down)) {
+        this.setFocus((this.focusIndex + 1) % this.focusables.length);
+      } else if (Phaser.Input.Keyboard.JustDown(enter)) {
+        this.activateFocused();
+      }
+    };
+    this.scene.events.on('update', this.navHandler);
+  }
+
+  private setFocus(index: number): void {
+    if (index < 0 || index >= this.focusables.length) return;
+    const prev = this.focusables[this.focusIndex];
+    if (prev) prev.text.setColor(prev.normalColor);
+    this.focusIndex = index;
+    const cur = this.focusables[index];
+    cur.text.setColor(cur.focusColor);
+    this.refreshFocusArrow();
+  }
+
+  /** Reposition the arrow indicator next to the currently focused button. */
+  private refreshFocusArrow(): void {
+    if (!this.focusArrow || this.focusIndex < 0) return;
+    const cur = this.focusables[this.focusIndex];
+    const b = cur.text.getBounds();
+    this.focusArrow.setPosition(b.x - 14, b.y + b.height / 2);
+    this.focusArrow.setVisible(true);
+  }
+
+  private activateFocused(): void {
+    const cur = this.focusables[this.focusIndex];
+    if (!cur) return;
+    // Fire the button's registered pointerdown handler. For the quiz button
+    // while on cooldown this is a no-op — it only has listeners once clickable.
+    cur.text.emit('pointerdown');
+  }
+
   protected override onBeforeClose(): void {
     if (this.cooldownTimer) {
       this.cooldownTimer.destroy();
     }
+    if (this.navHandler) {
+      this.scene.events.off('update', this.navHandler);
+      this.navHandler = undefined;
+    }
+    this.upKey?.destroy();
+    this.downKey?.destroy();
+    this.enterKey?.destroy();
+    this.upKey = this.downKey = this.enterKey = undefined;
   }
 
   protected override onAfterClose(): void {
