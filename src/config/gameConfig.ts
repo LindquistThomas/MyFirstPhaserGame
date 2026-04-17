@@ -8,7 +8,7 @@ export const PLAYER_SPEED = 280;
 export const PLAYER_JUMP_VELOCITY = -520;
 export const PLAYER_GRAVITY = 900;
 
-export const ELEVATOR_SPEED = 360;
+export const ELEVATOR_SPEED = 560;
 
 export const COLORS = {
   background: 0x1a1a2e,

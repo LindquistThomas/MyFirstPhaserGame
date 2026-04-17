@@ -43,11 +43,11 @@ export class Elevator {
   /** Maximum travel speed in px/s. */
   private static readonly MAX_SPEED = ELEVATOR_SPEED;
   /** Acceleration while spinning up or reversing (px/s^2). */
-  private static readonly ACCEL = 520;
+  private static readonly ACCEL = 900;
   /** Deceleration while docking at a target floor (px/s^2). */
-  private static readonly DECEL = 440;
+  private static readonly DECEL = 700;
   /** Coast deceleration when the rider lets go mid-shaft before committing. */
-  private static readonly COAST_DECEL = 300;
+  private static readonly COAST_DECEL = 480;
   /**
    * Once the cab reaches this fraction of MAX_SPEED while being driven,
    * it auto-commits to riding to the next floor stop and docking.
