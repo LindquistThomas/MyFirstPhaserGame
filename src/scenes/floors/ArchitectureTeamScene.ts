@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../config/gameConfig';
+import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../config/gameConfig';
 import { LevelScene, LevelConfig } from './LevelScene';
 
 /**

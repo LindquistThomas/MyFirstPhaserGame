@@ -7,7 +7,7 @@ import {
   getQuizRecord,
   resetAllQuizzes,
 } from './QuizManager';
-import { QUIZ_COOLDOWN_MS, QUIZ_PASS_THRESHOLD } from '../config/quizData';
+import { QUIZ_COOLDOWN_MS, QUIZ_PASS_THRESHOLD } from '../config/quiz';
 
 describe('QuizManager', () => {
   beforeEach(() => {

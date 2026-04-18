@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
-import { QUIZ_DATA } from '../../config/quizData';
-import { eventBus } from '../../systems/EventBus';
+import { QUIZ_DATA } from '../../config/quiz';
+import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { ZoneManager } from '../../systems/ZoneManager';
 import { isQuizPassed } from '../../systems/QuizManager';
 import { Player } from '../../entities/Player';
@@ -79,30 +79,22 @@ export class ElevatorZones {
     );
     this.lobbyBoardIcon.setVisible(false);
 
-    const onEnter = (zoneId: string) => {
+    const lifecycle = createSceneLifecycle(scene);
+    lifecycle.bindEventBus('zone:enter', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
         this.opts.elevatorButtons()?.setVisible(true);
         this.elevatorInfoIcon?.setVisible(true);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(true);
       }
-    };
-
-    const onExit = (zoneId: string) => {
+    });
+    lifecycle.bindEventBus('zone:exit', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
         this.opts.elevatorButtons()?.setVisible(false);
         this.elevatorInfoIcon?.setVisible(false);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(false);
       }
-    };
-
-    eventBus.on('zone:enter', onEnter);
-    eventBus.on('zone:exit', onExit);
-
-    scene.events.once('shutdown', () => {
-      eventBus.off('zone:enter', onEnter);
-      eventBus.off('zone:exit', onExit);
     });
   }
 

@@ -1,7 +1,9 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig';
-import { hasSave } from '../systems/SaveManager';
-import { pushContext, popContext, type ContextToken } from '../input';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
+import { hasSave } from '../../systems/SaveManager';
+import { pushContext, popContext } from '../../input';
+import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import type { NavigationContext } from '../NavigationContext';
 
 /**
  * Title screen.
@@ -16,7 +18,6 @@ export class MenuScene extends Phaser.Scene {
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
   private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
   private selectedIndex = 0;
-  private contextToken: ContextToken | null = null;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -39,23 +40,12 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private setupKeyboardNavigation(): void {
-    this.contextToken = pushContext('menu');
-    const up = () => this.moveSelection(-1);
-    const down = () => this.moveSelection(1);
-    const confirm = () => this.activateSelection();
-    this.inputs.on('NavigateUp', up);
-    this.inputs.on('NavigateDown', down);
-    this.inputs.on('Confirm', confirm);
-
-    this.events.once('shutdown', () => {
-      this.inputs.off('NavigateUp', up);
-      this.inputs.off('NavigateDown', down);
-      this.inputs.off('Confirm', confirm);
-      if (this.contextToken) {
-        popContext(this.contextToken);
-        this.contextToken = null;
-      }
-    });
+    const contextToken = pushContext('menu');
+    const lifecycle = createSceneLifecycle(this);
+    lifecycle.add(() => popContext(contextToken));
+    lifecycle.bindInput('NavigateUp', () => this.moveSelection(-1));
+    lifecycle.bindInput('NavigateDown', () => this.moveSelection(1));
+    lifecycle.bindInput('Confirm', () => this.activateSelection());
   }
 
   private moveSelection(delta: number): void {
@@ -388,11 +378,13 @@ export class MenuScene extends Phaser.Scene {
 
   private startGame(): void {
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', { loadSave: false }));
+    const ctx: NavigationContext = { loadSave: false };
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
   }
 
   private continueGame(): void {
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', { loadSave: true }));
+    const ctx: NavigationContext = { loadSave: true };
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
   }
 }

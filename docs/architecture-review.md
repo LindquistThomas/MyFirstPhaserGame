@@ -89,67 +89,43 @@ codebase easier for multiple people to work on in parallel.
 
 ## 2. Recommendations, prioritised
 
-### Tier A — high impact, low effort (do first)
+### Tier A — high impact, low effort (do first) — ✅ completed
 
-1. **Split `quizData.ts` by floor.**
-   - New layout: `src/config/quiz/index.ts` + `quiz-lobby.ts`,
+1. **Split `quizData.ts` by floor.** ✅ Done — see `src/config/quiz/`.
+   - Layout: `src/config/quiz/index.ts` + `quiz-lobby.ts`,
      `quiz-platform.ts`, `quiz-architecture.ts`, `quiz-finance.ts`,
      `quiz-product.ts`, `quiz-exec.ts`.
-   - `index.ts` re-exports a `getQuizFor(floorId)` function; callers
-     (`QuizDialog`, `QuizManager`, `DialogController`) keep the same
-     import surface.
-   - Result: each floor contributor edits one ~400-line file instead of
-     one 2,794-line file → merge conflicts collapse.
-2. **Split `infoContent.ts` the same way.** `src/config/info/` mirroring
-   the quiz split, same floor-owner pattern.
-3. **Refresh `docs/architecture.md`.** Correct scene names, move
-   `InputManager` → `input/InputService`, list the new floor scenes,
-   link to the updated module map. Add a "who owns what" section so
-   contributors know which folder maps to which feature.
-4. **Adopt a naming convention in `CONTRIBUTING.md`.**
-   - Files: PascalCase for classes/scenes, camelCase for data/config
-     modules.
-   - Terminology: **AU** is canonical; `token` only for the pickup
-     sprite; remove "points" from strings.
-   - Scenes: `<Floor>Scene.ts`; managers: `<Thing>Manager.ts`; services
-     (shared, injectable): `<Thing>Service.ts`.
-5. **Group `scenes/` by feature.**
-   ```
-   src/scenes/
-   ├── core/      (Boot, Menu)
-   ├── elevator/  (ElevatorScene + existing elevator/ helpers)
-   ├── floors/    (LevelScene, Lobby, PlatformTeam, Architecture,
-   │              Finance, ProductLeadership, ExecutiveSuite)
-   ├── hall/      (ProductsHallScene)
-   └── products/  (existing)
-   ```
-   Pure move + import update; no behaviour change.
+   - `index.ts` re-exports `QUIZ_DATA` and `getQuizFor(floorId)`;
+     existing callers kept the same import surface.
+2. **Split `infoContent.ts` the same way.** ✅ Done — see `src/config/info/`.
+3. **Refresh `docs/architecture.md`.** ✅ Done — scene names corrected,
+   `InputService` documented, module map updated.
+4. **Adopt a naming convention in `CONTRIBUTING.md`.** ✅ Done — file,
+   terminology, and class naming rules added.
+5. **Group `scenes/` by feature.** ✅ Done — `scenes/core/`,
+   `scenes/elevator/`, `scenes/floors/`, `scenes/hall/`,
+   `scenes/products/`.
 
-### Tier B — medium impact, medium effort (2–3 days each)
+### Tier B — medium impact, medium effort (2–3 days each) — ✅ completed
 
-6. **Introduce `NavigationContext` for scene transitions.** One typed
-   object carrying `{ fromFloor, spawnSide, spawnDoorId }` passed via
-   `scene.start(key, context)` instead of `registry.set/get`. Replace
-   ad-hoc spawn properties in `ElevatorScene` and `LevelScene`.
-7. **Extract managers out of `LevelScene`.** `LevelEnemySpawner`,
-   `LevelTokenManager`, `LevelZoneSetup`, `LevelDialogBindings`. The
-   base class becomes a thin composition root (~150 lines). Reuse the
-   existing `src/systems/ZoneManager.ts` — don't duplicate.
-8. **Extract managers out of `ElevatorScene`.**
-   `ElevatorFloorTransitionManager`, `ProductDoorManager`,
-   `ElevatorSceneLayout`. `ElevatorScene` orchestrates only.
-   `src/scenes/elevator/ElevatorController.ts`, `ElevatorZones.ts`, and
-   `ElevatorShaftDoors.ts` already exist — extend that pattern, don't
-   invent a new one.
-9. **Split `QuizDialog` and `InfoDialog`.** Extract reusable
-   `ScrollableTextPanel` and `ModalKeyboardNavigator` into `src/ui/`;
-   both dialogs use them. Extract `QuizFlowController` (question
-   shuffle, answer grading) and `QuizResultsScreen` — `QuizDialog`
-   becomes layout only.
-10. **Standardise scene shutdown.** Add a small helper
-    (`src/systems/sceneLifecycle.ts`) that tracks `eventBus.on`
-    subscriptions registered via a scene-scoped helper and
-    auto-unsubscribes on `shutdown`. Removes a whole class of leaks.
+6. **Introduce `NavigationContext` for scene transitions.** ✅ Done —
+   see `src/scenes/NavigationContext.ts`. `scene.start(key, ctx)` is
+   now the single hand-off path; registry-based spawn state is gone.
+7. **Extract managers out of `LevelScene`.** ✅ Done —
+   `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, and
+   `createLevelDialogs` under `src/scenes/floors/`. `LevelScene` is a
+   thin composition root.
+8. **Extract managers out of `ElevatorScene`.** ✅ Done —
+   `ElevatorFloorTransitionManager`, `ProductDoorManager`, and
+   `ElevatorSceneLayout` under `src/scenes/elevator/`.
+9. **Split `QuizDialog` and `InfoDialog`.** ✅ Done — extracted
+   `ModalKeyboardNavigator` and `QuizResultsScreen` into `src/ui/`;
+   both dialogs share the navigator.
+10. **Standardise scene shutdown.** ✅ Done — `src/systems/sceneLifecycle.ts`
+    exposes `createSceneLifecycle(scene)` with `add / bindEventBus /
+    bindInput / dispose`. Disposers fire on both `shutdown` and
+    `destroy`. Applied in `LevelZoneSetup`, `ElevatorZones`, `HUD`,
+    `LobbyScene`, and `MenuScene`.
 
 ### Tier C — higher effort, strategic (1–2 weeks)
 
@@ -195,12 +171,12 @@ codebase easier for multiple people to work on in parallel.
 ## 3. Suggested implementation order
 
 1. Tier A items 1–5 as a short PR series (each item is one PR, 1–3
-   hours). Lowest risk, biggest merge-conflict relief.
+   hours). Lowest risk, biggest merge-conflict relief. ✅ landed.
 2. Tier B item 6 (`NavigationContext`) before 7 and 8 — the manager
-   extractions depend on a clean transition contract.
+   extractions depend on a clean transition contract. ✅ landed.
 3. Tier B items 7 and 8 in parallel (different files, different
-   reviewers).
-4. Tier B items 9 and 10 any time.
+   reviewers). ✅ landed.
+4. Tier B items 9 and 10 any time. ✅ landed.
 5. Tier C items only after A+B land and the team is sold on the
    direction.
 

@@ -6,8 +6,8 @@ import {
   QUIZ_PASS_THRESHOLD,
   QUIZ_REWARDS,
   QuizDifficulty,
-} from './quizData';
-import { INFO_POINTS } from './infoContent';
+} from './index';
+import { INFO_POINTS } from '../info';
 
 describe('QUIZ_DATA', () => {
   const entries = Object.entries(QUIZ_DATA);

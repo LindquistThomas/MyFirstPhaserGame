@@ -1,10 +1,9 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
-import { pushContext, popContext, type ContextToken } from '../input';
+import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
+import { pushContext, popContext } from '../../input';
+import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 export class LobbyScene extends Phaser.Scene {
-  private contextToken: ContextToken | null = null;
-
   constructor() {
     super({ key: 'LobbyScene' });
   }
@@ -49,18 +48,12 @@ export class LobbyScene extends Phaser.Scene {
       this.scene.start('ElevatorScene');
     });
 
-    this.contextToken = pushContext('menu');
-    const goBack = () => this.scene.start('ElevatorScene');
-    this.inputs.on('Cancel', goBack);
-    this.inputs.on('Confirm', goBack);
+    const contextToken = pushContext('menu');
+    const lifecycle = createSceneLifecycle(this);
+    lifecycle.add(() => popContext(contextToken));
 
-    this.events.once('shutdown', () => {
-      this.inputs.off('Cancel', goBack);
-      this.inputs.off('Confirm', goBack);
-      if (this.contextToken) {
-        popContext(this.contextToken);
-        this.contextToken = null;
-      }
-    });
+    const goBack = () => this.scene.start('ElevatorScene');
+    lifecycle.bindInput('Cancel', goBack);
+    lifecycle.bindInput('Confirm', goBack);
   }
 }

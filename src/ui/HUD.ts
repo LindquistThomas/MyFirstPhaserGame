@@ -3,6 +3,7 @@ import { GAME_WIDTH, COLORS, FloorId } from '../config/gameConfig';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { LEVEL_DATA } from '../config/levelData';
 import { eventBus } from '../systems/EventBus';
+import { createSceneLifecycle } from '../systems/sceneLifecycle';
 import type { AudioManager } from '../systems/AudioManager';
 
 const HUD_HEIGHT = 44;
@@ -69,10 +70,7 @@ export class HUD {
     this.muteHit.on('pointerup', () => eventBus.emit('audio:toggle-mute'));
     this.container.add(this.muteHit);
     this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
-    eventBus.on('audio:mute-changed', this.onMuteChanged);
-    this.scene.events.once('shutdown', () => {
-      eventBus.off('audio:mute-changed', this.onMuteChanged);
-    });
+    createSceneLifecycle(this.scene).bindEventBus('audio:mute-changed', this.onMuteChanged);
 
     // Floor indicator — to the left of the mute icon
     this.floorText = this.scene.add.text(GAME_WIDTH - 48, 10, '', {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { INFO_POINTS } from './infoContent';
-import { FLOORS } from './gameConfig';
+import { INFO_POINTS } from './index';
+import { FLOORS } from '../gameConfig';
 
 describe('INFO_POINTS', () => {
   const entries = Object.entries(INFO_POINTS);

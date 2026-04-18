@@ -1,6 +1,6 @@
-import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../config/gameConfig';
-import { allKeyLabels } from '../input';
-import { LevelScene, LevelConfig } from './LevelScene';
+import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../config/gameConfig';
+import { allKeyLabels } from '../../input';
+import { LevelScene, LevelConfig } from '../floors/LevelScene';
 
 interface ProductDoor {
   x: number;

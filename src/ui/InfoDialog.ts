@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
 import { ModalBase } from './ModalBase';
+import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
 
 export interface InfoDialogLink {
   label: string;
@@ -30,22 +31,12 @@ export interface InfoDialogOptions {
   quizStatus?: QuizButtonState;
 }
 
-interface Focusable {
-  text: Phaser.GameObjects.Text;
-  normalColor: string;
-  focusColor: string;
-}
-
 export class InfoDialog extends ModalBase {
   private readonly onCloseCallback?: () => void;
   private extendedExpanded = false;
   private cooldownTimer?: Phaser.Time.TimerEvent;
 
-  /** Keyboard-focusable buttons in visual order (links, deep-dive, quiz, close). */
-  private focusables: Focusable[] = [];
-  private focusIndex = -1;
-  private focusArrow?: Phaser.GameObjects.Text;
-  private navHandlers: Array<{ action: import('../input').GameAction; handler: () => void }> = [];
+  private nav!: ModalKeyboardNavigator;
 
   /* ---- scrolling state ---- */
   private scrollContent?: Phaser.GameObjects.Container;
@@ -70,6 +61,7 @@ export class InfoDialog extends ModalBase {
     super(scene);
     this.onCloseCallback = onClose;
 
+    this.nav = new ModalKeyboardNavigator(scene, this.container);
     this.buildPanel(content, options);
     this.registerKeyboardNav();
     this.registerWheelScroll();
@@ -171,7 +163,7 @@ export class InfoDialog extends ModalBase {
         });
 
         scrollContent.add(linkText);
-        this.focusables.push({ text: linkText, normalColor: '#44aaff', focusColor: '#88ddff' });
+        this.nav.add(makeTextFocusable(linkText, '#44aaff', '#88ddff'));
         this.focusYMap.set(linkText, { y: cy, h: LINK_LINE_H });
         cy += LINK_LINE_H;
       }
@@ -186,7 +178,7 @@ export class InfoDialog extends ModalBase {
         fontFamily: 'monospace', fontSize: '15px', color: '#00aaff', fontStyle: 'bold',
       }).setInteractive({ useHandCursor: true });
       scrollContent.add(toggleText);
-      this.focusables.push({ text: toggleText, normalColor: '#00aaff', focusColor: '#88ddff' });
+      this.nav.add(makeTextFocusable(toggleText, '#00aaff', '#88ddff'));
       this.focusYMap.set(toggleText, { y: toggleY, h: 28 });
 
       toggleText.on('pointerover', () => toggleText.setColor('#88ddff'));
@@ -238,7 +230,7 @@ export class InfoDialog extends ModalBase {
           this.contentInnerH = toggleY + 28;
         }
         this.recomputeScrollBounds();
-        this.refreshFocusArrow();
+        this.refreshFocusArrowWithVisibility();
       });
 
       cy += 28;
@@ -260,7 +252,7 @@ export class InfoDialog extends ModalBase {
     closeText.on('pointerout', () => closeText.setColor('#8899aa'));
     closeText.on('pointerdown', () => this.close());
     this.container.add(closeText);
-    this.focusables.push({ text: closeText, normalColor: '#8899aa', focusColor: '#88aacc' });
+    this.nav.add(makeTextFocusable(closeText, '#8899aa', '#88aacc'));
 
     const xBtn = this.scene.add.text(panelX + panelW - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
@@ -322,7 +314,7 @@ export class InfoDialog extends ModalBase {
         this.close();
         this.scene.time.delayedCall(200, () => onQuizStart());
       });
-      this.focusables.push({ text: quizBtn, normalColor: quizColor, focusColor: hoverColor });
+      this.nav.add(makeTextFocusable(quizBtn, quizColor, hoverColor));
     }
 
     // If on cooldown, update the label every second and promote into focus ring when ready.
@@ -343,9 +335,8 @@ export class InfoDialog extends ModalBase {
               this.close();
               this.scene.time.delayedCall(200, () => onQuizStart());
             });
-            this.focusables.splice(this.focusables.length - 1, 0, {
-              text: quizBtn, normalColor: '#ffd700', focusColor: '#ffed4a',
-            });
+            // Promote into focus ring just before the close button.
+            this.nav.insert(this.nav.size() - 1, makeTextFocusable(quizBtn, '#ffd700', '#ffed4a'));
           } else {
             quizBtn.setText(`[RETRY IN ${remaining}s]`);
           }
@@ -379,7 +370,7 @@ export class InfoDialog extends ModalBase {
       const trackH = this.contentViewportH - this.scrollBarThumb.height;
       this.scrollBarThumb.y = this.contentViewportTop + (this.scrollOffset / this.maxScroll) * trackH;
     }
-    this.refreshFocusArrow();
+    this.refreshFocusArrowWithVisibility();
   }
 
   private scrollBy(delta: number): void {
@@ -407,93 +398,70 @@ export class InfoDialog extends ModalBase {
   /* ---- keyboard navigation ---- */
 
   private registerKeyboardNav(): void {
-    if (this.focusables.length === 0) return;
-    const inputs = this.scene.inputs;
+    if (this.nav.size() === 0) return;
+    this.nav.setFocus(0);
+    this.ensureFocusedVisible();
 
-    this.focusArrow = this.scene.add.text(0, 0, '\u25b6', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#ffd700', fontStyle: 'bold',
-    }).setOrigin(0.5, 0.5).setVisible(false);
-    this.container.add(this.focusArrow);
-
-    this.setFocus(0);
-
-    const bind = (action: import('../input').GameAction, handler: () => void) => {
-      inputs.on(action, handler);
-      this.navHandlers.push({ action, handler });
-    };
-
-    bind('NavigateUp', () => {
-      this.setFocus((this.focusIndex - 1 + this.focusables.length) % this.focusables.length);
-    });
-    bind('NavigateDown', () => {
-      this.setFocus((this.focusIndex + 1) % this.focusables.length);
-    });
-    bind('Confirm', () => this.activateFocused());
-    bind('PageUp', () => this.scrollBy(-this.contentViewportH * 0.8));
-    bind('PageDown', () => this.scrollBy(this.contentViewportH * 0.8));
+    this.nav.bind('NavigateUp', () => { this.nav.focusPrev(); this.ensureFocusedVisible(); });
+    this.nav.bind('NavigateDown', () => { this.nav.focusNext(); this.ensureFocusedVisible(); });
+    this.nav.bind('Confirm', () => this.nav.activateFocused());
+    this.nav.bind('PageUp', () => this.scrollBy(-this.contentViewportH * 0.8));
+    this.nav.bind('PageDown', () => this.scrollBy(this.contentViewportH * 0.8));
   }
 
-  private setFocus(index: number): void {
-    if (index < 0 || index >= this.focusables.length) return;
-    const prev = this.focusables[this.focusIndex];
-    if (prev) prev.text.setColor(prev.normalColor);
-    this.focusIndex = index;
-    const cur = this.focusables[index];
-    cur.text.setColor(cur.focusColor);
-    this.ensureFocusedVisible();
-    this.refreshFocusArrow();
+  /** Resolve the focused focusable back to the underlying Text so we can
+   *  consult focusYMap (only scrollable items are keyed there). */
+  private focusedText(): Phaser.GameObjects.Text | undefined {
+    const cur = this.nav.get(this.nav.currentIndex());
+    if (!cur) return undefined;
+    const b = cur.bounds();
+    for (const text of this.focusYMap.keys()) {
+      const tb = text.getBounds();
+      if (tb.x === b.x && tb.y === b.y) return text;
+    }
+    return undefined;
   }
 
   /** If the focused item lives in the scroll container and is outside the
    *  viewport, scroll the minimum amount needed to reveal it. */
   private ensureFocusedVisible(): void {
-    const cur = this.focusables[this.focusIndex];
-    if (!cur) return;
-    const pos = this.focusYMap.get(cur.text);
-    if (!pos) return; // not inside scroll content (e.g. quiz/close buttons)
+    const text = this.focusedText();
+    if (!text) { this.refreshFocusArrowWithVisibility(); return; }
+    const pos = this.focusYMap.get(text);
+    if (!pos) { this.refreshFocusArrowWithVisibility(); return; }
     const visibleTop = this.scrollOffset;
     const visibleBottom = this.scrollOffset + this.contentViewportH;
     if (pos.y < visibleTop) {
       this.scrollTo(pos.y - 8);
     } else if (pos.y + pos.h > visibleBottom) {
       this.scrollTo(pos.y + pos.h - this.contentViewportH + 8);
+    } else {
+      this.refreshFocusArrowWithVisibility();
     }
   }
 
-  private refreshFocusArrow(): void {
-    if (!this.focusArrow || this.focusIndex < 0) return;
-    const cur = this.focusables[this.focusIndex];
-    const b = cur.text.getBounds();
-
-    // If the focused item is inside the scroll viewport but has scrolled
-    // off, hide the arrow rather than point at an invisible target.
-    const pos = this.focusYMap.get(cur.text);
-    if (pos) {
-      const visibleTop = this.scrollOffset;
-      const visibleBottom = this.scrollOffset + this.contentViewportH;
-      if (pos.y + pos.h < visibleTop || pos.y > visibleBottom) {
-        this.focusArrow.setVisible(false);
-        return;
+  /** Refresh arrow position, but hide it if the focused item scrolled out. */
+  private refreshFocusArrowWithVisibility(): void {
+    const text = this.focusedText();
+    if (text) {
+      const pos = this.focusYMap.get(text);
+      if (pos) {
+        const visibleTop = this.scrollOffset;
+        const visibleBottom = this.scrollOffset + this.contentViewportH;
+        if (pos.y + pos.h < visibleTop || pos.y > visibleBottom) {
+          this.nav.hideArrow();
+          return;
+        }
       }
     }
-    this.focusArrow.setPosition(b.x - 14, b.y + b.height / 2);
-    this.focusArrow.setVisible(true);
-  }
-
-  private activateFocused(): void {
-    const cur = this.focusables[this.focusIndex];
-    if (!cur) return;
-    cur.text.emit('pointerdown');
+    this.nav.refreshArrow();
   }
 
   protected override onBeforeClose(): void {
     if (this.cooldownTimer) {
       this.cooldownTimer.destroy();
     }
-    for (const { action, handler } of this.navHandlers) {
-      this.scene.inputs.off(action, handler);
-    }
-    this.navHandlers = [];
+    this.nav.destroy();
     if (this.wheelHandler) {
       this.scene.input.off('wheel', this.wheelHandler);
       this.wheelHandler = undefined;

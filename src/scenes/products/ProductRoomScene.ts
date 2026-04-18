@@ -1,7 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../config/gameConfig';
-import { LevelScene, LevelConfig } from '../LevelScene';
+import { LevelScene, LevelConfig } from '../floors/LevelScene';
 import { allKeyLabels } from '../../input';
+import type { NavigationContext } from '../NavigationContext';
 
 export interface ProductRoomDecoration {
   x: number;
@@ -106,9 +107,8 @@ export class ProductRoomScene extends LevelScene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () =>
-      this.scene.start('ElevatorScene', { returnFromProductDoor: this.cfg.contentId }),
-    );
+    const ctx: NavigationContext = { spawnDoorId: this.cfg.contentId };
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
   }
 
   /** Customise the exit prompt to match what's actually on the other side. */

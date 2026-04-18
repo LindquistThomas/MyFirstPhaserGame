@@ -6,7 +6,7 @@
  */
 
 import type { KVStorage } from './SaveManager';
-import { QUIZ_COOLDOWN_MS, QUIZ_PASS_THRESHOLD } from '../config/quizData';
+import { QUIZ_COOLDOWN_MS, QUIZ_PASS_THRESHOLD } from '../config/quiz';
 
 const STORAGE_KEY = 'architect_quiz_v1';
 

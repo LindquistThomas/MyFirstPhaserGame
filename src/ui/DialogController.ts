@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
-import { INFO_POINTS } from '../config/infoContent';
-import { QUIZ_DATA } from '../config/quizData';
+import { INFO_POINTS } from '../config/info';
+import { QUIZ_DATA } from '../config/quiz';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 import { InfoDialog } from './InfoDialog';

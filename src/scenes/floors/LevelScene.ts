@@ -1,23 +1,19 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, ELEVATOR_SPEED, FLOORS, FloorId } from '../config/gameConfig';
-import { LEVEL_DATA, FloorData } from '../config/levelData';
-import { QUIZ_DATA } from '../config/quizData';
-import { Player } from '../entities/Player';
-import { Token } from '../entities/Token';
-import { Enemy } from '../entities/Enemy';
-import { Slime } from '../entities/enemies/Slime';
-import { BureaucracyBot } from '../entities/enemies/BureaucracyBot';
-import { DroppedAU } from '../entities/DroppedAU';
-import { HUD } from '../ui/HUD';
-import { ElevatorButtons } from '../ui/ElevatorButtons';
-import { InfoIcon } from '../ui/InfoIcon';
-import { DialogController } from '../ui/DialogController';
-import { ZoneManager } from '../systems/ZoneManager';
-import { eventBus } from '../systems/EventBus';
-import { ProgressionSystem } from '../systems/ProgressionSystem';
-import { markSeen } from '../systems/InfoDialogManager';
-import { isQuizPassed } from '../systems/QuizManager';
-import { allKeyLabels } from '../input';
+import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, ELEVATOR_SPEED, FLOORS, FloorId } from '../../config/gameConfig';
+import { LEVEL_DATA, FloorData } from '../../config/levelData';
+import { Player } from '../../entities/Player';
+import { Enemy } from '../../entities/Enemy';
+import { DroppedAU } from '../../entities/DroppedAU';
+import { HUD } from '../../ui/HUD';
+import { ElevatorButtons } from '../../ui/ElevatorButtons';
+import { DialogController } from '../../ui/DialogController';
+import { ProgressionSystem } from '../../systems/ProgressionSystem';
+import { allKeyLabels } from '../../input';
+import type { NavigationContext } from '../NavigationContext';
+import { LevelEnemySpawner } from './LevelEnemySpawner';
+import { LevelTokenManager } from './LevelTokenManager';
+import { LevelZoneSetup } from './LevelZoneSetup';
+import { createLevelDialogs } from './LevelDialogBindings';
 
 export interface RoomElevator {
   x: number;
@@ -79,23 +75,23 @@ export interface LevelConfig {
  * - Multiple platforms at different heights.
  * - Small in-room elevators the player rides with Up/Down.
  * - Exit door returns to the elevator shaft.
+ *
+ * Concerns are split across focused helpers:
+ *   - {@link LevelEnemySpawner}  — spawn, physics, stomp/damage rules.
+ *   - {@link LevelTokenManager}  — token group + dropped-AU recovery.
+ *   - {@link LevelZoneSetup}     — info-point → proximity zone + icons.
+ *   - {@link createLevelDialogs} — wiring the shared DialogController.
  */
 export class LevelScene extends Phaser.Scene {
   protected player!: Player;
   protected hud!: HUD;
   protected progression!: ProgressionSystem;
   protected platformGroup!: Phaser.Physics.Arcade.StaticGroup;
-  protected tokenGroup!: Phaser.Physics.Arcade.StaticGroup;
-  /** Active enemies in the scene. Empty if level config has no enemies[]. */
-  protected enemies: Enemy[] = [];
-  /** Transient AU drops from player hits. Lives only while the scene is active. */
-  protected droppedAUGroup!: Phaser.Physics.Arcade.Group;
   protected exitDoor!: Phaser.GameObjects.Image;
   protected floorData!: FloorData;
   protected floorId!: FloorId;
   protected isTransitioning = false;
   protected interactPrompt?: Phaser.GameObjects.Text;
-  protected auCollected = 0;
 
   /**
    * Which side of the elevator shaft this room sits on.
@@ -123,97 +119,88 @@ export class LevelScene extends Phaser.Scene {
   private liftButtons?: ElevatorButtons;
 
   /** Info + quiz dialog orchestration. */
-  private dialogs!: DialogController;
+  protected dialogs!: DialogController;
 
-  /**
-   * Zone manager: each info point in the level config becomes a proximity
-   * zone. ZoneManager emits zone:enter / zone:exit on the eventBus; the
-   * subscribers wired in createInfoZones() show/hide icons in response.
-   */
-  private zoneManager = new ZoneManager();
-
-  /**
-   * InfoIcon instances keyed by their zone/content ID.
-   * Kept here for direct badge refresh after quiz completion.
-   */
-  private infoIconsByZone = new Map<string, InfoIcon>();
+  private enemySpawner!: LevelEnemySpawner;
+  private tokenMgr!: LevelTokenManager;
+  private zones!: LevelZoneSetup;
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
     this.floorId = floorId;
   }
 
+  /** Read-only view of spawned enemies (kept for subclass compat). */
+  protected get enemies(): readonly Enemy[] {
+    return this.enemySpawner?.enemies ?? [];
+  }
+
+  /** AU collected this visit (kept for subclass compat). */
+  protected get auCollected(): number {
+    return this.tokenMgr?.auCollected ?? 0;
+  }
+
+  protected get tokenGroup(): Phaser.Physics.Arcade.StaticGroup {
+    return this.tokenMgr.tokenGroup;
+  }
+
+  protected get droppedAUGroup(): Phaser.Physics.Arcade.Group {
+    return this.tokenMgr.droppedAUGroup;
+  }
+
   init(): void {
     this.progression = this.registry.get('progression') as ProgressionSystem;
     this.floorData = LEVEL_DATA[this.floorId];
     this.isTransitioning = false;
-    this.auCollected = 0;
     this.roomLifts = [];
     this.activeRoomLift = -1;
-    this.enemies = [];
-    this.zoneManager.clear();
-    this.infoIconsByZone.clear();
-    this.dialogs = new DialogController(this, {
-      progression: this.progression,
-      getIconForContent: (id) => this.infoIconsByZone.get(id),
-      onOpen: (id) => markSeen(id),
-      onClose: (id) => {
-        // Dialog was just read — switch the icon (if still visible in its
-        // zone) from the eye-catching "unseen" animation to the subtle pulse.
-        this.infoIconsByZone.get(id)?.markAsSeen();
-      },
-    });
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor(this.floorData.theme.backgroundColor);
-
     this.physics.world.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
     this.createBackground();
     this.createPlatforms();
     this.createRoomElevators();
     this.createDecorations();
-    this.createTokens();
     this.createExit();
     this.createPlayer();
-    this.createEnemies();
     this.createUI();
-    this.createInfoZones();
 
-    this.cameras.main.setScroll(0, 0);
+    // Now that the player exists, instantiate the helper managers.
+    this.tokenMgr = new LevelTokenManager({
+      scene: this,
+      floorId: this.floorId,
+      floorData: this.floorData,
+      progression: this.progression,
+      player: this.player,
+      platformGroup: this.platformGroup,
+      camera: this.cameras.main,
+    });
+    this.enemySpawner = new LevelEnemySpawner({
+      scene: this,
+      floorId: this.floorId,
+      progression: this.progression,
+      player: this.player,
+      platformGroup: this.platformGroup,
+      droppedAUGroup: this.tokenMgr.droppedAUGroup,
+      camera: this.cameras.main,
+    });
+    this.zones = new LevelZoneSetup({
+      scene: this,
+      player: this.player,
+      dialogs: this.buildDialogs(),
+    });
+
+    const cfg = this.getLevelConfig();
+    this.tokenMgr.spawn(cfg);
+    this.enemySpawner.spawn(cfg);
+    this.zones.create(cfg);
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.tokenGroup,
-      this.onAUCollect as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-      undefined,
-      this,
-    );
-
-    // Enemies collide with the static platform geometry so they stay on floors.
-    if (this.enemies.length > 0) {
-      this.physics.add.collider(this.enemies, this.platformGroup);
-      // Player ↔ enemy: overlap (not collider) so takeHit controls knockback.
-      this.physics.add.overlap(
-        this.player.sprite,
-        this.enemies,
-        this.onEnemyOverlap as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-        undefined,
-        this,
-      );
-    }
-
-    // Dropped AU: bounce on platforms, re-collect on player overlap.
-    this.physics.add.collider(this.droppedAUGroup, this.platformGroup);
-    this.physics.add.overlap(
-      this.player.sprite,
-      this.droppedAUGroup,
-      this.onDroppedAURecover as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-      undefined,
-      this,
-    );
+    this.tokenMgr.wireColliders();
+    this.enemySpawner.wireColliders();
 
     for (let i = 0; i < this.roomLifts.length; i++) {
       const idx = i;
@@ -222,8 +209,18 @@ export class LevelScene extends Phaser.Scene {
       });
     }
 
+    this.cameras.main.setScroll(0, 0);
     this.showFloorBanner();
     this.cameras.main.fadeIn(500, 0, 0, 0);
+  }
+
+  /** Construct the DialogController and stash it on this.dialogs. */
+  private buildDialogs(): DialogController {
+    this.dialogs = createLevelDialogs(this, {
+      progression: this.progression,
+      getIcon: (id) => this.zones.iconsByContentId.get(id),
+    });
+    return this.dialogs;
   }
 
   /* ---- background ---- */
@@ -288,38 +285,6 @@ export class LevelScene extends Phaser.Scene {
   /* ---- decorations (override in subclass to add floor-specific props) ---- */
   protected createDecorations(): void { /* no-op by default */ }
 
-  /* ---- tokens ---- */
-  protected createTokens(): void {
-    this.tokenGroup = this.physics.add.staticGroup();
-    // Dropped-AU group initialised alongside tokens so enemy/collision
-    // wiring in create() has a ready group even if no hits occur.
-    this.droppedAUGroup = this.physics.add.group({ classType: DroppedAU });
-    const config = this.getLevelConfig();
-    const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
-    for (let i = 0; i < config.tokens.length; i++) {
-      const idx = config.tokens[i].index ?? i;
-      if (this.progression.isTokenCollected(this.floorId, idx)) continue;
-      const token = new Token(this, config.tokens[i].x, config.tokens[i].y, tokenKey);
-      token.setData('tokenIndex', idx);
-      this.tokenGroup.add(token);
-    }
-  }
-
-  /* ---- enemies ---- */
-  protected createEnemies(): void {
-    const config = this.getLevelConfig();
-    if (!config.enemies?.length) return;
-    for (const e of config.enemies) {
-      const minX = e.minX ?? e.x - 160;
-      const maxX = e.maxX ?? e.x + 160;
-      const opts = { minX, maxX, speed: e.speed };
-      const enemy: Enemy = e.type === 'slime'
-        ? new Slime(this, e.x, e.y, opts)
-        : new BureaucracyBot(this, e.x, e.y, opts);
-      this.enemies.push(enemy);
-    }
-  }
-
   /* ---- exit ---- */
   protected createExit(): void {
     const c = this.getLevelConfig();
@@ -353,91 +318,6 @@ export class LevelScene extends Phaser.Scene {
     this.liftButtons = new ElevatorButtons(this, 48);
   }
 
-  /* ---- info zones ---- */
-
-  /**
-   * Register each info point from the level config as a proximity zone.
-   *
-   * Zone events from ZoneManager drive icon visibility — the update loop
-   * does not call setVisible() on icons. To use a non-circular zone shape,
-   * override this method in a subclass and provide a custom check() lambda.
-   *
-   * A single pair of eventBus listeners handles all zones in this scene.
-   * They are removed on scene shutdown to prevent listener accumulation.
-   */
-  protected createInfoZones(): void {
-    const config = this.getLevelConfig();
-    if (!config.infoPoints?.length) return;
-
-    const DEFAULT_ZONE_RADIUS = 120;
-
-    // One subscriber pair for all zones in this scene — routes by zoneId.
-    const onEnter = (...args: unknown[]) => {
-      this.infoIconsByZone.get(args[0] as string)?.setVisible(true);
-    };
-    const onExit = (...args: unknown[]) => {
-      this.infoIconsByZone.get(args[0] as string)?.setVisible(false);
-    };
-
-    eventBus.on('zone:enter', onEnter);
-    eventBus.on('zone:exit', onExit);
-
-    this.events.once('shutdown', () => {
-      eventBus.off('zone:enter', onEnter);
-      eventBus.off('zone:exit', onExit);
-    });
-
-    for (const ip of config.infoPoints) {
-      // Icons live in the HUD top bar (shared fixed position) rather than
-      // floating above the info point. Only one zone is active at a time,
-      // so the icons never overlap. The contentId drives the "unseen"
-      // attention animation on first visit.
-      const icon = new InfoIcon(this, 210, 22, () => {
-        this.dialogs.open(ip.contentId);
-      }, ip.contentId);
-      icon.setVisible(false);
-      // Direct call: initial badge state is scene-internal, not a cross-system event.
-      if (QUIZ_DATA[ip.contentId]) {
-        icon.setQuizBadge(this, isQuizPassed(ip.contentId));
-      }
-
-      this.infoIconsByZone.set(ip.contentId, icon);
-
-      // Build the zone containment check from the declarative shape.
-      const check = this.buildZoneCheck(ip, DEFAULT_ZONE_RADIUS);
-      this.zoneManager.register(ip.contentId, check);
-    }
-  }
-
-  /**
-   * Build a per-frame "is the player inside this zone?" predicate for
-   * an info point. Rect zones cover wide anchors (monitoring walls,
-   * stretched consoles) without over-expanding vertically; circle zones
-   * remain the default.
-   */
-  private buildZoneCheck(
-    ip: NonNullable<LevelConfig['infoPoints']>[number],
-    defaultRadius: number,
-  ): () => boolean {
-    const body = () => this.player.sprite;
-    if (ip.zone?.shape === 'rect') {
-      const w = ip.zone.width;
-      const h = ip.zone.height;
-      const offsetY = ip.zone.offsetY ?? -h / 2;
-      const rect = new Phaser.Geom.Rectangle(
-        ip.x - w / 2,
-        ip.y + offsetY - h / 2,
-        w,
-        h,
-      );
-      return () => Phaser.Geom.Rectangle.Contains(rect, body().x, body().y);
-    }
-    const radius = ip.zone?.shape === 'circle'
-      ? ip.zone.radius
-      : (ip.zoneRadius ?? defaultRadius);
-    return () => Phaser.Math.Distance.Between(body().x, body().y, ip.x, ip.y) < radius;
-  }
-
   /* ---- banner ---- */
   /** Title shown in the floor-entry banner. Override in subclasses that
    *  share a floorId but represent a distinct room (e.g. Architecture Team
@@ -466,98 +346,6 @@ export class LevelScene extends Phaser.Scene {
     });
   }
 
-  /* ---- AU collection ---- */
-  protected onAUCollect(
-    _player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
-    tokenObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
-  ): void {
-    const token = tokenObj as Token;
-    const tokenIndex = token.getData('tokenIndex') as number;
-    this.emitTokenSparkle(token.x, token.y);
-    token.collect();
-    this.progression.collectAU(this.floorId, tokenIndex);
-    this.auCollected++;
-    this.cameras.main.flash(100, 255, 215, 0, false, undefined, this);
-  }
-
-  /** Short gold-burst sparkle when a token is collected. */
-  private emitTokenSparkle(x: number, y: number): void {
-    if (!this.textures.exists('particle')) return;
-    const emitter = this.add.particles(x, y, 'particle', {
-      speed: { min: 60, max: 180 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.8, end: 0 },
-      alpha: { start: 1, end: 0 },
-      lifespan: 500,
-      gravityY: 120,
-      tint: this.floorData.theme.tokenColor,
-      emitting: false,
-    });
-    emitter.setDepth(11);
-    emitter.explode(10);
-    this.time.delayedCall(600, () => emitter.destroy());
-  }
-
-  /* ---- enemy collision ---- */
-
-  /**
-   * Player↔enemy overlap. Routes to stomp (if enemy is stompable and the
-   * player is approaching from above) or to damage (takeHit + AU drop).
-   */
-  protected onEnemyOverlap(
-    _playerObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
-    enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
-  ): void {
-    const enemy = enemyObj as Enemy;
-    if (enemy.defeated) return;
-    if (this.player.isInvulnerable()) return;
-
-    const enemyBody = enemy.body as Phaser.Physics.Arcade.Body;
-    const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    const comingFromAbove = playerBody.bottom - enemyBody.top < 24;
-    const falling = playerBody.velocity.y > 40 || this.player.getIsFlipping();
-
-    if (enemy.canBeStomped && comingFromAbove && falling) {
-      enemy.onStomp();
-      // Bounce the player for satisfying feedback.
-      this.player.sprite.setVelocityY(-420);
-      eventBus.emit('sfx:stomp');
-      return;
-    }
-
-    this.applyEnemyHit(enemy);
-  }
-
-  /** Deduct AU, spawn dropped pickups, and stun/knock-back the player. */
-  protected applyEnemyHit(enemy: Enemy): void {
-    const removed = this.progression.loseAU(this.floorId, enemy.hitCost);
-
-    if (removed > 0) {
-      const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
-      for (let i = 0; i < removed; i++) {
-        const d = new DroppedAU(this, this.player.sprite.x, this.player.sprite.y - 20, tokenKey);
-        this.droppedAUGroup.add(d);
-      }
-      eventBus.emit('sfx:drop_au');
-    }
-
-    const dir = this.player.sprite.x < enemy.x ? -1 : 1;
-    this.player.takeHit(enemy.knockbackX * dir, enemy.knockbackY);
-    this.cameras.main.shake(120, 0.006);
-    eventBus.emit('sfx:hit');
-  }
-
-  /** Player overlap with a dropped AU pickup — re-award 1 AU. */
-  protected onDroppedAURecover(
-    _playerObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
-    dropObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
-  ): void {
-    const drop = dropObj as DroppedAU;
-    if (!drop.ready || drop.collected) return;
-    drop.recover();
-    this.progression.addAU(this.floorId, 1);
-  }
-
   /* ---- default level config (overridden by subclasses) ---- */
   protected getLevelConfig(): LevelConfig {
     return {
@@ -581,17 +369,13 @@ export class LevelScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
     this.updateRoomElevators();
-
-    for (const enemy of this.enemies) {
-      if (!enemy.defeated) enemy.update(_time, delta);
-    }
+    this.enemySpawner.update(_time, delta);
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
-    // Subscribed handlers (wired in createInfoZones) react to show/hide icons.
-    this.zoneManager.update();
+    this.zones.update();
 
     // I key opens the info dialog for the currently-active content zone.
-    const activeZone = this.zoneManager.getActiveZone();
+    const activeZone = this.zones.getActiveZone();
     if (infoPressed && activeZone && !this.dialogs.isOpen) {
       this.dialogs.open(activeZone);
       return;
@@ -675,9 +459,10 @@ export class LevelScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', {
-      returnFromFloor: this.floorId,
-      returnFromSide: this.returnSide,
-    }));
+    const ctx: NavigationContext = {
+      fromFloor: this.floorId,
+      spawnSide: this.returnSide,
+    };
+    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
   }
 }

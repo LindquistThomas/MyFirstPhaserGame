@@ -1,9 +1,9 @@
 import * as Phaser from 'phaser';
-import { generateSprites } from '../systems/SpriteGenerator';
-import { generateSounds } from '../systems/SoundGenerator';
-import { AudioManager } from '../systems/AudioManager';
-import { eventBus } from '../systems/EventBus';
-import { COLORS } from '../config/gameConfig';
+import { generateSprites } from '../../systems/SpriteGenerator';
+import { generateSounds } from '../../systems/SoundGenerator';
+import { AudioManager } from '../../systems/AudioManager';
+import { eventBus } from '../../systems/EventBus';
+import { COLORS } from '../../config/gameConfig';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
