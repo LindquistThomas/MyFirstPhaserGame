@@ -12,9 +12,9 @@ export interface ProductRoomDecoration {
 }
 
 export interface ProductRoomConfig {
-  /** Phaser scene key — must be unique. */
+  /** Phaser scene key ΓÇö must be unique. */
   sceneKey: string;
-  /** Info content ID — also used as the door identifier in Floor3ProductsScene. */
+  /** Info content ID ΓÇö also used as the door identifier in Floor3ProductsScene. */
   contentId: string;
   /** Big title shown on the room signpost. */
   title: string;
@@ -31,7 +31,7 @@ export interface ProductRoomConfig {
  * the Products hall (`Floor3ProductsScene`) by walking through the
  * matching door and pressing Space/Enter.
  *
- * Same `FLOORS.PRODUCTS` is reused for all product rooms — token
+ * Same `FLOORS.PRODUCTS` is reused for all product rooms ΓÇö token
  * collection state is shared but no rooms define tokens, so there is
  * no collision risk.
  */
@@ -61,7 +61,7 @@ export class ProductRoomScene extends LevelScene {
     this.add.image(GAME_WIDTH - 90, G - 40, 'plant_tall').setDepth(3);
     this.add.image(GAME_WIDTH - 160, G - 32, 'plant_small').setDepth(11);
 
-    // Title signpost — establishes which product room we're in.
+    // Title signpost ΓÇö establishes which product room we're in.
     this.add.image(260, G - 60, 'info_board').setDepth(3);
     this.add.text(260, G - 130, this.cfg.title, {
       fontFamily: 'monospace', fontSize: '12px', color: this.cfg.titleColor,
@@ -98,7 +98,7 @@ export class ProductRoomScene extends LevelScene {
   }
 
   /**
-   * Return to the hub — product doors now live directly on the PRODUCTS
+   * Return to the hub ΓÇö product doors now live directly on the PRODUCTS
    * floor in HubScene, so we go back there and tell HubScene which door
    * to respawn next to.
    */

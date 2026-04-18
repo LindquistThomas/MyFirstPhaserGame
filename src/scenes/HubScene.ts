@@ -17,16 +17,32 @@ const FLOOR1_ARCH_SCENE_KEY = 'Floor1ArchScene';
 const FLOOR3_PRODUCT_SCENE_KEY = 'Floor3ProductScene';
 
 /**
- * Hub / Elevator-shaft scene — Impossible-Mission style.
+ * Product doors rendered directly on the PRODUCTS floor inside the hub.
+ * Walking up to a door and pressing Space/Enter transitions straight to
+ * the matching product room scene ΓÇö no intermediate hall scene.
+ *
+ * x is a world X in the hub (must lie in the right-of-shaft walk surface,
+ * i.e. roughly 770..1250).
+ */
+interface HubProductDoor {
+  x: number;
+  label: string;
+  sceneKey: string;
+  /** Door identifier ΓÇö matches ProductRoomConfig.contentId for return-spawn. */
+  contentId: string;
+}
+
+/**
+ * Hub / Elevator-shaft scene ΓÇö Impossible-Mission style.
  *
  * The player rides the elevator up and down using Up/Down controls.
  * At each floor there is an opening; walking off the elevator onto
  * the floor platform triggers a scene transition to that floor's level.
  *
  * Structural concerns are extracted to focused collaborators:
- *   - HubElevatorController  — elevator entity, ride loop, music cues
- *   - HubZones               — zone registrations, info icons, first-ride setup
- *   - DialogController       — info + quiz dialog orchestration
+ *   - HubElevatorController  ΓÇö elevator entity, ride loop, music cues
+ *   - HubZones               ΓÇö zone registrations, info icons, first-ride setup
+ *   - DialogController       ΓÇö info + quiz dialog orchestration
  * This scene owns world construction, the update loop, and scene transitions.
  */
 export class HubScene extends Phaser.Scene {
@@ -37,6 +53,18 @@ export class HubScene extends Phaser.Scene {
   private isTransitioning = false;
 
   private elevatorButtons?: ElevatorButtons;
+
+  /** Product doors on the PRODUCTS floor. Start with two; easy to extend. */
+  private static readonly PRODUCT_DOORS: HubProductDoor[] = [
+    { x: 900,  label: 'ISY Project Controls', sceneKey: 'ProductIsyProjectControlsScene', contentId: 'product-isy-project-controls' },
+    { x: 1120, label: 'ISY Beskrivelse',      sceneKey: 'ProductIsyBeskrivelseScene',     contentId: 'product-isy-beskrivelse'      },
+  ];
+
+  /** Proximity prompt shown when the player is near a product door. */
+  private productDoorPrompt?: Phaser.GameObjects.Text;
+
+  /** If returning from a product room, which door to spawn next to. */
+  private spawnAtProductDoor?: string;
 
   private dialogs!: DialogController;
   private zones!: HubZones;
@@ -60,7 +88,7 @@ export class HubScene extends Phaser.Scene {
     super({ key: 'HubScene' });
   }
 
-  init(data?: { loadSave?: boolean }): void {
+  init(data?: { loadSave?: boolean; returnFromProductDoor?: string }): void {
     if (!this.registry.get('progression')) {
       const progression = new ProgressionSystem();
       if (data?.loadSave) {
@@ -71,6 +99,7 @@ export class HubScene extends Phaser.Scene {
       this.registry.set('progression', progression);
     }
     this.progression = this.registry.get('progression') as ProgressionSystem;
+    this.spawnAtProductDoor = data?.returnFromProductDoor;
     this.zoneManager.clear();
   }
 
@@ -130,7 +159,7 @@ export class HubScene extends Phaser.Scene {
     const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
 
-    // Concrete back wall (shaft interior) — tiled
+    // Concrete back wall (shaft interior) ΓÇö tiled
     for (let y = 0; y < worldHeight; y += TILE_SIZE) {
       this.add.tileSprite(cx, y, sw, TILE_SIZE, 'elevator_shaft').setDepth(0);
     }
@@ -142,7 +171,7 @@ export class HubScene extends Phaser.Scene {
     shadow.fillRect(rightEdge - 8, 0, 8, worldHeight);
     shadow.setDepth(0);
 
-    // Steel shaft walls — dark outer pillars flanking the concrete
+    // Steel shaft walls ΓÇö dark outer pillars flanking the concrete
     const walls = this.add.graphics();
     walls.fillStyle(0x1a1a22, 1);
     walls.fillRect(leftEdge - 12, 0, 12, worldHeight);
@@ -221,7 +250,7 @@ export class HubScene extends Phaser.Scene {
       const leftEdge = cx - sw / 2;
       const rightEdge = cx + sw / 2;
 
-      // Visual floor slab — stacked tile rows (no physics)
+      // Visual floor slab ΓÇö stacked tile rows (no physics)
       for (let row = 0; row < HubScene.FLOOR_TILE_ROWS; row++) {
         const tileY = y + row * TILE_SIZE + TILE_SIZE / 2;
         for (let tileLeft = 0; tileLeft + TILE_SIZE <= leftEdge; tileLeft += TILE_SIZE) {
@@ -245,7 +274,7 @@ export class HubScene extends Phaser.Scene {
           ledgeGapR, WALK_H, ledgeColor, 1).setDepth(2);
       }
 
-      // Walking surface — extends from screen edge to elevator platform edge
+      // Walking surface ΓÇö extends from screen edge to elevator platform edge
       const walkY = y + floorH;
       const addWalkSurface = (rx: number, rw: number) => {
         const rect = this.add.rectangle(
@@ -257,7 +286,7 @@ export class HubScene extends Phaser.Scene {
       addWalkSurface(elevLeft / 2, elevLeft);
       addWalkSurface((elevRight + GAME_WIDTH) / 2, GAME_WIDTH - elevRight);
 
-      // Floor label — inside the tile slab
+      // Floor label ΓÇö inside the tile slab
       this.add.text(20, y + 10, labels[fId] ?? `F${fId}`, {
         fontFamily: 'monospace', fontSize: '28px',
         color: COLORS.hudText, fontStyle: 'bold',
@@ -273,7 +302,7 @@ export class HubScene extends Phaser.Scene {
       if (fId !== FLOORS.LOBBY) {
         const arrowColor = unlocked ? '#00ff88' : '#ff4444';
         if (unlocked && fId === FLOORS.PLATFORM_TEAM) {
-          // Floor 1 splits: left → Platform room, right → Architecture room.
+          // Floor 1 splits: left ΓåÆ Platform room, right ΓåÆ Architecture room.
           this.add.text(leftEdge - 20, walkY + 20, 'PLATFORM \u2190', {
             fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
           }).setOrigin(1, 0).setDepth(5);
@@ -281,11 +310,17 @@ export class HubScene extends Phaser.Scene {
             fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
           }).setDepth(5);
         } else if (unlocked && fId === FLOORS.BUSINESS) {
-          // Floor 3 splits: left → Finance, right → Product Leadership.
+          // Floor 3 splits: left ΓåÆ Finance, right ΓåÆ Product Leadership.
           this.add.text(leftEdge - 20, walkY + 20, 'FINANCE \u2190', {
             fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
           }).setOrigin(1, 0).setDepth(5);
           this.add.text(rightEdge + 20, walkY + 20, '\u2192 PRODUCT', {
+            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
+          }).setDepth(5);
+        } else if (unlocked && fId === FLOORS.PRODUCTS) {
+          // Products floor has doors on the right walk surface ΓÇö no single
+          // "enter" arrow; the door name plates serve as the labels.
+          this.add.text(rightEdge + 20, walkY + 20, '\u2192 PRODUCTS', {
             fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
           }).setDepth(5);
         } else {
@@ -297,7 +332,7 @@ export class HubScene extends Phaser.Scene {
       }
     }
 
-    // Shaft safety net — collision floor at the very bottom of the shaft.
+    // Shaft safety net ΓÇö collision floor at the very bottom of the shaft.
     const netY = HubScene.WORLD_HEIGHT - 4;
     const shaftNet = this.add.rectangle(cx, netY, sw, 8, 0x000000, 0).setDepth(0);
     this.physics.add.existing(shaftNet, true);
@@ -324,7 +359,7 @@ export class HubScene extends Phaser.Scene {
     this.add.image(rightEdge + 60, floorBottom - 32, 'plant_small').setDepth(11);
     this.add.image(GAME_WIDTH - 80, floorBottom - 32, 'plant_tall').setDepth(11);
 
-    // Info board — between player spawn and elevator shaft
+    // Info board ΓÇö between player spawn and elevator shaft
     this.add.image(300, floorBottom - 60, 'info_board').setDepth(3);
   }
 
@@ -335,7 +370,7 @@ export class HubScene extends Phaser.Scene {
     const sw = HubScene.SHAFT_WIDTH;
     const rightEdge = cx + sw / 2;
 
-    // F1 — Platform Team: server racks, desks, and networking gear
+    // F1 ΓÇö Platform Team: server racks, desks, and networking gear
     const f1Bottom = positions[FLOORS.PLATFORM_TEAM] + HubScene.FLOOR_H;
     this.add.image(120, f1Bottom - 50, 'server_rack').setDepth(3);
     this.add.image(180, f1Bottom - 50, 'server_rack').setDepth(3);
@@ -347,13 +382,23 @@ export class HubScene extends Phaser.Scene {
     this.add.image(rightEdge + 320, f1Bottom - 22, 'monitor_dash').setDepth(3);
     this.add.image(rightEdge + 440, f1Bottom - 10, 'router').setDepth(3);
 
-    // F (Products) — door-lined hall: place a hint sign on this hub level.
+    // F (Products) ΓÇö door-lined hall: left-side ambience + product doors on the right.
     const fProductsBottom = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
     this.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
     this.add.image(rightEdge + 100, fProductsBottom - 40, 'plant_tall').setDepth(3);
     this.add.image(rightEdge + 240, fProductsBottom - 32, 'plant_small').setDepth(11);
 
-    // F3 — Business: finance left, product leadership right
+    // Render a door sprite + name plate for each product.
+    for (const door of HubScene.PRODUCT_DOORS) {
+      this.add.image(door.x, fProductsBottom - 56, 'door_unlocked').setDepth(3);
+      this.add.text(door.x, fProductsBottom - 130, door.label, {
+        fontFamily: 'monospace', fontSize: '13px', color: '#cfe6ff',
+        fontStyle: 'bold', align: 'center',
+        backgroundColor: '#0a1422', padding: { x: 6, y: 3 },
+      }).setOrigin(0.5).setDepth(4);
+    }
+
+    // F3 ΓÇö Business: finance left, product leadership right
     const f3Bottom = positions[FLOORS.BUSINESS] + HubScene.FLOOR_H;
     this.add.image(150, f3Bottom - 36, 'desk_monitor').setDepth(3);
     this.add.image(310, f3Bottom - 22, 'monitor_dash').setDepth(3);
@@ -361,7 +406,7 @@ export class HubScene extends Phaser.Scene {
     this.add.image(rightEdge + 280, f3Bottom - 22, 'monitor_dash').setDepth(11);
     this.add.image(rightEdge + 440, f3Bottom - 40, 'plant_tall').setDepth(3);
 
-    // F4 — Executive Suite: penthouse vibe with plants and an info board
+    // F4 ΓÇö Executive Suite: penthouse vibe with plants and an info board
     const f4Bottom = positions[FLOORS.EXECUTIVE] + HubScene.FLOOR_H;
     this.add.image(120, f4Bottom - 40, 'plant_tall').setDepth(3);
     this.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
@@ -402,11 +447,29 @@ export class HubScene extends Phaser.Scene {
   private createPlayer(): void {
     const positions = this.getFloorYPositions();
     const lobbyY = positions[FLOORS.LOBBY];
-    const spawnX = 200;
-    const spawnY = lobbyY + HubScene.FLOOR_H - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+
+    let spawnX = 200;
+    let spawnY = lobbyY + HubScene.FLOOR_H - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+
+    // If returning from a product room, spawn next to the door we came through.
+    if (this.spawnAtProductDoor) {
+      const door = HubScene.PRODUCT_DOORS.find((d) => d.contentId === this.spawnAtProductDoor);
+      if (door) {
+        const productsWalkY = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
+        spawnX = door.x;
+        spawnY = productsWalkY - HubScene.PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y;
+      }
+    }
 
     this.player = new Player(this, spawnX, spawnY);
     this.physics.add.collider(this.player.sprite, this.platforms);
+
+    // World-space prompt shown when near a product door (follows camera scroll).
+    this.productDoorPrompt = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', fontSize: '16px',
+      color: '#ffdd44', backgroundColor: '#00000088',
+      padding: { x: 8, y: 4 },
+    }).setDepth(20).setVisible(false);
   }
 
   /* ---- UI ---- */
@@ -486,6 +549,49 @@ export class HubScene extends Phaser.Scene {
     for (const door of this.shaftDoors) door.update(cabY, delta);
 
     this.checkFloorEntry();
+    this.checkProductDoorEntry();
+  }
+
+  /** Show prompt + handle Space/Enter when standing near a product door. */
+  private checkProductDoorEntry(): void {
+    if (this.isTransitioning) return;
+    if (this.elevatorCtrl.isOnElevator) {
+      this.productDoorPrompt?.setVisible(false);
+      return;
+    }
+    if (!this.progression.isFloorUnlocked(FLOORS.PRODUCTS)) {
+      this.productDoorPrompt?.setVisible(false);
+      return;
+    }
+
+    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    const positions = this.getFloorYPositions();
+    const walkY = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
+    if (Math.abs(body.bottom - walkY) > HubScene.FLOOR_DETECTION_TOLERANCE) {
+      this.productDoorPrompt?.setVisible(false);
+      return;
+    }
+
+    const px = this.player.sprite.x;
+    for (const door of HubScene.PRODUCT_DOORS) {
+      if (Math.abs(px - door.x) < 60) {
+        this.productDoorPrompt
+          ?.setText(`Press Space/Enter \u2192 ${door.label}`)
+          .setPosition(door.x - 120, walkY - 180)
+          .setVisible(true);
+        if (this.inputs.justPressed('Interact')) this.enterProductDoor(door);
+        return;
+      }
+    }
+    this.productDoorPrompt?.setVisible(false);
+  }
+
+  private enterProductDoor(door: HubProductDoor): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.progression.setCurrentFloor(FLOORS.PRODUCTS);
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
   }
 
   /** Detect player stepping onto a floor platform (not elevator, not lobby). */
@@ -507,11 +613,14 @@ export class HubScene extends Phaser.Scene {
     for (const [floorId, floorY] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
+      // PRODUCTS floor uses explicit doors (see checkProductDoorEntry) ΓÇö
+      // stepping onto the walk surface must not auto-transition.
+      if (fId === FLOORS.PRODUCTS) continue;
 
       const walkingSurface = floorY + HubScene.FLOOR_H;
       if (Math.abs(bodyBottom - walkingSurface) < HubScene.FLOOR_DETECTION_TOLERANCE) {
         if (this.progression.isFloorUnlocked(fId)) {
-          // Floor 1 splits into two rooms — left of shaft = Platform,
+          // Floor 1 splits into two rooms ΓÇö left of shaft = Platform,
           // right of shaft = Architecture (ADRs).
           const direction: 'left' | 'right' = px < GAME_WIDTH / 2 ? 'left' : 'right';
           this.enterFloor(fId, direction);
@@ -526,8 +635,8 @@ export class HubScene extends Phaser.Scene {
     this.isTransitioning = true;
     this.progression.setCurrentFloor(floorId);
     const fd = LEVEL_DATA[floorId];
-    // Floor 1 routes left→Platform room, right→Architecture room.
-    // Floor 3 routes left→Finance room, right→Product Leadership room.
+    // Floor 1 routes leftΓåÆPlatform room, rightΓåÆArchitecture room.
+    // Floor 3 routes leftΓåÆFinance room, rightΓåÆProduct Leadership room.
     let sceneKey = fd.sceneKey;
     if (floorId === FLOORS.PLATFORM_TEAM && direction === 'right') {
       sceneKey = FLOOR1_ARCH_SCENE_KEY;
