@@ -46,7 +46,7 @@ export class HubScene extends Phaser.Scene {
   private zoneManager = new ZoneManager();
 
   /** Total scrollable world height for the hub shaft. */
-  private static readonly WORLD_HEIGHT = 3290;
+  private static readonly WORLD_HEIGHT = 2760;
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
   /** Number of tile rows stacked per floor slab. */
@@ -347,13 +347,6 @@ export class HubScene extends Phaser.Scene {
     this.add.image(rightEdge + 320, f1Bottom - 22, 'monitor_dash').setDepth(3);
     this.add.image(rightEdge + 440, f1Bottom - 10, 'router').setDepth(3);
 
-    // F2 — Cloud Team: monitors and dashboards (lighter touch)
-    const f2Bottom = positions[FLOORS.CLOUD_TEAM] + HubScene.FLOOR_H;
-    this.add.image(150, f2Bottom - 22, 'monitor_dash').setDepth(3);
-    this.add.image(350, f2Bottom - 36, 'desk_monitor').setDepth(3);
-    this.add.image(rightEdge + 120, f2Bottom - 22, 'monitor_dash').setDepth(11);
-    this.add.image(rightEdge + 300, f2Bottom - 36, 'desk_monitor').setDepth(3);
-
     // F (Products) — door-lined hall: place a hint sign on this hub level.
     const fProductsBottom = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
     this.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
@@ -432,10 +425,9 @@ export class HubScene extends Phaser.Scene {
     return {
       [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 350,
       [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 880,
-      [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1410,
-      [FLOORS.PRODUCTS]: HubScene.WORLD_HEIGHT - 1940,
-      [FLOORS.BUSINESS]: HubScene.WORLD_HEIGHT - 2470,
-      [FLOORS.EXECUTIVE]: HubScene.WORLD_HEIGHT - 3000,
+      [FLOORS.PRODUCTS]: HubScene.WORLD_HEIGHT - 1410,
+      [FLOORS.BUSINESS]: HubScene.WORLD_HEIGHT - 1940,
+      [FLOORS.EXECUTIVE]: HubScene.WORLD_HEIGHT - 2470,
     };
   }
 

@@ -23,7 +23,7 @@ describe('ProgressionSystem', () => {
     expect(p.getTotalAU()).toBe(0);
     expect(p.isFloorUnlocked(FLOORS.LOBBY)).toBe(true);
     expect(p.isFloorUnlocked(FLOORS.PLATFORM_TEAM)).toBe(true);
-    expect(p.isFloorUnlocked(FLOORS.CLOUD_TEAM)).toBe(false);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
   });
 
   it('accumulates AU per floor and in total', () => {
@@ -44,20 +44,20 @@ describe('ProgressionSystem', () => {
     expect(p.isTokenCollected(FLOORS.PLATFORM_TEAM, 2)).toBe(false);
   });
 
-  it('unlocks CLOUD_TEAM when totalAU meets its threshold', () => {
+  it('unlocks BUSINESS when totalAU meets its threshold', () => {
     const p = new ProgressionSystem();
-    expect(p.isFloorUnlocked(FLOORS.CLOUD_TEAM)).toBe(false);
-    p.addAU(FLOORS.PLATFORM_TEAM, 5);
-    expect(p.isFloorUnlocked(FLOORS.CLOUD_TEAM)).toBe(true);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
+    p.addAU(FLOORS.PLATFORM_TEAM, 10);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
   });
 
   it('reports remaining AU needed for a locked floor', () => {
     const p = new ProgressionSystem();
-    expect(p.getAUNeededForFloor(FLOORS.CLOUD_TEAM)).toBe(5);
+    expect(p.getAUNeededForFloor(FLOORS.BUSINESS)).toBe(10);
     p.addAU(FLOORS.PLATFORM_TEAM, 2);
-    expect(p.getAUNeededForFloor(FLOORS.CLOUD_TEAM)).toBe(3);
-    p.addAU(FLOORS.PLATFORM_TEAM, 10);
-    expect(p.getAUNeededForFloor(FLOORS.CLOUD_TEAM)).toBe(0);
+    expect(p.getAUNeededForFloor(FLOORS.BUSINESS)).toBe(8);
+    p.addAU(FLOORS.PLATFORM_TEAM, 15);
+    expect(p.getAUNeededForFloor(FLOORS.BUSINESS)).toBe(0);
   });
 
   it('persists and reloads state via SaveManager', () => {
@@ -79,7 +79,7 @@ describe('ProgressionSystem', () => {
     p.addAU(FLOORS.PLATFORM_TEAM, 10);
     p.reset();
     expect(p.getTotalAU()).toBe(0);
-    expect(p.isFloorUnlocked(FLOORS.CLOUD_TEAM)).toBe(false);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
 
     const q = new ProgressionSystem();
     expect(q.loadFromSave()).toBe(false);

@@ -49,21 +49,6 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
       tokenColor: 0x95d5b2,
     },
   },
-  [FLOORS.CLOUD_TEAM]: {
-    id: FLOORS.CLOUD_TEAM,
-    name: 'Cloud Team',
-    description: 'Cloud architecture & services. Gather Cloud AU!',
-    sceneKey: 'Floor2Scene',
-    auRequired: 5,
-    auLabel: 'Cloud AU',
-    totalAU: 10,
-    theme: {
-      platformColor: 0x023e8a,
-      backgroundColor: 0x03045e,
-      wallColor: 0x0077b6,
-      tokenColor: 0x90e0ef,
-    },
-  },
   [FLOORS.BUSINESS]: {
     id: FLOORS.BUSINESS,
     name: 'Business',

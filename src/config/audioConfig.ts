@@ -19,7 +19,6 @@ export const SCENE_MUSIC: Record<string, string> = {
   Floor0Scene:  'music_floor1',
   Floor1Scene:  'music_floor1',
   Floor1ArchScene: 'music_floor1',
-  Floor2Scene:  'music_floor2',
   Floor3ProductsScene: 'music_floor2',
   Floor3Scene:  'music_floor2',
   Floor3ProductScene: 'music_floor2',

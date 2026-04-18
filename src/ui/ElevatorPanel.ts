@@ -51,7 +51,7 @@ export class ElevatorPanel {
     this.container.add(title);
 
     // Floor buttons
-    const floors: FloorId[] = [FLOORS.CLOUD_TEAM, FLOORS.PLATFORM_TEAM, FLOORS.LOBBY];
+    const floors: FloorId[] = [FLOORS.PLATFORM_TEAM, FLOORS.LOBBY];
     let yOffset = 45;
 
     for (const floorId of floors) {

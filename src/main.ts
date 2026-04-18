@@ -6,7 +6,6 @@ import { HubScene } from './scenes/HubScene';
 import { Floor0Scene } from './scenes/Floor0Scene';
 import { Floor1Scene } from './scenes/Floor1Scene';
 import { Floor1ArchScene } from './scenes/Floor1ArchScene';
-import { Floor2Scene } from './scenes/Floor2Scene';
 import { Floor3Scene } from './scenes/Floor3Scene';
 import { Floor3ProductScene } from './scenes/Floor3ProductScene';
 import { Floor3ProductsScene } from './scenes/Floor3ProductsScene';
@@ -61,7 +60,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MenuScene, HubScene, Floor0Scene, Floor1Scene, Floor1ArchScene, Floor2Scene, Floor3ProductsScene, Floor3Scene, Floor3ProductScene, Floor4Scene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
+  scene: [BootScene, MenuScene, HubScene, Floor0Scene, Floor1Scene, Floor1ArchScene, Floor3ProductsScene, Floor3Scene, Floor3ProductScene, Floor4Scene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
   plugins: {
     scene: [{ key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },
             { key: 'DebugPlugin', plugin: DebugPlugin, mapping: 'debug' }],

@@ -446,59 +446,6 @@ export const INFO_POINTS: Record<string, InfoPointDef> = {
     },
   },
 
-  'cloud-architecture': {
-    floorId: FLOORS.CLOUD_TEAM,
-    content: {
-      id: 'cloud-architecture',
-      title: 'Cloud-Native Architecture',
-      body:
-        'Cloud-native architecture is an approach to building and running ' +
-        'applications that fully exploits the advantages of cloud computing: ' +
-        'on-demand resources, elasticity, and managed services.\n\n' +
-        'The Cloud Native Computing Foundation (CNCF) defines cloud-native ' +
-        'technologies as those that empower organizations to build scalable ' +
-        'applications in modern environments like public, private, and hybrid ' +
-        'clouds using containers, service meshes, microservices, immutable ' +
-        'infrastructure, and declarative APIs.\n\n' +
-        'A key mindset shift is "design for failure." In the cloud, individual ' +
-        'components will fail \u2014 the architecture must ensure the system as ' +
-        'a whole remains available. This leads to patterns like circuit breakers, ' +
-        'retry with backoff, bulkheads, and graceful degradation.',
-      links: [
-        { label: 'CNCF Cloud Native Definition', url: 'https://github.com/cncf/toc/blob/main/DEFINITION.md' },
-        { label: 'The Twelve-Factor App', url: 'https://12factor.net/' },
-        { label: 'Cloud Design Patterns (Microsoft)', url: 'https://learn.microsoft.com/en-us/azure/architecture/patterns/' },
-      ],
-      extendedInfo: {
-        title: 'Deep Dive: Cloud-Native Architecture',
-        body:
-          'The Twelve-Factor App methodology, created by Heroku co-founder Adam ' +
-          'Wiggins, provides foundational principles for cloud-native apps:\n\n' +
-          '1. Codebase: One codebase tracked in VCS, many deploys\n' +
-          '2. Dependencies: Explicitly declare and isolate dependencies\n' +
-          '3. Config: Store config in the environment\n' +
-          '4. Backing services: Treat them as attached resources\n' +
-          '5. Build, release, run: Strictly separate build and run stages\n' +
-          '6. Processes: Execute as stateless processes\n' +
-          '7. Port binding: Export services via port binding\n' +
-          '8. Concurrency: Scale out via the process model\n' +
-          '9. Disposability: Maximize robustness with fast startup and graceful shutdown\n' +
-          '10. Dev/prod parity: Keep development and production as similar as possible\n' +
-          '11. Logs: Treat logs as event streams\n' +
-          '12. Admin processes: Run admin tasks as one-off processes\n\n' +
-          'Beyond twelve-factor, cloud-native architecture embraces the "cattle ' +
-          'not pets" philosophy: servers and containers are disposable and ' +
-          'replaceable (cattle), not unique and hand-maintained (pets). This ' +
-          'enables immutable infrastructure where updates mean replacing ' +
-          'instances rather than patching them in place.\n\n' +
-          'The circuit breaker pattern (popularized by Michael Nygard in "Release ' +
-          'It!") prevents cascading failures: when a downstream service fails ' +
-          'repeatedly, the circuit "opens" and requests fail fast instead of ' +
-          'timing out, giving the failing service time to recover.',
-      },
-    },
-  },
-
   'executive-suite': {
     floorId: FLOORS.EXECUTIVE,
     content: {

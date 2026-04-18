@@ -58,10 +58,10 @@ async function seedFullProgressSave(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const save = {
       totalAU: 50,
-      floorAU: { 0: 0, 1: 25, 2: 25 },
-      unlockedFloors: [0, 1, 2],
+      floorAU: { 0: 0, 1: 25 },
+      unlockedFloors: [0, 1],
       currentFloor: 0,
-      collectedTokens: { 0: [], 1: [], 2: [] },
+      collectedTokens: { 0: [], 1: [] },
     };
     try {
       window.localStorage.setItem('architect_default_v1', JSON.stringify(save));
@@ -221,29 +221,6 @@ test.describe('Gameplay screenshots', () => {
     await page.screenshot({ path: `${SCREENSHOT_DIR}/05c-floor1-info-scrolled.png` });
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
-  });
-
-  test('floor 2 (cloud team) renders after progression unlock', async ({ page }) => {
-    await seedFullProgressSave(page);
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'HubScene');
-    await page.waitForTimeout(600);
-
-    await page.evaluate(() => {
-      const g = window.__game!;
-      const hub = g.scene
-        .getScenes(true)
-        .find((s) => s.sys.settings.key === 'HubScene') as unknown as Record<string, unknown>;
-      if (!hub) throw new Error('HubScene not active');
-      (hub['enterFloor'] as (id: number) => void)(2);
-    });
-    await waitForScene(page, 'Floor2Scene');
-    await page.waitForTimeout(900);
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/06-floor2-cloud-team.png` });
   });
 
   test('HUD shows AU counter after some progress', async ({ page }) => {
