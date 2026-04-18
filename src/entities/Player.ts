@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { PLAYER_SPEED } from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
 
-type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall';
+type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall' | 'land';
 
 /** Flip (jump) parameters */
 const FLIP_DISTANCE = 256;                  // horizontal pixels traveled
@@ -170,16 +170,22 @@ export class Player {
     }
 
     // Land tell: fire once on airborne→grounded transition (walking off ledges).
+    // Require a brief airborne window to filter out 1-frame physics flicker
+    // (Arcade `touching.down` can drop out for a single tick even at rest),
+    // which would otherwise re-trigger playLandAnim every couple of frames
+    // and keep `isLanding` permanently true — freezing the sprite on the
+    // walk frames that player_land reuses.
     if (!this.wasOnGround && onGround) {
-      this.playLandAnim();
-      // Only emit landing dust if the player was airborne long enough to
-      // avoid spamming particles on slope/edge jitter.
       const now = this.scene.time.now;
-      if (
-        this.airborneSince !== null
-        && now - this.airborneSince > this.LANDING_DUST_MIN_AIRBORNE_MS
-      ) {
-        this.emitDust();
+      const airborneMs =
+        this.airborneSince !== null ? now - this.airborneSince : 0;
+      if (airborneMs > this.AIRBORNE_ANIM_GRACE_MS) {
+        this.playLandAnim();
+        // Only emit landing dust if the player was airborne long enough to
+        // avoid spamming particles on slope/edge jitter.
+        if (airborneMs > this.LANDING_DUST_MIN_AIRBORNE_MS) {
+          this.emitDust();
+        }
       }
       this.airborneSince = null;
     } else if (this.wasOnGround && !onGround) {
@@ -290,6 +296,7 @@ export class Player {
 
   private playLandAnim(): void {
     this.isLanding = true;
+    this.currentAnim = 'land';
     this.sprite.anims.play('player_land', true);
     this.scene.tweens.add({
       targets: this.sprite,
