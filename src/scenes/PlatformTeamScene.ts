@@ -9,13 +9,13 @@ import { LevelScene, LevelConfig } from './LevelScene';
  * Focused on platform-engineering content: the Platform Team signpost
  * on entry and the animated "PROD OPS" monitoring wall on the right.
  *
- * A sibling scene `Floor1ArchScene` hosts the architecture content
+ * A sibling scene `ArchitectureTeamScene` hosts the architecture content
  * on the other side of the elevator; both scenes share FloorId
  * PLATFORM_TEAM and use disjoint token-index ranges.
  */
-export class Floor1Scene extends LevelScene {
+export class PlatformTeamScene extends LevelScene {
   constructor() {
-    super('Floor1Scene', FLOORS.PLATFORM_TEAM);
+    super('PlatformTeamScene', FLOORS.PLATFORM_TEAM);
   }
 
   protected override createDecorations(): void {
@@ -161,7 +161,7 @@ export class Floor1Scene extends LevelScene {
 
       roomElevators: [],
 
-      // Token indices 0..4 — disjoint from Floor1ArchScene (5..).
+      // Token indices 0..4 — disjoint from ArchitectureTeamScene (5..).
       tokens: [
         { x: 380,  y: G - 40 },
         { x: 500,  y: G - 40 },

@@ -13,9 +13,9 @@ import { LevelScene, LevelConfig } from './LevelScene';
  * three parallax cloud layers for atmospheric depth, rim-lit platform
  * tiles, and staggered alpha-pulse tokens.
  */
-export class Floor4Scene extends LevelScene {
+export class ExecutiveSuiteScene extends LevelScene {
   constructor() {
-    super('Floor4Scene', FLOORS.EXECUTIVE);
+    super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
   }
 
   override create(): void {
@@ -126,9 +126,9 @@ export class Floor4Scene extends LevelScene {
    */
   private buildGradientSky(): void {
     const bottom = this.floorData.theme.backgroundColor;
-    const top = Floor4Scene.lightenTowardWhite(bottom, 0.15);
-    const [tr, tg, tb] = Floor4Scene.hexToRgb(top);
-    const [br, bg_, bb] = Floor4Scene.hexToRgb(bottom);
+    const top = ExecutiveSuiteScene.lightenTowardWhite(bottom, 0.15);
+    const [tr, tg, tb] = ExecutiveSuiteScene.hexToRgb(top);
+    const [br, bg_, bb] = ExecutiveSuiteScene.hexToRgb(bottom);
 
     const key = 'floor4_sky_gradient';
     if (!this.textures.exists(key)) {
@@ -210,7 +210,7 @@ export class Floor4Scene extends LevelScene {
    * code for a round-trip HSL conversion.
    */
   private static lightenTowardWhite(hex: number, amount: number): number {
-    const [r, g, b] = Floor4Scene.hexToRgb(hex);
+    const [r, g, b] = ExecutiveSuiteScene.hexToRgb(hex);
     const nr = Math.min(255, Math.round(r + (255 - r) * amount));
     const ng = Math.min(255, Math.round(g + (255 - g) * amount));
     const nb = Math.min(255, Math.round(b + (255 - b) * amount));

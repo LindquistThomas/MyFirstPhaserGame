@@ -138,7 +138,7 @@ test.describe('Gameplay screenshots', () => {
       (scene['enterFloor0Test'] as () => void)();
     });
 
-    await waitForScene(page, 'Floor0Scene');
+    await waitForScene(page, 'LobbyScene');
     await page.screenshot({ path: `${SCREENSHOT_DIR}/03-floor0-test-scene.png` });
 
     await page.keyboard.press('Enter');
@@ -200,7 +200,7 @@ test.describe('Gameplay screenshots', () => {
       if (!scene) throw new Error('ElevatorScene not active');
       (scene['enterFloor'] as (id: number) => void)(1);
     });
-    await waitForScene(page, 'Floor1Scene');
+    await waitForScene(page, 'PlatformTeamScene');
     await page.waitForTimeout(900);
     await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor1-platform-team.png` });
 

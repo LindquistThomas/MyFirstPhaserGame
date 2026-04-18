@@ -195,9 +195,9 @@ The dev server exposes `window.__game` (a `Phaser.Game` reference). Tests use it
 await page.evaluate(() => {
   const scene = window.__game!.scene.getScenes(true)
     .find(s => s.sys.settings.key === 'ElevatorScene');
-  scene!.scene.start('Floor1Scene');
+  scene!.scene.start('PlatformTeamScene');
 });
-await waitForScene(page, 'Floor1Scene');
+await waitForScene(page, 'PlatformTeamScene');
 await page.screenshot({ path: 'tests/screenshots/debug-floor1.png' });
 ```
 

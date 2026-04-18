@@ -29,8 +29,8 @@ src/
 │   ├── elevator/ElevatorShaftDoors.ts
 │   │                     Side-view landing doors that open when the cab docks.
 │   ├── LevelScene.ts     Shared base scene for the floors below.
-│   ├── Floor0Scene.ts    Tutorial floor (tier-0 content).
-│   ├── Floor1Scene.ts    Platform Team.
+│   ├── LobbyScene.ts    Tutorial floor (tier-0 content).
+│   ├── PlatformTeamScene.ts    Platform Team.
 │   └── Floor2Scene.ts    Cloud Team.
 ├── systems/              Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts       Typed pub/sub; `GameEvents` is the event catalog.

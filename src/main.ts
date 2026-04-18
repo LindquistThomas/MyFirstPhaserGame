@@ -3,13 +3,13 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS, PLAYER_GRAVITY } from './config/gameCo
 import { BootScene } from './scenes/BootScene';
 import { MenuScene } from './scenes/MenuScene';
 import { ElevatorScene } from './scenes/ElevatorScene';
-import { Floor0Scene } from './scenes/Floor0Scene';
-import { Floor1Scene } from './scenes/Floor1Scene';
-import { Floor1ArchScene } from './scenes/Floor1ArchScene';
-import { Floor3Scene } from './scenes/Floor3Scene';
-import { Floor3ProductScene } from './scenes/Floor3ProductScene';
-import { Floor3ProductsScene } from './scenes/Floor3ProductsScene';
-import { Floor4Scene } from './scenes/Floor4Scene';
+import { LobbyScene } from './scenes/LobbyScene';
+import { PlatformTeamScene } from './scenes/PlatformTeamScene';
+import { ArchitectureTeamScene } from './scenes/ArchitectureTeamScene';
+import { FinanceTeamScene } from './scenes/FinanceTeamScene';
+import { ProductLeadershipScene } from './scenes/ProductLeadershipScene';
+import { ProductsHallScene } from './scenes/ProductsHallScene';
+import { ExecutiveSuiteScene } from './scenes/ExecutiveSuiteScene';
 import { ProductIsyProjectControlsScene } from './scenes/products/ProductIsyProjectControlsScene';
 import { ProductIsyBeskrivelseScene } from './scenes/products/ProductIsyBeskrivelseScene';
 import { ProductIsyRoadScene } from './scenes/products/ProductIsyRoadScene';
@@ -61,7 +61,7 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MenuScene, ElevatorScene, Floor0Scene, Floor1Scene, Floor1ArchScene, Floor3ProductsScene, Floor3Scene, Floor3ProductScene, Floor4Scene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
+  scene: [BootScene, MenuScene, ElevatorScene, LobbyScene, PlatformTeamScene, ArchitectureTeamScene, ProductsHallScene, FinanceTeamScene, ProductLeadershipScene, ExecutiveSuiteScene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
   plugins: {
     scene: [{ key: 'InputService', plugin: InputService, mapping: 'inputs' },
             { key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },

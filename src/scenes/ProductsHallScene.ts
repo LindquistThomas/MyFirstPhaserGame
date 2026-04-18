@@ -19,7 +19,7 @@ interface ProductDoor {
  * door and press Space/Enter to enter; the room's exit door returns the player
  * to this hall, respawning next to the door they came through.
  */
-export class Floor3ProductsScene extends LevelScene {
+export class ProductsHallScene extends LevelScene {
   private static readonly DOORS: ProductDoor[] = [
     { x: 280,  label: 'ISY Project Controls', contentId: 'product-isy-project-controls', sceneKey: 'ProductIsyProjectControlsScene' },
     { x: 540,  label: 'ISY Beskrivelse',      contentId: 'product-isy-beskrivelse',      sceneKey: 'ProductIsyBeskrivelseScene' },
@@ -31,7 +31,7 @@ export class Floor3ProductsScene extends LevelScene {
   private spawnNearDoor?: string;
 
   constructor() {
-    super('Floor3ProductsScene', FLOORS.PRODUCTS);
+    super('ProductsHallScene', FLOORS.PRODUCTS);
   }
 
   override init(data?: { fromDoor?: string }): void {
@@ -47,7 +47,7 @@ export class Floor3ProductsScene extends LevelScene {
     this.add.image(GAME_WIDTH - 90, G - 40, 'plant_tall').setDepth(3);
 
     // Render each product door with a name plate above it.
-    for (const door of Floor3ProductsScene.DOORS) {
+    for (const door of ProductsHallScene.DOORS) {
       this.add.image(door.x, G - 56, 'door_unlocked').setDepth(3);
       this.add.text(door.x, G - 130, door.label, {
         fontFamily: 'monospace', fontSize: '13px', color: '#cfe6ff',
@@ -63,7 +63,7 @@ export class Floor3ProductsScene extends LevelScene {
     // Spawn next to the door the player just came back through, if any.
     let spawnX = 150;
     if (this.spawnNearDoor) {
-      const door = Floor3ProductsScene.DOORS.find((d) => d.contentId === this.spawnNearDoor);
+      const door = ProductsHallScene.DOORS.find((d) => d.contentId === this.spawnNearDoor);
       if (door) spawnX = door.x + 70; // step out to the right of the door
     }
 
@@ -101,7 +101,7 @@ export class Floor3ProductsScene extends LevelScene {
     const playerOnGround = this.player.sprite.y > G - 200;
     if (!playerOnGround) return;
 
-    for (const door of Floor3ProductsScene.DOORS) {
+    for (const door of ProductsHallScene.DOORS) {
       if (Math.abs(px - door.x) < 60) {
         this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 ${door.label}`).setPosition(
           door.x - 100, G - 180,

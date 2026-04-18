@@ -8,15 +8,15 @@ import { LevelScene, LevelConfig } from './LevelScene';
  * Hosts product leadership: roadmaps, OKRs, customer outcomes — the
  * voice the architect must translate into technical direction.
  *
- * Shares FloorId BUSINESS with Floor3Scene; uses disjoint token
+ * Shares FloorId BUSINESS with FinanceTeamScene; uses disjoint token
  * indices so collected-token bookkeeping does not collide.
  */
-export class Floor3ProductScene extends LevelScene {
-  /** First token index used in this room — must not overlap Floor3Scene. */
+export class ProductLeadershipScene extends LevelScene {
+  /** First token index used in this room — must not overlap FinanceTeamScene. */
   private static readonly TOKEN_INDEX_OFFSET = 5;
 
   constructor() {
-    super('Floor3ProductScene', FLOORS.BUSINESS);
+    super('ProductLeadershipScene', FLOORS.BUSINESS);
   }
 
   protected override createDecorations(): void {
@@ -42,7 +42,7 @@ export class Floor3ProductScene extends LevelScene {
 
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
-    const off = Floor3ProductScene.TOKEN_INDEX_OFFSET;
+    const off = ProductLeadershipScene.TOKEN_INDEX_OFFSET;
 
     return {
       floorId: FLOORS.BUSINESS,
@@ -55,7 +55,7 @@ export class Floor3ProductScene extends LevelScene {
 
       roomElevators: [],
 
-      // Token indices 5..9 — disjoint from Floor3Scene (0..4).
+      // Token indices 5..9 — disjoint from FinanceTeamScene (0..4).
       tokens: [
         { x: 400,  y: G - 40, index: off + 0 },
         { x: 540,  y: G - 40, index: off + 1 },

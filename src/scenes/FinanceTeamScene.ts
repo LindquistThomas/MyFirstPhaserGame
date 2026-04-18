@@ -8,13 +8,13 @@ import { LevelScene, LevelConfig } from './LevelScene';
  * Hosts the Finance team: budgets, forecasts, ROI, and the unit
  * economics that ultimately fund the engine room.
  *
- * A sibling scene `Floor3ProductScene` hosts the Product Leadership
+ * A sibling scene `ProductLeadershipScene` hosts the Product Leadership
  * room on the right; both share FloorId BUSINESS and use disjoint
  * token-index ranges.
  */
-export class Floor3Scene extends LevelScene {
+export class FinanceTeamScene extends LevelScene {
   constructor() {
-    super('Floor3Scene', FLOORS.BUSINESS);
+    super('FinanceTeamScene', FLOORS.BUSINESS);
   }
 
   protected override createDecorations(): void {
@@ -52,7 +52,7 @@ export class Floor3Scene extends LevelScene {
 
       roomElevators: [],
 
-      // Token indices 0..4 — disjoint from Floor3ProductScene (5..).
+      // Token indices 0..4 — disjoint from ProductLeadershipScene (5..).
       tokens: [
         { x: 400,  y: G - 40 },
         { x: 540,  y: G - 40 },

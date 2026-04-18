@@ -14,7 +14,7 @@ export interface ProductRoomDecoration {
 export interface ProductRoomConfig {
   /** Phaser scene key ΓÇö must be unique. */
   sceneKey: string;
-  /** Info content ID ΓÇö also used as the door identifier in Floor3ProductsScene. */
+  /** Info content ID — also used as the door identifier in ProductsHallScene. */
   contentId: string;
   /** Big title shown on the room signpost. */
   title: string;
@@ -28,7 +28,7 @@ export interface ProductRoomConfig {
 
 /**
  * A self-contained room dedicated to a single product. Reached from
- * the Products hall (`Floor3ProductsScene`) by walking through the
+ * the Products hall (`ProductsHallScene`) by walking through the
  * matching door and pressing Space/Enter.
  *
  * Same `FLOORS.PRODUCTS` is reused for all product rooms ΓÇö token

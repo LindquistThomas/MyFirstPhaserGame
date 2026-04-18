@@ -12,16 +12,16 @@ import { LevelScene, LevelConfig } from './LevelScene';
  *   - vertical-slice-architecture (stacked-slices wall display)
  *   - architecture-decision-records (warm-amber CRT terminal)
  *
- * Shares FLOORS.PLATFORM_TEAM with Floor1Scene (same "floor", two rooms).
- * Token indices are disjoint from Floor1Scene so collection state does
+ * Shares FLOORS.PLATFORM_TEAM with PlatformTeamScene (same "floor", two rooms).
+ * Token indices are disjoint from PlatformTeamScene so collection state does
  * not collide across the shared ProgressionSystem bookkeeping.
  */
-export class Floor1ArchScene extends LevelScene {
-  /** First token index used in this room — must not overlap Floor1Scene. */
+export class ArchitectureTeamScene extends LevelScene {
+  /** First token index used in this room — must not overlap PlatformTeamScene. */
   private static readonly TOKEN_INDEX_OFFSET = 5;
 
   constructor() {
-    super('Floor1ArchScene', FLOORS.PLATFORM_TEAM);
+    super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);
   }
 
   protected override createDecorations(): void {
@@ -289,7 +289,7 @@ export class Floor1ArchScene extends LevelScene {
 
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
-    const K = Floor1ArchScene.TOKEN_INDEX_OFFSET;
+    const K = ArchitectureTeamScene.TOKEN_INDEX_OFFSET;
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,

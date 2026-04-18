@@ -1,6 +1,6 @@
 import { ProductRoomScene, ProductRoomConfig } from './ProductRoomScene';
 
-/** Door identifier (matches infoContent + Floor3ProductsScene door config). */
+/** Door identifier (matches infoContent + ProductsHallScene door config). */
 export const PRODUCT_PROJECT_CONTROLS_ID = 'product-isy-project-controls';
 
 const CONFIG: ProductRoomConfig = {

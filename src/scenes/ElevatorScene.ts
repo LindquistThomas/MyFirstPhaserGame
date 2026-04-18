@@ -13,8 +13,8 @@ import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './elevator/El
 import { ElevatorController } from './elevator/ElevatorController';
 import { ElevatorShaftDoors } from './elevator/ElevatorShaftDoors';
 
-const FLOOR1_ARCH_SCENE_KEY = 'Floor1ArchScene';
-const FLOOR3_PRODUCT_SCENE_KEY = 'Floor3ProductScene';
+const ARCHITECTURE_TEAM_SCENE_KEY = 'ArchitectureTeamScene';
+const PRODUCT_LEADERSHIP_SCENE_KEY = 'ProductLeadershipScene';
 
 /**
  * Product doors rendered directly on the PRODUCTS floor of the shaft.
@@ -723,9 +723,9 @@ export class ElevatorScene extends Phaser.Scene {
     // Floor 3 routes leftΓåÆFinance room, rightΓåÆProduct Leadership room.
     let sceneKey = fd.sceneKey;
     if (floorId === FLOORS.PLATFORM_TEAM && direction === 'right') {
-      sceneKey = FLOOR1_ARCH_SCENE_KEY;
+      sceneKey = ARCHITECTURE_TEAM_SCENE_KEY;
     } else if (floorId === FLOORS.BUSINESS && direction === 'right') {
-      sceneKey = FLOOR3_PRODUCT_SCENE_KEY;
+      sceneKey = PRODUCT_LEADERSHIP_SCENE_KEY;
     }
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(sceneKey));

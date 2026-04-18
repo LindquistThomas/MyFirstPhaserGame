@@ -2,11 +2,11 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { pushContext, popContext, type ContextToken } from '../input';
 
-export class Floor0Scene extends Phaser.Scene {
+export class LobbyScene extends Phaser.Scene {
   private contextToken: ContextToken | null = null;
 
   constructor() {
-    super({ key: 'Floor0Scene' });
+    super({ key: 'LobbyScene' });
   }
 
   create(): void {
