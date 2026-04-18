@@ -317,5 +317,11 @@ export class InfoIcon {
       scale: { from: 0.95, to: 1.05 },
       duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     }));
+    // Subtle 2px idle bob so the icon feels alive even in the "seen" state.
+    this.tweens.push(this.scene.tweens.add({
+      targets: this.bg,
+      y: { from: 0, to: -2 },
+      duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    }));
   }
 }

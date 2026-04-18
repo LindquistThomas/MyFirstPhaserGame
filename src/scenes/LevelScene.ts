@@ -385,10 +385,29 @@ export class LevelScene extends Phaser.Scene {
   ): void {
     const token = tokenObj as Token;
     const tokenIndex = token.getData('tokenIndex') as number;
+    this.emitTokenSparkle(token.x, token.y);
     token.collect();
     this.progression.collectAU(this.floorId, tokenIndex);
     this.auCollected++;
     this.cameras.main.flash(100, 255, 215, 0, false, undefined, this);
+  }
+
+  /** Short gold-burst sparkle when a token is collected. */
+  private emitTokenSparkle(x: number, y: number): void {
+    if (!this.textures.exists('particle')) return;
+    const emitter = this.add.particles(x, y, 'particle', {
+      speed: { min: 60, max: 180 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 0.8, end: 0 },
+      alpha: { start: 1, end: 0 },
+      lifespan: 500,
+      gravityY: 120,
+      tint: this.floorData.theme.tokenColor,
+      emitting: false,
+    });
+    emitter.setDepth(11);
+    emitter.explode(10);
+    this.time.delayedCall(600, () => emitter.destroy());
   }
 
   /* ---- default level config (overridden by subclasses) ---- */

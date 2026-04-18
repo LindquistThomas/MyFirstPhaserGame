@@ -315,6 +315,25 @@ export class MenuScene extends Phaser.Scene {
       ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
     });
 
+    // Glow color loop — interpolate the shadow hue between two cyan tones
+    // on a 3 s yoyo so the title subtly breathes in colour as well as scale.
+    const from = { r: 0x00, g: 0xd4, b: 0xff };
+    const to = { r: 0x88, g: 0xff, b: 0xff };
+    const toHex = (r: number, g: number, b: number): string => {
+      const c = (n: number) => Math.round(n).toString(16).padStart(2, '0');
+      return `#${c(r)}${c(g)}${c(b)}`;
+    };
+    this.tweens.addCounter({
+      from: 0, to: 1, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        const r = from.r + (to.r - from.r) * t;
+        const g = from.g + (to.g - from.g) * t;
+        const b = from.b + (to.b - from.b) * t;
+        headline.setShadow(0, 0, toHex(r, g, b), 24, true, true);
+      },
+    });
+
     this.add.text(cx, cy - 50, 'Ride the elevator. Translate between floors.', {
       fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
     }).setOrigin(0.5).setDepth(TEXT_DEPTH);

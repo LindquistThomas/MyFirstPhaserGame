@@ -40,6 +40,10 @@ export class Player {
   private wasOnGround = true;
   /** True while the short `player_land` anim is playing; gates updateAnimation. */
   private isLanding = false;
+  /** Scene time (ms) when the player left the ground; null while grounded. */
+  private airborneSince: number | null = null;
+  /** Minimum airborne duration before a walk-off-ledge landing emits dust. */
+  private readonly LANDING_DUST_MIN_AIRBORNE_MS = 150;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
@@ -133,12 +137,25 @@ export class Player {
       // Mid-flip we treat the player as grounded for the land-tell so the
       // flip's own emitDust handles the landing, not player_land.
       this.wasOnGround = true;
+      this.airborneSince = null;
       return;
     }
 
     // Land tell: fire once on airborne→grounded transition (walking off ledges).
     if (!this.wasOnGround && onGround) {
       this.playLandAnim();
+      // Only emit landing dust if the player was airborne long enough to
+      // avoid spamming particles on slope/edge jitter.
+      const now = this.scene.time.now;
+      if (
+        this.airborneSince !== null
+        && now - this.airborneSince > this.LANDING_DUST_MIN_AIRBORNE_MS
+      ) {
+        this.emitDust();
+      }
+      this.airborneSince = null;
+    } else if (this.wasOnGround && !onGround) {
+      this.airborneSince = this.scene.time.now;
     }
     this.wasOnGround = onGround;
 
