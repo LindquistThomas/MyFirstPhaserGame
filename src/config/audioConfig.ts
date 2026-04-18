@@ -40,6 +40,10 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:quiz_fail':    'quiz_fail',
   'sfx:info_open':    'info_open',
   'sfx:link_click':   'link_click',
+  'sfx:hit':          'hit',
+  'sfx:stomp':        'stomp',
+  'sfx:drop_au':      'drop_au',
+  'sfx:recover_au':   'recover_au',
 };
 
 /** Default volume for background music (0–1). */

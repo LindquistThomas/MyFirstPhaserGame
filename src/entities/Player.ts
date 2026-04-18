@@ -36,6 +36,18 @@ export class Player {
   private flipStartY = 0;
   private flipDirection = 1; // 1 = right, -1 = left
 
+  /**
+   * Invulnerability / hit-stun state.
+   *
+   * `invulnerableUntil` is a scene-time timestamp (ms). While scene.time.now
+   * is below it, `takeHit()` is a no-op, and the sprite flashes via tween.
+   * `hitStunUntil` briefly locks out horizontal input so the knockback is
+   * visible and the hit feels weighty (~200 ms).
+   */
+  private invulnerableUntil = 0;
+  private hitStunUntil = 0;
+  private hitFlashTween?: Phaser.Tweens.Tween;
+
   /** Tracks airborne→grounded transitions for the land-squash tell. */
   private wasOnGround = true;
   /** True while the short `player_land` anim is playing; gates updateAnimation. */
@@ -174,6 +186,14 @@ export class Player {
 
     const inputs = this.scene.inputs;
     const h = inputs.horizontal();
+
+    // Hit-stun: skip input-driven horizontal movement so knockback velocity
+    // from takeHit() is visibly applied. Flip is also disabled during stun.
+    if (this.isHitStunned()) {
+      this.updateAnimation(onGround);
+      this.sprite.setFlipX(!this.facingRight);
+      return;
+    }
 
     // Horizontal movement
     if (h < 0) {
@@ -336,6 +356,51 @@ export class Player {
 
   setFlipEnabled(enabled: boolean): void {
     this.flipEnabled = enabled;
+  }
+
+  /**
+   * Whether the player is currently immune to enemy hits.
+   * Used by LevelScene's player↔enemy overlap to skip repeat damage.
+   */
+  isInvulnerable(): boolean {
+    return this.scene.time.now < this.invulnerableUntil;
+  }
+
+  /**
+   * Apply a hit: brief invulnerability, knockback, sprite flash.
+   * Caller is responsible for AU deduction and dropped-AU spawning.
+   *
+   * `knockX` / `knockY` are applied to the physics body. Positive knockX
+   * pushes right. No-op if already invulnerable or mid-flip (flip is a
+   * scripted arc we don't want to interrupt).
+   */
+  takeHit(knockX: number, knockY: number, durationMs = 1000): void {
+    if (this.isInvulnerable()) return;
+    if (this.isFlipping) return;
+
+    const now = this.scene.time.now;
+    this.invulnerableUntil = now + durationMs;
+    this.hitStunUntil = now + 220;
+
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    body.setAllowGravity(true);
+    this.sprite.setVelocity(knockX, knockY);
+
+    this.hitFlashTween?.stop();
+    this.sprite.setAlpha(1);
+    this.hitFlashTween = this.scene.tweens.add({
+      targets: this.sprite,
+      alpha: { from: 1, to: 0.3 },
+      duration: 90,
+      yoyo: true,
+      repeat: Math.floor(durationMs / 180),
+      onComplete: () => this.sprite.setAlpha(1),
+    });
+  }
+
+  /** True if horizontal input is currently suppressed by a recent hit. */
+  isHitStunned(): boolean {
+    return this.scene.time.now < this.hitStunUntil;
   }
 
   setPosition(x: number, y: number): void {

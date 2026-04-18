@@ -4,6 +4,10 @@ import { LEVEL_DATA, FloorData } from '../config/levelData';
 import { QUIZ_DATA } from '../config/quizData';
 import { Player } from '../entities/Player';
 import { Token } from '../entities/Token';
+import { Enemy } from '../entities/Enemy';
+import { Slime } from '../entities/enemies/Slime';
+import { BureaucracyBot } from '../entities/enemies/BureaucracyBot';
+import { DroppedAU } from '../entities/DroppedAU';
 import { HUD } from '../ui/HUD';
 import { ElevatorButtons } from '../ui/ElevatorButtons';
 import { InfoIcon } from '../ui/InfoIcon';
@@ -53,6 +57,19 @@ export interface LevelConfig {
       | { shape: 'circle'; radius: number }
       | { shape: 'rect'; width: number; height: number; offsetY?: number };
   }>;
+  /**
+   * Enemies placed in the level. Each entry is spawned in `createEnemies()`.
+   * Enemies are scene-local: they have no persistence, respawn on scene re-entry.
+   * `minX` / `maxX` default to ±radius around `x`.
+   */
+  enemies?: Array<{
+    type: 'slime' | 'bot';
+    x: number;
+    y: number;
+    minX?: number;
+    maxX?: number;
+    speed?: number;
+  }>;
 }
 
 /**
@@ -69,6 +86,10 @@ export class LevelScene extends Phaser.Scene {
   protected progression!: ProgressionSystem;
   protected platformGroup!: Phaser.Physics.Arcade.StaticGroup;
   protected tokenGroup!: Phaser.Physics.Arcade.StaticGroup;
+  /** Active enemies in the scene. Empty if level config has no enemies[]. */
+  protected enemies: Enemy[] = [];
+  /** Transient AU drops from player hits. Lives only while the scene is active. */
+  protected droppedAUGroup!: Phaser.Physics.Arcade.Group;
   protected exitDoor!: Phaser.GameObjects.Image;
   protected floorData!: FloorData;
   protected floorId!: FloorId;
@@ -129,6 +150,7 @@ export class LevelScene extends Phaser.Scene {
     this.auCollected = 0;
     this.roomLifts = [];
     this.activeRoomLift = -1;
+    this.enemies = [];
     this.zoneManager.clear();
     this.infoIconsByZone.clear();
     this.dialogs = new DialogController(this, {
@@ -155,6 +177,7 @@ export class LevelScene extends Phaser.Scene {
     this.createTokens();
     this.createExit();
     this.createPlayer();
+    this.createEnemies();
     this.createUI();
     this.createInfoZones();
 
@@ -165,6 +188,29 @@ export class LevelScene extends Phaser.Scene {
       this.player.sprite,
       this.tokenGroup,
       this.onAUCollect as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this,
+    );
+
+    // Enemies collide with the static platform geometry so they stay on floors.
+    if (this.enemies.length > 0) {
+      this.physics.add.collider(this.enemies, this.platformGroup);
+      // Player ↔ enemy: overlap (not collider) so takeHit controls knockback.
+      this.physics.add.overlap(
+        this.player.sprite,
+        this.enemies,
+        this.onEnemyOverlap as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+        undefined,
+        this,
+      );
+    }
+
+    // Dropped AU: bounce on platforms, re-collect on player overlap.
+    this.physics.add.collider(this.droppedAUGroup, this.platformGroup);
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.droppedAUGroup,
+      this.onDroppedAURecover as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
       undefined,
       this,
     );
@@ -245,6 +291,9 @@ export class LevelScene extends Phaser.Scene {
   /* ---- tokens ---- */
   protected createTokens(): void {
     this.tokenGroup = this.physics.add.staticGroup();
+    // Dropped-AU group initialised alongside tokens so enemy/collision
+    // wiring in create() has a ready group even if no hits occur.
+    this.droppedAUGroup = this.physics.add.group({ classType: DroppedAU });
     const config = this.getLevelConfig();
     const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
     for (let i = 0; i < config.tokens.length; i++) {
@@ -253,6 +302,21 @@ export class LevelScene extends Phaser.Scene {
       const token = new Token(this, config.tokens[i].x, config.tokens[i].y, tokenKey);
       token.setData('tokenIndex', idx);
       this.tokenGroup.add(token);
+    }
+  }
+
+  /* ---- enemies ---- */
+  protected createEnemies(): void {
+    const config = this.getLevelConfig();
+    if (!config.enemies?.length) return;
+    for (const e of config.enemies) {
+      const minX = e.minX ?? e.x - 160;
+      const maxX = e.maxX ?? e.x + 160;
+      const opts = { minX, maxX, speed: e.speed };
+      const enemy: Enemy = e.type === 'slime'
+        ? new Slime(this, e.x, e.y, opts)
+        : new BureaucracyBot(this, e.x, e.y, opts);
+      this.enemies.push(enemy);
     }
   }
 
@@ -417,6 +481,66 @@ export class LevelScene extends Phaser.Scene {
     this.time.delayedCall(600, () => emitter.destroy());
   }
 
+  /* ---- enemy collision ---- */
+
+  /**
+   * Player↔enemy overlap. Routes to stomp (if enemy is stompable and the
+   * player is approaching from above) or to damage (takeHit + AU drop).
+   */
+  protected onEnemyOverlap(
+    _playerObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+    enemyObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+  ): void {
+    const enemy = enemyObj as Enemy;
+    if (enemy.defeated) return;
+    if (this.player.isInvulnerable()) return;
+
+    const enemyBody = enemy.body as Phaser.Physics.Arcade.Body;
+    const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    const comingFromAbove = playerBody.bottom - enemyBody.top < 24;
+    const falling = playerBody.velocity.y > 40 || this.player.getIsFlipping();
+
+    if (enemy.canBeStomped && comingFromAbove && falling) {
+      enemy.onStomp();
+      // Bounce the player for satisfying feedback.
+      this.player.sprite.setVelocityY(-420);
+      eventBus.emit('sfx:stomp');
+      return;
+    }
+
+    this.applyEnemyHit(enemy);
+  }
+
+  /** Deduct AU, spawn dropped pickups, and stun/knock-back the player. */
+  protected applyEnemyHit(enemy: Enemy): void {
+    const removed = this.progression.loseAU(this.floorId, enemy.hitCost);
+
+    if (removed > 0) {
+      const tokenKey = this.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
+      for (let i = 0; i < removed; i++) {
+        const d = new DroppedAU(this, this.player.sprite.x, this.player.sprite.y - 20, tokenKey);
+        this.droppedAUGroup.add(d);
+      }
+      eventBus.emit('sfx:drop_au');
+    }
+
+    const dir = this.player.sprite.x < enemy.x ? -1 : 1;
+    this.player.takeHit(enemy.knockbackX * dir, enemy.knockbackY);
+    this.cameras.main.shake(120, 0.006);
+    eventBus.emit('sfx:hit');
+  }
+
+  /** Player overlap with a dropped AU pickup — re-award 1 AU. */
+  protected onDroppedAURecover(
+    _playerObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+    dropObj: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+  ): void {
+    const drop = dropObj as DroppedAU;
+    if (!drop.ready || drop.collected) return;
+    drop.recover();
+    this.progression.addAU(this.floorId, 1);
+  }
+
   /* ---- default level config (overridden by subclasses) ---- */
   protected getLevelConfig(): LevelConfig {
     return {
@@ -440,6 +564,10 @@ export class LevelScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
     this.updateRoomElevators();
+
+    for (const enemy of this.enemies) {
+      if (!enemy.defeated) enemy.update(_time, delta);
+    }
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     // Subscribed handlers (wired in createInfoZones) react to show/hide icons.

@@ -239,4 +239,27 @@ test.describe('Gameplay screenshots', () => {
       clip: { x: 0, y: 0, width: 640, height: 120 },
     });
   });
+
+  test('platform team floor shows enemies', async ({ page }) => {
+    await seedFullProgressSave(page);
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'ElevatorScene');
+    await page.waitForTimeout(600);
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      (scene['enterFloor'] as (id: number) => void)(1);
+    });
+    await waitForScene(page, 'PlatformTeamScene');
+    await page.waitForTimeout(1000);
+
+    // Full-scene shot: verify both enemy sprites render.
+    await page.screenshot({ path: `${SCREENSHOT_DIR}/08-floor1-enemies.png` });
+  });
 });

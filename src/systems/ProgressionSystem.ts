@@ -61,6 +61,27 @@ export class ProgressionSystem {
     this.persist();
   }
 
+  /**
+   * Deduct AU lost due to an enemy hit. Clamps both per-floor and total
+   * counters at 0. Returns the amount actually removed (may be less than
+   * `amount` if the player had less AU available).
+   *
+   * Does NOT touch `collectedTokens` — dropped AU is transient and
+   * recoverable via DroppedAU pickups. The already-unlocked floors are
+   * also left in place (unlocks are sticky).
+   */
+  loseAU(floorId: FloorId, amount: number): number {
+    if (amount <= 0) return 0;
+    const floorAvail = this.state.floorAU[floorId] ?? 0;
+    const totalAvail = this.state.totalAU;
+    const removed = Math.max(0, Math.min(amount, floorAvail, totalAvail));
+    if (removed === 0) return 0;
+    this.state.floorAU[floorId] = floorAvail - removed;
+    this.state.totalAU = totalAvail - removed;
+    this.persist();
+    return removed;
+  }
+
   isTokenCollected(floorId: FloorId, tokenIndex: number): boolean {
     return this.tokensFor(floorId).has(tokenIndex);
   }

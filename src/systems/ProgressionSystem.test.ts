@@ -84,4 +84,56 @@ describe('ProgressionSystem', () => {
     const q = new ProgressionSystem();
     expect(q.loadFromSave()).toBe(false);
   });
+
+  describe('loseAU', () => {
+    it('returns 0 and is a no-op when the player has no AU on the floor', () => {
+      const p = new ProgressionSystem();
+      expect(p.loseAU(FLOORS.PLATFORM_TEAM, 3)).toBe(0);
+      expect(p.getTotalAU()).toBe(0);
+      expect(p.getFloorAU(FLOORS.PLATFORM_TEAM)).toBe(0);
+    });
+
+    it('clamps at 0 — cannot go negative', () => {
+      const p = new ProgressionSystem();
+      p.addAU(FLOORS.PLATFORM_TEAM, 2);
+      const lost = p.loseAU(FLOORS.PLATFORM_TEAM, 5);
+      expect(lost).toBe(2);
+      expect(p.getTotalAU()).toBe(0);
+      expect(p.getFloorAU(FLOORS.PLATFORM_TEAM)).toBe(0);
+    });
+
+    it('decrements both per-floor and total by the removed amount', () => {
+      const p = new ProgressionSystem();
+      p.addAU(FLOORS.PLATFORM_TEAM, 5);
+      const lost = p.loseAU(FLOORS.PLATFORM_TEAM, 2);
+      expect(lost).toBe(2);
+      expect(p.getTotalAU()).toBe(3);
+      expect(p.getFloorAU(FLOORS.PLATFORM_TEAM)).toBe(3);
+    });
+
+    it('does not un-unlock floors already unlocked', () => {
+      const p = new ProgressionSystem();
+      p.addAU(FLOORS.PLATFORM_TEAM, 12);
+      expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
+      p.loseAU(FLOORS.PLATFORM_TEAM, 10);
+      expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
+    });
+
+    it('does not touch collectedTokens (drops are transient)', () => {
+      const p = new ProgressionSystem();
+      p.collectAU(FLOORS.PLATFORM_TEAM, 0);
+      p.collectAU(FLOORS.PLATFORM_TEAM, 1);
+      p.loseAU(FLOORS.PLATFORM_TEAM, 2);
+      expect(p.isTokenCollected(FLOORS.PLATFORM_TEAM, 0)).toBe(true);
+      expect(p.isTokenCollected(FLOORS.PLATFORM_TEAM, 1)).toBe(true);
+    });
+
+    it('ignores non-positive amounts', () => {
+      const p = new ProgressionSystem();
+      p.addAU(FLOORS.PLATFORM_TEAM, 3);
+      expect(p.loseAU(FLOORS.PLATFORM_TEAM, 0)).toBe(0);
+      expect(p.loseAU(FLOORS.PLATFORM_TEAM, -5)).toBe(0);
+      expect(p.getTotalAU()).toBe(3);
+    });
+  });
 });

@@ -32,6 +32,15 @@ export interface GameEvents {
   'sfx:quiz_wrong': [];
   'sfx:quiz_success': [];
   'sfx:quiz_fail': [];
+
+  /** Player took damage from an enemy. */
+  'sfx:hit': [];
+  /** Enemy defeated via stomp. */
+  'sfx:stomp': [];
+  /** AU dropped by the player on hit. */
+  'sfx:drop_au': [];
+  /** Dropped AU recovered. */
+  'sfx:recover_au': [];
 }
 
 export type GameEventName = keyof GameEvents;

@@ -9,6 +9,7 @@ import { generateParticleSprite } from './sprites/particles';
 import { generatePlantSprites } from './sprites/plants';
 import { generateInfoBoardSprite } from './sprites/infoBoard';
 import { generateInfraSprites } from './sprites/infra';
+import { generateEnemySprites } from './sprites/enemies';
 
 /**
  * Composition root for runtime sprite generation.
@@ -28,4 +29,5 @@ export function generateSprites(scene: Phaser.Scene): void {
   generatePlantSprites(scene);
   generateInfoBoardSprite(scene);
   generateInfraSprites(scene);
+  generateEnemySprites(scene);
 }

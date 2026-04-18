@@ -180,6 +180,16 @@ export class PlatformTeamScene extends LevelScene {
           zone: { shape: 'rect', width: 280, height: 220 },
         },
       ],
+
+      // POC enemy placements. Y anchored to the floor walking surface G.
+      //   - Slime patrols the mid-floor tokens (stompable teach).
+      //   - Bureaucracy Bot patrols past the monitoring wall toward the
+      //     right edge, so the existing screenshot test flow (walk right,
+      //     open the info dialog at the monitoring wall) is unaffected.
+      enemies: [
+        { type: 'slime', x: 560, y: G - 20, minX: 420, maxX: 720, speed: 55 },
+        { type: 'bot',   x: 1140, y: G - 30, minX: 1080, maxX: 1240, speed: 85 },
+      ],
     };
   }
 }
