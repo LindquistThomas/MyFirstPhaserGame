@@ -76,10 +76,13 @@ export class Player {
     const anims = this.scene.anims;
 
     if (!anims.exists('player_idle')) {
+      // Static idle — single frame, no bob. Any multi-frame idle on a
+      // pixel-art sprite reads as a subtle run/squat because the upper body
+      // slides over the legs; one frame avoids that entirely.
       anims.create({
         key: 'player_idle',
-        frames: anims.generateFrameNumbers('player', { start: 0, end: 1 }),
-        frameRate: 3,
+        frames: anims.generateFrameNumbers('player', { start: 0, end: 0 }),
+        frameRate: 1,
         repeat: -1,
       });
     }
