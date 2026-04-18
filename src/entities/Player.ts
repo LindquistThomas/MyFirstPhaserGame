@@ -1,15 +1,19 @@
 import * as Phaser from 'phaser';
-import { PLAYER_SPEED } from '../config/gameConfig';
+import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall' | 'land';
 
-/** Flip (jump) parameters */
-const FLIP_DISTANCE = 256;                  // horizontal pixels traveled
-const FLIP_HEIGHT = FLIP_DISTANCE / 2;      // peak height = half the distance
-const FLIP_DURATION = 800;                  // total ms for the flip arc
-const FLIP_FRAME_COUNT = 8;                 // animation frames in a flip
-const FLIP_FRAME_RATE = (FLIP_FRAME_COUNT / FLIP_DURATION) * 1000; // frames per second
+/**
+ * Horizontal air-speed cap. Kept lower than `PLAYER_SPEED` so the maximum
+ * horizontal distance covered during a jump stays well under the elevator
+ * shaft width (`SHAFT_WIDTH = 220` in ElevatorScene). With the default
+ * PLAYER_JUMP_VELOCITY=-520 and PLAYER_GRAVITY=900, airtime ≈ 1.16 s, so
+ * max horizontal distance ≈ 160 * 1.16 ≈ 185 px < 220. This prevents the
+ * player from jumping across the shaft even if the invisible wall
+ * colliders are ever regressed.
+ */
+const AIR_HORIZONTAL_SPEED = 160;
 
 /** Sprite dimensions — must match SpriteGenerator. */
 const SPRITE_HEIGHT = 160;
@@ -26,14 +30,15 @@ export class Player {
   private dustEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
   private footstepToggle = false;
 
-  /** True while the player is mid-flip (scripted arc). */
+  /**
+   * True from the moment a jump is initiated until the player next lands.
+   * Kept as a boolean flag (not derived from vy sign) so callers like
+   * takeHit() and the room-elevator logic have a stable definition of
+   * "mid-jump" that doesn't flicker at the apex.
+   */
   private isFlipping = false;
   /** When false, jump input is ignored (e.g. while riding the elevator). */
   private flipEnabled = true;
-  private flipElapsed = 0;
-  private flipStartX = 0;
-  private flipStartY = 0;
-  private flipDirection = 1; // 1 = right, -1 = left
 
   /**
    * Invulnerability / hit-stun state.
@@ -107,12 +112,14 @@ export class Player {
       });
     }
 
-    // Front-flip: 8 rotation frames, plays once per jump
+    // Front-flip: 8 rotation frames, plays once per jump. Frame rate picked
+    // so the rotation completes in roughly the same window as the ballistic
+    // airtime with the default jump velocity (~1.1s).
     if (!anims.exists('player_flip')) {
       anims.create({
         key: 'player_flip',
         frames: anims.generateFrameNumbers('player', { start: 6, end: 13 }),
-        frameRate: FLIP_FRAME_RATE,
+        frameRate: 7,
         repeat: 0, // single run, no loop
       });
     }
@@ -154,18 +161,14 @@ export class Player {
     }
   }
 
-  update(delta: number): void {
+  update(_delta: number): void {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
 
-    // ---- Scripted flip in progress ----
-    if (this.isFlipping) {
-      this.updateFlip(delta);
-      // Mid-flip we treat the player as grounded for the land-tell so the
-      // flip's own emitDust handles the landing, not player_land.
-      this.wasOnGround = true;
-      this.airborneSince = null;
-      return;
+    // Clear the mid-jump flag the moment we land so subsequent input/anim
+    // logic reflects that the player is grounded again.
+    if (this.isFlipping && onGround && body.velocity.y >= 0) {
+      this.isFlipping = false;
     }
 
     // Land tell: fire once on airborne→grounded transition (walking off ledges).
@@ -196,90 +199,65 @@ export class Player {
     const h = inputs.horizontal();
 
     // Hit-stun: skip input-driven horizontal movement so knockback velocity
-    // from takeHit() is visibly applied. Flip is also disabled during stun.
+    // from takeHit() is visibly applied. Jump is also disabled during stun.
     if (this.isHitStunned()) {
       this.updateAnimation(onGround);
       this.sprite.setFlipX(!this.facingRight);
       return;
     }
 
-    // Horizontal movement
+    // Horizontal movement. Air control is capped below ground speed so the
+    // player can't clear wide gaps (in particular the elevator shaft) by
+    // jumping off the edge.
+    const maxX = onGround ? PLAYER_SPEED : AIR_HORIZONTAL_SPEED;
     if (h < 0) {
-      this.sprite.setVelocityX(-PLAYER_SPEED);
+      this.sprite.setVelocityX(-maxX);
       this.facingRight = false;
     } else if (h > 0) {
-      this.sprite.setVelocityX(PLAYER_SPEED);
+      this.sprite.setVelocityX(maxX);
       this.facingRight = true;
-    } else {
-      // Deceleration
+    } else if (onGround) {
+      // Ground deceleration. Airborne we let Arcade physics carry the
+      // existing vx so arcs feel ballistic instead of mushy.
       this.sprite.setVelocityX(this.sprite.body!.velocity.x * 0.8);
       if (Math.abs(this.sprite.body!.velocity.x) < 10) {
         this.sprite.setVelocityX(0);
       }
+    } else if (Math.abs(this.sprite.body!.velocity.x) > maxX) {
+      // Clamp residual ground momentum to the air-control cap so launching
+      // at full PLAYER_SPEED can't push past AIR_HORIZONTAL_SPEED mid-flight.
+      const sign = Math.sign(this.sprite.body!.velocity.x);
+      this.sprite.setVelocityX(sign * maxX);
     }
 
     // Flip sprite based on direction
     this.sprite.setFlipX(!this.facingRight);
 
-    // Jump → initiate forward flip
+    // Jump → apply an upward impulse; gravity does the rest.
     if (inputs.justPressed('Jump') && onGround && this.flipEnabled) {
-      this.startFlip();
-      return;
+      this.startJump();
     }
 
     // Animations
     this.updateAnimation(onGround);
   }
 
-  /* ---- Scripted forward jump ---- */
-  private startFlip(): void {
+  /**
+   * Apply a real velocity-based jump. Gravity stays on, so Arcade physics
+   * handles the arc and collides correctly with every solid body (in
+   * particular the shaft walls) — unlike the previous scripted flip which
+   * used `setPosition` and teleported through collisions.
+   */
+  private startJump(): void {
     this.isFlipping = true;
-    this.flipElapsed = 0;
-    this.flipStartX = this.sprite.x;
-    this.flipStartY = this.sprite.y;
-    this.flipDirection = this.facingRight ? 1 : -1;
+    this.sprite.setVelocityY(PLAYER_JUMP_VELOCITY);
 
-    // Disable physics gravity during jump — we control position manually
-    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
-    body.setAllowGravity(false);
-    this.sprite.setVelocity(0, 0);
-
-    // Upright jump: hold the static tucked fall pose (no rotation).
-    this.currentAnim = 'fall';
-    this.sprite.anims.play('player_fall', true);
+    this.currentAnim = 'flip';
+    this.sprite.anims.play('player_flip', true);
     this.sprite.setFlipX(!this.facingRight);
 
     this.emitDust();
     eventBus.emit('sfx:jump');
-  }
-
-  private updateFlip(delta: number): void {
-    this.flipElapsed += delta;
-
-    const t = Math.min(this.flipElapsed / FLIP_DURATION, 1); // 0→1
-
-    // Horizontal: linear interpolation
-    const dx = FLIP_DISTANCE * t * this.flipDirection;
-
-    // Vertical: parabolic arc — peak at t=0.5, height = FLIP_HEIGHT
-    // y = -4 * FLIP_HEIGHT * t * (1 - t)   (negative = upward in screen)
-    const dy = -4 * FLIP_HEIGHT * t * (1 - t);
-
-    this.sprite.setPosition(this.flipStartX + dx, this.flipStartY + dy);
-
-    // End flip
-    if (t >= 1) {
-      this.isFlipping = false;
-      const body = this.sprite.body as Phaser.Physics.Arcade.Body;
-      body.setAllowGravity(true);
-      this.sprite.setVelocity(0, 0);
-
-      // Reset to idle
-      this.currentAnim = 'idle';
-      this.sprite.anims.play('player_idle', true);
-
-      this.emitDust();
-    }
   }
 
   private onAnimationFrame(
@@ -311,20 +289,26 @@ export class Player {
 
   private updateAnimation(onGround: boolean): void {
     if (this.isLanding) return;
-    const vx = Math.abs(this.sprite.body!.velocity.x);
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    const vx = Math.abs(body.velocity.x);
     let newAnim: PlayerAnimState;
 
     if (!onGround) {
-      // Require a short airborne grace before committing to the fall pose —
-      // prevents 1-frame onGround flickers (tile seams, platform handoffs)
-      // from forcing an idle character into the tucked squat silhouette.
+      // Require a short airborne grace before committing to an airborne
+      // pose — prevents 1-frame onGround flickers (tile seams, platform
+      // handoffs) from forcing an idle character into a squat silhouette.
       const airborneMs =
         this.airborneSince !== null ? this.scene.time.now - this.airborneSince : 0;
       if (airborneMs < this.AIRBORNE_ANIM_GRACE_MS) {
-        // Stay on whatever ground anim we had; don't force a change this frame.
         return;
       }
-      newAnim = 'fall';
+      // Ascending after a jump → flip rotation. Descending (or walking off
+      // a ledge) → tucked fall pose.
+      if (this.isFlipping && body.velocity.y < 0) {
+        newAnim = 'flip';
+      } else {
+        newAnim = 'fall';
+      }
     } else if (vx > 20) {
       newAnim = 'walk';
     } else {

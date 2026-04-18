@@ -294,8 +294,12 @@ export class ElevatorScene extends Phaser.Scene {
           ledgeGapR, WALK_H, ledgeColor, 1).setDepth(2);
       }
 
-      // Walking surface ΓÇö extends from screen edge to elevator platform edge
+      // Walking surface ΓÇö extends from screen edge to just past the elevator
+      // platform edge. The 4 px overlap into the cab zone gives the engine a
+      // little slack when the cab is docked, closing any seam between the
+      // static walk surface and the kinematic cab body.
       const walkY = y + floorH;
+      const WALK_OVERLAP = 4;
       const addWalkSurface = (rx: number, rw: number) => {
         const rect = this.add.rectangle(
           rx, walkY + WALK_H / 2, rw, WALK_H, 0x444466, 1,
@@ -303,8 +307,10 @@ export class ElevatorScene extends Phaser.Scene {
         this.physics.add.existing(rect, true);
         this.platforms.add(rect);
       };
-      addWalkSurface(elevLeft / 2, elevLeft);
-      addWalkSurface((elevRight + GAME_WIDTH) / 2, GAME_WIDTH - elevRight);
+      const leftRw = elevLeft + WALK_OVERLAP;
+      const rightRw = GAME_WIDTH - (elevRight - WALK_OVERLAP);
+      addWalkSurface(leftRw / 2, leftRw);
+      addWalkSurface((elevRight - WALK_OVERLAP + GAME_WIDTH) / 2, rightRw);
 
       // Floor label ΓÇö inside the tile slab
       this.add.text(20, y + 10, labels[fId] ?? `F${fId}`, {
@@ -357,6 +363,40 @@ export class ElevatorScene extends Phaser.Scene {
     const shaftNet = this.add.rectangle(cx, netY, sw, 8, 0x000000, 0).setDepth(0);
     this.physics.add.existing(shaftNet, true);
     this.platforms.add(shaftNet);
+
+    // Invisible shaft walls: prevent airborne players from arcing across the
+    // shaft from one floor's walk surface onto the other. Each wall is a stack
+    // of vertical segments with an opening at every floor's walking Y so the
+    // player can still step between the walk surface and a docked elevator.
+    const WALL_W = 2;
+    const OPENING_ABOVE = 120; // > HITBOX_HEIGHT (116), so a standing body fits
+    const OPENING_BELOW = 24;
+    const leftWallX = cx - sw / 2 - 1;
+    const rightWallX = cx + sw / 2 + 1;
+
+    const walkYs = Object.values(positions)
+      .map((yy) => yy + floorH)
+      .sort((a, b) => a - b);
+
+    const addWallSegment = (xCenter: number, yTop: number, yBottom: number): void => {
+      const h = yBottom - yTop;
+      if (h <= 0) return;
+      const rect = this.add.rectangle(xCenter, yTop + h / 2, WALL_W, h, 0x000000, 0).setDepth(0);
+      this.physics.add.existing(rect, true);
+      this.platforms.add(rect);
+    };
+
+    const buildWallColumn = (xCenter: number): void => {
+      let cursor = 0;
+      for (const walkY of walkYs) {
+        addWallSegment(xCenter, cursor, walkY - OPENING_ABOVE);
+        cursor = walkY + OPENING_BELOW;
+      }
+      addWallSegment(xCenter, cursor, ElevatorScene.WORLD_HEIGHT);
+    };
+
+    buildWallColumn(leftWallX);
+    buildWallColumn(rightWallX);
   }
 
   /* ---- lobby decorations ---- */

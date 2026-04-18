@@ -124,22 +124,31 @@ describe('Player', () => {
     expect(setVelocity).not.toHaveBeenCalled();
   });
 
-  it('getIsFlipping tracks state across a full flip arc', () => {
+  it('getIsFlipping clears once the player touches the ground again', () => {
     scene.inputs.justPressed = () => true;
     sprite.body.blocked.down = true;
 
-    // Start the flip.
+    // Start the jump.
     player.update(16.67);
     expect(player.getIsFlipping()).toBe(true);
 
-    // Stop pressing Jump while the flip plays out — otherwise next update
-    // after landing would immediately re-trigger.
+    // Stop pressing Jump, go airborne, and advance past the grace window.
     scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = false;
+    sprite.body.touching.down = false;
+    sprite.body.velocity.y = -100; // still ascending
+    scene.advanceTime(120);
+    player.update(16.67);
+    expect(player.getIsFlipping()).toBe(true);
 
-    // FLIP_DURATION = 800ms; advance in 100ms steps. After 8 steps, t >= 1.
-    for (let i = 0; i < 8; i++) {
-      player.update(100);
-    }
+    // Descending phase.
+    sprite.body.velocity.y = 400;
+    player.update(16.67);
+    expect(player.getIsFlipping()).toBe(true);
+
+    // Land — next update should clear the flipping flag.
+    sprite.body.blocked.down = true;
+    player.update(16.67);
 
     expect(player.getIsFlipping()).toBe(false);
   });
