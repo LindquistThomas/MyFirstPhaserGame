@@ -14,6 +14,7 @@ import { HubElevatorController } from './hub/HubElevatorController';
 
 const FLOOR0_TEST_SCENE_KEY = 'Floor0Scene';
 const FLOOR1_ARCH_SCENE_KEY = 'Floor1ArchScene';
+const FLOOR3_PRODUCT_SCENE_KEY = 'Floor3ProductScene';
 
 /**
  * Hub / Elevator-shaft scene — Impossible-Mission style.
@@ -44,7 +45,7 @@ export class HubScene extends Phaser.Scene {
   private zoneManager = new ZoneManager();
 
   /** Total scrollable world height for the hub shaft. */
-  private static readonly WORLD_HEIGHT = 1700;
+  private static readonly WORLD_HEIGHT = 3290;
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
   /** Number of tile rows stacked per floor slab. */
@@ -161,6 +162,7 @@ export class HubScene extends Phaser.Scene {
     const elevLeft = cx - elevHW;  // 560
     const elevRight = cx + elevHW; // 720
 
+    const labels = this.getFloorLabels();
     for (const [floorId, y] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
       const fd = LEVEL_DATA[fId];
@@ -206,7 +208,7 @@ export class HubScene extends Phaser.Scene {
       addWalkSurface((elevRight + GAME_WIDTH) / 2, GAME_WIDTH - elevRight);
 
       // Floor label — inside the tile slab
-      this.add.text(20, y + 10, `F${fId}`, {
+      this.add.text(20, y + 10, labels[fId] ?? `F${fId}`, {
         fontFamily: 'monospace', fontSize: '28px',
         color: COLORS.hudText, fontStyle: 'bold',
       }).setDepth(5);
@@ -226,6 +228,14 @@ export class HubScene extends Phaser.Scene {
             fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
           }).setOrigin(1, 0).setDepth(5);
           this.add.text(rightEdge + 20, walkY + 20, '\u2192 ARCHITECTURE', {
+            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
+          }).setDepth(5);
+        } else if (unlocked && fId === FLOORS.BUSINESS) {
+          // Floor 3 splits: left → Finance, right → Product Leadership.
+          this.add.text(leftEdge - 20, walkY + 20, 'FINANCE \u2190', {
+            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
+          }).setOrigin(1, 0).setDepth(5);
+          this.add.text(rightEdge + 20, walkY + 20, '\u2192 PRODUCT', {
             fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
           }).setDepth(5);
         } else {
@@ -293,6 +303,28 @@ export class HubScene extends Phaser.Scene {
     this.add.image(350, f2Bottom - 36, 'desk_monitor').setDepth(3);
     this.add.image(rightEdge + 120, f2Bottom - 22, 'monitor_dash').setDepth(11);
     this.add.image(rightEdge + 300, f2Bottom - 36, 'desk_monitor').setDepth(3);
+
+    // F (Products) — door-lined hall: place a hint sign on this hub level.
+    const fProductsBottom = positions[FLOORS.PRODUCTS] + HubScene.FLOOR_H;
+    this.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
+    this.add.image(rightEdge + 100, fProductsBottom - 40, 'plant_tall').setDepth(3);
+    this.add.image(rightEdge + 240, fProductsBottom - 32, 'plant_small').setDepth(11);
+
+    // F3 — Business: finance left, product leadership right
+    const f3Bottom = positions[FLOORS.BUSINESS] + HubScene.FLOOR_H;
+    this.add.image(150, f3Bottom - 36, 'desk_monitor').setDepth(3);
+    this.add.image(310, f3Bottom - 22, 'monitor_dash').setDepth(3);
+    this.add.image(rightEdge + 120, f3Bottom - 36, 'desk_monitor').setDepth(3);
+    this.add.image(rightEdge + 280, f3Bottom - 22, 'monitor_dash').setDepth(11);
+    this.add.image(rightEdge + 440, f3Bottom - 40, 'plant_tall').setDepth(3);
+
+    // F4 — Executive Suite: penthouse vibe with plants and an info board
+    const f4Bottom = positions[FLOORS.EXECUTIVE] + HubScene.FLOOR_H;
+    this.add.image(120, f4Bottom - 40, 'plant_tall').setDepth(3);
+    this.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
+    this.add.image(rightEdge + 120, f4Bottom - 40, 'plant_tall').setDepth(3);
+    this.add.image(rightEdge + 280, f4Bottom - 36, 'desk_monitor').setDepth(3);
+    this.add.image(GAME_WIDTH - 100, f4Bottom - 40, 'plant_tall').setDepth(11);
   }
 
   /* ---- elevator ---- */
@@ -337,7 +369,26 @@ export class HubScene extends Phaser.Scene {
       [FLOORS.LOBBY]: HubScene.WORLD_HEIGHT - 350,
       [FLOORS.PLATFORM_TEAM]: HubScene.WORLD_HEIGHT - 880,
       [FLOORS.CLOUD_TEAM]: HubScene.WORLD_HEIGHT - 1410,
+      [FLOORS.PRODUCTS]: HubScene.WORLD_HEIGHT - 1940,
+      [FLOORS.BUSINESS]: HubScene.WORLD_HEIGHT - 2470,
+      [FLOORS.EXECUTIVE]: HubScene.WORLD_HEIGHT - 3000,
     };
+  }
+
+  /**
+   * Build a "F#" label per floor based on Y position (bottom-up), so the
+   * displayed number follows the visual stacking order even when FloorId
+   * values aren't allocated in the same order (e.g. when a new floor is
+   * inserted into the middle of the shaft).
+   */
+  private getFloorLabels(): Record<number, string> {
+    const positions = this.getFloorYPositions();
+    const sorted = Object.entries(positions)
+      .map(([id, y]) => ({ id: Number(id), y }))
+      .sort((a, b) => b.y - a.y); // bottom (largest y) first
+    const out: Record<number, string> = {};
+    sorted.forEach((entry, index) => { out[entry.id] = `F${index}`; });
+    return out;
   }
 
   /* ---- update loop ---- */
@@ -437,9 +488,13 @@ export class HubScene extends Phaser.Scene {
     this.progression.setCurrentFloor(floorId);
     const fd = LEVEL_DATA[floorId];
     // Floor 1 routes left→Platform room, right→Architecture room.
-    const sceneKey = (floorId === FLOORS.PLATFORM_TEAM && direction === 'right')
-      ? FLOOR1_ARCH_SCENE_KEY
-      : fd.sceneKey;
+    // Floor 3 routes left→Finance room, right→Product Leadership room.
+    let sceneKey = fd.sceneKey;
+    if (floorId === FLOORS.PLATFORM_TEAM && direction === 'right') {
+      sceneKey = FLOOR1_ARCH_SCENE_KEY;
+    } else if (floorId === FLOORS.BUSINESS && direction === 'right') {
+      sceneKey = FLOOR3_PRODUCT_SCENE_KEY;
+    }
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(sceneKey));
   }

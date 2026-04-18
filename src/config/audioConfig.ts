@@ -20,6 +20,14 @@ export const SCENE_MUSIC: Record<string, string> = {
   Floor1Scene:  'music_floor1',
   Floor1ArchScene: 'music_floor1',
   Floor2Scene:  'music_floor2',
+  Floor3ProductsScene: 'music_floor2',
+  Floor3Scene:  'music_floor2',
+  Floor3ProductScene: 'music_floor2',
+  Floor4Scene:  'music_floor2',
+  ProductIsyProjectControlsScene: 'music_floor2',
+  ProductIsyBeskrivelseScene:     'music_floor2',
+  ProductIsyRoadScene:            'music_floor2',
+  ProductAdminLisensScene:        'music_floor2',
 };
 
 /** EventBus event name → Phaser SFX audio key. */

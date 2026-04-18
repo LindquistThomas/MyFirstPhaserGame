@@ -25,6 +25,9 @@ export class ProgressionSystem {
         [FLOORS.LOBBY]: 0,
         [FLOORS.PLATFORM_TEAM]: 0,
         [FLOORS.CLOUD_TEAM]: 0,
+        [FLOORS.BUSINESS]: 0,
+        [FLOORS.EXECUTIVE]: 0,
+        [FLOORS.PRODUCTS]: 0,
       },
       unlockedFloors: new Set([FLOORS.LOBBY, FLOORS.PLATFORM_TEAM]),
       currentFloor: FLOORS.LOBBY,
@@ -32,6 +35,9 @@ export class ProgressionSystem {
         [FLOORS.LOBBY]: new Set(),
         [FLOORS.PLATFORM_TEAM]: new Set(),
         [FLOORS.CLOUD_TEAM]: new Set(),
+        [FLOORS.BUSINESS]: new Set(),
+        [FLOORS.EXECUTIVE]: new Set(),
+        [FLOORS.PRODUCTS]: new Set(),
       },
     };
   }

@@ -484,7 +484,7 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /* ---- exit check ---- */
-  private checkExitProximity(): void {
+  protected checkExitProximity(): void {
     const d = Phaser.Math.Distance.Between(
       this.player.sprite.x, this.player.sprite.y,
       this.exitDoor.x, this.exitDoor.y,

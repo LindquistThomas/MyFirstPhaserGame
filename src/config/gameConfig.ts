@@ -28,6 +28,9 @@ export const FLOORS = {
   LOBBY: 0,
   PLATFORM_TEAM: 1,
   CLOUD_TEAM: 2,
+  BUSINESS: 3,
+  EXECUTIVE: 4,
+  PRODUCTS: 5,
 } as const;
 
 export type FloorId = typeof FLOORS[keyof typeof FLOORS];
