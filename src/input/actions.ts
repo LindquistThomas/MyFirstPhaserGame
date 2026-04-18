@@ -38,7 +38,7 @@ export type GameAction =
 export type InputContext = 'gameplay' | 'menu' | 'modal';
 
 /** Special marker: an action that fires regardless of active context. */
-export const ALWAYS: 'always' = 'always';
+export const ALWAYS = 'always' as const;
 export type ActionContextTag = InputContext | typeof ALWAYS;
 
 /**
