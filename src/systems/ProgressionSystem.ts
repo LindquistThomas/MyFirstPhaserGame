@@ -1,6 +1,8 @@
 import { FLOORS, FloorId } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
 import * as SaveManager from './SaveManager';
+import { resetAllQuizzes } from './QuizManager';
+import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
 
 /** AU = Architecture Utility — the game's single currency / progression points. */
 export interface ProgressionState {
@@ -24,7 +26,6 @@ export class ProgressionSystem {
       floorAU: {
         [FLOORS.LOBBY]: 0,
         [FLOORS.PLATFORM_TEAM]: 0,
-        [FLOORS.CLOUD_TEAM]: 0,
         [FLOORS.BUSINESS]: 0,
         [FLOORS.EXECUTIVE]: 0,
         [FLOORS.PRODUCTS]: 0,
@@ -34,7 +35,6 @@ export class ProgressionSystem {
       collectedTokens: {
         [FLOORS.LOBBY]: new Set(),
         [FLOORS.PLATFORM_TEAM]: new Set(),
-        [FLOORS.CLOUD_TEAM]: new Set(),
         [FLOORS.BUSINESS]: new Set(),
         [FLOORS.EXECUTIVE]: new Set(),
         [FLOORS.PRODUCTS]: new Set(),
@@ -107,6 +107,8 @@ export class ProgressionSystem {
   reset(): void {
     this.state = this.defaultState();
     SaveManager.clear();
+    resetAllQuizzes();
+    resetAllInfoDialogs();
   }
 
   loadFromSave(): boolean {
