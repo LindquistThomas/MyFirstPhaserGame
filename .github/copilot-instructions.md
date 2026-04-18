@@ -225,6 +225,48 @@ await page.addInitScript(() => {
 });
 ```
 
+## Local Branching — Use Git Worktrees
+
+When the user asks you to create a new branch for local work, **use a git worktree** instead of switching the current checkout. This keeps `main` (and its `node_modules`, `dist/`, `playwright-report/`, `test-results/`) intact while you work.
+
+### Convention
+
+- Create sibling worktrees next to the repo: `C:\code\SoYouWantToBeAnArchitect-<short-branch-slug>`
+- Branch name: descriptive, kebab-case, with a type prefix (e.g. `fix/`, `feat/`, `chore/`)
+
+### Workflow
+
+```powershell
+# From the main repo on `main`
+git worktree add ..\SoYouWantToBeAnArchitect-<slug> -b <type>/<slug>
+cd ..\SoYouWantToBeAnArchitect-<slug>
+npm install          # each worktree needs its own node_modules
+# ...edit, build (`npm run build`), test (`npm test`), commit...
+```
+
+When the task is done, ask the user whether to **rebase** or **merge** back to `main`, then integrate from the main worktree:
+
+```powershell
+cd ..\SoYouWantToBeAnArchitect
+git fetch origin
+# Rebase path:
+git -C ..\SoYouWantToBeAnArchitect-<slug> rebase origin/main
+git merge --ff-only <type>/<slug>
+# Or merge path:
+git merge --no-ff <type>/<slug>
+
+# Clean up
+git worktree remove ..\SoYouWantToBeAnArchitect-<slug>
+git branch -d <type>/<slug>
+```
+
+### Rules
+
+- Never delete or force-remove a worktree with uncommitted changes without confirming with the user.
+- Do not share `node_modules` across worktrees via symlinks unless the user asks — Vite/Playwright caches can collide.
+- `playwright-report/` and `test-results/` are per-worktree by design; don't copy them back to `main`.
+- If the user explicitly asks to work on the current checkout (no worktree), honor that.
+
 ## Vibe Coding Workflow
 
 This project is developed through conversational AI assistance. When prompting:
