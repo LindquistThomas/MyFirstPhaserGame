@@ -220,13 +220,32 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
 
   private updateLegend(staticCount: number, dynamicCount: number, disabledCount: number): void {
     if (!this.legendText) return;
-    this.legendText.setText([
+    const sceneKey = this.scene?.sys.settings.key ?? '?';
+    const lines: string[] = [
+      `Scene: ${sceneKey}`,
+    ];
+    const extra = this.getSceneDebugInfo();
+    if (extra.length) lines.push(...extra);
+    lines.push(
       `FPS: ${Math.round(this.game?.loop.actualFps ?? 0)}`,
       `static: ${staticCount}  dynamic: ${dynamicCount}  disabled: ${disabledCount}`,
       'green=static  red=dynamic  magenta=world bounds',
       'cyan dot=sprite origin  yellow dot=body center',
       'orange X=disabled side  grey dashed=disabled body',
-    ].join('\n'));
+    );
+    this.legendText.setText(lines);
+  }
+
+  /** Optional per-scene debug info. Scenes may implement `getDebugInfo(): string[]`. */
+  private getSceneDebugInfo(): string[] {
+    const s = this.scene as unknown as { getDebugInfo?: () => string[] } | undefined;
+    if (!s || typeof s.getDebugInfo !== 'function') return [];
+    try {
+      const info = s.getDebugInfo();
+      return Array.isArray(info) ? info.filter(line => typeof line === 'string') : [];
+    } catch {
+      return [];
+    }
   }
 
   private onUpdate(): void {

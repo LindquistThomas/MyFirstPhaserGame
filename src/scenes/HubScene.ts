@@ -510,6 +510,20 @@ export class HubScene extends Phaser.Scene {
     return out;
   }
 
+  /** Debug overlay info: current floor the elevator is stopped at (or "between"). */
+  getDebugInfo(): string[] {
+    if (!this.elevatorCtrl) return [];
+    const labels = this.getFloorLabels();
+    const elev = this.elevatorCtrl.elevator;
+    const stoppedAt = elev.getFloorAtCurrentPosition();
+    const current = elev.getCurrentFloor();
+    const label = (id: number | null): string =>
+      id === null ? '—' : `${labels[id] ?? `F?`} (id=${id})`;
+    const lines = [`Elevator floor: ${label(current)}`];
+    if (stoppedAt === null) lines.push('  (between floors)');
+    return lines;
+  }
+
   /* ---- update loop ---- */
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
