@@ -82,7 +82,7 @@ describe('ZoneManager', () => {
   });
 
   it('clear() removes registrations without firing events', () => {
-    let active = true;
+    const active = true;
     zm.register('z', () => active);
     zm.update();
     onEnter.mockClear();

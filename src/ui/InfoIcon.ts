@@ -192,7 +192,7 @@ export class InfoIcon {
       this.stopAllTweens();
       this.container.setScale(1);
       this.container.setAlpha(1);
-      this.container.y = this.container.y; // no-op; offset reset handled by stopAllTweens via setScale
+      // offset reset is handled by stopAllTweens via setScale
       if (this.ring) { this.ring.setVisible(false); this.ring.setScale(1).setAlpha(1); }
       this.mode = 'idle';
       return;

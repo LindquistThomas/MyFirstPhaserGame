@@ -7,21 +7,32 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "playwright test",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:all": "npm run typecheck && npm run lint && npm run test:unit -- --coverage && npm run test:e2e",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
+    "test:unit:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "test:visual:update": "playwright test tests/visual.spec.ts --update-snapshots"
   },
   "license": "MIT",
   "dependencies": {
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.56.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^9.39.4",
+    "globals": "^15.15.0",
     "jsdom": "^29.0.2",
     "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.2",
     "vite": "^8.0.8",
     "vitest": "^2.1.9"
   }

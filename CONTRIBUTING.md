@@ -40,14 +40,22 @@ ships with zero image assets and only a handful of music files.
 
 ## Scripts
 
-| Command                    | What it does                                 |
-|----------------------------|----------------------------------------------|
-| `npm run dev`              | Vite dev server on <http://localhost:3000>   |
-| `npm run build`            | Type-check with `tsc`, then bundle with Vite |
-| `npm run preview`          | Preview the production build                 |
-| `npm test`                 | Playwright end-to-end tests                  |
-| `npm run test:unit`        | Vitest unit tests (pure logic, jsdom)        |
-| `npm run test:unit:watch`  | Vitest watch mode                            |
+| Command                     | What it does                                        |
+|-----------------------------|-----------------------------------------------------|
+| `npm run dev`               | Vite dev server on <http://localhost:3000>          |
+| `npm run build`             | Type-check with `tsc`, then bundle with Vite        |
+| `npm run typecheck`         | Type-check only (`tsc --noEmit`)                    |
+| `npm run lint`              | ESLint over the whole project                       |
+| `npm run preview`           | Preview the production build                        |
+| `npm test`                  | Unit tests + E2E tests                              |
+| `npm run test:all`          | Typecheck + lint + unit (with coverage) + E2E       |
+| `npm run test:unit`         | Vitest unit tests (pure logic, jsdom)               |
+| `npm run test:unit:watch`   | Vitest watch mode                                   |
+| `npm run test:unit:coverage`| Unit tests + coverage (V8, HTML report)             |
+| `npm run test:e2e`          | Playwright end-to-end tests                         |
+| `npm run test:headed`       | Playwright in headed mode                           |
+| `npm run test:ui`           | Playwright UI runner                                |
+| `npm run test:visual:update`| Refresh visual-regression snapshots                 |
 
 ## Making Changes
 
@@ -59,10 +67,27 @@ ships with zero image assets and only a handful of music files.
    every event name and its payload.
 4. Run the tests:
    ```bash
-   npm run test:unit
-   npm run build
-   npm test
+   npm run test:all
    ```
+
+   Or, piecewise during development:
+   ```bash
+   npm run test:unit          # fast, no browser
+   npm run test:unit:coverage # with coverage report
+   npm run test:e2e           # Playwright, boots Vite
+   ```
+
+   **Visual regression:** The `tests/visual.spec.ts` spec uses
+   `toHaveScreenshot` for static UI (menu, HUD, dialogs). If you
+   intentionally change the visual appearance of one of those, refresh
+   the baseline with:
+
+   ```bash
+   npm run test:visual:update
+   ```
+
+   Review the new snapshots in `tests/visual.spec.ts-snapshots/` before
+   committing.
 5. Commit with a short, descriptive message.
 6. Open a pull request.
 
