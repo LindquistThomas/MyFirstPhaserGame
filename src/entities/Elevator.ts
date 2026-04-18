@@ -281,162 +281,184 @@ export class Elevator {
     const base = Elevator.CAB_BASE;
 
     const cabTop = py - ch;
-    const cabBottom = py + base;
     const cabLeft = px - hw;
     const cabRight = px + hw;
+    const cabW = Elevator.CAB_W;
 
-    // --- suspension cables running up the shaft to the top of the world ---
-    g.lineStyle(2, 0x222233, 0.9);
-    g.lineBetween(px - 28, cabTop, px - 28, 0);
-    g.lineBetween(px + 28, cabTop, px + 28, 0);
+    // --- suspension cables running up the shaft from the top of the cab ---
+    g.lineStyle(2, 0x1a1a26, 1);
+    g.lineBetween(px - 26, cabTop - 6, px - 26, 0);
+    g.lineBetween(px + 26, cabTop - 6, px + 26, 0);
     g.lineStyle(1, 0x55556a, 0.6);
-    g.lineBetween(px - 27, cabTop, px - 27, 0);
-    g.lineBetween(px + 29, cabTop, px + 29, 0);
+    g.lineBetween(px - 25, cabTop - 6, px - 25, 0);
+    g.lineBetween(px + 27, cabTop - 6, px + 27, 0);
 
-    // --- top header / hoist beam (where cables attach) ---
-    g.fillStyle(0x2a2a36, 1);
-    g.fillRect(cabLeft - 4, cabTop - 10, Elevator.CAB_W + 8, 10);
-    g.fillStyle(0x444458, 1);
-    g.fillRect(cabLeft - 4, cabTop - 10, Elevator.CAB_W + 8, 2);
-    // Cable anchor bolts
-    g.fillStyle(0x111118, 1);
-    g.fillCircle(px - 28, cabTop - 5, 2);
-    g.fillCircle(px + 28, cabTop - 5, 2);
+    // --- exterior top: hoist beam where cables attach ---
+    g.fillStyle(0x22222e, 1);
+    g.fillRect(cabLeft - 4, cabTop - 8, cabW + 8, 8);
+    g.fillStyle(0x3a3a48, 1);
+    g.fillRect(cabLeft - 4, cabTop - 8, cabW + 8, 2);
+    g.fillStyle(0x000000, 1);
+    g.fillCircle(px - 26, cabTop - 4, 2);
+    g.fillCircle(px + 26, cabTop - 4, 2);
 
-    // --- cab outer frame (dark steel) ---
-    g.fillStyle(0x1a1a24, 1);
-    g.fillRect(cabLeft, cabTop, Elevator.CAB_W, ch + base);
+    // --- INTERIOR (cutaway view: front wall removed) ---
 
-    // --- side wall panels (metallic) ---
-    const wallW = 18;
-    this.drawMetalPanel(g, cabLeft + 2, cabTop + 2, wallW, ch + base - 4);
-    this.drawMetalPanel(g, cabRight - wallW - 2, cabTop + 2, wallW, ch + base - 4);
+    // Back wall — warm beige paneling
+    g.fillStyle(0xc9b48a, 1);
+    g.fillRect(cabLeft, cabTop, cabW, ch + base);
 
-    // --- ceiling (interior top) with light fixture ---
-    const ceilTop = cabTop + 4;
-    const ceilH = 14;
-    g.fillStyle(0x2c2c3a, 1);
-    g.fillRect(cabLeft + wallW + 2, ceilTop, Elevator.CAB_W - (wallW + 2) * 2, ceilH);
-    // Light panel glow
-    g.fillStyle(0xffffcc, 0.85);
-    g.fillRect(px - 28, ceilTop + 4, 56, 5);
-    g.fillStyle(0xffffaa, 0.35);
-    g.fillRect(px - 36, ceilTop + 3, 72, 7);
-
-    // --- floor indicator strip above the doors ---
-    const indY = ceilTop + ceilH + 2;
-    g.fillStyle(0x0a0a14, 1);
-    g.fillRect(cabLeft + wallW + 2, indY, Elevator.CAB_W - (wallW + 2) * 2, 10);
-    // Direction arrow (lit when moving)
-    if (this.direction !== 0) {
-      const ax = px;
-      const ay = indY + 5;
-      g.fillStyle(0xff8833, 1);
-      if (this.direction === -1) {
-        g.fillTriangle(ax, ay - 3, ax - 4, ay + 2, ax + 4, ay + 2);
-      } else {
-        g.fillTriangle(ax, ay + 3, ax - 4, ay - 2, ax + 4, ay - 2);
-      }
-    } else {
-      // Idle dot
-      g.fillStyle(0x335544, 1);
-      g.fillCircle(px, indY + 5, 1.5);
+    // Subtle vertical wood grain on back wall
+    g.lineStyle(1, 0xb09870, 0.35);
+    for (let lx = cabLeft + 8; lx < cabRight; lx += 12) {
+      g.lineBetween(lx, cabTop + 4, lx, py - 4);
     }
 
-    // --- door area (between the side walls, below the indicator) ---
-    const doorLeft = cabLeft + wallW + 2;
-    const doorRight = cabRight - wallW - 2;
-    const doorTop = indY + 12;
-    const doorBottom = py - 1; // doors stop at the floor (platform top)
-    const doorW = doorRight - doorLeft;
-    const doorH = doorBottom - doorTop;
-    const halfDoorW = doorW / 2;
+    // --- ceiling: dark trim + recessed light panel ---
+    const ceilH = 14;
+    g.fillStyle(0x2a2a36, 1);
+    g.fillRect(cabLeft, cabTop, cabW, ceilH);
+    // Light panel (warm glow)
+    const lightInset = 18;
+    g.fillStyle(0xfff4c2, 1);
+    g.fillRect(cabLeft + lightInset, cabTop + 3, cabW - lightInset * 2, 7);
+    g.fillStyle(0xffffff, 0.7);
+    g.fillRect(cabLeft + lightInset + 2, cabTop + 4, cabW - lightInset * 2 - 4, 2);
+    // Soft glow halo
+    g.fillStyle(0xffeeaa, 0.18);
+    g.fillRect(cabLeft + 4, cabTop + ceilH, cabW - 8, 10);
 
-    // Door recess shadow
-    g.fillStyle(0x05050a, 1);
-    g.fillRect(doorLeft - 1, doorTop - 1, doorW + 2, doorH + 2);
+    // Ceiling trim shadow
+    g.fillStyle(0x000000, 0.25);
+    g.fillRect(cabLeft, cabTop + ceilH, cabW, 2);
 
-    // Two sliding doors meeting in the middle
-    this.drawDoorPanel(g, doorLeft, doorTop, halfDoorW, doorH);
-    this.drawDoorPanel(g, doorLeft + halfDoorW, doorTop, halfDoorW, doorH);
+    // --- floor indicator (small LED strip mounted on back wall) ---
+    const indW = 38;
+    const indH = 12;
+    const indX = cabLeft + 10;
+    const indY = cabTop + ceilH + 6;
+    g.fillStyle(0x111118, 1);
+    g.fillRect(indX, indY, indW, indH);
+    g.lineStyle(1, 0x55556a, 1);
+    g.strokeRect(indX, indY, indW, indH);
+    // Floor number digit (current floor)
+    this.drawDigit(g, indX + 6, indY + 2, this.currentFloor, 0xff7733);
+    // Direction arrow
+    const arrowX = indX + indW - 10;
+    const arrowCY = indY + indH / 2;
+    if (this.direction === -1) {
+      g.fillStyle(0x33ff66, 1);
+      g.fillTriangle(arrowX, arrowCY - 4, arrowX - 4, arrowCY + 3, arrowX + 4, arrowCY + 3);
+    } else if (this.direction === 1) {
+      g.fillStyle(0x33ff66, 1);
+      g.fillTriangle(arrowX, arrowCY + 4, arrowX - 4, arrowCY - 3, arrowX + 4, arrowCY - 3);
+    } else {
+      g.fillStyle(0x223322, 1);
+      g.fillCircle(arrowX, arrowCY, 2);
+    }
 
-    // Center seam between doors
-    g.lineStyle(1, 0x000000, 0.9);
-    g.lineBetween(doorLeft + halfDoorW, doorTop, doorLeft + halfDoorW, doorBottom);
-
-    // Door track (top)
-    g.fillStyle(0x55556a, 1);
-    g.fillRect(doorLeft, doorTop - 2, doorW, 2);
-    // Door track (bottom — visible just above the platform)
+    // --- control panel (right side of back wall) with floor buttons ---
+    const panelW = 22;
+    const panelH = Math.min(78, ch - ceilH - 18);
+    const panelX = cabRight - panelW - 8;
+    const panelY = cabTop + ceilH + 6;
     g.fillStyle(0x33333f, 1);
-    g.fillRect(doorLeft, doorBottom, doorW, 2);
+    g.fillRect(panelX, panelY, panelW, panelH);
+    g.lineStyle(1, 0x111118, 1);
+    g.strokeRect(panelX, panelY, panelW, panelH);
+    // Buttons stacked vertically
+    const floorIds = Array.from(this.floorStops.keys()).sort((a, b) => b - a); // top→bottom = high→low
+    const btnRadius = 4;
+    const btnGap = panelH / (floorIds.length + 1);
+    floorIds.forEach((id, i) => {
+      const by = panelY + btnGap * (i + 1);
+      const bx = panelX + panelW / 2;
+      const lit = id === this.currentFloor;
+      g.fillStyle(lit ? 0xffaa33 : 0x222230, 1);
+      g.fillCircle(bx, by, btnRadius);
+      g.lineStyle(1, lit ? 0xffeeaa : 0x55556a, 1);
+      g.strokeCircle(bx, by, btnRadius);
+      if (lit) {
+        g.fillStyle(0xffffaa, 0.5);
+        g.fillCircle(bx, by, btnRadius + 2);
+        g.fillStyle(0xffaa33, 1);
+        g.fillCircle(bx, by, btnRadius);
+      }
+    });
 
-    // --- floor / platform plate (sits on top of platform sprite) ---
-    g.fillStyle(0x3a3a48, 1);
-    g.fillRect(cabLeft + 2, py + 2, Elevator.CAB_W - 4, 4);
-    g.lineStyle(1, 0x55556a, 0.8);
-    g.lineBetween(cabLeft + 2, py + 2, cabRight - 2, py + 2);
+    // --- handrail along the back wall (left of control panel) ---
+    const railY = py - 32;
+    const railLeft = cabLeft + 10;
+    const railRight = panelX - 6;
+    g.lineStyle(3, 0x9a9aaa, 1);
+    g.lineBetween(railLeft, railY, railRight, railY);
+    g.lineStyle(1, 0xddddee, 1);
+    g.lineBetween(railLeft, railY - 1, railRight, railY - 1);
+    // Rail brackets
+    g.fillStyle(0x55556a, 1);
+    g.fillRect(railLeft - 2, railY - 1, 3, 5);
+    g.fillRect(railRight - 1, railY - 1, 3, 5);
 
-    // --- machinery base below the platform ---
+    // --- floor (tiled mat just above the platform) ---
+    const floorY = py - 2;
+    g.fillStyle(0x4a4a5a, 1);
+    g.fillRect(cabLeft, floorY, cabW, 6);
+    g.lineStyle(1, 0x22222a, 0.8);
+    for (let tx = cabLeft + 16; tx < cabRight; tx += 16) {
+      g.lineBetween(tx, floorY, tx, floorY + 6);
+    }
+    // Floor highlight line
+    g.lineStyle(1, 0x6a6a7a, 0.7);
+    g.lineBetween(cabLeft, floorY, cabRight, floorY);
+
+    // --- side wall edges (thin so interior stays visible) ---
+    g.fillStyle(0x2a2a36, 1);
+    g.fillRect(cabLeft, cabTop + ceilH, 3, ch - ceilH + base);
+    g.fillRect(cabRight - 3, cabTop + ceilH, 3, ch - ceilH + base);
+
+    // --- machinery base below platform ---
     g.fillStyle(0x1f1f2a, 1);
-    g.fillRect(cabLeft + 4, py + 6, Elevator.CAB_W - 8, base - 4);
-    // Rivets along the base
+    g.fillRect(cabLeft, py + 4, cabW, base - 2);
     g.fillStyle(0x6a6a82, 1);
-    for (let rx = cabLeft + 12; rx < cabRight - 8; rx += 16) {
+    for (let rx = cabLeft + 10; rx < cabRight - 6; rx += 16) {
       g.fillCircle(rx, py + base - 3, 1.2);
     }
 
-    // --- outer trim highlight ---
-    g.lineStyle(1, 0x6a6a82, 0.6);
-    g.strokeRect(cabLeft, cabTop, Elevator.CAB_W, ch + base);
+    // --- outer trim ---
+    g.lineStyle(1, 0x111118, 1);
+    g.strokeRect(cabLeft, cabTop, cabW, ch + base);
   }
 
-  /** Brushed-metal panel with vertical highlight bands. */
-  private drawMetalPanel(
+  /** Pixelated 7-segment-style single digit (0-9). 8px wide, 8px tall. */
+  private drawDigit(
     g: Phaser.GameObjects.Graphics,
     x: number,
     y: number,
-    w: number,
-    h: number,
+    digit: number,
+    color: number,
   ): void {
-    g.fillStyle(0x4a4a5c, 1);
-    g.fillRect(x, y, w, h);
-    g.fillStyle(0x6a6a82, 0.6);
-    g.fillRect(x + 2, y, 2, h);
-    g.fillStyle(0x2a2a36, 0.8);
-    g.fillRect(x + w - 3, y, 2, h);
-    g.lineStyle(1, 0x33333f, 0.5);
-    g.lineBetween(x, y + h * 0.5, x + w, y + h * 0.5);
-  }
-
-  /** A single sliding-door leaf with inset panel and a small porthole window. */
-  private drawDoorPanel(
-    g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-  ): void {
-    // Door body
-    g.fillStyle(0x3a4a5e, 1);
-    g.fillRect(x, y, w, h);
-    // Vertical brushed lines
-    g.lineStyle(1, 0x4a5a72, 0.6);
-    g.lineBetween(x + w * 0.25, y + 3, x + w * 0.25, y + h - 3);
-    g.lineBetween(x + w * 0.75, y + 3, x + w * 0.75, y + h - 3);
-    // Inset panel
-    g.lineStyle(1, 0x1a2230, 0.9);
-    g.strokeRect(x + 4, y + 6, w - 8, h - 16);
-    // Small window near the top
-    const winY = y + 14;
-    const winH = Math.min(28, h * 0.25);
-    g.fillStyle(0x88ccee, 0.75);
-    g.fillRect(x + 7, winY, w - 14, winH);
-    g.lineStyle(1, 0x223344, 1);
-    g.strokeRect(x + 7, winY, w - 14, winH);
-    // Window highlight
-    g.fillStyle(0xffffff, 0.35);
-    g.fillRect(x + 9, winY + 2, w - 18, 3);
+    const segs: Record<number, string[]> = {
+      0: ['t', 'tl', 'tr', 'bl', 'br', 'b'],
+      1: ['tr', 'br'],
+      2: ['t', 'tr', 'm', 'bl', 'b'],
+      3: ['t', 'tr', 'm', 'br', 'b'],
+      4: ['tl', 'tr', 'm', 'br'],
+      5: ['t', 'tl', 'm', 'br', 'b'],
+      6: ['t', 'tl', 'm', 'bl', 'br', 'b'],
+      7: ['t', 'tr', 'br'],
+      8: ['t', 'tl', 'tr', 'm', 'bl', 'br', 'b'],
+      9: ['t', 'tl', 'tr', 'm', 'br', 'b'],
+    };
+    const on = segs[digit] ?? segs[0];
+    g.fillStyle(color, 1);
+    const w = 6, h = 8, t = 1;
+    if (on.includes('t')) g.fillRect(x, y, w, t);
+    if (on.includes('m')) g.fillRect(x, y + h / 2 - 0.5, w, t);
+    if (on.includes('b')) g.fillRect(x, y + h - t, w, t);
+    if (on.includes('tl')) g.fillRect(x, y, t, h / 2);
+    if (on.includes('tr')) g.fillRect(x + w - t, y, t, h / 2);
+    if (on.includes('bl')) g.fillRect(x, y + h / 2, t, h / 2);
+    if (on.includes('br')) g.fillRect(x + w - t, y + h / 2, t, h / 2);
   }
 
   /* ---- getters ---- */

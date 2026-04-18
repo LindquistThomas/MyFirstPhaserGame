@@ -2,83 +2,304 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig';
 import { hasSave } from '../systems/SaveManager';
 
+/**
+ * Title screen.
+ *
+ * Sets the tone for the whole game with an animated city scene: distant
+ * skyline silhouette, a featured skyscraper with twinkling windows, an
+ * elevator cab riding floor-by-floor with the player sprite inside, and
+ * a starfield drifting overhead. The title and buttons live in a single
+ * column on the left; the cityscape fills the right two-thirds.
+ */
 export class MenuScene extends Phaser.Scene {
+  private windowRects: Phaser.GameObjects.Rectangle[] = [];
+
   constructor() {
     super({ key: 'MenuScene' });
   }
 
   create(): void {
-    const cx = GAME_WIDTH / 2;
-    const cy = GAME_HEIGHT / 2;
-    this.cameras.main.setBackgroundColor(COLORS.background);
+    this.cameras.main.setBackgroundColor(0x05060f);
 
-    // Title
-    this.add.text(cx, cy - 220, 'SO YOU WANT', {
-      fontFamily: 'monospace', fontSize: '40px',
-      color: COLORS.titleText, fontStyle: 'bold',
-    }).setOrigin(0.5);
-
-    this.add.text(cx, cy - 165, 'TO BE AN', {
-      fontFamily: 'monospace', fontSize: '40px',
-      color: COLORS.titleText, fontStyle: 'bold',
-    }).setOrigin(0.5);
-
-    this.add.text(cx, cy - 100, 'ARCHITECT', {
-      fontFamily: 'monospace', fontSize: '64px',
-      color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5);
-
-    this.add.text(cx, cy - 70, 'Rise through the ranks of IT architecture', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa',
-    }).setOrigin(0.5);
-
-    // Animated elevator icon
-    const icon = this.add.graphics();
-    icon.fillStyle(0x0f3460);
-    icon.fillRect(cx - 30, cy + 10, 60, 10);
-    this.tweens.add({ targets: icon, y: -40, duration: 2000, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
-
-    // Start button
-    const btn = this.add.text(cx, cy + 100, '[ START GAME ]', {
-      fontFamily: 'monospace', fontSize: '28px', color: COLORS.titleText,
-      padding: { x: 24, y: 12 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-    btn.on('pointerover', () => btn.setColor('#ffffff').setScale(1.1));
-    btn.on('pointerout', () => btn.setColor(COLORS.titleText).setScale(1.0));
-    btn.on('pointerdown', () => this.startGame());
-
-    this.tweens.add({ targets: btn, alpha: 0.6, duration: 800, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
-
-    if (hasSave()) {
-      const contBtn = this.add.text(cx, cy + 160, '[ CONTINUE ]', {
-        fontFamily: 'monospace', fontSize: '24px', color: COLORS.titleText,
-        padding: { x: 24, y: 12 },
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-
-      contBtn.on('pointerover', () => contBtn.setColor('#ffffff').setScale(1.1));
-      contBtn.on('pointerout', () => contBtn.setColor(COLORS.titleText).setScale(1.0));
-      contBtn.on('pointerdown', () => this.continueGame());
-
-      this.tweens.add({ targets: contBtn, alpha: 0.6, duration: 800, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
-      this.input.keyboard?.once('keydown-ENTER', () => this.continueGame());
-    }
-
-    // Controls
-    this.add.text(cx, GAME_HEIGHT - 100, 'WASD / Arrows: Move  |  Space: Jump  |  E: Interact', {
-      fontFamily: 'monospace', fontSize: '15px', color: '#8899aa',
-    }).setOrigin(0.5);
-
-    this.add.text(cx, GAME_HEIGHT - 65, 'Collect AU (Architecture Utility) to unlock new floors!', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#8ea0b5',
-    }).setOrigin(0.5);
-
-    this.add.text(cx, GAME_HEIGHT - 35, 'Inspired by Impossible Mission (C64)', {
-      fontFamily: 'monospace', fontSize: '14px', color: '#8ea0b5',
-    }).setOrigin(0.5);
+    this.createStarfield();
+    this.createSkylineBackdrop();
+    this.createFeaturedBuilding();
+    this.createTitlePanel();
+    this.createControlsFooter();
 
     this.input.keyboard?.once('keydown-SPACE', () => this.startGame());
     this.cameras.main.fadeIn(800, 0, 0, 0);
+  }
+
+  /* ---- background layers ---- */
+
+  /** Slow-twinkling starfield across the upper sky. */
+  private createStarfield(): void {
+    const stars = this.add.graphics().setDepth(0);
+    const draw = (alpha: number) => {
+      stars.clear();
+      for (let i = 0; i < 80; i++) {
+        const x = (i * 137.5) % GAME_WIDTH;
+        const y = ((i * 73.3) % (GAME_HEIGHT * 0.55));
+        const a = alpha * (0.4 + ((i * 31) % 7) / 10);
+        stars.fillStyle(0xffffff, a);
+        stars.fillRect(x, y, 1.5, 1.5);
+      }
+    };
+    draw(1);
+    this.tweens.addCounter({
+      from: 0.5, to: 1, duration: 2400, ease: 'Sine.easeInOut',
+      yoyo: true, repeat: -1,
+      onUpdate: (tw) => draw(tw.getValue() ?? 1),
+    });
+
+    // Soft moon
+    const moon = this.add.graphics().setDepth(0);
+    moon.fillStyle(0xfff6cc, 0.9);
+    moon.fillCircle(GAME_WIDTH - 140, 110, 36);
+    moon.fillStyle(0x05060f, 1);
+    moon.fillCircle(GAME_WIDTH - 122, 100, 32);
+  }
+
+  /** Distant skyline of varied dark buildings forming the city horizon. */
+  private createSkylineBackdrop(): void {
+    const g = this.add.graphics().setDepth(1);
+    const horizonY = GAME_HEIGHT - 180;
+    let x = 0;
+    let seed = 17;
+    while (x < GAME_WIDTH) {
+      // deterministic pseudo-random widths/heights so the skyline is stable
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      const w = 36 + (seed % 60);
+      const h = 80 + ((seed >> 8) % 220);
+      g.fillStyle(0x12162a, 1);
+      g.fillRect(x, horizonY - h, w, h + 200);
+
+      // a few randomly lit windows
+      const winCols = Math.max(1, Math.floor(w / 14));
+      const winRows = Math.max(2, Math.floor(h / 22));
+      for (let r = 0; r < winRows; r++) {
+        for (let c = 0; c < winCols; c++) {
+          seed = (seed * 1664525 + 1013904223) & 0x7fffffff;
+          if ((seed & 7) === 0) {
+            g.fillStyle(0xffd470, 0.55);
+            g.fillRect(x + 4 + c * 14, horizonY - h + 8 + r * 22, 6, 8);
+          }
+        }
+      }
+      x += w + 4;
+    }
+
+    // Ground band
+    g.fillStyle(0x080a18, 1);
+    g.fillRect(0, GAME_HEIGHT - 30, GAME_WIDTH, 30);
+  }
+
+  /**
+   * Centre-piece skyscraper with a 6-floor window grid, an internal lift
+   * shaft and a cab that rides up and down with the player inside it.
+   * Windows twinkle on a timer to suggest a city that's alive.
+   */
+  private createFeaturedBuilding(): void {
+    const FLOORS = 6;
+    const FLOOR_H = 70;
+    const buildingX = GAME_WIDTH / 2 + 220;
+    const buildingW = 320;
+    const topY = GAME_HEIGHT - 80 - FLOORS * FLOOR_H;
+    const bottomY = topY + FLOORS * FLOOR_H;
+
+    // Building silhouette
+    const body = this.add.graphics().setDepth(2);
+    body.fillStyle(0x1c2138, 1);
+    body.fillRect(buildingX - buildingW / 2, topY - 24, buildingW, FLOORS * FLOOR_H + 24);
+    // Roof structure
+    body.fillStyle(0x252b48, 1);
+    body.fillRect(buildingX - 28, topY - 56, 56, 32);
+    body.fillStyle(0xff5566, 1);
+    body.fillCircle(buildingX, topY - 60, 4); // antenna light
+
+    // Floor separators
+    body.lineStyle(1, 0x0c0f1c, 1);
+    for (let f = 1; f < FLOORS; f++) {
+      const y = topY + f * FLOOR_H;
+      body.lineBetween(buildingX - buildingW / 2, y, buildingX + buildingW / 2, y);
+    }
+
+    // Window grid (skip the centre column — that's the elevator shaft)
+    const cols = 6;
+    const colW = buildingW / cols;
+    for (let f = 0; f < FLOORS; f++) {
+      for (let c = 0; c < cols; c++) {
+        if (c === 2 || c === 3) continue; // shaft columns
+        const wx = buildingX - buildingW / 2 + c * colW + colW / 2;
+        const wy = topY + f * FLOOR_H + FLOOR_H / 2 + 4;
+        const lit = Math.random() < 0.55;
+        const rect = this.add.rectangle(wx, wy, colW * 0.55, FLOOR_H * 0.45,
+          lit ? 0xffd470 : 0x2a2f4a, 1).setDepth(2);
+        this.windowRects.push(rect);
+      }
+    }
+    // Twinkle a handful of windows every beat.
+    this.time.addEvent({
+      delay: 600, loop: true, callback: () => {
+        for (let i = 0; i < 4; i++) {
+          const r = this.windowRects[Math.floor(Math.random() * this.windowRects.length)];
+          if (!r) continue;
+          const lit = (r.fillColor === 0xffd470);
+          r.setFillStyle(lit ? 0x2a2f4a : 0xffd470, 1);
+        }
+      },
+    });
+
+    // Elevator shaft — darker column down the building's centre
+    const shaftW = colW * 1.6;
+    const shaftX = buildingX;
+    const shaft = this.add.graphics().setDepth(2);
+    shaft.fillStyle(0x0a0d1c, 1);
+    shaft.fillRect(shaftX - shaftW / 2, topY, shaftW, FLOORS * FLOOR_H);
+    shaft.lineStyle(1, 0x2a2f4a, 1);
+    shaft.lineBetween(shaftX - shaftW / 2, topY, shaftX - shaftW / 2, bottomY);
+    shaft.lineBetween(shaftX + shaftW / 2, topY, shaftX + shaftW / 2, bottomY);
+
+    // Floor-stop indicators inside the shaft
+    for (let f = 0; f < FLOORS; f++) {
+      const y = topY + f * FLOOR_H + FLOOR_H / 2;
+      shaft.fillStyle(0x33ff99, 0.35);
+      shaft.fillRect(shaftX - shaftW / 2 + 2, y - 1, shaftW - 4, 2);
+    }
+
+    // Elevator cab + player rider — composed in a container so they tween together
+    const cabW = shaftW - 8;
+    const cabH = FLOOR_H - 14;
+    const cab = this.add.container(shaftX, bottomY - FLOOR_H / 2).setDepth(3);
+
+    const cabBg = this.add.graphics();
+    cabBg.fillStyle(0x162244, 1);
+    cabBg.fillRect(-cabW / 2, -cabH / 2, cabW, cabH);
+    cabBg.lineStyle(2, 0x33d6ff, 0.95);
+    cabBg.strokeRect(-cabW / 2, -cabH / 2, cabW, cabH);
+    cabBg.fillStyle(0x33d6ff, 0.9);
+    cabBg.fillRect(-cabW / 2, -cabH / 2 - 4, cabW, 4); // top bar
+    cab.add(cabBg);
+
+    // Cables up to the roof
+    const cables = this.add.graphics().setDepth(3);
+    const drawCables = () => {
+      cables.clear();
+      cables.lineStyle(1, 0x55556a, 0.8);
+      cables.lineBetween(shaftX - 8, topY, shaftX - 8, cab.y - cabH / 2);
+      cables.lineBetween(shaftX + 8, topY, shaftX + 8, cab.y - cabH / 2);
+    };
+    drawCables();
+
+    // Player sprite riding the cab. Idle frame 0 if the spritesheet is loaded.
+    if (this.textures.exists('player')) {
+      const player = this.add.sprite(0, 4, 'player', 0).setDepth(4);
+      // Scale so the 64×160 sprite fits the cab nicely.
+      const scale = Math.min(cabW / 80, cabH / 110);
+      player.setScale(scale);
+      cab.add(player);
+    } else {
+      const stick = this.add.graphics();
+      stick.fillStyle(0xfff0c0, 1);
+      stick.fillRect(-3, -10, 6, 20);
+      stick.fillCircle(0, -16, 4);
+      cab.add(stick);
+    }
+
+    // Ride loop: stop at each floor for a beat, then move to the next.
+    const stops: number[] = [];
+    for (let f = 0; f < FLOORS; f++) {
+      stops.push(topY + f * FLOOR_H + FLOOR_H / 2);
+    }
+    let idx = FLOORS - 1; // start at the bottom
+    const goNext = () => {
+      idx = (idx + 1) % (FLOORS * 2 - 2);
+      // Bounce: 0..F-1 going up, then back down.
+      const rideTo = idx < FLOORS ? idx : (FLOORS * 2 - 2 - idx);
+      this.tweens.add({
+        targets: cab,
+        y: stops[rideTo],
+        duration: 900,
+        ease: 'Sine.easeInOut',
+        onUpdate: drawCables,
+        onComplete: () => {
+          drawCables();
+          this.time.delayedCall(700, goNext);
+        },
+      });
+    };
+    this.time.delayedCall(600, goNext);
+  }
+
+  /* ---- foreground UI ---- */
+
+  private createTitlePanel(): void {
+    const cx = 360;
+    const cy = GAME_HEIGHT / 2;
+
+    // Title with a soft glow (stack of offset shadows).
+    const titleStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: 'monospace', fontSize: '44px',
+      color: COLORS.titleText, fontStyle: 'bold',
+    };
+    const subStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+      fontFamily: 'monospace', fontSize: '70px',
+      color: '#ffffff', fontStyle: 'bold',
+    };
+    this.add.text(cx, cy - 220, 'SO YOU WANT', titleStyle).setOrigin(0.5)
+      .setShadow(0, 0, '#0099cc', 18, true, true);
+    this.add.text(cx, cy - 170, 'TO BE AN', titleStyle).setOrigin(0.5)
+      .setShadow(0, 0, '#0099cc', 18, true, true);
+    const headline = this.add.text(cx, cy - 100, 'ARCHITECT', subStyle).setOrigin(0.5)
+      .setShadow(0, 0, '#33ddff', 24, true, true);
+
+    // Subtle title pulse (scale only the headline so the surrounding lines stay still).
+    this.tweens.add({
+      targets: headline, scale: 1.03, duration: 1800,
+      ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
+    });
+
+    this.add.text(cx, cy - 50, 'Ride the elevator. Translate between floors.', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
+    }).setOrigin(0.5);
+
+    // Start button
+    const btn = this.makeButton(cx, cy + 40, '[ START GAME ]', 26, () => this.startGame());
+    this.tweens.add({ targets: btn, alpha: 0.65, duration: 800, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
+
+    if (hasSave()) {
+      this.makeButton(cx, cy + 100, '[ CONTINUE ]', 22, () => this.continueGame());
+      this.input.keyboard?.once('keydown-ENTER', () => this.continueGame());
+    }
+  }
+
+  private makeButton(
+    x: number,
+    y: number,
+    label: string,
+    fontPx: number,
+    onClick: () => void,
+  ): Phaser.GameObjects.Text {
+    const btn = this.add.text(x, y, label, {
+      fontFamily: 'monospace', fontSize: `${fontPx}px`, color: COLORS.titleText,
+      padding: { x: 24, y: 12 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => btn.setColor('#ffffff').setScale(1.08));
+    btn.on('pointerout', () => btn.setColor(COLORS.titleText).setScale(1.0));
+    btn.on('pointerdown', onClick);
+    return btn;
+  }
+
+  private createControlsFooter(): void {
+    const cx = GAME_WIDTH / 2;
+    this.add.text(cx, GAME_HEIGHT - 60, 'WASD / Arrows: Move   |   Space: Jump   |   I: Info   |   E: Interact', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#7a8aa3',
+    }).setOrigin(0.5).setDepth(10);
+
+    this.add.text(cx, GAME_HEIGHT - 35, 'Collect AU to unlock new floors  \u2022  Inspired by Impossible Mission (C64)', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#5e6e85',
+    }).setOrigin(0.5).setDepth(10);
   }
 
   private startGame(): void {
