@@ -12,7 +12,6 @@ import { markSeen } from '../systems/InfoDialogManager';
 import { HubZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './hub/HubZones';
 import { HubElevatorController } from './hub/HubElevatorController';
 
-const FLOOR0_TEST_SCENE_KEY = 'Floor0Scene';
 const FLOOR1_ARCH_SCENE_KEY = 'Floor1ArchScene';
 const FLOOR3_PRODUCT_SCENE_KEY = 'Floor3ProductScene';
 
@@ -52,7 +51,6 @@ export class HubScene extends Phaser.Scene {
   private static readonly FLOOR_TILE_ROWS = 2;
   /** Pixel height of one floor slab. */
   private static readonly FLOOR_H = HubScene.FLOOR_TILE_ROWS * TILE_SIZE; // 256
-  private static readonly FLOOR0_EDGE_TRIGGER_X = 36;
   private static readonly PLAYER_SPAWN_OFFSET_FROM_FLOOR_Y = 56;
   private static readonly FLOOR_DETECTION_TOLERANCE = 18;
 
@@ -428,7 +426,6 @@ export class HubScene extends Phaser.Scene {
     );
 
     this.checkFloorEntry();
-    this.checkFloor0Transition();
   }
 
   /** Detect player stepping onto a floor platform (not elevator, not lobby). */
@@ -464,24 +461,6 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  /** At lobby level, walking to the far left/right opens the Floor 0 test scene. */
-  private checkFloor0Transition(): void {
-    if (this.elevatorCtrl.isOnElevator) return;
-
-    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    if (!(body.blocked.down || body.touching.down)) return;
-
-    const positions = this.getFloorYPositions();
-    const lobbyY = positions[FLOORS.LOBBY];
-    const lobbySurface = lobbyY + HubScene.FLOOR_H;
-    if (Math.abs(body.bottom - lobbySurface) >= HubScene.FLOOR_DETECTION_TOLERANCE) return;
-
-    const px = this.player.sprite.x;
-    if (px <= HubScene.FLOOR0_EDGE_TRIGGER_X || px >= GAME_WIDTH - HubScene.FLOOR0_EDGE_TRIGGER_X) {
-      this.enterFloor0Test();
-    }
-  }
-
   private enterFloor(floorId: FloorId, direction: 'left' | 'right' = 'left'): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
@@ -499,10 +478,4 @@ export class HubScene extends Phaser.Scene {
     this.time.delayedCall(500, () => this.scene.start(sceneKey));
   }
 
-  private enterFloor0Test(): void {
-    if (this.isTransitioning) return;
-    this.isTransitioning = true;
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start(FLOOR0_TEST_SCENE_KEY));
-  }
 }
