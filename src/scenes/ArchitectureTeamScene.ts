@@ -25,6 +25,14 @@ export class ArchitectureTeamScene extends LevelScene {
     this.returnSide = 'right';
   }
 
+  protected override getBannerTitle(): string {
+    return 'Architecture Team';
+  }
+
+  protected override getBannerDescription(): string {
+    return 'Diagrams, decisions, and vertical slices.';
+  }
+
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
 

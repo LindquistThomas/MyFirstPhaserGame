@@ -370,12 +370,24 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /* ---- banner ---- */
+  /** Title shown in the floor-entry banner. Override in subclasses that
+   *  share a floorId but represent a distinct room (e.g. Architecture Team
+   *  on the Platform Team floor). */
+  protected getBannerTitle(): string {
+    return this.floorData.name;
+  }
+
+  /** Subtitle shown under the banner title. */
+  protected getBannerDescription(): string {
+    return this.floorData.description;
+  }
+
   protected showFloorBanner(): void {
-    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 140, this.floorData.name, {
+    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 140, this.getBannerTitle(), {
       fontFamily: 'monospace', fontSize: '48px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(100);
 
-    const sub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, this.floorData.description, {
+    const sub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, this.getBannerDescription(), {
       fontFamily: 'monospace', fontSize: '18px', color: '#aabbcc',
     }).setOrigin(0.5).setDepth(100);
 
