@@ -1,6 +1,5 @@
 import * as Phaser from 'phaser';
 import { PLAYER_SPEED } from '../config/gameConfig';
-import { InputManager } from '../systems/InputManager';
 import { eventBus } from '../systems/EventBus';
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall';
@@ -22,7 +21,6 @@ const HITBOX_HEIGHT = SPRITE_HEIGHT - HITBOX_MARGIN_Y - 28; // 116 — bottom al
 
 export class Player {
   public sprite: Phaser.Physics.Arcade.Sprite;
-  private inputManager: InputManager;
   private scene: Phaser.Scene;
   private currentAnim: PlayerAnimState = 'idle';
   private facingRight = true;
@@ -40,7 +38,6 @@ export class Player {
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
-    this.inputManager = new InputManager(scene);
 
     this.sprite = scene.physics.add.sprite(x, y, 'player', 0);
     this.sprite.setSize(HITBOX_WIDTH, HITBOX_HEIGHT);
@@ -121,13 +118,14 @@ export class Player {
       return;
     }
 
-    const input = this.inputManager.getState();
+    const inputs = this.scene.inputs;
+    const h = inputs.horizontal();
 
     // Horizontal movement
-    if (input.left) {
+    if (h < 0) {
       this.sprite.setVelocityX(-PLAYER_SPEED);
       this.facingRight = false;
-    } else if (input.right) {
+    } else if (h > 0) {
       this.sprite.setVelocityX(PLAYER_SPEED);
       this.facingRight = true;
     } else {
@@ -142,7 +140,7 @@ export class Player {
     this.sprite.setFlipX(!this.facingRight);
 
     // Jump → initiate forward flip
-    if (this.inputManager.isJumpJustPressed() && onGround && this.flipEnabled) {
+    if (inputs.justPressed('Jump') && onGround && this.flipEnabled) {
       this.startFlip();
       return;
     }
@@ -237,10 +235,6 @@ export class Player {
       this.dustEmitter.setPosition(this.sprite.x, this.sprite.y + 70);
       this.dustEmitter.explode(5);
     }
-  }
-
-  getInputManager(): InputManager {
-    return this.inputManager;
   }
 
   setFlipEnabled(enabled: boolean): void {

@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../config/gameConfig';
+import { allKeyLabels } from '../input';
 import { LevelScene, LevelConfig } from './LevelScene';
 
 interface ProductDoor {
@@ -102,10 +103,10 @@ export class Floor3ProductsScene extends LevelScene {
 
     for (const door of Floor3ProductsScene.DOORS) {
       if (Math.abs(px - door.x) < 60) {
-        this.interactPrompt?.setText(`Press Space/Enter \u2192 ${door.label}`).setPosition(
+        this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 ${door.label}`).setPosition(
           door.x - 100, G - 180,
         ).setVisible(true);
-        if (this.player.getInputManager().isInteractJustPressed()) {
+        if (this.inputs.justPressed('Interact')) {
           this.enterProductRoom(door);
         }
         return;

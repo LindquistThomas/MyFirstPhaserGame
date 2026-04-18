@@ -45,12 +45,7 @@ export class InfoDialog extends ModalBase {
   private focusables: Focusable[] = [];
   private focusIndex = -1;
   private focusArrow?: Phaser.GameObjects.Text;
-  private upKey?: Phaser.Input.Keyboard.Key;
-  private downKey?: Phaser.Input.Keyboard.Key;
-  private enterKey?: Phaser.Input.Keyboard.Key;
-  private pageUpKey?: Phaser.Input.Keyboard.Key;
-  private pageDownKey?: Phaser.Input.Keyboard.Key;
-  private navHandler?: () => void;
+  private navHandlers: Array<{ action: import('../input').GameAction; handler: () => void }> = [];
 
   /* ---- scrolling state ---- */
   private scrollContent?: Phaser.GameObjects.Container;
@@ -412,14 +407,8 @@ export class InfoDialog extends ModalBase {
   /* ---- keyboard navigation ---- */
 
   private registerKeyboardNav(): void {
-    if (!this.scene.input.keyboard || this.focusables.length === 0) return;
-
-    const kb = this.scene.input.keyboard;
-    this.upKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
-    this.downKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
-    this.enterKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
-    this.pageUpKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.PAGE_UP);
-    this.pageDownKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.PAGE_DOWN);
+    if (this.focusables.length === 0) return;
+    const inputs = this.scene.inputs;
 
     this.focusArrow = this.scene.add.text(0, 0, '\u25b6', {
       fontFamily: 'monospace', fontSize: '16px', color: '#ffd700', fontStyle: 'bold',
@@ -428,22 +417,20 @@ export class InfoDialog extends ModalBase {
 
     this.setFocus(0);
 
-    const up = this.upKey, down = this.downKey, enter = this.enterKey;
-    const pgUp = this.pageUpKey, pgDn = this.pageDownKey;
-    this.navHandler = () => {
-      if (Phaser.Input.Keyboard.JustDown(up)) {
-        this.setFocus((this.focusIndex - 1 + this.focusables.length) % this.focusables.length);
-      } else if (Phaser.Input.Keyboard.JustDown(down)) {
-        this.setFocus((this.focusIndex + 1) % this.focusables.length);
-      } else if (Phaser.Input.Keyboard.JustDown(enter)) {
-        this.activateFocused();
-      } else if (Phaser.Input.Keyboard.JustDown(pgUp)) {
-        this.scrollBy(-this.contentViewportH * 0.8);
-      } else if (Phaser.Input.Keyboard.JustDown(pgDn)) {
-        this.scrollBy(this.contentViewportH * 0.8);
-      }
+    const bind = (action: import('../input').GameAction, handler: () => void) => {
+      inputs.on(action, handler);
+      this.navHandlers.push({ action, handler });
     };
-    this.scene.events.on('update', this.navHandler);
+
+    bind('NavigateUp', () => {
+      this.setFocus((this.focusIndex - 1 + this.focusables.length) % this.focusables.length);
+    });
+    bind('NavigateDown', () => {
+      this.setFocus((this.focusIndex + 1) % this.focusables.length);
+    });
+    bind('Confirm', () => this.activateFocused());
+    bind('PageUp', () => this.scrollBy(-this.contentViewportH * 0.8));
+    bind('PageDown', () => this.scrollBy(this.contentViewportH * 0.8));
   }
 
   private setFocus(index: number): void {
@@ -503,20 +490,14 @@ export class InfoDialog extends ModalBase {
     if (this.cooldownTimer) {
       this.cooldownTimer.destroy();
     }
-    if (this.navHandler) {
-      this.scene.events.off('update', this.navHandler);
-      this.navHandler = undefined;
+    for (const { action, handler } of this.navHandlers) {
+      this.scene.inputs.off(action, handler);
     }
+    this.navHandlers = [];
     if (this.wheelHandler) {
       this.scene.input.off('wheel', this.wheelHandler);
       this.wheelHandler = undefined;
     }
-    this.upKey?.destroy();
-    this.downKey?.destroy();
-    this.enterKey?.destroy();
-    this.pageUpKey?.destroy();
-    this.pageDownKey?.destroy();
-    this.upKey = this.downKey = this.enterKey = this.pageUpKey = this.pageDownKey = undefined;
 
     this.scrollContent?.clearMask(true);
     this.scrollMaskGfx?.destroy();

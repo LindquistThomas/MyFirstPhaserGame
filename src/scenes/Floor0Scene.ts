@@ -1,7 +1,10 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
+import { pushContext, popContext, type ContextToken } from '../input';
 
 export class Floor0Scene extends Phaser.Scene {
+  private contextToken: ContextToken | null = null;
+
   constructor() {
     super({ key: 'Floor0Scene' });
   }
@@ -46,15 +49,18 @@ export class Floor0Scene extends Phaser.Scene {
       this.scene.start('HubScene');
     });
 
-    const keyboard = this.input.keyboard;
+    this.contextToken = pushContext('menu');
     const goBack = () => this.scene.start('HubScene');
-
-    keyboard?.on('keydown-ESC', goBack);
-    keyboard?.on('keydown-ENTER', goBack);
+    this.inputs.on('Cancel', goBack);
+    this.inputs.on('Confirm', goBack);
 
     this.events.once('shutdown', () => {
-      keyboard?.off('keydown-ESC', goBack);
-      keyboard?.off('keydown-ENTER', goBack);
+      this.inputs.off('Cancel', goBack);
+      this.inputs.off('Confirm', goBack);
+      if (this.contextToken) {
+        popContext(this.contextToken);
+        this.contextToken = null;
+      }
     });
   }
 }

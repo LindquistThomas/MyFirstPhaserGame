@@ -16,6 +16,7 @@ import { ProductIsyRoadScene } from './scenes/products/ProductIsyRoadScene';
 import { ProductAdminLisensScene } from './scenes/products/ProductAdminLisensScene';
 import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
+import { InputService } from './input';
 
 // Render all Text objects at 2x internal resolution so glyphs stay crisp
 // after the canvas is FIT-scaled to the viewport. Applies to both
@@ -62,7 +63,8 @@ const config: Phaser.Types.Core.GameConfig = {
   },
   scene: [BootScene, MenuScene, HubScene, Floor0Scene, Floor1Scene, Floor1ArchScene, Floor3ProductsScene, Floor3Scene, Floor3ProductScene, Floor4Scene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
   plugins: {
-    scene: [{ key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },
+    scene: [{ key: 'InputService', plugin: InputService, mapping: 'inputs' },
+            { key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },
             { key: 'DebugPlugin', plugin: DebugPlugin, mapping: 'debug' }],
   },
 };

@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../config/gameConfig';
 import { hasSave } from '../systems/SaveManager';
+import { pushContext, popContext, type ContextToken } from '../input';
 
 /**
  * Title screen.
@@ -15,6 +16,7 @@ export class MenuScene extends Phaser.Scene {
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
   private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
   private selectedIndex = 0;
+  private contextToken: ContextToken | null = null;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -37,14 +39,23 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private setupKeyboardNavigation(): void {
-    const kb = this.input.keyboard;
-    if (!kb) return;
-    kb.on('keydown-UP', () => this.moveSelection(-1));
-    kb.on('keydown-W', () => this.moveSelection(-1));
-    kb.on('keydown-DOWN', () => this.moveSelection(1));
-    kb.on('keydown-S', () => this.moveSelection(1));
-    kb.on('keydown-ENTER', () => this.activateSelection());
-    kb.on('keydown-SPACE', () => this.activateSelection());
+    this.contextToken = pushContext('menu');
+    const up = () => this.moveSelection(-1);
+    const down = () => this.moveSelection(1);
+    const confirm = () => this.activateSelection();
+    this.inputs.on('NavigateUp', up);
+    this.inputs.on('NavigateDown', down);
+    this.inputs.on('Confirm', confirm);
+
+    this.events.once('shutdown', () => {
+      this.inputs.off('NavigateUp', up);
+      this.inputs.off('NavigateDown', down);
+      this.inputs.off('Confirm', confirm);
+      if (this.contextToken) {
+        popContext(this.contextToken);
+        this.contextToken = null;
+      }
+    });
   }
 
   private moveSelection(delta: number): void {

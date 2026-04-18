@@ -451,8 +451,8 @@ export class HubScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
 
-    const inputMgr = this.player.getInputManager();
-    const infoPressed = inputMgr.isInfoJustPressed();
+    const inputs = this.inputs;
+    const infoPressed = inputs.justPressed('ToggleInfo');
 
     if (this.dialogs.isOpen) return;
 
@@ -475,10 +475,9 @@ export class HubScene extends Phaser.Scene {
       return;
     }
 
-    const input = inputMgr.getState();
     const btnState = this.elevatorButtons?.getState();
     this.elevatorCtrl.update(
-      { up: input.up, down: input.down },
+      { up: inputs.isDown('MoveUp'), down: inputs.isDown('MoveDown') },
       btnState ? { up: btnState.up, down: btnState.down } : undefined,
       delta,
     );

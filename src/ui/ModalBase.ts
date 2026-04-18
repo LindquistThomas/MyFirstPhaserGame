@@ -1,12 +1,14 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
+import { pushContext, popContext, type ContextToken } from '../input';
 
 /**
  * Shared scaffolding for full-screen modal overlays (info + quiz dialogs).
  *
- * Owns the container, the dimmed overlay, the Esc-to-close keybinding,
- * and the fade in/out lifecycle. Subclasses populate the container with
- * their panel content in the constructor and call `fadeIn()` when ready.
+ * Owns the container, the dimmed overlay, the Esc-to-close binding,
+ * the `modal` input-context push/pop, and the fade in/out lifecycle.
+ * Subclasses populate the container with their panel content in the
+ * constructor and call `fadeIn()` when ready.
  *
  * Depth 200 and scrollFactor 0 are standard for all in-game overlays.
  */
@@ -14,8 +16,8 @@ export abstract class ModalBase {
   protected readonly scene: Phaser.Scene;
   protected readonly container: Phaser.GameObjects.Container;
 
-  private escKey: Phaser.Input.Keyboard.Key | null = null;
-  private escHandler: (() => void) | null = null;
+  private cancelHandler: (() => void) | null = null;
+  private contextToken: ContextToken | null = null;
   private shutdownHandler: (() => void) | null = null;
   private destroyed = false;
 
@@ -28,10 +30,10 @@ export abstract class ModalBase {
     this.container.setAlpha(0);
 
     this.buildOverlay();
-    this.registerEscKey();
+    this.enterModalContext();
 
     // If the scene shuts down while the modal is still open, tear everything
-    // down immediately so the update listener and key don't leak across restarts.
+    // down immediately so the context push and listeners don't leak.
     this.shutdownHandler = () => this.destroyImmediate();
     this.scene.events.once('shutdown', this.shutdownHandler);
     this.scene.events.once('destroy', this.shutdownHandler);
@@ -48,13 +50,10 @@ export abstract class ModalBase {
     this.container.add(overlay);
   }
 
-  private registerEscKey(): void {
-    if (!this.scene.input.keyboard) return;
-    this.escKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
-    this.escHandler = () => {
-      if (this.escKey?.isDown) this.close();
-    };
-    this.scene.events.on('update', this.escHandler);
+  private enterModalContext(): void {
+    this.contextToken = pushContext('modal');
+    this.cancelHandler = () => this.close();
+    this.scene.inputs.on('Cancel', this.cancelHandler);
   }
 
   /** Call at end of subclass constructor once panel content is built. */
@@ -100,13 +99,13 @@ export abstract class ModalBase {
   }
 
   private releaseInputAndShutdown(): void {
-    if (this.escHandler) {
-      this.scene.events.off('update', this.escHandler);
-      this.escHandler = null;
+    if (this.cancelHandler) {
+      this.scene.inputs.off('Cancel', this.cancelHandler);
+      this.cancelHandler = null;
     }
-    if (this.escKey) {
-      this.escKey.destroy();
-      this.escKey = null;
+    if (this.contextToken) {
+      popContext(this.contextToken);
+      this.contextToken = null;
     }
     if (this.shutdownHandler) {
       this.scene.events.off('shutdown', this.shutdownHandler);

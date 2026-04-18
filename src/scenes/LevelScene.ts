@@ -13,6 +13,7 @@ import { eventBus } from '../systems/EventBus';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { markSeen } from '../systems/InfoDialogManager';
 import { isQuizPassed } from '../systems/QuizManager';
+import { allKeyLabels } from '../input';
 
 export interface RoomElevator {
   x: number;
@@ -406,7 +407,7 @@ export class LevelScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.isTransitioning) return;
 
-    const infoPressed = this.player?.getInputManager().isInfoJustPressed();
+    const infoPressed = this.inputs.justPressed('ToggleInfo');
 
     if (this.dialogs.isOpen) return;
 
@@ -459,11 +460,11 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
-    const input = this.player.getInputManager().getState();
+    const inputs = this.inputs;
     const lift = this.roomLifts[this.activeRoomLift];
     const btnState = this.liftButtons?.getState();
-    const up = input.up || (btnState?.up ?? false);
-    const down = input.down || (btnState?.down ?? false);
+    const up = inputs.isDown('MoveUp') || (btnState?.up ?? false);
+    const down = inputs.isDown('MoveDown') || (btnState?.down ?? false);
 
     if (up) {
       lift.platform.setVelocityY(-ELEVATOR_SPEED);
@@ -490,10 +491,10 @@ export class LevelScene extends Phaser.Scene {
       this.exitDoor.x, this.exitDoor.y,
     );
     if (d < 90) {
-      this.interactPrompt?.setText('Press Space/Enter \u2192 Elevator').setPosition(
+      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Elevator`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
-      if (this.player.getInputManager().isInteractJustPressed()) this.returnToHub();
+      if (this.inputs.justPressed('Interact')) this.returnToHub();
     } else {
       this.interactPrompt?.setVisible(false);
     }

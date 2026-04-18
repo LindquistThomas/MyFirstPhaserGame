@@ -39,15 +39,7 @@ export class QuizDialog extends ModalBase {
   private focusIndex = -1;
   private focusArrow?: Phaser.GameObjects.Text;
   private screen: 'question' | 'feedback' | 'results' = 'question';
-  private upKey?: Phaser.Input.Keyboard.Key;
-  private downKey?: Phaser.Input.Keyboard.Key;
-  private leftKey?: Phaser.Input.Keyboard.Key;
-  private rightKey?: Phaser.Input.Keyboard.Key;
-  private enterKey?: Phaser.Input.Keyboard.Key;
-  private spaceKey?: Phaser.Input.Keyboard.Key;
-  private numKeys: Phaser.Input.Keyboard.Key[] = [];
-  private letterKeys: Phaser.Input.Keyboard.Key[] = [];
-  private navHandler?: () => void;
+  private navHandlers: Array<{ action: import('../input').GameAction; handler: () => void }> = [];
 
   constructor(scene: Phaser.Scene, options: QuizDialogOptions) {
     super(scene);
@@ -618,82 +610,47 @@ export class QuizDialog extends ModalBase {
   }
 
   private registerKeyboardNav(): void {
-    if (!this.scene.input.keyboard) return;
-    const kb = this.scene.input.keyboard;
+    const inputs = this.scene.inputs;
+    const bind = (action: import('../input').GameAction, handler: () => void) => {
+      inputs.on(action, handler);
+      this.navHandlers.push({ action, handler });
+    };
 
-    this.upKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
-    this.downKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
-    this.leftKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT);
-    this.rightKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
-    this.enterKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
-    this.spaceKey = kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-
-    this.numKeys = [
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.ONE),
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.TWO),
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.THREE),
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.FOUR),
-    ];
-    this.letterKeys = [
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.B),
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.C),
-      kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-    ];
-
-    this.navHandler = () => {
-      // Esc may have just closed the dialog in an earlier listener on the same
-      // 'update' emit; keys are nulled in onBeforeClose but EventEmitter3 still
-      // dispatches to this listener. Bail out cleanly instead of dereferencing
-      // the destroyed keys (which would throw and abort the scene update,
-      // leaving the close-tween stranded and the dialog visible).
-      if (!this.upKey) return;
+    const prev = () => {
       if (this.focusables.length === 0) return;
       const len = this.focusables.length;
-
-      if (Phaser.Input.Keyboard.JustDown(this.upKey!) ||
-          Phaser.Input.Keyboard.JustDown(this.leftKey!)) {
-        this.setFocus((this.focusIndex - 1 + len) % len);
-      } else if (Phaser.Input.Keyboard.JustDown(this.downKey!) ||
-                 Phaser.Input.Keyboard.JustDown(this.rightKey!)) {
-        this.setFocus((this.focusIndex + 1) % len);
-      } else if (Phaser.Input.Keyboard.JustDown(this.enterKey!) ||
-                 Phaser.Input.Keyboard.JustDown(this.spaceKey!)) {
-        this.focusables[this.focusIndex]?.activate();
-      } else if (this.screen === 'question' && !this.answered) {
-        // Number/letter shortcuts pick an answer directly.
-        const q = this.questions[this.currentIndex];
-        if (!q) return;
-        for (let i = 0; i < q.choices.length; i++) {
-          if (Phaser.Input.Keyboard.JustDown(this.numKeys[i]) ||
-              Phaser.Input.Keyboard.JustDown(this.letterKeys[i])) {
-            this.setFocus(i);
-            this.focusables[i]?.activate();
-            return;
-          }
-        }
-      }
+      this.setFocus((this.focusIndex - 1 + len) % len);
     };
-    this.scene.events.on('update', this.navHandler);
+    const next = () => {
+      if (this.focusables.length === 0) return;
+      const len = this.focusables.length;
+      this.setFocus((this.focusIndex + 1) % len);
+    };
+    const activate = () => this.focusables[this.focusIndex]?.activate();
+    const pickAnswer = (index: number) => () => {
+      if (this.screen !== 'question' || this.answered) return;
+      const q = this.questions[this.currentIndex];
+      if (!q || index >= q.choices.length) return;
+      this.setFocus(index);
+      this.focusables[index]?.activate();
+    };
+
+    bind('NavigateUp', prev);
+    bind('NavigateLeft', prev);
+    bind('NavigateDown', next);
+    bind('NavigateRight', next);
+    bind('Confirm', activate);
+    bind('QuickAnswer1', pickAnswer(0));
+    bind('QuickAnswer2', pickAnswer(1));
+    bind('QuickAnswer3', pickAnswer(2));
+    bind('QuickAnswer4', pickAnswer(3));
   }
 
   protected override onBeforeClose(): void {
     eventBus.emit('music:pop');
-    if (this.navHandler) {
-      this.scene.events.off('update', this.navHandler);
-      this.navHandler = undefined;
+    for (const { action, handler } of this.navHandlers) {
+      this.scene.inputs.off(action, handler);
     }
-    this.upKey?.destroy();
-    this.downKey?.destroy();
-    this.leftKey?.destroy();
-    this.rightKey?.destroy();
-    this.enterKey?.destroy();
-    this.spaceKey?.destroy();
-    this.numKeys.forEach((k) => k.destroy());
-    this.letterKeys.forEach((k) => k.destroy());
-    this.upKey = this.downKey = this.leftKey = this.rightKey = undefined;
-    this.enterKey = this.spaceKey = undefined;
-    this.numKeys = [];
-    this.letterKeys = [];
+    this.navHandlers = [];
   }
 }

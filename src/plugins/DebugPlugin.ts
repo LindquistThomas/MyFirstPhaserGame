@@ -16,7 +16,7 @@ const HUD_BOTTOM_TOP = 915;
  */
 export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   private legendText?: Phaser.GameObjects.Text;
-  private debugKey?: Phaser.Input.Keyboard.Key;
+  private toggleHandler?: () => void;
   private active = false;
   private gfx?: Phaser.GameObjects.Graphics;
   /** Screen-space graphics for HUD zone borders. */
@@ -35,10 +35,12 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
 
     this.active = !!this.game?.registry.get('debug_mode');
 
-    this.debugKey = this.scene?.input.keyboard?.addKey(
-      Phaser.Input.Keyboard.KeyCodes.D,
-      false,
-    );
+    this.toggleHandler = () => {
+      this.active = !this.active;
+      this.game?.registry.set('debug_mode', this.active);
+      this.applyDebugState();
+    };
+    this.scene?.inputs.on('ToggleDebug', this.toggleHandler);
 
     this.createOverlay();
     this.applyDebugState();
@@ -228,12 +230,6 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
   }
 
   private onUpdate(): void {
-    if (this.debugKey && Phaser.Input.Keyboard.JustDown(this.debugKey)) {
-      this.active = !this.active;
-      this.game?.registry.set('debug_mode', this.active);
-      this.applyDebugState();
-    }
-
     if (this.active && this.game) {
       this.drawBodies();
     }
@@ -241,13 +237,16 @@ export class DebugPlugin extends Phaser.Plugins.ScenePlugin {
 
   private onShutdown(): void {
     this.systems?.events.off('update', this.onUpdate, this);
+    if (this.toggleHandler) {
+      this.scene?.inputs.off('ToggleDebug', this.toggleHandler);
+      this.toggleHandler = undefined;
+    }
     this.legendText?.destroy();
     this.legendText = undefined;
     this.gfx?.destroy();
     this.gfx = undefined;
     this.hudGfx?.destroy();
     this.hudGfx = undefined;
-    this.debugKey = undefined;
   }
 
   private onSceneDestroy(): void {

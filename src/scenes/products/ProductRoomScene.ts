@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../LevelScene';
+import { allKeyLabels } from '../../input';
 
 export interface ProductRoomDecoration {
   x: number;
@@ -97,16 +98,16 @@ export class ProductRoomScene extends LevelScene {
   }
 
   /**
-   * Override returnToHub so the elevator door at this room's left edge
-   * goes back to the Products hall (not the building hub) and tells the
-   * hall which door we came from so the player respawns next to it.
+   * Return to the hub — product doors now live directly on the PRODUCTS
+   * floor in HubScene, so we go back there and tell HubScene which door
+   * to respawn next to.
    */
   protected override returnToHub(): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () =>
-      this.scene.start('Floor3ProductsScene', { fromDoor: this.cfg.contentId }),
+      this.scene.start('HubScene', { returnFromProductDoor: this.cfg.contentId }),
     );
   }
 
@@ -117,10 +118,10 @@ export class ProductRoomScene extends LevelScene {
       this.exitDoor.x, this.exitDoor.y,
     );
     if (d < 90) {
-      this.interactPrompt?.setText('Press Space/Enter \u2192 Products Hall').setPosition(
-        this.exitDoor.x - 80, this.exitDoor.y - 90,
+      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Products Hall`).setPosition(
+        this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
-      if (this.player.getInputManager().isInteractJustPressed()) this.returnToHub();
+      if (this.inputs.justPressed('Interact')) this.returnToHub();
     } else {
       this.interactPrompt?.setVisible(false);
     }
