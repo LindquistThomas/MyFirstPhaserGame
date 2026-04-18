@@ -37,7 +37,7 @@ describe('QuizManager', () => {
   });
 
   it('keeps passed=true once earned, even on later failures', () => {
-    saveQuizResult('foo', 3);
+    saveQuizResult('foo', QUIZ_PASS_THRESHOLD);
     saveQuizResult('foo', 0);
     expect(isQuizPassed('foo')).toBe(true);
   });
