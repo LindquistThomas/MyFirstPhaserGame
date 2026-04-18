@@ -128,9 +128,7 @@ export class HubScene extends Phaser.Scene {
       getIconForContent: () => this.zones.elevatorInfoIcon,
       onOpen: (id) => markSeen(id),
       onClose: (id) => {
-        if (id === ELEVATOR_INFO_ID && !this.zones.elevatorInfoIcon) {
-          this.zones.onElevatorInfoSeen();
-        } else if (id === ELEVATOR_INFO_ID) {
+        if (id === ELEVATOR_INFO_ID) {
           this.zones.elevatorInfoIcon?.markAsSeen();
         } else if (id === WELCOME_BOARD_ID) {
           this.zones.lobbyBoardIcon?.markAsSeen();
@@ -535,12 +533,6 @@ export class HubScene extends Phaser.Scene {
 
     this.player.update(delta);
     this.hud.update();
-
-    if (this.elevatorCtrl.isOnElevator && this.zones.showElevatorInfoOnFirstRide) {
-      this.zones.showElevatorInfoOnFirstRide = false;
-      this.dialogs.open(ELEVATOR_INFO_ID);
-      return;
-    }
 
     // Emit zone:enter / zone:exit events; HubZones' subscribers react.
     this.zoneManager.update();

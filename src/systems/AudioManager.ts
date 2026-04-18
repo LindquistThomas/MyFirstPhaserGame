@@ -9,6 +9,8 @@ import { SFX_EVENTS, MUSIC_VOLUME } from '../config/audioConfig';
  * response. No other module should call its methods directly; all audio
  * is triggered through the EventBus.
  */
+const MUTE_STORAGE_KEY = 'architect_audio_muted_v1';
+
 export class AudioManager {
   private sound: Phaser.Sound.BaseSoundManager;
   private currentMusic: Phaser.Sound.BaseSound | null = null;
@@ -18,6 +20,12 @@ export class AudioManager {
 
   constructor(sound: Phaser.Sound.BaseSoundManager) {
     this.sound = sound;
+    // Restore persisted mute preference.
+    try {
+      if (localStorage.getItem(MUTE_STORAGE_KEY) === '1') {
+        this.sound.mute = true;
+      }
+    } catch { /* localStorage unavailable — ignore */ }
   }
 
   /**
@@ -29,6 +37,7 @@ export class AudioManager {
     eventBus.on('music:stop', () => this.stopMusic());
     eventBus.on('music:push', (key) => this.pushMusic(key));
     eventBus.on('music:pop', () => this.popMusic());
+    eventBus.on('audio:toggle-mute', () => this.toggleMute());
 
     const events = Object.keys(SFX_EVENTS) as Array<keyof typeof SFX_EVENTS>;
     for (const event of events) {
@@ -80,6 +89,10 @@ export class AudioManager {
 
   toggleMute(): void {
     this.sound.mute = !this.sound.mute;
+    try {
+      localStorage.setItem(MUTE_STORAGE_KEY, this.sound.mute ? '1' : '0');
+    } catch { /* localStorage unavailable — ignore */ }
+    eventBus.emit('audio:mute-changed', this.sound.mute);
   }
 
   isMuted(): boolean {

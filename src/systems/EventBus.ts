@@ -15,6 +15,10 @@ export interface GameEvents {
   'music:push': [key: string];
   /** Restore the music that was playing before the most recent `music:push`. */
   'music:pop': [];
+  /** Toggle global audio mute (affects both music and SFX). */
+  'audio:toggle-mute': [];
+  /** Emitted by AudioManager when the mute state changes. */
+  'audio:mute-changed': [muted: boolean];
 
   'zone:enter': [zoneId: string];
   'zone:exit': [zoneId: string];

@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { QUIZ_DATA } from '../../config/quizData';
 import { eventBus } from '../../systems/EventBus';
 import { ZoneManager } from '../../systems/ZoneManager';
-import { hasBeenSeen } from '../../systems/InfoDialogManager';
 import { isQuizPassed } from '../../systems/QuizManager';
 import { Player } from '../../entities/Player';
 import { ElevatorButtons } from '../../ui/ElevatorButtons';
@@ -45,19 +44,17 @@ export interface HubZonesOptions {
  * wired to the scene's `shutdown` event so reuse across restarts is safe.
  */
 export class HubZones {
-  /** Info icon for the elevator zone — created lazily after the first dialog close. */
+  /** Info icon for the elevator zone. */
   elevatorInfoIcon?: InfoIcon;
   /** Info icon for the lobby welcome board. */
   lobbyBoardIcon?: InfoIcon;
-  /** True until the first elevator ride triggers the intro dialog. */
-  showElevatorInfoOnFirstRide = false;
 
   private readonly opts: HubZonesOptions;
 
   constructor(opts: HubZonesOptions) {
     this.opts = opts;
     this.register();
-    this.setupElevatorInfo();
+    this.createElevatorInfoIcon();
   }
 
   private register(): void {
@@ -107,23 +104,6 @@ export class HubZones {
       eventBus.off('zone:enter', onEnter);
       eventBus.off('zone:exit', onExit);
     });
-  }
-
-  private setupElevatorInfo(): void {
-    if (hasBeenSeen(ELEVATOR_INFO_ID)) {
-      this.showElevatorInfoOnFirstRide = false;
-      this.createElevatorInfoIcon();
-    } else {
-      // The icon is created after the first dialog close — see onElevatorInfoSeen().
-      this.showElevatorInfoOnFirstRide = true;
-    }
-  }
-
-  /** Called by the dialog controller's onClose hook after the first viewing. */
-  onElevatorInfoSeen(): void {
-    if (!this.elevatorInfoIcon) {
-      this.createElevatorInfoIcon();
-    }
   }
 
   private createElevatorInfoIcon(): void {

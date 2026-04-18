@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { generateSprites } from '../systems/SpriteGenerator';
 import { generateSounds } from '../systems/SoundGenerator';
 import { AudioManager } from '../systems/AudioManager';
+import { eventBus } from '../systems/EventBus';
 import { COLORS } from '../config/gameConfig';
 
 export class BootScene extends Phaser.Scene {
@@ -66,6 +67,19 @@ export class BootScene extends Phaser.Scene {
     const audio = new AudioManager(this.sound);
     audio.registerEventListeners();
     this.registry.set('audio', audio);
+
+    // Global M-key toggles music/audio mute from any scene or context.
+    // Attached to window so it works regardless of which Phaser scene has
+    // keyboard focus or what input context is active.
+    window.addEventListener('keydown', (ev) => {
+      if (ev.repeat) return;
+      if (ev.key === 'm' || ev.key === 'M') {
+        const target = ev.target as HTMLElement | null;
+        const tag = target?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+        eventBus.emit('audio:toggle-mute');
+      }
+    });
 
     this.scene.start('MenuScene');
   }
