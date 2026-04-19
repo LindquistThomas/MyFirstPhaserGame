@@ -37,17 +37,19 @@ export class ArchitectureTeamScene extends LevelScene {
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
 
-    // Ambient plants
-    this.add.image(90, G - 40, 'plant_tall').setDepth(3);
-    this.add.image(160, G - 32, 'plant_small').setDepth(11);
+    this.addAmbientPlants([
+      { x: 90, kind: 'tall' },
+      { x: 160, kind: 'small' },
+    ]);
 
     // ---- Anchor 1: Architecture-team signpost ----
     // The room's "help desk" — establishes the team's role.
-    this.add.image(230, G - 60, 'info_board').setDepth(3);
-    this.add.text(230, G - 130, 'ARCHITECTURE\n    TEAM', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#ffe6b8',
-      fontStyle: 'bold', align: 'center',
-    }).setOrigin(0.5).setDepth(4);
+    this.addSignpost({
+      x: 230,
+      label: 'ARCHITECTURE\n    TEAM',
+      color: '#ffe6b8',
+      fontSize: 12,
+    });
 
     // ---- Anchor 2: C4 diagram whiteboard ----
     this.createC4Whiteboard(490, G - 50);

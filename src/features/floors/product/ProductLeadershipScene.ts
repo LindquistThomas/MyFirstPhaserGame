@@ -23,16 +23,17 @@ export class ProductLeadershipScene extends LevelScene {
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
 
-    // Plants flanking the room
-    this.add.image(90, G - 40, 'plant_tall').setDepth(3);
-    this.add.image(160, G - 32, 'plant_small').setDepth(11);
+    this.addAmbientPlants([
+      { x: 90, kind: 'tall' },
+      { x: 160, kind: 'small' },
+    ]);
 
-    // Product Leadership signpost — greets the player on entry.
-    this.add.image(230, G - 60, 'info_board').setDepth(3);
-    this.add.text(230, G - 130, '  PRODUCT\nLEADERSHIP', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#ffd6f0',
-      fontStyle: 'bold', align: 'center',
-    }).setOrigin(0.5).setDepth(4);
+    this.addSignpost({
+      x: 230,
+      label: '  PRODUCT\nLEADERSHIP',
+      color: '#ffd6f0',
+      fontSize: 12,
+    });
 
     // Roadmap wall + workstations.
     this.add.image(560, G - 36, 'desk_monitor').setDepth(3);

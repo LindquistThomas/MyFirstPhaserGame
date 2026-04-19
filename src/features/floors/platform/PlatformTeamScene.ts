@@ -23,18 +23,14 @@ export class PlatformTeamScene extends LevelScene {
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
 
-    // Ambient plants
-    this.add.image(90, G - 40, 'plant_tall').setDepth(3);
-    this.add.image(440, G - 32, 'plant_small').setDepth(3);
-    this.add.image(160, G - 32, 'plant_small').setDepth(11);
-    this.add.image(1200, G - 40, 'plant_tall').setDepth(3);
+    this.addAmbientPlants([
+      { x: 90, kind: 'tall' },
+      { x: 440, kind: 'small', depth: 3 },
+      { x: 160, kind: 'small' },
+      { x: 1200, kind: 'tall' },
+    ]);
 
-    // Platform-Team signpost — greets the player on entry.
-    this.add.image(260, G - 60, 'info_board').setDepth(3);
-    this.add.text(260, G - 130, 'PLATFORM\n   TEAM', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#b8e6ff',
-      fontStyle: 'bold', align: 'center',
-    }).setOrigin(0.5).setDepth(4);
+    this.addSignpost({ x: 260, label: 'PLATFORM\n   TEAM', color: '#b8e6ff' });
 
     // Workstations flanking the center.
     this.add.image(560, G - 36, 'desk_monitor').setDepth(3);

@@ -20,16 +20,12 @@ export class FinanceTeamScene extends LevelScene {
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
 
-    // Plants flanking the room
-    this.add.image(90, G - 40, 'plant_tall').setDepth(3);
-    this.add.image(160, G - 32, 'plant_small').setDepth(11);
+    this.addAmbientPlants([
+      { x: 90, kind: 'tall' },
+      { x: 160, kind: 'small' },
+    ]);
 
-    // Finance signpost — greets the player on entry.
-    this.add.image(260, G - 60, 'info_board').setDepth(3);
-    this.add.text(260, G - 130, '  FINANCE\n   TEAM', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#b8ffd1',
-      fontStyle: 'bold', align: 'center',
-    }).setOrigin(0.5).setDepth(4);
+    this.addSignpost({ x: 260, label: '  FINANCE\n   TEAM', color: '#b8ffd1' });
 
     // Trading-desk style monitors — proxy for FP&A dashboards.
     this.add.image(560, G - 36, 'desk_monitor').setDepth(3);

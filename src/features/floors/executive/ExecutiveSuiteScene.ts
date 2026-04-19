@@ -59,18 +59,14 @@ export class ExecutiveSuiteScene extends LevelScene {
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
 
-    // Penthouse plants flanking the executive lounge.
-    this.add.image(110, G - 40, 'plant_tall').setDepth(3);
-    this.add.image(220, G - 32, 'plant_small').setDepth(11);
-    this.add.image(1180, G - 40, 'plant_tall').setDepth(3);
-    this.add.image(1060, G - 32, 'plant_small').setDepth(11);
+    this.addAmbientPlants([
+      { x: 110, kind: 'tall' },
+      { x: 220, kind: 'small' },
+      { x: 1180, kind: 'tall' },
+      { x: 1060, kind: 'small' },
+    ]);
 
-    // Executive signpost — greets the player on entry.
-    this.add.image(380, G - 60, 'info_board').setDepth(3);
-    this.add.text(380, G - 130, 'EXECUTIVE\n   SUITE', {
-      fontFamily: 'monospace', fontSize: '13px', color: '#ffd700',
-      fontStyle: 'bold', align: 'center',
-    }).setOrigin(0.5).setDepth(4);
+    this.addSignpost({ x: 380, label: 'EXECUTIVE\n   SUITE', color: '#ffd700' });
 
     // Strategy desk in the centre.
     this.add.image(720, G - 36, 'desk_monitor').setDepth(3);

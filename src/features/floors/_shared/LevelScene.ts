@@ -290,6 +290,40 @@ export class LevelScene extends Phaser.Scene {
   /* ---- decorations (override in subclass to add floor-specific props) ---- */
   protected createDecorations(): void { /* no-op by default */ }
 
+  /**
+   * Shared decoration helpers used by most floor scenes. Ambient plants and
+   * the entry-signpost follow the same visual contract across rooms, so
+   * they're centralized here and called from subclasses' `createDecorations`.
+   */
+  protected addAmbientPlants(
+    plants: Array<{ x: number; kind: 'tall' | 'small'; depth?: number }>,
+  ): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+    for (const p of plants) {
+      const yOff = p.kind === 'tall' ? 40 : 32;
+      const depth = p.depth ?? (p.kind === 'tall' ? 3 : 11);
+      this.add.image(p.x, G - yOff, `plant_${p.kind}`).setDepth(depth);
+    }
+  }
+
+  protected addSignpost(opts: {
+    x: number;
+    label: string;
+    color: string;
+    fontSize?: number;
+  }): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const fontSize = opts.fontSize ?? 13;
+    this.add.image(opts.x, G - 60, 'info_board').setDepth(3);
+    this.add.text(opts.x, G - 130, opts.label, {
+      fontFamily: 'monospace',
+      fontSize: `${fontSize}px`,
+      color: opts.color,
+      fontStyle: 'bold',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(4);
+  }
+
   /* ---- exit ---- */
   protected createExit(): void {
     const c = this.getLevelConfig();
