@@ -73,6 +73,11 @@ export class ElevatorSceneLayout {
     this.shaftCable.setSize(4, h);
   }
 
+  /** Y coordinate at which the shaft cable and twin cab cables anchor. */
+  getPulleyAnchorY(): number {
+    return this.pulleyAnchorY;
+  }
+
   updateFloorLEDs(controller: ElevatorController | undefined): void {
     if (!controller) return;
     const cabY = controller.elevator.getY();

@@ -34,6 +34,15 @@ export class Elevator {
   private minY = 0;
   private maxY = 9999;
 
+  /**
+   * Y coordinate where the twin suspension cables terminate at the top of
+   * the shaft (e.g. the pulley anchor inside a machine room). Defaults to
+   * 0 for legacy setups; callers with a visible machine room should set
+   * this via {@link setCableTopY} so the cables don't appear to extend
+   * infinitely upward.
+   */
+  private cableTopY = 0;
+
   /** Width / height of the visible cab frame. */
   private static readonly CAB_W = 160;
   private static readonly CAB_H = 172;
@@ -80,6 +89,17 @@ export class Elevator {
     if (ys.length === 0) return;
     this.minY = Math.min(...ys);
     this.maxY = Math.max(...ys);
+  }
+
+  /**
+   * Tell the cab where its twin suspension cables should terminate at the
+   * top of the shaft. Typically the bottom tangent of the pulley wheel in
+   * a visible machine room. Triggers a redraw so the change is visible on
+   * the next frame even before the cab moves.
+   */
+  setCableTopY(y: number): void {
+    this.cableTopY = y;
+    this.drawCab();
   }
 
   /* ---- riding controls (called from scene update) ---- */
@@ -286,12 +306,16 @@ export class Elevator {
     const cabW = Elevator.CAB_W;
 
     // --- suspension cables running up the shaft from the top of the cab ---
+    // Cables terminate at `cableTopY` (pulley / anchor), not infinitely up.
+    // Clamp to above the cab so they never invert when the cab is parked
+    // very close to the anchor point.
+    const topY = Math.min(this.cableTopY, cabTop - 6);
     g.lineStyle(2, 0x1a1a26, 1);
-    g.lineBetween(px - 26, cabTop - 6, px - 26, 0);
-    g.lineBetween(px + 26, cabTop - 6, px + 26, 0);
+    g.lineBetween(px - 26, cabTop - 6, px - 26, topY);
+    g.lineBetween(px + 26, cabTop - 6, px + 26, topY);
     g.lineStyle(1, 0x55556a, 0.6);
-    g.lineBetween(px - 25, cabTop - 6, px - 25, 0);
-    g.lineBetween(px + 27, cabTop - 6, px + 27, 0);
+    g.lineBetween(px - 25, cabTop - 6, px - 25, topY);
+    g.lineBetween(px + 27, cabTop - 6, px + 27, topY);
 
     // --- exterior top: hoist beam where cables attach ---
     g.fillStyle(0x22222e, 1);

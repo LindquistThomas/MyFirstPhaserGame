@@ -214,6 +214,9 @@ export class ElevatorScene extends Phaser.Scene {
     // the elevator's internal floor id in sync so the HUD doesn't show
     // F0/Lobby while physically parked at F1 on scene re-entry.
     elevator.setCurrentFloor(this.progression.getCurrentFloor());
+    // Route the cab's twin suspension cables to the machine-room pulley so
+    // they don't extend off the top of the world.
+    elevator.setCableTopY(this.layout.getPulleyAnchorY());
     return elevator;
   }
 
