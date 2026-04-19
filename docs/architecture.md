@@ -1,9 +1,7 @@
 # Architecture
 
 A one-page map of the codebase. For setup and conventions see
-[`CONTRIBUTING.md`](../CONTRIBUTING.md). For the current structural
-review (god files retired, Tier A/B/C status), see
-[`architecture-review.md`](./architecture-review.md).
+[`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ## Module Map
 
