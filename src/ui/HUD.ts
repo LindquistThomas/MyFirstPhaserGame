@@ -4,6 +4,7 @@ import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { LEVEL_DATA } from '../config/levelData';
 import { eventBus } from '../systems/EventBus';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
+import { theme } from '../style/theme';
 import type { AudioManager } from '../systems/AudioManager';
 
 const HUD_HEIGHT = 44;
@@ -44,7 +45,7 @@ export class HUD {
     this.coinIcon = this.scene.add.graphics();
     this.coinIcon.fillStyle(COLORS.token);
     this.coinIcon.fillCircle(0, 0, 12);
-    this.coinIcon.fillStyle(0xffed4a);
+    this.coinIcon.fillStyle(theme.color.ui.hover);
     this.coinIcon.fillCircle(-1, -1, 8);
     this.coinIcon.setPosition(COIN_X, COIN_Y);
     this.container.add(this.coinIcon);
@@ -94,9 +95,9 @@ export class HUD {
   private redrawBackground(): void {
     const floor = this.progression.getCurrentFloor();
     const fd = LEVEL_DATA[floor];
-    const accent = fd ? this.lighten(fd.theme.platformColor, 0.35) : 0x00d4ff;
+    const accent = fd ? this.lighten(fd.theme.platformColor, 0.35) : theme.color.ui.accent;
     const top = 0x0a1428;
-    const bottom = 0x16213e;
+    const bottom = theme.color.bg.shaft;
     const alpha = 0.8;
 
     const g = this.bg;
@@ -141,7 +142,7 @@ export class HUD {
     const x = 46;
     const y = 30;
     const floor = this.progression.getCurrentFloor();
-    const fillColor = LEVEL_DATA[floor]?.theme.platformColor ?? 0x00d4ff;
+    const fillColor = LEVEL_DATA[floor]?.theme.platformColor ?? theme.color.ui.accent;
     // Background track
     g.fillStyle(0x1a2a3a, 0.6);
     g.fillRect(x, y, PROGRESS_STRIP_WIDTH, PROGRESS_STRIP_HEIGHT);
@@ -186,7 +187,7 @@ export class HUD {
   private renderMuteIcon(muted: boolean): void {
     const g = this.muteIcon;
     g.clear();
-    const color = muted ? 0x808080 : 0x00d4ff;
+    const color = muted ? 0x808080 : theme.color.ui.accent;
     // Note stem
     g.lineStyle(2, color, 1);
     g.beginPath();

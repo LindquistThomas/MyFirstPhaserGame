@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { theme } from '../../../style/theme';
 import { ENEMIES } from './enemies';
 
 /**
@@ -128,7 +129,7 @@ export class PlatformTeamScene extends LevelScene {
         const bx = barRect.x + 2 + i * slotW;
         const bh = bars[i] * (barRect.h - 6);
         const by = barRect.y + barRect.h - 3 - bh;
-        const col = bars[i] > 0.8 ? 0xff5577 : bars[i] > 0.6 ? 0xffaa00 : 0x4caf50;
+        const col = bars[i] > 0.8 ? 0xff5577 : bars[i] > 0.6 ? theme.color.status.warning : 0x4caf50;
         live.fillStyle(col, 1);
         live.fillRect(bx + 1, by, slotW - 3, bh);
       }

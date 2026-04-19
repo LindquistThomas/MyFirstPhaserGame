@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /** Standing info-board signpost for the lobby (80 × 120). */
 export function generateInfoBoardSprite(scene: Phaser.Scene): void {
@@ -13,15 +14,15 @@ export function generateInfoBoardSprite(scene: Phaser.Scene): void {
 
   gfx.fillStyle(0x1a237e);
   gfx.fillRoundedRect(4, 4, 72, 56, 4);
-  gfx.lineStyle(2, 0x00aaff, 0.8);
+  gfx.lineStyle(2, theme.color.ui.border, 0.8);
   gfx.strokeRoundedRect(4, 4, 72, 56, 4);
   gfx.fillStyle(0x283593);
   gfx.fillRoundedRect(8, 8, 64, 48, 3);
 
-  gfx.fillStyle(0x00d4ff);
+  gfx.fillStyle(theme.color.ui.accent);
   gfx.fillCircle(40, 20, 3);
   gfx.fillRect(38, 26, 5, 16);
-  gfx.fillStyle(0x00aaff, 0.5);
+  gfx.fillStyle(theme.color.ui.accentAlt, 0.5);
   gfx.fillCircle(20, 36, 2);
   gfx.fillCircle(60, 36, 2);
   gfx.fillCircle(20, 26, 2);

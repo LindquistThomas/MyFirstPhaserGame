@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
+import { theme } from '../style/theme';
 import { eventBus } from '../systems/EventBus';
 import { ModalBase } from './ModalBase';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
@@ -92,20 +93,20 @@ export class InfoDialog extends ModalBase {
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a0a2a, 0.95);
     bg.fillRoundedRect(panelX, panelY, panelW, panelH, 10);
-    bg.lineStyle(2, 0x00aaff, 0.7);
+    bg.lineStyle(2, theme.color.ui.border, 0.7);
     bg.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
     this.container.add(bg);
 
     // --- title (sticky) ---
     const titleY = panelY + PADDING;
     const title = this.scene.add.text(GAME_WIDTH / 2, titleY, content.title, {
-      fontFamily: 'monospace', fontSize: '24px', color: '#00d4ff', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '24px', color: theme.color.css.textTitle, fontStyle: 'bold',
     }).setOrigin(0.5, 0);
     this.container.add(title);
 
     const titleSepY = titleY + TITLE_H + TITLE_GAP - 10;
     const sep = this.scene.add.graphics();
-    sep.lineStyle(1, 0x00aaff, 0.3);
+    sep.lineStyle(1, theme.color.ui.border, 0.3);
     sep.lineBetween(panelX + 20, titleSepY, panelX + panelW - 20, titleSepY);
     sep.lineBetween(panelX + 20, footerY - 2, panelX + panelW - 20, footerY - 2);
     this.container.add(sep);
@@ -205,13 +206,13 @@ export class InfoDialog extends ModalBase {
           let ey = toggleY + 28;
 
           const extTitle = this.scene.add.text(panelX + PADDING + 12, ey, extInfo.title, {
-            fontFamily: 'monospace', fontSize: '15px', color: '#00d4ff', fontStyle: 'bold',
+            fontFamily: 'monospace', fontSize: '15px', color: theme.color.css.textTitle, fontStyle: 'bold',
           });
           extContainer.add(extTitle);
           ey += 24;
 
           const extBorder = this.scene.add.graphics();
-          extBorder.fillStyle(0x00aaff, 0.4);
+          extBorder.fillStyle(theme.color.ui.border, 0.4);
           extBorder.fillRect(panelX + PADDING + 4, ey - 2, 3, extBodyH + 4);
           extContainer.add(extBorder);
 

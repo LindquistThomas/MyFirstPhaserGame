@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /** Infrastructure decorations: server rack, desk+monitor, router, monitor, cables. */
 export function generateInfraSprites(scene: Phaser.Scene): void {
@@ -94,7 +95,7 @@ export function generateInfraSprites(scene: Phaser.Scene): void {
   (() => {
     const g = scene.make.graphics({ x: 0, y: 0 }, false);
     const w = 12, h = 80;
-    const colors = [0x0088ff, 0xff4400, 0x00cc44, 0xffaa00];
+    const colors = [0x0088ff, 0xff4400, 0x00cc44, theme.color.status.warning];
     for (let i = 0; i < colors.length; i++) {
       g.fillStyle(colors[i], 0.7);
       g.fillRect(2 + i * 2, 0, 2, h);

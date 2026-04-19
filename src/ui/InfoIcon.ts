@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { hasBeenSeen } from '../systems/InfoDialogManager';
+import { theme } from '../style/theme';
 
 const RADIUS = 18;
 const BADGE_RADIUS = 10;
@@ -234,7 +235,7 @@ export class InfoIcon {
 
     // Drop shadow — soft blob below the badge for lift.
     const shadow = scene.add.graphics();
-    shadow.fillStyle(0x000000, 0.35);
+    shadow.fillStyle(theme.color.bg.dark, 0.35);
     shadow.fillCircle(0, 1.5, BADGE_RADIUS + 1);
     this.badge.add(shadow);
 
@@ -244,7 +245,7 @@ export class InfoIcon {
     badgeBg.fillStyle(fillColor, 1);
     badgeBg.fillCircle(0, 0, BADGE_RADIUS);
     // Dark inner rim then bright outer rim for two-tone metallic edge.
-    badgeBg.lineStyle(1, 0x000000, 0.45);
+    badgeBg.lineStyle(1, theme.color.bg.dark, 0.45);
     badgeBg.strokeCircle(0, 0, BADGE_RADIUS - 0.5);
     badgeBg.lineStyle(1.25, 0xffffff, 0.75);
     badgeBg.strokeCircle(0, 0, BADGE_RADIUS + 0.25);
@@ -252,7 +253,7 @@ export class InfoIcon {
 
     const badgeLabel = scene.add.text(0, 0, passed ? '\u2713' : '?', {
       fontFamily: 'monospace', fontSize: passed ? '13px' : '14px',
-      color: '#ffffff', fontStyle: 'bold',
+      color: theme.color.css.textWhite, fontStyle: 'bold',
     }).setOrigin(0.5);
     this.badge.add(badgeLabel);
 

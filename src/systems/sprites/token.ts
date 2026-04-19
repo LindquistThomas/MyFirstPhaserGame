@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { COLORS } from '../../config/gameConfig';
+import { theme } from '../../style/theme';
 
 /** AU (Architecture Utility) token coin textures — gold + per-floor tints. */
 export function generateAUTokenSprites(scene: Phaser.Scene): void {
@@ -15,7 +16,7 @@ export function generateAUTokenSprites(scene: Phaser.Scene): void {
     gfx.destroy();
   };
 
-  drawCoin('token',        COLORS.token, 0xffed4a, COLORS.token);
+  drawCoin('token',        COLORS.token, theme.color.ui.hover, COLORS.token);
   drawCoin('token_floor1', 0x95d5b2,     0xb7e4c7, 0x95d5b2);
   drawCoin('token_floor2', 0x90e0ef,     0xcaf0f8, 0x90e0ef);
 }

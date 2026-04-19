@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { FLOORS } from '../../config/gameConfig';
 import { Player } from '../../entities/Player';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
+import { theme } from '../../style/theme';
 
 const FLOOR_DETECTION_TOLERANCE = 18;
 
@@ -48,17 +49,17 @@ export class ProductDoorManager {
       img.setInteractive({ useHandCursor: true });
       img.on('pointerdown', () => this.deps.onEnter(door));
       this.deps.scene.add.text(door.x, walkY - 130, door.label, {
-        fontFamily: 'monospace', fontSize: '13px', color: '#cfe6ff',
+        fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textPale,
         fontStyle: 'bold', align: 'center',
-        backgroundColor: '#0a1422', padding: { x: 6, y: 3 },
+        backgroundColor: theme.color.css.bgPanel, padding: { x: 6, y: 3 },
       }).setOrigin(0.5).setDepth(4);
     }
 
     // World-space prompt follows camera scroll.
     this.prompt = this.deps.scene.add.text(0, 0, '', {
       fontFamily: 'monospace', fontSize: '16px',
-      color: '#ffdd44', backgroundColor: '#00000088',
-      padding: { x: 8, y: 4 },
+      color: theme.color.css.textWarn, backgroundColor: theme.color.css.bgDialog,
+      padding: { x: theme.space.sm, y: theme.space.xs },
     }).setDepth(20).setVisible(false);
   }
 

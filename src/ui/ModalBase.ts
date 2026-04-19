@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { pushContext, popContext, type ContextToken } from '../input';
+import { theme } from '../style/theme';
 
 /**
  * Shared scaffolding for full-screen modal overlays (info + quiz dialogs).
@@ -44,7 +45,7 @@ export abstract class ModalBase {
     const overlay = this.scene.add.rectangle(
       GAME_WIDTH / 2, GAME_HEIGHT / 2,
       GAME_WIDTH, GAME_HEIGHT,
-      0x000000, 0.65,
+      theme.color.bg.dark, 0.65,
     );
     overlay.setScrollFactor(0).setInteractive(); // block clicks through
     this.container.add(overlay);

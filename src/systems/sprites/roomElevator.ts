@@ -1,11 +1,12 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /** Smaller elevator platform used inside level scenes. */
 export function generateRoomElevatorSprite(scene: Phaser.Scene): void {
   const w = 72;
   const h = 12;
   const gfx = scene.make.graphics({ x: 0, y: 0 }, false);
-  gfx.fillStyle(0x00aaff); gfx.fillRect(0, 0, w, h);
+  gfx.fillStyle(theme.color.ui.accentAlt); gfx.fillRect(0, 0, w, h);
   gfx.fillStyle(0x0088cc); gfx.fillRect(3, 3, w - 6, h - 6);
   gfx.fillStyle(0x00ccff);
   gfx.fillRect(0, 0, w, 2);

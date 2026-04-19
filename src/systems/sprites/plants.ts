@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /** Decorative potted plants for the lobby (small + tall variants). */
 export function generatePlantSprites(scene: Phaser.Scene): void {

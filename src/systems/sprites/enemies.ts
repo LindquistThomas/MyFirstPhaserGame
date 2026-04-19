@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /**
  * Procedural enemy sprite generation.
@@ -69,7 +70,7 @@ function generateBureaucracyBotSprite(scene: Phaser.Scene): void {
   g.fillRect(W - 18, H - 4, 12, 4);
 
   // Torso (suit)
-  g.fillStyle(0x3a3a55, 1);
+  g.fillStyle(theme.color.floor.products.platform, 1);
   g.fillRect(6, 20, W - 12, H - 34);
   // Suit shadow
   g.fillStyle(0x2a2a44, 1);

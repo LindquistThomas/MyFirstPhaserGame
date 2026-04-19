@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { theme } from '../../../style/theme';
 
 /**
  * Floor 1 — Architecture room (right side of the Platform Team floor).
@@ -118,7 +119,7 @@ export class ArchitectureTeamScene extends LevelScene {
 
     // Marker tray
     g.fillStyle(0x8a6a40, 1).fillRect(x, y + H, W, 4);
-    g.fillStyle(0xd32f2f, 1).fillRect(x + 20, y + H + 1, 14, 3);
+    g.fillStyle(theme.color.status.danger, 1).fillRect(x + 20, y + H + 1, 14, 3);
     g.fillStyle(0x1976d2, 1).fillRect(x + 40, y + H + 1, 14, 3);
     g.fillStyle(0x388e3c, 1).fillRect(x + 60, y + H + 1, 14, 3);
   }
@@ -235,7 +236,7 @@ export class ArchitectureTeamScene extends LevelScene {
     frame.fillStyle(0x08140a, 1).fillRect(sx, sy, sw, sh);
     frame.lineStyle(1, 0xe0b860, 0.9).strokeRect(sx, sy, sw, sh);
 
-    frame.fillStyle(0x000000, 0.25);
+    frame.fillStyle(theme.color.bg.dark, 0.25);
     for (let ly = sy + 1; ly < sy + sh; ly += 3) {
       frame.fillRect(sx + 1, ly, sw - 2, 1);
     }

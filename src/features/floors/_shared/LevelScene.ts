@@ -15,6 +15,7 @@ import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
+import { theme } from '../../../style/theme';
 
 export interface RoomElevator {
   x: number;
@@ -271,9 +272,9 @@ export class LevelScene extends Phaser.Scene {
     for (const re of config.roomElevators) {
       const shaft = this.add.graphics().setDepth(1);
       const shaftW = 80;
-      shaft.fillStyle(0x060610, 0.85);
+      shaft.fillStyle(theme.color.bg.overlay, 0.85);
       shaft.fillRect(re.x - shaftW / 2, re.minY, shaftW, re.maxY - re.minY + 16);
-      shaft.lineStyle(2, 0x00aaff, 0.5);
+      shaft.lineStyle(2, theme.color.ui.border, 0.5);
       shaft.lineBetween(re.x - shaftW / 2, re.minY, re.x - shaftW / 2, re.maxY + 16);
       shaft.lineBetween(re.x + shaftW / 2, re.minY, re.x + shaftW / 2, re.maxY + 16);
 
@@ -299,7 +300,7 @@ export class LevelScene extends Phaser.Scene {
     this.exitDoor.setInteractive({ useHandCursor: true });
     this.exitDoor.on('pointerdown', () => this.inputs.emit('Interact'));
     this.add.text(c.exitPosition.x, c.exitPosition.y - 70, '\u2190 ELEVATOR', {
-      fontFamily: 'monospace', fontSize: '15px', color: '#aaddff',
+      fontFamily: 'monospace', fontSize: '15px', color: theme.color.css.textPanel,
     }).setOrigin(0.5).setDepth(5);
   }
 
@@ -311,8 +312,8 @@ export class LevelScene extends Phaser.Scene {
 
     this.interactPrompt = this.add.text(0, 0, '', {
       fontFamily: 'monospace', fontSize: '16px',
-      color: '#ffdd44', backgroundColor: '#00000088',
-      padding: { x: 8, y: 4 },
+      color: theme.color.css.textWarn, backgroundColor: theme.color.css.bgDialog,
+      padding: { x: theme.space.sm, y: theme.space.xs },
     }).setDepth(20).setVisible(false);
   }
 
@@ -337,11 +338,11 @@ export class LevelScene extends Phaser.Scene {
 
   protected showFloorBanner(): void {
     const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 140, this.getBannerTitle(), {
-      fontFamily: 'monospace', fontSize: '48px', color: '#ffffff', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '48px', color: theme.color.css.textWhite, fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(100);
 
     const sub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, this.getBannerDescription(), {
-      fontFamily: 'monospace', fontSize: '18px', color: '#aabbcc',
+      fontFamily: 'monospace', fontSize: '18px', color: theme.color.css.textSecondary,
     }).setOrigin(0.5).setDepth(100);
 
     this.tweens.add({

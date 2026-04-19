@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FloorId } from '../config/gameConfig';
+import { theme } from '../style/theme';
 import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_QUESTION_COUNT, QUIZ_DIFFICULTY_MIX } from '../config/quiz';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { isQuizPassed } from '../systems/QuizManager';
@@ -129,7 +130,7 @@ export class QuizDialog extends ModalBase {
     const bg = this.scene.add.graphics();
     bg.fillStyle(0x0a0a2a, 0.95);
     bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
-    bg.lineStyle(2, 0x00aaff, 0.7);
+    bg.lineStyle(2, theme.color.ui.border, 0.7);
     bg.strokeRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
     this.container.add(bg);
 
@@ -138,12 +139,12 @@ export class QuizDialog extends ModalBase {
     const header = this.scene.add.text(
       GAME_WIDTH / 2, curY,
       `Question ${this.currentIndex + 1} / ${this.questions.length}`,
-      { fontFamily: 'monospace', fontSize: '22px', color: '#00d4ff', fontStyle: 'bold' },
+      { fontFamily: 'monospace', fontSize: '22px', color: theme.color.css.textAccent, fontStyle: 'bold' },
     ).setOrigin(0.5, 0);
     this.container.add(header);
 
     const diffColors: Record<QuizDifficulty, string> = {
-      easy: '#44ff88', medium: '#ffdd44', hard: '#ff6644',
+      easy: '#44ff88', medium: theme.color.css.textWarn, hard: '#ff6644',
     };
     const badge = this.scene.add.text(
       GAME_WIDTH / 2, curY + 30,
@@ -226,7 +227,7 @@ export class QuizDialog extends ModalBase {
     hitArea.on('pointerover', () => {
       if (this.answered) return;
       drawHover();
-      btnText.setColor('#ffffff');
+      btnText.setColor(theme.color.css.textWhite);
     });
 
     hitArea.on('pointerout', () => {
@@ -242,7 +243,7 @@ export class QuizDialog extends ModalBase {
     hitArea.on('pointerdown', activate);
 
     this.nav.add({
-      focus: () => { drawHover(); btnText.setColor('#ffffff'); },
+      focus: () => { drawHover(); btnText.setColor(theme.color.css.textWhite); },
       blur: () => { drawNormal(); btnText.setColor('#c0c8d4'); },
       activate,
       bounds: () => new Phaser.Geom.Rectangle(x, y, w, h),
@@ -307,7 +308,7 @@ export class QuizDialog extends ModalBase {
     let curY = panelY + PADDING;
 
     const diffColors: Record<QuizDifficulty, string> = {
-      easy: '#44ff88', medium: '#ffdd44', hard: '#ff6644',
+      easy: '#44ff88', medium: theme.color.css.textWarn, hard: '#ff6644',
     };
     const resultText = correct ? 'Correct!' : 'Wrong!';
     const resultColor = correct ? '#44ff88' : '#ff6644';
@@ -390,11 +391,11 @@ export class QuizDialog extends ModalBase {
     const nextLabel = isLast ? '[  SEE RESULTS  ]' : '[  NEXT QUESTION  ]';
 
     const nextBtn = this.scene.add.text(GAME_WIDTH / 2, curY, nextLabel, {
-      fontFamily: 'monospace', fontSize: '16px', color: '#00d4ff', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textAccent, fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
     nextBtn.on('pointerover', () => nextBtn.setColor('#88ddff'));
-    nextBtn.on('pointerout', () => nextBtn.setColor('#00d4ff'));
+    nextBtn.on('pointerout', () => nextBtn.setColor(theme.color.css.textAccent));
     nextBtn.on('pointerdown', () => {
       this.currentIndex++;
       if (this.currentIndex < this.questions.length) {
@@ -404,7 +405,7 @@ export class QuizDialog extends ModalBase {
       }
     });
     this.container.add(nextBtn);
-    this.nav.add(makeTextFocusable(nextBtn, '#00d4ff', '#88ddff'));
+    this.nav.add(makeTextFocusable(nextBtn, theme.color.css.textAccent, '#88ddff'));
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
       fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',

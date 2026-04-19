@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { TILE_SIZE } from '../../config/gameConfig';
+import { theme } from '../../style/theme';
 
 function createTile(
   scene: Phaser.Scene,
@@ -21,24 +22,24 @@ export function generateTileSprites(scene: Phaser.Scene): void {
     gfx.fillStyle(0x555577); gfx.fillRect(0, 0, S, S);
     gfx.fillStyle(0x666688); gfx.fillRect(2, 2, S - 4, S - 4);
     gfx.fillStyle(0x555577); gfx.fillRect(4, 4, S - 8, S - 8);
-    gfx.lineStyle(1, 0x444466, 0.3);
+    gfx.lineStyle(1, theme.color.floor.lobby.platform, 0.3);
     gfx.lineBetween(S / 2, 0, S / 2, S);
     gfx.lineBetween(0, S / 2, S, S / 2);
   });
 
   createTile(scene, 'wall_tile', S, (gfx) => {
-    gfx.fillStyle(0x333355); gfx.fillRect(0, 0, S, S);
+    gfx.fillStyle(theme.color.floor.lobby.wall); gfx.fillRect(0, 0, S, S);
     gfx.fillStyle(0x3a3a5e);
     gfx.fillRect(0, 0, S, 4);
     gfx.fillRect(0, 0, 4, S);
   });
 
   createTile(scene, 'platform_floor1', S, (gfx) => {
-    gfx.fillStyle(0x2d6a4f); gfx.fillRect(0, 0, S, S);
-    gfx.fillStyle(0x40916c);
+    gfx.fillStyle(theme.color.floor.platform.platform); gfx.fillRect(0, 0, S, S);
+    gfx.fillStyle(theme.color.floor.platform.wall);
     gfx.fillRect(2, 2, S - 4, 4);
     gfx.fillRect(2, 2, 4, S - 4);
-    gfx.lineStyle(1, 0x2d6a4f, 0.4);
+    gfx.lineStyle(1, theme.color.floor.platform.platform, 0.4);
     gfx.lineBetween(S / 2, 0, S / 2, S);
     gfx.lineBetween(0, S / 2, S, S / 2);
   });
@@ -71,7 +72,7 @@ export function generateTileSprites(scene: Phaser.Scene): void {
   });
 
   createTile(scene, 'bg_tile', S, (gfx) => {
-    gfx.fillStyle(0x16213e); gfx.fillRect(0, 0, S, S);
+    gfx.fillStyle(theme.color.bg.shaft); gfx.fillRect(0, 0, S, S);
     gfx.fillStyle(0x1a2542, 0.5);
     gfx.fillRect(0, 0, S / 2, S / 2);
     gfx.fillRect(S / 2, S / 2, S / 2, S / 2);

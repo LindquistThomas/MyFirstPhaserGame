@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /** Shared 12×12 white circle used by all particle emitters. */
 export function generateParticleSprite(scene: Phaser.Scene): void {

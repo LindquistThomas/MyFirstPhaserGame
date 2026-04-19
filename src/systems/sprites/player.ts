@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /**
  * Side-view pixel-art architect sprite sheet.
@@ -50,7 +51,7 @@ export function generatePlayerSprites(scene: Phaser.Scene): void {
   const BLUE_P = '#3b6aa0';
   const PAPER_END = '#8a7a4a';
   const OUTLINE = '#222222';
-  const EYE_W = '#ffffff';
+  const EYE_W = theme.color.css.textWhite;
   const MOUTH = '#8a4a3a';
 
   /** Head + torso + tie + belt. `by` = vertical body offset (for bob). */

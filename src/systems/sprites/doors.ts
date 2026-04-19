@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { theme } from '../../style/theme';
 
 /** Door textures: unlocked (green), locked (red), exit (blue with arrow). */
 export function generateDoorSprites(scene: Phaser.Scene): void {
@@ -20,11 +21,11 @@ export function generateDoorSprites(scene: Phaser.Scene): void {
     g.destroy();
   };
 
-  baseDoor('door_unlocked', 0x53a653, 0x6bc46b, (g) => {
-    g.fillStyle(0xffd700); g.fillCircle(dw - 18, dh / 2, 5);
+  baseDoor('door_unlocked', theme.color.status.unlocked, 0x6bc46b, (g) => {
+    g.fillStyle(theme.color.ui.token); g.fillCircle(dw - 18, dh / 2, 5);
   });
 
-  baseDoor('door_locked', 0x8b0000, 0xa52a2a, (g) => {
+  baseDoor('door_locked', theme.color.status.locked, 0xa52a2a, (g) => {
     g.fillStyle(0xff0000); g.fillRect(dw / 2 - 8, dh / 2 - 8, 16, 16);
   });
 

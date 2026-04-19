@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
+import { theme } from '../style/theme';
 
 export interface ElevatorButtonState {
   up: boolean;
@@ -46,7 +47,7 @@ export class ElevatorButtons {
     this.container.add(this.upBg);
 
     const upArrow = scene.add.text(btnSize / 2, btnSize / 2, '▲', {
-      fontFamily: 'monospace', fontSize: `${Math.round(btnSize * 0.5)}px`, color: '#ffffff',
+      fontFamily: 'monospace', fontSize: `${Math.round(btnSize * 0.5)}px`, color: theme.color.css.textWhite,
     }).setOrigin(0.5);
     this.container.add(upArrow);
 
@@ -58,7 +59,7 @@ export class ElevatorButtons {
     this.container.add(this.downBg);
 
     const downArrow = scene.add.text(btnSize / 2, this.downY + btnSize / 2, '▼', {
-      fontFamily: 'monospace', fontSize: `${Math.round(btnSize * 0.5)}px`, color: '#ffffff',
+      fontFamily: 'monospace', fontSize: `${Math.round(btnSize * 0.5)}px`, color: theme.color.css.textWhite,
     }).setOrigin(0.5);
     this.container.add(downArrow);
 
@@ -95,7 +96,7 @@ export class ElevatorButtons {
 
   private drawButton(bg: Phaser.GameObjects.Graphics, y: number, pressed: boolean): void {
     bg.clear();
-    bg.fillStyle(pressed ? 0x44ccff : 0x00aaff, pressed ? 0.95 : 0.8);
+    bg.fillStyle(pressed ? 0x44ccff : theme.color.ui.accentAlt, pressed ? 0.95 : 0.8);
     bg.fillRoundedRect(0, y, this.btnSize, this.btnSize, 6);
   }
 

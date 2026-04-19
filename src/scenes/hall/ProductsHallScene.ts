@@ -1,6 +1,7 @@
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../config/gameConfig';
 import { allKeyLabels } from '../../input';
 import { LevelScene, LevelConfig } from '../../features/floors/_shared/LevelScene';
+import { theme } from '../../style/theme';
 
 interface ProductDoor {
   x: number;
@@ -54,9 +55,9 @@ export class ProductsHallScene extends LevelScene {
       img.setInteractive({ useHandCursor: true });
       img.on('pointerdown', () => this.enterProductRoom(door));
       this.add.text(door.x, G - 130, door.label, {
-        fontFamily: 'monospace', fontSize: '13px', color: '#cfe6ff',
+        fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textPale,
         fontStyle: 'bold', align: 'center',
-        backgroundColor: '#0a1422', padding: { x: 6, y: 3 },
+        backgroundColor: theme.color.css.bgPanel, padding: { x: 6, y: 3 },
       }).setOrigin(0.5).setDepth(4);
     }
   }

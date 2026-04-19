@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, FLOORS, TILE_SIZE, COLORS, FloorId } from '../../config/gameConfig';
+import { theme } from '../../style/theme';
 import { LEVEL_DATA } from '../../config/levelData';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { ElevatorShaftDoors } from './ElevatorShaftDoors';
@@ -96,7 +97,7 @@ export class ElevatorSceneLayout {
     }
 
     const shadow = scene.add.graphics();
-    shadow.fillStyle(0x000000, 0.45);
+    shadow.fillStyle(theme.color.bg.dark, 0.45);
     shadow.fillRect(leftEdge, top, 8, shaftH);
     shadow.fillRect(rightEdge - 8, top, 8, shaftH);
     shadow.setDepth(0);
@@ -172,7 +173,7 @@ export class ElevatorSceneLayout {
     const pitH = 24;
     g.fillStyle(0x2a2a34, 1);
     g.fillRect(leftEdge - 12, bottom, capW, pitH);
-    g.fillStyle(0x000000, 0.35);
+    g.fillStyle(theme.color.bg.dark, 0.35);
     g.fillRect(leftEdge - 8, bottom + 4, capW - 8, 6);
     g.fillStyle(0x3a3a48, 1);
     g.fillRect(leftEdge - 12, bottom + 2, capW, 2);
@@ -295,7 +296,7 @@ export class ElevatorSceneLayout {
     const addWallSegment = (xCenter: number, yTop: number, yBottom: number): void => {
       const h = yBottom - yTop;
       if (h <= 0) return;
-      const rect = scene.add.rectangle(xCenter, yTop + h / 2, WALL_W, h, 0x000000, 0).setDepth(0);
+      const rect = scene.add.rectangle(xCenter, yTop + h / 2, WALL_W, h, theme.color.bg.dark, 0).setDepth(0);
       scene.physics.add.existing(rect, true);
       this.platforms.add(rect);
     };

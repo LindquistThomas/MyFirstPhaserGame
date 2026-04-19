@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { TILE_SIZE } from '../../config/gameConfig';
+import { theme } from '../../style/theme';
 
 /** Elevator: cab platform + concrete shaft wall tile. */
 export function generateElevatorSprites(scene: Phaser.Scene): void {
@@ -7,7 +8,7 @@ export function generateElevatorSprites(scene: Phaser.Scene): void {
   const ew = 160;
   const eh = 16;
   const eGfx = scene.make.graphics({ x: 0, y: 0 }, false);
-  eGfx.fillStyle(0x00aaff); eGfx.fillRect(0, 0, ew, eh);
+  eGfx.fillStyle(theme.color.ui.accentAlt); eGfx.fillRect(0, 0, ew, eh);
   eGfx.fillStyle(0x0088cc); eGfx.fillRect(4, 4, ew - 8, eh - 8);
   eGfx.fillStyle(0x00ccff);
   eGfx.fillRect(0, 0, ew, 3);
@@ -19,12 +20,12 @@ export function generateElevatorSprites(scene: Phaser.Scene): void {
   eGfx.fillStyle(0x004466, 1);
   eGfx.fillRect(0, eh - 4, ew, 4);
   // Centered cable bolt (grey circle, ~6px dia) near top-center
-  eGfx.fillStyle(0x555555, 1);
+  eGfx.fillStyle(theme.color.ui.disabled, 1);
   eGfx.fillCircle(ew / 2, 3, 3);
   eGfx.fillStyle(0x333333, 1);
   eGfx.fillCircle(ew / 2, 3, 1);
   // Small 2x2 corner rivets at top-left and top-right
-  eGfx.fillStyle(0x888888, 1);
+  eGfx.fillStyle(theme.color.status.lockedGrey, 1);
   eGfx.fillRect(3, 3, 2, 2);
   eGfx.fillRect(ew - 5, 3, 2, 2);
   eGfx.generateTexture('elevator_platform', ew, eh);

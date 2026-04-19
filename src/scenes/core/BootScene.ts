@@ -5,6 +5,7 @@ import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
 import { COLORS } from '../../config/gameConfig';
+import { theme } from '../../style/theme';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -37,7 +38,7 @@ export class BootScene extends Phaser.Scene {
     this.load.on('progress', (value: number) => {
       percentText.setText(`${Math.round(value * 100)}%`);
       progressBar.clear();
-      progressBar.fillStyle(0x00d4ff, 1);
+      progressBar.fillStyle(theme.color.ui.accent, 1);
       progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
     });
 
