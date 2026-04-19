@@ -10,6 +10,13 @@ export interface FloorData {
   /** Display name for the AU earned on this floor */
   auLabel: string;
   totalAU: number;
+  /**
+   * Optional split when a single floor hosts two distinct rooms on the left
+   * and right sides of the elevator shaft (e.g. Platform + Architecture).
+   * When present, UI that labels the floor should render both names; when
+   * absent, `name` applies to the whole floor.
+   */
+  rooms?: { left: string; right: string };
   theme: {
     platformColor: number;
     backgroundColor: number;
@@ -42,6 +49,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     auRequired: 0,
     auLabel: 'Infrastructure AU',
     totalAU: 8,
+    rooms: { left: 'Platform Team', right: 'Architecture Team' },
     theme: {
       platformColor: 0x2d6a4f,
       backgroundColor: 0x1b4332,
@@ -57,6 +65,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     auRequired: 10,
     auLabel: 'Business AU',
     totalAU: 10,
+    rooms: { left: 'Product Leadership', right: 'Customer Success' },
     theme: {
       platformColor: 0x6b4a1e,
       backgroundColor: 0x1a1408,

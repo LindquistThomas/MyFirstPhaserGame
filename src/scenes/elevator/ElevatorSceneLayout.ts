@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, FLOORS, TILE_SIZE, COLORS, FloorId } from '../../config/gameConfig';
+import { GAME_WIDTH, FLOORS, TILE_SIZE, FloorId } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { LEVEL_DATA } from '../../config/levelData';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
@@ -654,44 +654,20 @@ export class ElevatorSceneLayout {
       addWalkSurface(leftRw / 2, leftRw);
       addWalkSurface((elevRight - WALK_OVERLAP + GAME_WIDTH) / 2, rightRw);
 
-      scene.add.text(20, y + 10, labels[fId] ?? `F${fId}`, {
-        fontFamily: 'monospace', fontSize: '28px',
-        color: COLORS.hudText, fontStyle: 'bold',
-      }).setDepth(5);
-
-      if (fd) {
-        const nameColor = unlocked ? '#8899bb' : '#664444';
-        scene.add.text(80, y + 14, fd.name, {
-          fontFamily: 'monospace', fontSize: '18px', color: nameColor,
-        }).setDepth(5);
-      }
-
-      if (fId !== FLOORS.LOBBY) {
-        const arrowColor = unlocked ? '#00ff88' : '#ff4444';
-        if (unlocked && fId === FLOORS.PLATFORM_TEAM) {
-          scene.add.text(leftEdge - 20, walkY + 20, 'PLATFORM \u2190', {
-            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
-          }).setOrigin(1, 0).setDepth(5);
-          scene.add.text(rightEdge + 20, walkY + 20, '\u2192 ARCHITECTURE', {
-            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
-          }).setDepth(5);
-        } else if (unlocked && fId === FLOORS.BUSINESS) {
-          scene.add.text(leftEdge - 20, walkY + 20, 'FINANCE \u2190', {
-            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
-          }).setOrigin(1, 0).setDepth(5);
-          scene.add.text(rightEdge + 20, walkY + 20, '\u2192 PRODUCT', {
-            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
-          }).setDepth(5);
-        } else if (unlocked && fId === FLOORS.PRODUCTS) {
-          scene.add.text(rightEdge + 20, walkY + 20, '\u2192 PRODUCTS', {
-            fontFamily: 'monospace', fontSize: '14px', color: arrowColor,
-          }).setDepth(5);
-        } else {
-          const label = unlocked ? '\u2192 ENTER' : `LOCKED: ${this.deps.progression.getAUNeededForFloor(fId)} AU`;
-          scene.add.text(rightEdge + 20, walkY + 20, label, {
-            fontFamily: 'monospace', fontSize: '15px', color: arrowColor,
-          }).setDepth(5);
-        }
+      // Floor signage plaques on the outer walkways (outside the shaft).
+      // If the floor hosts two distinct rooms (rooms.left / rooms.right),
+      // render one plaque above each walkway. Otherwise a single plaque
+      // on the left walkway names the whole floor.
+      const fNumber = labels[fId] ?? `F${fId}`;
+      const plaqueY = walkY - 90;
+      const leftPlaqueX = leftRw / 2;
+      const rightPlaqueX = (elevRight - WALK_OVERLAP + GAME_WIDTH) / 2;
+      if (fd?.rooms) {
+        this.placeFloorPlaque(leftPlaqueX, plaqueY, fNumber, fd.rooms.left, unlocked);
+        this.placeFloorPlaque(rightPlaqueX, plaqueY, fNumber, fd.rooms.right, unlocked);
+      } else {
+        const name = fd?.name ?? fNumber;
+        this.placeFloorPlaque(leftPlaqueX, plaqueY, fNumber, name, unlocked);
       }
     }
 
@@ -727,6 +703,43 @@ export class ElevatorSceneLayout {
 
     buildWallColumn(leftWallX);
     buildWallColumn(rightWallX);
+  }
+
+  /**
+   * Draws a signage plaque (dark plate + bordered rect + bright stroked text)
+   * anchored at {@link centerY}. Used for per-floor labels on the outer
+   * walkways. Locked floors render at reduced alpha with a muted palette
+   * but remain legible.
+   */
+  private placeFloorPlaque(
+    centerX: number,
+    centerY: number,
+    fNumber: string,
+    roomName: string,
+    unlocked: boolean,
+  ): void {
+    const scene = this.deps.scene;
+    const label = `${fNumber} \u00B7 ${roomName}`;
+    const textColor = unlocked ? theme.color.css.textPrimary : theme.color.css.textMuted;
+    const text = scene.add.text(centerX, centerY, label, {
+      fontFamily: 'monospace',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: textColor,
+    }).setOrigin(0.5, 0.5);
+    text.setStroke('#000000', 3);
+
+    const padX = 14;
+    const padY = 6;
+    const plaqueW = Math.ceil(text.width) + padX * 2;
+    const plaqueH = Math.ceil(text.height) + padY * 2;
+    const bgColor = 0x0a1422;
+    const bgAlpha = unlocked ? 0.9 : 0.75;
+    const borderColor = unlocked ? 0x2a3a5a : 0x33333f;
+    const plaque = scene.add.rectangle(centerX, centerY, plaqueW, plaqueH, bgColor, bgAlpha)
+      .setStrokeStyle(1, borderColor, 1)
+      .setDepth(5);
+    text.setDepth(plaque.depth + 1);
   }
 
   private createLobbyDecorations(): void {
