@@ -38,10 +38,7 @@ function makeText(text: string) {
   return {
     text,
     setOrigin: vi.fn().mockReturnThis(),
-    setText: vi.fn().mockImplementation(function (this: { text: string }, next: string) {
-      this.text = next;
-      return this;
-    }),
+    setText: vi.fn().mockReturnThis(),
     setScrollFactor: vi.fn().mockReturnThis(),
     setDepth: vi.fn().mockReturnThis(),
     destroy: vi.fn(),

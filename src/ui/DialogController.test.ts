@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Phaser from 'phaser';
 import { DialogController } from './DialogController';
+import type { ProgressionSystem } from '../systems/ProgressionSystem';
 import { InfoDialog } from './InfoDialog';
 import { QuizDialog } from './QuizDialog';
 import { canRetryQuiz, getCooldownRemaining, isQuizPassed } from '../systems/QuizManager';
@@ -15,7 +16,7 @@ vi.mock('../systems/QuizManager', () => ({
 
 describe('DialogController', () => {
   const scene = {} as Phaser.Scene;
-  const progression = {} as never;
+  const progression = {} as unknown as ProgressionSystem;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,7 +48,9 @@ describe('DialogController', () => {
     expect(onOpen).toHaveBeenCalledWith('architecture-elevator');
     expect(InfoDialog).toHaveBeenCalledTimes(1);
 
-    const [, , closeCb, options] = vi.mocked(InfoDialog).mock.calls[0]!;
+    const infoDialogArgs = vi.mocked(InfoDialog).mock.calls[0]!;
+    const closeCb = infoDialogArgs[2];
+    const options = infoDialogArgs[3];
     expect(options).toMatchObject({
       quizStatus: { passed: false, canRetry: true, cooldownSeconds: 0 },
     });
@@ -63,7 +66,8 @@ describe('DialogController', () => {
     });
 
     controller.open('welcome-board');
-    const [, , , options] = vi.mocked(InfoDialog).mock.calls[0]!;
+    const infoDialogArgs = vi.mocked(InfoDialog).mock.calls[0]!;
+    const options = infoDialogArgs[3];
     expect(options).toBeUndefined();
   });
 
@@ -82,15 +86,18 @@ describe('DialogController', () => {
 
     controller.open('architecture-elevator');
 
-    const [, , closeInfo, infoOptions] = vi.mocked(InfoDialog).mock.calls[0]!;
-    (closeInfo as () => void)();
+    const infoDialogArgs = vi.mocked(InfoDialog).mock.calls[0]!;
+    const closeInfo = infoDialogArgs[2] as () => void;
+    const infoOptions = infoDialogArgs[3];
+    closeInfo();
     infoOptions?.onQuizStart?.();
 
     expect(QuizDialog).toHaveBeenCalledTimes(1);
     expect(controller.isOpen).toBe(true);
 
-    const [, quizOptions] = vi.mocked(QuizDialog).mock.calls[0]!;
-    (quizOptions as { onClose: () => void }).onClose();
+    const quizDialogArgs = vi.mocked(QuizDialog).mock.calls[0]!;
+    const quizOptions = quizDialogArgs[1] as { onClose: () => void };
+    quizOptions.onClose();
 
     expect(controller.isOpen).toBe(false);
     expect(icon.setQuizBadge).toHaveBeenCalledWith(scene, true);

@@ -20,14 +20,10 @@ export default defineConfig({
         'src/systems/SoundGenerator.ts',
         'src/systems/sounds/**',
         'src/systems/MusicGenerator.ts',
-        'src/ui/ElevatorButtons.ts',
-        'src/ui/ElevatorPanel.ts',
-        'src/ui/InfoDialog.ts',
-        'src/ui/InfoIcon.ts',
-        'src/ui/ModalBase.ts',
-        'src/ui/ModalKeyboardNavigator.ts',
-        'src/ui/QuizDialog.ts',
-        'src/ui/QuizResultsScreen.ts',
+        // Initial UI threshold phase: exclude heavier modal/panel files so
+        // HUD and DialogController drive coverage first. Remove these as
+        // additional UI unit tests are added.
+        'src/ui/{ElevatorButtons,ElevatorPanel,InfoDialog,InfoIcon,ModalBase,ModalKeyboardNavigator,QuizDialog,QuizResultsScreen}.ts',
         'src/input/phaser-augment.d.ts',
       ],
       thresholds: {
