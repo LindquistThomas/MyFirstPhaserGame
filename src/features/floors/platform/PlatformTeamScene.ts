@@ -3,6 +3,7 @@ import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { theme } from '../../../style/theme';
 import { enemiesForGroundY } from './enemies';
+import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 /**
  * Floor 1 — Platform room (left side of the Platform Team floor).
@@ -18,6 +19,11 @@ import { enemiesForGroundY } from './enemies';
 export class PlatformTeamScene extends LevelScene {
   constructor() {
     super('PlatformTeamScene', FLOORS.PLATFORM_TEAM);
+  }
+
+  override create(): void {
+    createSceneLifecycle(this);
+    super.create();
   }
 
   protected override createDecorations(): void {

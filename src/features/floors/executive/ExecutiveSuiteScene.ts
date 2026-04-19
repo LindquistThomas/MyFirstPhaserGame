@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 /**
  * Floor 4 — Executive Suite (penthouse).
@@ -19,6 +20,7 @@ export class ExecutiveSuiteScene extends LevelScene {
   }
 
   override create(): void {
+    createSceneLifecycle(this);
     super.create();
 
     // Stagger-desync alpha pulse on tokens so they don't all breathe in
@@ -217,4 +219,3 @@ export class ExecutiveSuiteScene extends LevelScene {
     return (nr << 16) | (ng << 8) | nb;
   }
 }
-
