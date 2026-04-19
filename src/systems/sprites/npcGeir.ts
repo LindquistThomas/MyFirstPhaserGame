@@ -13,8 +13,8 @@ import { theme } from '../../style/theme';
  */
 export function generateGeirSprite(scene: Phaser.Scene): void {
   const W = 64;
-  const H = 160;
-  const FRAMES = 1;
+  const H = 128;
+  const FRAMES = 2;
 
   const canvas = document.createElement('canvas');
   canvas.width = W * FRAMES;
@@ -46,69 +46,72 @@ export function generateGeirSprite(scene: Phaser.Scene): void {
   const EYE_W = theme.color.css.textWhite;
   const MOUTH = '#7a4638';
 
-  const f = 0;
-  const by = 0;
+  // Draw one frame. `swap` swaps the leg shading so it reads as a walk cycle.
+  const drawFrame = (f: number, swap: boolean) => {
+    const by = 0;
+    // Hair — gray with silver temples and a darker crown shadow.
+    px(f, 5, 0 + by, 6, 2, HAIR);
+    px(f, 5, 1 + by, 1, 2, TEMPLE);
+    px(f, 10, 1 + by, 1, 2, TEMPLE);
+    px(f, 6, 0 + by, 4, 1, HAIR_SH);
 
-  // Hair — gray with silver temples and a darker crown shadow.
-  px(f, 5, 0 + by, 6, 2, HAIR);
-  px(f, 5, 1 + by, 1, 2, TEMPLE);     // silver temple
-  px(f, 10, 1 + by, 1, 2, TEMPLE);
-  px(f, 6, 0 + by, 4, 1, HAIR_SH);    // darker crown stripe
+    // Face
+    px(f, 6, 2 + by, 5, 6, SKIN);
+    px(f, 11, 4 + by, 1, 2, SKIN_SH);
+    px(f, 6, 7 + by, 5, 1, SKIN_SH);
+    px(f, 8, 3 + by, 2, 1, HAIR_SH);
+    px(f, 8, 4 + by, 2, 1, EYE_W);
+    px(f, 9, 4 + by, 1, 1, OUTLINE);
+    px(f, 9, 6 + by, 2, 1, MOUTH);
+    px(f, 7, 8 + by, 3, 1, SKIN_SH);
 
-  // Face
-  px(f, 6, 2 + by, 5, 6, SKIN);
-  // Nose (faces right)
-  px(f, 11, 4 + by, 1, 2, SKIN_SH);
-  // Jawline highlight (subtle "chiseled" shading)
-  px(f, 6, 7 + by, 5, 1, SKIN_SH);
-  // Eyebrow + eye
-  px(f, 8, 3 + by, 2, 1, HAIR_SH);
-  px(f, 8, 4 + by, 2, 1, EYE_W);
-  px(f, 9, 4 + by, 1, 1, OUTLINE);
-  // Mouth (confident closed-smile)
-  px(f, 9, 6 + by, 2, 1, MOUTH);
-  // Neck
-  px(f, 7, 8 + by, 3, 1, SKIN_SH);
+    // Jacket torso
+    px(f, 5, 9 + by, 6, 10, JACKET);
+    px(f, 6, 9 + by, 1, 4, LAPEL);
+    px(f, 10, 9 + by, 1, 4, LAPEL);
+    px(f, 7, 9 + by, 3, 3, SHIRT_WHITE);
+    px(f, 8, 12 + by, 1, 1, SHIRT_WHITE);
+    px(f, 8, 10 + by, 2, 2, TIE);
+    px(f, 9, 12 + by, 1, 5, TIE);
+    px(f, 8, 15 + by, 2, 2, TIE_SH);
+    px(f, 7, 14 + by, 1, 5, JACKET_SH);
+    px(f, 5, 19 + by, 6, 1, OUTLINE);
 
-  // Jacket torso
-  px(f, 5, 9 + by, 6, 10, JACKET);
-  // Lapels — V pointing down to the shirt
-  px(f, 6, 9 + by, 1, 4, LAPEL);
-  px(f, 10, 9 + by, 1, 4, LAPEL);
-  // Shirt V at chest
-  px(f, 7, 9 + by, 3, 3, SHIRT_WHITE);
-  px(f, 8, 12 + by, 1, 1, SHIRT_WHITE);
-  // Tie knot + body + tip
-  px(f, 8, 10 + by, 2, 2, TIE);
-  px(f, 9, 12 + by, 1, 5, TIE);
-  px(f, 8, 15 + by, 2, 2, TIE_SH);
-  // Jacket button line + shadow
-  px(f, 7, 14 + by, 1, 5, JACKET_SH);
-  // Belt edge
-  px(f, 5, 19 + by, 6, 1, OUTLINE);
+    // Arms at sides.
+    px(f, 4, 10 + by, 2, 6, JACKET);
+    px(f, 4, 16 + by, 2, 2, JACKET_SH);
+    px(f, 4, 18 + by, 2, 1, SKIN_SH);
+    px(f, 11, 10 + by, 2, 6, JACKET);
+    px(f, 11, 16 + by, 2, 2, JACKET_SH);
+    px(f, 11, 18 + by, 2, 1, SKIN);
 
-  // Arms at sides (rolled into jacket — no rolled sleeves here).
-  // Back arm
-  px(f, 4, 10 + by, 2, 6, JACKET);
-  px(f, 4, 16 + by, 2, 2, JACKET_SH);  // cuff shadow
-  px(f, 4, 18 + by, 2, 1, SKIN_SH);    // hand (back arm, tucked)
-  // Front arm
-  px(f, 11, 10 + by, 2, 6, JACKET);
-  px(f, 11, 16 + by, 2, 2, JACKET_SH); // cuff shadow
-  px(f, 11, 18 + by, 2, 1, SKIN);      // hand
+    // Legs + shoes — swap shading to animate a walk cycle.
+    const legY = 20;
+    const legLen = 10;
+    const backPants = swap ? PANTS : PANTS_SH;
+    const frontPants = swap ? PANTS_SH : PANTS;
+    px(f, 5, legY, 3, legLen, backPants);
+    px(f, 4, legY + legLen, 4, 2, SHOE);
+    px(f, 8, legY, 3, legLen, frontPants);
+    px(f, 8, legY + legLen, 4, 2, SHOE);
+  };
 
-  // Legs + shoes
-  const by2 = 0;
-  const legY = 20 + by2;
-  const legLen = 10;
-  px(f, 5, legY, 3, legLen, PANTS_SH); // back leg (shaded)
-  px(f, 4, legY + legLen, 4, 2, SHOE);
-  px(f, 8, legY, 3, legLen, PANTS);    // front leg
-  px(f, 8, legY + legLen, 4, 2, SHOE);
+  drawFrame(0, false);
+  drawFrame(1, true);
 
   scene.textures.addSpriteSheet(
     'npc_geir',
     canvas as unknown as HTMLImageElement,
     { frameWidth: W, frameHeight: H },
   );
+
+  // Register a two-frame idle-walk animation. Scenes call sprite.play('geir_walk').
+  if (!scene.anims.exists('geir_walk')) {
+    scene.anims.create({
+      key: 'geir_walk',
+      frames: scene.anims.generateFrameNumbers('npc_geir', { start: 0, end: 1 }),
+      frameRate: 4,
+      repeat: -1,
+    });
+  }
 }

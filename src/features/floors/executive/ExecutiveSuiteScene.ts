@@ -90,19 +90,26 @@ export class ExecutiveSuiteScene extends LevelScene {
     this.add.image(720, G - 36, 'desk_monitor').setDepth(3);
     this.add.image(880, G - 22, 'monitor_dash').setDepth(3);
 
-    // Geir Harald — standing on the ground near the left signpost.
-    // 160 px tall sprite with origin 0.5,1 so his feet sit on the floor.
+    // Geir Harald — pacing the ground near the left signpost. Sprite origin
+    // is bottom-center so his feet sit on the floor.
     const geir = this.add.sprite(ExecutiveSuiteScene.GEIR_X, G, 'npc_geir', 0)
       .setOrigin(0.5, 1)
       .setDepth(4);
-    // Face the approaching player — the player usually enters from the
-    // right of Geir (elevator exit is at x=80), so flip him to face right-
-    // only when the player appears to his left. For now he faces right
-    // (default art), toward the rest of the suite.
-    geir.setFlipX(false);
+    geir.play('geir_walk');
+    // He paces a short range centred on GEIR_X so he stays inside the info
+    // zone (width=120, so ±60 around GEIR_X is the widest he can roam).
+    this.tweens.add({
+      targets: geir,
+      x: { from: ExecutiveSuiteScene.GEIR_X - 50, to: ExecutiveSuiteScene.GEIR_X + 50 },
+      duration: 2400,
+      yoyo: true,
+      repeat: -1,
+      onYoyo: () => geir.setFlipX(true),
+      onRepeat: () => geir.setFlipX(false),
+    });
 
-    // Floating name label with a gentle yoyo bob.
-    const labelY = G - 180;
+    // Floating name label with a gentle yoyo bob; follows Geir horizontally.
+    const labelY = G - 148;
     const nameLabel = this.add.text(ExecutiveSuiteScene.GEIR_X, labelY, 'Geir Harald', {
       fontFamily: 'monospace',
       fontSize: '14px',
@@ -120,6 +127,9 @@ export class ExecutiveSuiteScene extends LevelScene {
       ease: 'Sine.easeInOut',
       yoyo: true,
       repeat: -1,
+    });
+    this.events.on(Phaser.Scenes.Events.UPDATE, () => {
+      nameLabel.x = geir.x;
     });
 
     // Doors leading into content-only suite rooms (Finance, …).

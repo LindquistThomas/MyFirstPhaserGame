@@ -900,11 +900,22 @@ export class ElevatorSceneLayout {
     const f4Bottom = positions[FLOORS.EXECUTIVE] + FLOOR_H;
     scene.add.image(120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
-    // Geir Harald — visible in the shaft preview on the left side, mirroring
-    // his position inside the ExecutiveSuiteScene room. Sprite origin is
-    // bottom-center so his feet sit on the walkable surface.
-    scene.add.sprite(200, f4Bottom, 'npc_geir', 0).setOrigin(0.5, 1).setDepth(3);
-    scene.add.text(200, f4Bottom - 172, 'Geir Harald', {
+    // Geir Harald — pacing the walkway in the F4 shaft preview. Sprite origin
+    // is bottom-center so his feet sit on the walkable surface.
+    const geir = scene.add.sprite(200, f4Bottom, 'npc_geir', 0)
+      .setOrigin(0.5, 1)
+      .setDepth(3);
+    geir.play('geir_walk');
+    scene.tweens.add({
+      targets: geir,
+      x: { from: 150, to: 260 },
+      duration: 2400,
+      yoyo: true,
+      repeat: -1,
+      onYoyo: () => geir.setFlipX(true),
+      onRepeat: () => geir.setFlipX(false),
+    });
+    const label = scene.add.text(200, f4Bottom - 140, 'Geir Harald', {
       fontFamily: 'monospace',
       fontSize: '12px',
       color: theme.color.css.textPale,
@@ -912,6 +923,10 @@ export class ElevatorSceneLayout {
       backgroundColor: theme.color.css.bgPanel,
       padding: { x: 6, y: 2 },
     }).setOrigin(0.5).setDepth(4);
+    // Keep the label pinned above Geir as he walks.
+    scene.events.on(Phaser.Scenes.Events.UPDATE, () => {
+      label.x = geir.x;
+    });
     scene.add.image(rightEdge + 120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(rightEdge + 280, f4Bottom - 36, 'desk_monitor').setDepth(3);
     scene.add.image(GAME_WIDTH - 100, f4Bottom - 40, 'plant_tall').setDepth(11);
