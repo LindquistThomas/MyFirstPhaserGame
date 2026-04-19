@@ -66,6 +66,12 @@ export class ElevatorZones {
   private register(): void {
     const { scene, zoneManager, dialogs, player } = this.opts;
 
+    // --- Geir Harald zone — active when cab is docked at F4 and player is on it.
+    //     Registered BEFORE the elevator zone so getActiveZone() prefers Geir. ---
+    zoneManager.register(GEIR_F4_ID, () =>
+      this.opts.isPlayerOnElevator() && this.opts.isCabAtExecutive(),
+    );
+
     // --- Elevator zone — active while player is standing on the cab ---
     zoneManager.register(ELEVATOR_INFO_ID, () => this.opts.isPlayerOnElevator());
 
@@ -75,11 +81,6 @@ export class ElevatorZones {
         player.sprite.x, player.sprite.y,
         this.opts.boardX, this.opts.boardY,
       ) < BOARD_RADIUS,
-    );
-
-    // --- Geir Harald zone — active when cab is docked at F4 and player is on it ---
-    zoneManager.register(GEIR_F4_ID, () =>
-      this.opts.isPlayerOnElevator() && this.opts.isCabAtExecutive(),
     );
 
     this.lobbyBoardIcon = new InfoIcon(
@@ -102,10 +103,16 @@ export class ElevatorZones {
     lifecycle.bindEventBus('zone:enter', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
         this.opts.elevatorButtons()?.setVisible(true);
-        this.elevatorInfoIcon?.setVisible(true);
+        // Only show the elevator icon if Geir's zone isn't already active
+        // (both are triggered when the cab reaches F4; Geir takes priority).
+        if (!this.opts.isCabAtExecutive()) {
+          this.elevatorInfoIcon?.setVisible(true);
+        }
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(true);
       } else if (zoneId === GEIR_F4_ID) {
+        // Geir wins the HUD slot while docked at F4.
+        this.elevatorInfoIcon?.setVisible(false);
         this.geirInfoIcon?.setVisible(true);
       }
     });
@@ -117,6 +124,10 @@ export class ElevatorZones {
         this.lobbyBoardIcon?.setVisible(false);
       } else if (zoneId === GEIR_F4_ID) {
         this.geirInfoIcon?.setVisible(false);
+        // Cab left F4 while player is still on it — restore the elevator icon.
+        if (this.opts.isPlayerOnElevator()) {
+          this.elevatorInfoIcon?.setVisible(true);
+        }
       }
     });
   }

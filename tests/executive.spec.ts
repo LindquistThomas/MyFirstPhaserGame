@@ -133,4 +133,46 @@ test.describe('Executive Suite — Geir Harald', () => {
 
     errors.assertClean();
   });
+
+  test('Geir zone takes priority over elevator info when cab is at F4', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'ElevatorScene');
+
+    // Force cab docked at F4 and mark the player as on the cab, then tick
+    // zone detection and read the active zone.
+    const activeZone = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
+          elevatorCtrl: {
+            elevator: { platform: { y: number } };
+          };
+          player: { sprite: { x: number; y: number } };
+          zoneManager: { update: () => void; getActiveZone: () => string | null };
+        };
+      // Snap the cab to F4's docked y and fake player-on-cab by writing to
+      // the controller's private backing field (isOnElevator is a getter).
+      const floorStops = (scene.elevatorCtrl.elevator as unknown as {
+        floorStops: Map<number, number>;
+      }).floorStops;
+      const f4Y = floorStops.get(4);
+      if (f4Y !== undefined) scene.elevatorCtrl.elevator.platform.y = f4Y;
+      scene.player.sprite.x = 640;
+      if (f4Y !== undefined) scene.player.sprite.y = f4Y - 40;
+      (scene.elevatorCtrl as unknown as { playerOnElevator: boolean }).playerOnElevator = true;
+      scene.zoneManager.update();
+      return scene.zoneManager.getActiveZone();
+    });
+
+    expect(activeZone).toBe('exec-geir-harald');
+
+    errors.assertClean();
+  });
 });
