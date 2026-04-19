@@ -132,8 +132,12 @@ describe('quiz constants', () => {
 });
 
 describe('architecture quiz module organization', () => {
-  it('keeps architecture quiz.ts below the 2,000-line split trigger', () => {
-    const lineCount = architectureQuizSource.split(/\r?\n/).length;
+  it('enforces the 2,000-line split trigger for architecture quiz.ts', () => {
+    const normalizedSource = architectureQuizSource.replace(/\r\n/g, '\n');
+    const withoutTrailingNewline = normalizedSource.endsWith('\n')
+      ? normalizedSource.slice(0, -1)
+      : normalizedSource;
+    const lineCount = withoutTrailingNewline === '' ? 0 : withoutTrailingNewline.split('\n').length;
     expect(
       lineCount,
       'src/features/floors/architecture/quiz.ts crossed 2,000 lines; split it into topic modules (integration/cloud/patterns/soa + index.ts).',
