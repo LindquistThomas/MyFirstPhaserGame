@@ -6,6 +6,7 @@ import { ProgressionSystem } from '../../systems/ProgressionSystem';
 
 const ARCHITECTURE_TEAM_SCENE_KEY = 'ArchitectureTeamScene';
 const PRODUCT_LEADERSHIP_SCENE_KEY = 'ProductLeadershipScene';
+const CUSTOMER_SUCCESS_SCENE_KEY = 'CustomerSuccessScene';
 const FLOOR_DETECTION_TOLERANCE = 18;
 
 export interface FloorTransitionDeps {
@@ -93,8 +94,8 @@ export class ElevatorFloorTransitionManager {
     if (floorId === FLOORS.PLATFORM_TEAM && side === 'right') {
       return ARCHITECTURE_TEAM_SCENE_KEY;
     }
-    if (floorId === FLOORS.BUSINESS && side === 'right') {
-      return PRODUCT_LEADERSHIP_SCENE_KEY;
+    if (floorId === FLOORS.BUSINESS) {
+      return side === 'right' ? CUSTOMER_SUCCESS_SCENE_KEY : PRODUCT_LEADERSHIP_SCENE_KEY;
     }
     return fd.sceneKey;
   }

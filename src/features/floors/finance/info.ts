@@ -1,10 +1,10 @@
 import { FLOORS } from '../../../config/gameConfig';
 import { InfoPointDef } from '../../../config/info/types';
 
-/** Info points shown on the Finance side of the Business floor. */
+/** Info points shown in the Finance room (accessed via a door in the Executive Suite). */
 export const INFO_FINANCE: Record<string, InfoPointDef> = {
   'finance': {
-    floorId: FLOORS.BUSINESS,
+    floorId: FLOORS.EXECUTIVE,
     content: {
       id: 'finance',
       title: 'Finance',

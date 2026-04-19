@@ -1,6 +1,9 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { allKeyLabels } from '../../../input';
+import { theme } from '../../../style/theme';
+import { FinanceTeamScene } from '../finance/FinanceTeamScene';
 
 /**
  * Floor 4 — Executive Suite (penthouse).
@@ -14,8 +17,21 @@ import { LevelScene, LevelConfig } from '../_shared/LevelScene';
  * tiles, and staggered alpha-pulse tokens.
  */
 export class ExecutiveSuiteScene extends LevelScene {
+  /** Doors inside the Executive Suite that open into content-only rooms. */
+  private static readonly DOORS: Array<{ x: number; label: string; doorId: string; sceneKey: string }> = [
+    { x: 1080, label: 'Finance', doorId: FinanceTeamScene.DOOR_ID, sceneKey: 'FinanceTeamScene' },
+  ];
+
+  /** Set when arriving from a suite room — used to spawn next to that door. */
+  private spawnNearDoor?: string;
+
   constructor() {
     super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
+  }
+
+  override init(data?: { fromDoor?: string }): void {
+    super.init();
+    this.spawnNearDoor = data?.fromDoor;
   }
 
   override create(): void {
@@ -63,7 +79,6 @@ export class ExecutiveSuiteScene extends LevelScene {
       { x: 110, kind: 'tall' },
       { x: 220, kind: 'small' },
       { x: 1180, kind: 'tall' },
-      { x: 1060, kind: 'small' },
     ]);
 
     this.addSignpost({ x: 380, label: 'EXECUTIVE\n   SUITE', color: '#ffd700' });
@@ -71,15 +86,34 @@ export class ExecutiveSuiteScene extends LevelScene {
     // Strategy desk in the centre.
     this.add.image(720, G - 36, 'desk_monitor').setDepth(3);
     this.add.image(880, G - 22, 'monitor_dash').setDepth(3);
+
+    // Doors leading into content-only suite rooms (Finance, …).
+    for (const door of ExecutiveSuiteScene.DOORS) {
+      const img = this.add.image(door.x, G - 56, 'door_unlocked').setDepth(3);
+      img.setInteractive({ useHandCursor: true });
+      img.on('pointerdown', () => this.enterSuiteRoom(door));
+      this.add.text(door.x, G - 130, door.label, {
+        fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textPale,
+        fontStyle: 'bold', align: 'center',
+        backgroundColor: theme.color.css.bgPanel, padding: { x: 6, y: 3 },
+      }).setOrigin(0.5).setDepth(4);
+    }
   }
 
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
     const T1 = G - 240;
 
+    // Spawn next to the door the player just came back through, if any.
+    let spawnX = 150;
+    if (this.spawnNearDoor) {
+      const door = ExecutiveSuiteScene.DOORS.find((d) => d.doorId === this.spawnNearDoor);
+      if (door) spawnX = door.x - 70; // step out to the left of the door
+    }
+
     return {
       floorId: FLOORS.EXECUTIVE,
-      playerStart: { x: 150, y: G - 100 },
+      playerStart: { x: spawnX, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 
       platforms: [
@@ -110,6 +144,41 @@ export class ExecutiveSuiteScene extends LevelScene {
         },
       ],
     };
+  }
+
+  /**
+   * Layer door-entry detection on top of the base elevator-exit check.
+   * The Finance door sits far to the right of the elevator exit door, so
+   * the two prompts never collide.
+   */
+  protected override checkExitProximity(): void {
+    super.checkExitProximity();
+
+    if (this.isTransitioning) return;
+
+    const px = this.player.sprite.x;
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const playerOnGround = this.player.sprite.y > G - 200;
+    if (!playerOnGround) return;
+
+    for (const door of ExecutiveSuiteScene.DOORS) {
+      if (Math.abs(px - door.x) < 60) {
+        this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 ${door.label}`).setPosition(
+          door.x - 100, G - 180,
+        ).setVisible(true);
+        if (this.inputs.justPressed('Interact')) {
+          this.enterSuiteRoom(door);
+        }
+        return;
+      }
+    }
+  }
+
+  private enterSuiteRoom(door: { sceneKey: string }): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
   }
 
   /* ---- background helpers (Pass 3) ---- */

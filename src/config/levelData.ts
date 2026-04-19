@@ -52,8 +52,8 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   [FLOORS.BUSINESS]: {
     id: FLOORS.BUSINESS,
     name: 'Business',
-    description: 'Finance on the left, Product Leadership on the right.',
-    sceneKey: 'FinanceTeamScene',
+    description: 'Product Leadership on the left, Customer Success on the right.',
+    sceneKey: 'ProductLeadershipScene',
     auRequired: 10,
     auLabel: 'Business AU',
     totalAU: 10,

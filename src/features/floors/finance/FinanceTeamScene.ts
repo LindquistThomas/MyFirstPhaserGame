@@ -1,20 +1,27 @@
+import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { allKeyLabels } from '../../../input';
 
 /**
- * Floor 3 — Finance room (left side of the Business floor).
+ * Finance — now a content-only room accessed via a door inside the
+ * Executive Suite, rather than a side of the Business floor.
  *
- * Reached by stepping OFF the elevator to the LEFT at floor 3.
- * Hosts the Finance team: budgets, forecasts, ROI, and the unit
- * economics that ultimately fund the engine room.
+ * The architect rides the elevator to the penthouse (F4), then steps
+ * through the "FINANCE" door to enter this room. Exit returns the
+ * player to the Executive Suite next to the same door, mirroring the
+ * product-hall/room pattern.
  *
- * A sibling scene `ProductLeadershipScene` hosts the Product Leadership
- * room on the right; both share FloorId BUSINESS and use disjoint
- * token-index ranges.
+ * FloorId reuses EXECUTIVE so token/quiz state is naturally namespaced
+ * under the penthouse. No tokens are defined here — Finance is an
+ * info/narrative room, not an AU-collection floor.
  */
 export class FinanceTeamScene extends LevelScene {
+  /** Door identifier used by ExecutiveSuiteScene to respawn next to this door. */
+  static readonly DOOR_ID = 'finance';
+
   constructor() {
-    super('FinanceTeamScene', FLOORS.BUSINESS);
+    super('FinanceTeamScene', FLOORS.EXECUTIVE);
   }
 
   protected override createDecorations(): void {
@@ -25,7 +32,7 @@ export class FinanceTeamScene extends LevelScene {
       { x: 160, kind: 'small' },
     ]);
 
-    this.addSignpost({ x: 260, label: '  FINANCE\n   TEAM', color: '#b8ffd1' });
+    this.addSignpost({ x: 260, label: '  FINANCE', color: '#b8ffd1' });
 
     // Trading-desk style monitors — proxy for FP&A dashboards.
     this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
@@ -38,7 +45,7 @@ export class FinanceTeamScene extends LevelScene {
     const G = GAME_HEIGHT - TILE_SIZE;
 
     return {
-      floorId: FLOORS.BUSINESS,
+      floorId: FLOORS.EXECUTIVE,
       playerStart: { x: 150, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 
@@ -48,14 +55,8 @@ export class FinanceTeamScene extends LevelScene {
 
       roomElevators: [],
 
-      // Token indices 0..4 — disjoint from ProductLeadershipScene (5..).
-      tokens: [
-        { x: 400,  y: G - 40 },
-        { x: 540,  y: G - 40 },
-        { x: 680,  y: G - 40 },
-        { x: 860,  y: G - 40 },
-        { x: 1040, y: G - 40 },
-      ],
+      // Finance is a narrative room — no AU tokens here.
+      tokens: [],
 
       infoPoints: [
         {
@@ -64,5 +65,31 @@ export class FinanceTeamScene extends LevelScene {
         },
       ],
     };
+  }
+
+  /** Return to the Executive Suite next to the Finance door. */
+  protected override returnToElevator(): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(500, () =>
+      this.scene.start('ExecutiveSuiteScene', { fromDoor: FinanceTeamScene.DOOR_ID }),
+    );
+  }
+
+  /** Show "→ Executive Suite" rather than the default "→ Elevator" prompt. */
+  protected override checkExitProximity(): void {
+    const d = Phaser.Math.Distance.Between(
+      this.player.sprite.x, this.player.sprite.y,
+      this.exitDoor.x, this.exitDoor.y,
+    );
+    if (d < 90) {
+      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Executive Suite`).setPosition(
+        this.exitDoor.x - 80, this.exitDoor.y - 90,
+      ).setVisible(true);
+      if (this.inputs.justPressed('Interact')) this.returnToElevator();
+    } else {
+      this.interactPrompt?.setVisible(false);
+    }
   }
 }

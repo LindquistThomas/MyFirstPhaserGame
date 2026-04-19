@@ -18,6 +18,7 @@ import { INFO_ARCHITECTURE } from '../../features/floors/architecture/info';
 import { INFO_EXEC } from '../../features/floors/executive/info';
 import { INFO_FINANCE } from '../../features/floors/finance/info';
 import { INFO_PRODUCT } from '../../features/floors/product/info';
+import { INFO_CUSTOMER } from '../../features/floors/customer/info';
 
 export type { InfoPointDef } from './types';
 
@@ -29,6 +30,7 @@ export const INFO_POINTS: Record<string, InfoPointDef> = {
   ...INFO_EXEC,
   ...INFO_FINANCE,
   ...INFO_PRODUCT,
+  ...INFO_CUSTOMER,
 };
 
 /** Return the info points that belong to a given floor. */
