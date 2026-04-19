@@ -217,4 +217,3 @@ export class ExecutiveSuiteScene extends LevelScene {
     return (nr << 16) | (ng << 8) | nb;
   }
 }
-
