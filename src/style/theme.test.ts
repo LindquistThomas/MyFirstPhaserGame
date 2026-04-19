@@ -43,4 +43,23 @@ describe('theme', () => {
     expect(COLORS.titleText).toBe(theme.color.css.textTitle);
     expect(COLORS.menuText).toBe(theme.color.css.textWhite);
   });
+
+  it('includes quiz palette tokens used by QuizDialog', () => {
+    expect(theme.color.ui.quizPanel).toBe(0x0a0a2a);
+    expect(theme.color.ui.quizChoice).toBe(0x1a2a3a);
+    expect(theme.color.ui.quizChoiceBorder).toBe(0x2a4a6a);
+    expect(theme.color.ui.quizChoiceHover).toBe(0x2a4a6a);
+    expect(theme.color.ui.quizChoiceHoverBorder).toBe(0x4a6a8a);
+    expect(theme.color.ui.quizChoiceCorrect).toBe(0x1a4a2a);
+    expect(theme.color.ui.quizChoiceWrong).toBe(0x4a1a1a);
+    expect(theme.color.ui.quizCorrect).toBe(0x44ff88);
+    expect(theme.color.ui.quizWrong).toBe(0xff4444);
+    expect(theme.color.css.textQuizBody).toBe('#c0c8d4');
+    expect(theme.color.css.textQuizHint).toBe('#667788');
+    expect(theme.color.css.textQuizMuted).toBe('#8899aa');
+    expect(theme.color.css.textQuizCorrect).toBe('#44ff88');
+    expect(theme.color.css.textQuizHard).toBe('#ff6644');
+    expect(theme.color.css.textQuizDanger).toBe('#ff6666');
+    expect(theme.color.css.textQuizAccentHover).toBe('#88ddff');
+  });
 });
