@@ -170,6 +170,12 @@ For any local branch, use a sibling git worktree at `C:\code\SoYouWantToBeAnArch
 
 If the user explicitly asks to work on the current checkout (no worktree), honour that.
 
+### Session workflow
+
+1. **Start of session**: create a worktree branch for the session's work before making any code changes. Ask the user for a short topic if it isn't obvious from the first request.
+2. **During the session**: commit to that branch as normal. If a second unrelated task comes up, spin up an additional worktree rather than mixing concerns.
+3. **End of session / work complete**: prompt the user to merge the branch into `main` (PR or local merge — let the user choose). **Keep the worktree and branch alive after merging** so the user can continue or revisit it. Only delete a worktree when the user explicitly asks.
+
 ## AI collaboration
 
 When responding to feature requests or design ideas:
