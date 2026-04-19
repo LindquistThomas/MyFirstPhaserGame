@@ -8,13 +8,16 @@ For a playable **floor** (platforming level with tokens, enemies, info points), 
 
 ## Convention
 
-- Infrastructure scenes live in `src/scenes/`; product detail scenes live in `src/features/products/rooms/`.
+- Infrastructure scenes live in `src/scenes/`; product content scenes live in `src/features/products/{hall,rooms}/`.
 - Filename = exported class name in PascalCase, suffixed with `Scene` (e.g. `LobbyScene.ts`).
 - The string passed to `super(...)` is the scene **key** and must be unique. By convention it matches the class name.
 
 ## Template
 
-Create `src/scenes/<Name>Scene.ts`:
+Create one of:
+
+- `src/scenes/<Name>Scene.ts` for infrastructure scenes.
+- `src/features/products/hall/<Name>Scene.ts` or `src/features/products/rooms/<Name>Scene.ts` for product content scenes.
 
 ```ts
 import * as Phaser from 'phaser';
@@ -41,11 +44,12 @@ export class NameScene extends Phaser.Scene {
 ## Integration
 
 1. Register the scene in `src/main.ts`:
-   ```ts
-   import { NameScene } from './scenes/NameScene';
-   // …
-   scene: [BootScene, MenuScene, ElevatorScene, /* …, */ NameScene],
-   ```
+    ```ts
+    import { NameScene } from './scenes/NameScene';
+    // …
+    scene: [BootScene, MenuScene, ElevatorScene, /* …, */ NameScene],
+    ```
+   Product content scenes import from `./features/products/hall/...` or `./features/products/rooms/...`.
 2. If the scene has background music, add it to `SCENE_MUSIC` in `src/config/audioConfig.ts`:
    ```ts
    NameScene: 'music_floor2',

@@ -32,7 +32,7 @@ ships with zero image assets and only a handful of music files.
 | Config        | `src/config/` — `gameConfig`, `levelData`, `audioConfig`, plus barrel re-exports for per-floor info + quiz |
 | Floors        | `src/features/floors/<floor>/` — Scene + `info.ts` + `quiz.ts` (+ optional `enemies.ts`) co-located |
 | Scenes        | `src/scenes/` — infrastructure scenes only: `core/` (Boot, Menu), `elevator/` |
-| Product scenes| `src/features/products/` — product content scenes: `hall/`, `rooms/`         |
+| Product scenes | `src/features/products/` — product content scenes: `hall/`, `rooms/`         |
 | Entities      | `src/entities/` — gameplay objects (Player, Elevator, Token, Enemy)              |
 | Systems       | `src/systems/` — cross-cutting logic (EventBus, GameStateManager, Audio, Save, Progression) |
 | Input         | `src/input/` — semantic-action layer; import from `input/` only                  |
