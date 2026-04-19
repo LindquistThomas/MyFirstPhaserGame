@@ -20,6 +20,8 @@ export interface FloorTransitionDeps {
   floorHeight: number;
   /** True while the player is standing on the elevator cab. */
   isPlayerOnElevator: () => boolean;
+  /** Floor the cab is currently docked at (null while moving). */
+  getCabDockedFloor: () => number | null;
   /**
    * Invoked when the player steps onto a floor platform. Side is which
    * side of the shaft they stepped off (used by floor split rules).
@@ -34,19 +36,34 @@ export interface FloorTransitionDeps {
  * floor/side combination.
  */
 export class ElevatorFloorTransitionManager {
-  /** Suppress immediate re-entry of the floor the player just returned from. */
+  /** Floor the player just returned from; its re-entry is suppressed. */
   private skipFloorEntry?: FloorId;
+  /** Side of the shaft the player returned on; restricts the skip to that side. */
+  private skipFloorSide?: 'left' | 'right';
 
   constructor(private readonly deps: FloorTransitionDeps) {}
 
-  setSkipFloorEntry(floorId: FloorId | undefined): void {
+  setSkipFloorEntry(floorId: FloorId | undefined, side?: 'left' | 'right'): void {
     this.skipFloorEntry = floorId;
+    this.skipFloorSide = floorId === undefined ? undefined : side;
   }
 
-  /** Clear the skip-floor guard once the player is back on the cab. */
+  /**
+   * Clear the skip-floor guard once the cab has left the floor the player
+   * just returned from. Keeping the guard armed while the cab is still
+   * docked at that floor prevents a bounce when the player brushes the
+   * cab tolerance zone and steps back onto the floor walking surface —
+   * the on-elevator latch can engage while the player is still on the
+   * floor (cab top sits 8 px below the walking surface), so using the
+   * latch alone to clear the guard was too eager. Once the cab moves
+   * (player rides it elsewhere), the guard is no longer needed.
+   */
   clearSkipWhenBackOnElevator(): void {
-    if (this.skipFloorEntry !== undefined && this.deps.isPlayerOnElevator()) {
+    if (this.skipFloorEntry === undefined) return;
+    const cabFloor = this.deps.getCabDockedFloor();
+    if (cabFloor !== this.skipFloorEntry) {
       this.skipFloorEntry = undefined;
+      this.skipFloorSide = undefined;
     }
   }
 
@@ -65,18 +82,21 @@ export class ElevatorFloorTransitionManager {
 
     const positions = this.deps.floorYPositions;
     const bodyBottom = body.bottom;
+    const side: 'left' | 'right' = px < cx ? 'left' : 'right';
 
     for (const [floorId, floorY] of Object.entries(positions)) {
       const fId = Number(floorId) as FloorId;
       if (fId === FLOORS.LOBBY) continue;
       // PRODUCTS floor uses explicit doors — no auto-transition on walk.
       if (fId === FLOORS.PRODUCTS) continue;
-      if (fId === this.skipFloorEntry) continue;
+      // Skip re-entry only on the same side the player returned from; the
+      // other side of a split floor (e.g. Architecture when returning from
+      // Platform) is a different scene and remains enterable.
+      if (fId === this.skipFloorEntry && side === this.skipFloorSide) continue;
 
       const walkingSurface = floorY + this.deps.floorHeight;
       if (Math.abs(bodyBottom - walkingSurface) < FLOOR_DETECTION_TOLERANCE) {
         if (this.deps.progression.isFloorUnlocked(fId)) {
-          const side: 'left' | 'right' = px < GAME_WIDTH / 2 ? 'left' : 'right';
           this.deps.onEnterFloor(fId, side);
           return;
         }
