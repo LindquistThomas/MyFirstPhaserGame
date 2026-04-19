@@ -113,7 +113,7 @@ export class QuizDialog extends ModalBase {
     const qMeasure = this.scene.make.text({
       x: 0, y: 0,
       text: q.question,
-      style: { fontFamily: 'monospace', fontSize: '16px', color: '#c0c8d4',
+      style: { fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizBody,
         wordWrap: { width: PANEL_W - PADDING * 2 }, lineSpacing: 6 },
       add: false,
     });
@@ -128,7 +128,7 @@ export class QuizDialog extends ModalBase {
     const panelY = Math.max(20, (GAME_HEIGHT - panelH) / 2);
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a0a2a, 0.95);
+    bg.fillStyle(theme.color.ui.quizPanel, 0.95);
     bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
     bg.lineStyle(2, theme.color.ui.border, 0.7);
     bg.strokeRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
@@ -144,7 +144,7 @@ export class QuizDialog extends ModalBase {
     this.container.add(header);
 
     const diffColors: Record<QuizDifficulty, string> = {
-      easy: '#44ff88', medium: theme.color.css.textWarn, hard: '#ff6644',
+      easy: theme.color.css.textQuizCorrect, medium: theme.color.css.textWarn, hard: theme.color.css.textQuizHard,
     };
     const badge = this.scene.add.text(
       GAME_WIDTH / 2, curY + 30,
@@ -156,7 +156,7 @@ export class QuizDialog extends ModalBase {
     curY += headerH;
 
     const qText = this.scene.add.text(panelX + PADDING, curY, q.question, {
-      fontFamily: 'monospace', fontSize: '16px', color: '#c0c8d4',
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizBody,
       wordWrap: { width: PANEL_W - PADDING * 2 }, lineSpacing: 6,
     });
     this.container.add(qText);
@@ -171,18 +171,18 @@ export class QuizDialog extends ModalBase {
     const hint = this.scene.add.text(
       GAME_WIDTH / 2, hintY,
       '[\u2191\u2193] Navigate   [1-4 / A-D] Answer   [Enter] Select   [Esc] Close',
-      { fontFamily: 'monospace', fontSize: '12px', color: '#667788' },
+      { fontFamily: 'monospace', fontSize: '12px', color: theme.color.css.textQuizHint },
     ).setOrigin(0.5, 0);
     this.container.add(hint);
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizMuted, fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
-    xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
-    xBtn.on('pointerout', () => xBtn.setColor('#8899aa'));
+    xBtn.on('pointerover', () => xBtn.setColor(theme.color.css.textQuizDanger));
+    xBtn.on('pointerout', () => xBtn.setColor(theme.color.css.textQuizMuted));
     xBtn.on('pointerdown', () => this.close());
     this.container.add(xBtn);
-    this.nav.add(makeTextFocusable(xBtn, '#8899aa', '#ff6666'));
+    this.nav.add(makeTextFocusable(xBtn, theme.color.css.textQuizMuted, theme.color.css.textQuizDanger));
 
     this.nav.setFocus(0);
   }
@@ -197,23 +197,23 @@ export class QuizDialog extends ModalBase {
     const btnBg = this.scene.add.graphics();
     const drawNormal = () => {
       btnBg.clear();
-      btnBg.fillStyle(0x1a2a3a, 1);
+      btnBg.fillStyle(theme.color.ui.quizChoice, 1);
       btnBg.fillRoundedRect(x, y, w, h, 6);
-      btnBg.lineStyle(1, 0x2a4a6a, 0.6);
+      btnBg.lineStyle(1, theme.color.ui.quizChoiceBorder, 0.6);
       btnBg.strokeRoundedRect(x, y, w, h, 6);
     };
     const drawHover = () => {
       btnBg.clear();
-      btnBg.fillStyle(0x2a4a6a, 1);
+      btnBg.fillStyle(theme.color.ui.quizChoiceHover, 1);
       btnBg.fillRoundedRect(x, y, w, h, 6);
-      btnBg.lineStyle(1, 0x4a6a8a, 0.8);
+      btnBg.lineStyle(1, theme.color.ui.quizChoiceHoverBorder, 0.8);
       btnBg.strokeRoundedRect(x, y, w, h, 6);
     };
     drawNormal();
     this.container.add(btnBg);
 
     const btnText = this.scene.add.text(x + 16, y + h / 2, label, {
-      fontFamily: 'monospace', fontSize: '15px', color: '#c0c8d4',
+      fontFamily: 'monospace', fontSize: '15px', color: theme.color.css.textQuizBody,
       wordWrap: { width: w - 32 },
     }).setOrigin(0, 0.5);
     this.container.add(btnText);
@@ -233,7 +233,7 @@ export class QuizDialog extends ModalBase {
     hitArea.on('pointerout', () => {
       if (this.answered) return;
       drawNormal();
-      btnText.setColor('#c0c8d4');
+      btnText.setColor(theme.color.css.textQuizBody);
     });
 
     const activate = () => {
@@ -244,7 +244,7 @@ export class QuizDialog extends ModalBase {
 
     this.nav.add({
       focus: () => { drawHover(); btnText.setColor(theme.color.css.textWhite); },
-      blur: () => { drawNormal(); btnText.setColor('#c0c8d4'); },
+      blur: () => { drawNormal(); btnText.setColor(theme.color.css.textQuizBody); },
       activate,
       bounds: () => new Phaser.Geom.Rectangle(x, y, w, h),
     });
@@ -272,7 +272,7 @@ export class QuizDialog extends ModalBase {
 
     const qMeasure = this.scene.make.text({
       x: 0, y: 0, text: question.question,
-      style: { fontFamily: 'monospace', fontSize: '16px', color: '#c0c8d4',
+      style: { fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizBody,
         wordWrap: { width: PANEL_W - PADDING * 2 }, lineSpacing: 6 },
       add: false,
     });
@@ -281,7 +281,7 @@ export class QuizDialog extends ModalBase {
 
     const expMeasure = this.scene.make.text({
       x: 0, y: 0, text: question.explanation,
-      style: { fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
+      style: { fontFamily: 'monospace', fontSize: '14px', color: theme.color.css.textQuizMuted,
         wordWrap: { width: PANEL_W - PADDING * 2 - 12 }, lineSpacing: 4 },
       add: false,
     });
@@ -299,19 +299,19 @@ export class QuizDialog extends ModalBase {
     const panelY = Math.max(20, (GAME_HEIGHT - panelH) / 2);
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a0a2a, 0.95);
+    bg.fillStyle(theme.color.ui.quizPanel, 0.95);
     bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
-    bg.lineStyle(2, correct ? 0x44ff88 : 0xff4444, 0.7);
+    bg.lineStyle(2, correct ? theme.color.ui.quizCorrect : theme.color.ui.quizWrong, 0.7);
     bg.strokeRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
     this.container.add(bg);
 
     let curY = panelY + PADDING;
 
     const diffColors: Record<QuizDifficulty, string> = {
-      easy: '#44ff88', medium: theme.color.css.textWarn, hard: '#ff6644',
+      easy: theme.color.css.textQuizCorrect, medium: theme.color.css.textWarn, hard: theme.color.css.textQuizHard,
     };
     const resultText = correct ? 'Correct!' : 'Wrong!';
-    const resultColor = correct ? '#44ff88' : '#ff6644';
+    const resultColor = correct ? theme.color.css.textQuizCorrect : theme.color.css.textQuizHard;
 
     const header = this.scene.add.text(
       GAME_WIDTH / 2, curY, resultText,
@@ -329,7 +329,7 @@ export class QuizDialog extends ModalBase {
     curY += headerH;
 
     const qText = this.scene.add.text(panelX + PADDING, curY, question.question, {
-      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa',
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizMuted,
       wordWrap: { width: PANEL_W - PADDING * 2 }, lineSpacing: 6,
     });
     this.container.add(qText);
@@ -341,18 +341,18 @@ export class QuizDialog extends ModalBase {
       const isCorrect = i === question.correctIndex;
       const isSelected = i === selectedIndex;
 
-      let fillColor = 0x1a2a3a;
-      let borderColor = 0x2a4a6a;
-      let textColor = '#667788';
+      let fillColor: number = theme.color.ui.quizChoice;
+      let borderColor: number = theme.color.ui.quizChoiceBorder;
+      let textColor: string = theme.color.css.textQuizHint;
 
       if (isCorrect) {
-        fillColor = 0x1a4a2a;
-        borderColor = 0x44ff88;
-        textColor = '#44ff88';
+        fillColor = theme.color.ui.quizChoiceCorrect;
+        borderColor = theme.color.ui.quizCorrect;
+        textColor = theme.color.css.textQuizCorrect;
       } else if (isSelected && !isCorrect) {
-        fillColor = 0x4a1a1a;
-        borderColor = 0xff4444;
-        textColor = '#ff6644';
+        fillColor = theme.color.ui.quizChoiceWrong;
+        borderColor = theme.color.ui.quizWrong;
+        textColor = theme.color.css.textQuizHard;
       }
 
       const btnBg = this.scene.add.graphics();
@@ -375,13 +375,13 @@ export class QuizDialog extends ModalBase {
     curY += 4 * CHOICE_H + 3 * CHOICE_GAP + 16;
 
     const expText = this.scene.add.text(panelX + PADDING + 6, curY, question.explanation, {
-      fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
+      fontFamily: 'monospace', fontSize: '14px', color: theme.color.css.textQuizMuted,
       wordWrap: { width: PANEL_W - PADDING * 2 - 12 }, lineSpacing: 4,
     });
     this.container.add(expText);
 
     const expBorder = this.scene.add.graphics();
-    expBorder.fillStyle(correct ? 0x44ff88 : 0xff4444, 0.6);
+    expBorder.fillStyle(correct ? theme.color.ui.quizCorrect : theme.color.ui.quizWrong, 0.6);
     expBorder.fillRect(panelX + PADDING, curY - 2, 3, expHeight + 4);
     this.container.add(expBorder);
 
@@ -394,7 +394,7 @@ export class QuizDialog extends ModalBase {
       fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textAccent, fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
 
-    nextBtn.on('pointerover', () => nextBtn.setColor('#88ddff'));
+    nextBtn.on('pointerover', () => nextBtn.setColor(theme.color.css.textQuizAccentHover));
     nextBtn.on('pointerout', () => nextBtn.setColor(theme.color.css.textAccent));
     nextBtn.on('pointerdown', () => {
       this.currentIndex++;
@@ -405,16 +405,16 @@ export class QuizDialog extends ModalBase {
       }
     });
     this.container.add(nextBtn);
-    this.nav.add(makeTextFocusable(nextBtn, theme.color.css.textAccent, '#88ddff'));
+    this.nav.add(makeTextFocusable(nextBtn, theme.color.css.textAccent, theme.color.css.textQuizAccentHover));
 
     const xBtn = this.scene.add.text(panelX + PANEL_W - 18, panelY + 10, 'X', {
-      fontFamily: 'monospace', fontSize: '16px', color: '#8899aa', fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizMuted, fontStyle: 'bold',
     }).setOrigin(0.5, 0).setScrollFactor(0).setInteractive({ useHandCursor: true });
-    xBtn.on('pointerover', () => xBtn.setColor('#ff6666'));
-    xBtn.on('pointerout', () => xBtn.setColor('#8899aa'));
+    xBtn.on('pointerover', () => xBtn.setColor(theme.color.css.textQuizDanger));
+    xBtn.on('pointerout', () => xBtn.setColor(theme.color.css.textQuizMuted));
     xBtn.on('pointerdown', () => this.close());
     this.container.add(xBtn);
-    this.nav.add(makeTextFocusable(xBtn, '#8899aa', '#ff6666'));
+    this.nav.add(makeTextFocusable(xBtn, theme.color.css.textQuizMuted, theme.color.css.textQuizDanger));
 
     this.nav.setFocus(0);
   }

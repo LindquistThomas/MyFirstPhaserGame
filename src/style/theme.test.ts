@@ -43,4 +43,13 @@ describe('theme', () => {
     expect(COLORS.titleText).toBe(theme.color.css.textTitle);
     expect(COLORS.menuText).toBe(theme.color.css.textWhite);
   });
+
+  it('includes quiz palette tokens used by QuizDialog', () => {
+    expect(theme.color.ui.quizPanel).toBe(0x0a0a2a);
+    expect(theme.color.ui.quizChoice).toBe(0x1a2a3a);
+    expect(theme.color.ui.quizCorrect).toBe(0x44ff88);
+    expect(theme.color.ui.quizWrong).toBe(0xff4444);
+    expect(theme.color.css.textQuizBody).toBe('#c0c8d4');
+    expect(theme.color.css.textQuizDanger).toBe('#ff6666');
+  });
 });
