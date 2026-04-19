@@ -1,5 +1,5 @@
-import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../config/gameConfig';
-import { LevelScene, LevelConfig } from './LevelScene';
+import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 
 /**
  * Floor 3 — Finance room (left side of the Business floor).

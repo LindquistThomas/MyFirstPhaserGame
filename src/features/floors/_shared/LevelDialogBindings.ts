@@ -1,8 +1,8 @@
 import * as Phaser from 'phaser';
-import { DialogController } from '../../ui/DialogController';
-import { InfoIcon } from '../../ui/InfoIcon';
-import { ProgressionSystem } from '../../systems/ProgressionSystem';
-import { markSeen } from '../../systems/InfoDialogManager';
+import { DialogController } from '../../../ui/DialogController';
+import { InfoIcon } from '../../../ui/InfoIcon';
+import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import { markSeen } from '../../../systems/InfoDialogManager';
 
 /**
  * Build a DialogController with the standard level bindings: badge refresh

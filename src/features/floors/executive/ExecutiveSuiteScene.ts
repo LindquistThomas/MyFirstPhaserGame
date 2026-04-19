@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../config/gameConfig';
-import { LevelScene, LevelConfig } from './LevelScene';
+import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 
 /**
  * Floor 4 — Executive Suite (penthouse).

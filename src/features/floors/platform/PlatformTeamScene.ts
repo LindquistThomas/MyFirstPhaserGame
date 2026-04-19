@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
-import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../config/gameConfig';
-import { LevelScene, LevelConfig } from './LevelScene';
+import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { ENEMIES } from './enemies';
 
 /**
  * Floor 1 — Platform room (left side of the Platform Team floor).
@@ -181,15 +182,7 @@ export class PlatformTeamScene extends LevelScene {
         },
       ],
 
-      // POC enemy placements. Y anchored to the floor walking surface G.
-      //   - Slime patrols the mid-floor tokens (stompable teach).
-      //   - Bureaucracy Bot patrols past the monitoring wall toward the
-      //     right edge, so the existing screenshot test flow (walk right,
-      //     open the info dialog at the monitoring wall) is unaffected.
-      enemies: [
-        { type: 'slime', x: 560, y: G - 20, minX: 420, maxX: 720, speed: 55 },
-        { type: 'bot',   x: 1140, y: G - 30, minX: 1080, maxX: 1240, speed: 85 },
-      ],
+      enemies: ENEMIES(G),
     };
   }
 }

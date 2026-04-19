@@ -1,10 +1,10 @@
 import * as Phaser from 'phaser';
-import { FLOORS, FloorId } from '../../config/gameConfig';
-import { FloorData } from '../../config/levelData';
-import { Player } from '../../entities/Player';
-import { Token } from '../../entities/Token';
-import { DroppedAU } from '../../entities/DroppedAU';
-import { ProgressionSystem } from '../../systems/ProgressionSystem';
+import { FLOORS, FloorId } from '../../../config/gameConfig';
+import { FloorData } from '../../../config/levelData';
+import { Player } from '../../../entities/Player';
+import { Token } from '../../../entities/Token';
+import { DroppedAU } from '../../../entities/DroppedAU';
+import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import type { LevelConfig } from './LevelScene';
 
 export interface TokenManagerDeps {

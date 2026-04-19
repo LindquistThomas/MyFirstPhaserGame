@@ -3,13 +3,15 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS, PLAYER_GRAVITY } from './config/gameCo
 import { BootScene } from './scenes/core/BootScene';
 import { MenuScene } from './scenes/core/MenuScene';
 import { ElevatorScene } from './scenes/elevator/ElevatorScene';
-import { LobbyScene } from './scenes/floors/LobbyScene';
-import { PlatformTeamScene } from './scenes/floors/PlatformTeamScene';
-import { ArchitectureTeamScene } from './scenes/floors/ArchitectureTeamScene';
-import { FinanceTeamScene } from './scenes/floors/FinanceTeamScene';
-import { ProductLeadershipScene } from './scenes/floors/ProductLeadershipScene';
+import {
+  LobbyScene,
+  PlatformTeamScene,
+  ArchitectureTeamScene,
+  FinanceTeamScene,
+  ProductLeadershipScene,
+  ExecutiveSuiteScene,
+} from './features/floors';
 import { ProductsHallScene } from './scenes/hall/ProductsHallScene';
-import { ExecutiveSuiteScene } from './scenes/floors/ExecutiveSuiteScene';
 import { ProductIsyProjectControlsScene } from './scenes/products/ProductIsyProjectControlsScene';
 import { ProductIsyBeskrivelseScene } from './scenes/products/ProductIsyBeskrivelseScene';
 import { ProductIsyRoadScene } from './scenes/products/ProductIsyRoadScene';

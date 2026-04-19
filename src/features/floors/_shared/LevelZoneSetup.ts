@@ -1,11 +1,11 @@
 import * as Phaser from 'phaser';
-import { QUIZ_DATA } from '../../config/quiz';
-import { Player } from '../../entities/Player';
-import { InfoIcon } from '../../ui/InfoIcon';
-import { DialogController } from '../../ui/DialogController';
-import { ZoneManager } from '../../systems/ZoneManager';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
-import { isQuizPassed } from '../../systems/QuizManager';
+import { QUIZ_DATA } from '../../../config/quiz';
+import { Player } from '../../../entities/Player';
+import { InfoIcon } from '../../../ui/InfoIcon';
+import { DialogController } from '../../../ui/DialogController';
+import { ZoneManager } from '../../../systems/ZoneManager';
+import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
+import { isQuizPassed } from '../../../systems/QuizManager';
 import type { LevelConfig } from './LevelScene';
 
 const DEFAULT_ZONE_RADIUS = 120;

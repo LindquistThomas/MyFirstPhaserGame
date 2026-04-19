@@ -1,4 +1,4 @@
-import { QuizDefinition } from './types';
+import { QuizDefinition } from '../../../config/quiz/types';
 
 /** Quizzes for the Platform Team floor (left room of floor 1). */
 export const QUIZ_PLATFORM: Record<string, QuizDefinition> = {

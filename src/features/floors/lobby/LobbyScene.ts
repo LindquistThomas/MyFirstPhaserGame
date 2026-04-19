@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
-import { pushContext, popContext } from '../../input';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { GAME_WIDTH, GAME_HEIGHT } from '../../../config/gameConfig';
+import { pushContext, popContext } from '../../../input';
+import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 export class LobbyScene extends Phaser.Scene {
   constructor() {

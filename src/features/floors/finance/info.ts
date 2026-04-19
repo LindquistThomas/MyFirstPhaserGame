@@ -1,5 +1,5 @@
-import { FLOORS } from '../gameConfig';
-import { InfoPointDef } from './types';
+import { FLOORS } from '../../../config/gameConfig';
+import { InfoPointDef } from '../../../config/info/types';
 
 /** Info points shown on the Finance side of the Business floor. */
 export const INFO_FINANCE: Record<string, InfoPointDef> = {

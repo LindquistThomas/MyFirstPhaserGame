@@ -1,4 +1,4 @@
-import { QuizDefinition } from './types';
+import { QuizDefinition } from '../../../config/quiz/types';
 
 /**
  * Quizzes for the Product Leadership room (floor 3) and the

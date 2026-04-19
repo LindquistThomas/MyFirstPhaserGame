@@ -1,5 +1,5 @@
-import { FLOORS } from '../gameConfig';
-import { InfoPointDef } from './types';
+import { FLOORS } from '../../../config/gameConfig';
+import { InfoPointDef } from '../../../config/info/types';
 
 /** Info points shown in the Architecture Team room (floor 1 right). */
 export const INFO_ARCHITECTURE: Record<string, InfoPointDef> = {

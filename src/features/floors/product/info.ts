@@ -1,5 +1,5 @@
-import { FLOORS } from '../gameConfig';
-import { InfoPointDef } from './types';
+import { FLOORS } from '../../../config/gameConfig';
+import { InfoPointDef } from '../../../config/info/types';
 
 /** Info points for Product Leadership (floor 3 right) and the Products hall. */
 export const INFO_PRODUCT: Record<string, InfoPointDef> = {

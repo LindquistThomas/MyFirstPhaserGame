@@ -12,12 +12,12 @@
 
 import { FloorId } from '../gameConfig';
 import { InfoPointDef } from './types';
-import { INFO_LOBBY } from './lobby';
-import { INFO_PLATFORM } from './platform';
-import { INFO_ARCHITECTURE } from './architecture';
-import { INFO_EXEC } from './exec';
-import { INFO_FINANCE } from './finance';
-import { INFO_PRODUCT } from './product';
+import { INFO_LOBBY } from '../../features/floors/lobby/info';
+import { INFO_PLATFORM } from '../../features/floors/platform/info';
+import { INFO_ARCHITECTURE } from '../../features/floors/architecture/info';
+import { INFO_EXEC } from '../../features/floors/executive/info';
+import { INFO_FINANCE } from '../../features/floors/finance/info';
+import { INFO_PRODUCT } from '../../features/floors/product/info';
 
 export type { InfoPointDef } from './types';
 

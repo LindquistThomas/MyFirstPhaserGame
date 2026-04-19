@@ -12,12 +12,12 @@
 
 import { FloorId, FLOORS } from '../gameConfig';
 import { QuizDefinition } from './types';
-import { QUIZ_LOBBY } from './lobby';
-import { QUIZ_PLATFORM } from './platform';
-import { QUIZ_ARCHITECTURE } from './architecture';
-import { QUIZ_FINANCE } from './finance';
-import { QUIZ_PRODUCT } from './product';
-import { QUIZ_EXEC } from './exec';
+import { QUIZ_LOBBY } from '../../features/floors/lobby/quiz';
+import { QUIZ_PLATFORM } from '../../features/floors/platform/quiz';
+import { QUIZ_ARCHITECTURE } from '../../features/floors/architecture/quiz';
+import { QUIZ_FINANCE } from '../../features/floors/finance/quiz';
+import { QUIZ_PRODUCT } from '../../features/floors/product/quiz';
+import { QUIZ_EXEC } from '../../features/floors/executive/quiz';
 
 export type {
   QuizDifficulty,

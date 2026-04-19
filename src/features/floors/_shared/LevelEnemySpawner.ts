@@ -1,12 +1,12 @@
 import * as Phaser from 'phaser';
-import { FLOORS, FloorId } from '../../config/gameConfig';
-import { Enemy } from '../../entities/Enemy';
-import { Slime } from '../../entities/enemies/Slime';
-import { BureaucracyBot } from '../../entities/enemies/BureaucracyBot';
-import { DroppedAU } from '../../entities/DroppedAU';
-import { Player } from '../../entities/Player';
-import { ProgressionSystem } from '../../systems/ProgressionSystem';
-import { eventBus } from '../../systems/EventBus';
+import { FLOORS, FloorId } from '../../../config/gameConfig';
+import { Enemy } from '../../../entities/Enemy';
+import { Slime } from '../../../entities/enemies/Slime';
+import { BureaucracyBot } from '../../../entities/enemies/BureaucracyBot';
+import { DroppedAU } from '../../../entities/DroppedAU';
+import { Player } from '../../../entities/Player';
+import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import { eventBus } from '../../../systems/EventBus';
 import type { LevelConfig } from './LevelScene';
 
 export interface EnemySpawnerDeps {

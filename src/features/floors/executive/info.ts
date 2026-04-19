@@ -1,5 +1,5 @@
-import { FLOORS } from '../gameConfig';
-import { InfoPointDef } from './types';
+import { FLOORS } from '../../../config/gameConfig';
+import { InfoPointDef } from '../../../config/info/types';
 
 /** Info points shown in the Executive Suite (penthouse). */
 export const INFO_EXEC: Record<string, InfoPointDef> = {
