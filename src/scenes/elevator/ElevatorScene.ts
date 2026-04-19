@@ -65,7 +65,7 @@ export class ElevatorScene extends Phaser.Scene {
    * Depth (px) of the shaft pit below the lobby walking surface. Controls how
    * much of the shaft bottom is visible when the camera clamps at the lobby.
    */
-  private static readonly PIT_DEPTH = 280;
+  private static readonly PIT_DEPTH = 96;
 
   constructor() {
     super({ key: 'ElevatorScene' });

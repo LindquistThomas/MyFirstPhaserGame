@@ -48,6 +48,7 @@ export class ElevatorSceneLayout {
     this.createShaftCaps();
     this.createPlatforms();
     this.createLobbyDecorations();
+    this.createBelowLobbyFoundation();
     this.createFloorDecorations();
     this.createShaftDoors();
     this.createShaftCable();
@@ -170,17 +171,106 @@ export class ElevatorSceneLayout {
     g.fillStyle(0x33333f, 1);
     g.fillRect(leftEdge - 12, top - ceilH, capW, 2);
 
-    const pitH = 24;
-    g.fillStyle(0x2a2a34, 1);
-    g.fillRect(leftEdge - 12, bottom, capW, pitH);
-    g.fillStyle(theme.color.bg.dark, 0.35);
-    g.fillRect(leftEdge - 8, bottom + 4, capW - 8, 6);
-    g.fillStyle(0x3a3a48, 1);
-    g.fillRect(leftEdge - 12, bottom + 2, capW, 2);
-    g.fillStyle(0x88909c, 1);
-    for (let rx = leftEdge + 4; rx < leftEdge + capW - 16; rx += 16) {
-      g.fillCircle(rx, bottom + 3, 1.2);
+    this.drawPitBottom(g, leftEdge, bottom, capW);
+  }
+
+  /**
+   * Bottom-of-shaft detailing drawn INSIDE the shaft (above `bottom`) so the
+   * camera, which clamps at `shaftExtent.bottom`, actually shows it. Reads as
+   * an industrial elevator pit: concrete floor, buffer springs under the cab
+   * rails, ladder rungs on the left wall, oil puddle, and a hazard chevron.
+   */
+  private drawPitBottom(
+    g: Phaser.GameObjects.Graphics,
+    leftEdge: number,
+    bottom: number,
+    capW: number,
+  ): void {
+    const cx = GAME_WIDTH / 2;
+    const sw = this.deps.shaftWidth;
+    const rightEdge = leftEdge + sw;
+
+    const floorH = 16;
+    const floorTop = bottom - floorH;
+
+    // Concrete pit slab.
+    g.fillStyle(0x2a2a32, 1);
+    g.fillRect(leftEdge, floorTop, sw, floorH);
+    g.fillStyle(0x3a3a46, 1);
+    g.fillRect(leftEdge, floorTop, sw, 2);
+    g.fillStyle(0x1a1a22, 1);
+    g.fillRect(leftEdge, bottom - 2, sw, 2);
+    // Speckle for concrete texture.
+    g.fillStyle(0x4a4a55, 1);
+    for (let i = 0; i < 18; i++) {
+      const sx = leftEdge + 6 + ((i * 53) % (sw - 12));
+      const sy = floorTop + 4 + ((i * 7) % (floorH - 6));
+      g.fillRect(sx, sy, 1, 1);
     }
+
+    // Hazard chevron strip just above the pit floor.
+    const chevY = floorTop - 6;
+    g.fillStyle(0x111114, 1);
+    g.fillRect(leftEdge, chevY, sw, 4);
+    g.fillStyle(0xffcc33, 1);
+    for (let x = leftEdge; x < rightEdge; x += 12) {
+      g.fillTriangle(x, chevY, x + 6, chevY, x + 3, chevY + 4);
+    }
+
+    // Buffer springs under the cab rails. Cab rails live at cx ± (sw/2 - 18)
+    // (see createShaftBackground); place buffers slightly inboard of those.
+    const bufferOffsets = [-40, 40];
+    for (const off of bufferOffsets) {
+      const bx = cx + off;
+      const springTop = floorTop - 42;
+      const baseTop = floorTop - 6;
+      // Cylindrical base.
+      g.fillStyle(0x1a1a20, 1);
+      g.fillRect(bx - 10, baseTop, 20, 8);
+      g.fillStyle(0x3a3a46, 1);
+      g.fillRect(bx - 10, baseTop, 20, 2);
+      // Coiled spring (zig-zag).
+      g.lineStyle(2, 0x88909c, 1);
+      g.beginPath();
+      g.moveTo(bx - 7, baseTop);
+      for (let i = 0; i < 6; i++) {
+        const y = baseTop - (i + 1) * 6;
+        g.lineTo(bx + (i % 2 === 0 ? 7 : -7), y);
+      }
+      g.strokePath();
+      // Cap plate on top of spring.
+      g.fillStyle(0x55606e, 1);
+      g.fillRect(bx - 9, springTop, 18, 3);
+      g.fillStyle(0x88909c, 1);
+      g.fillRect(bx - 9, springTop, 18, 1);
+    }
+
+    // Oil puddle to one side of the buffers.
+    g.fillStyle(0x0a0a12, 0.9);
+    g.fillEllipse(cx - 12, bottom - 5, 34, 6);
+    g.fillStyle(0x1a1a2a, 0.9);
+    g.fillEllipse(cx - 12, bottom - 6, 20, 3);
+    g.fillStyle(0x3a4a6a, 0.6);
+    g.fillEllipse(cx - 14, bottom - 7, 6, 1);
+
+    // Ladder rungs embedded in the left shaft wall, above the pit floor.
+    const rungX = leftEdge + 8;
+    for (let i = 0; i < 4; i++) {
+      const ry = floorTop - 14 - i * 14;
+      g.fillStyle(0x1a1a22, 1);
+      g.fillRect(rungX - 2, ry, 14, 4);
+      g.fillStyle(0x88909c, 1);
+      g.fillRect(rungX, ry + 1, 10, 1);
+    }
+    // Ladder stringers (vertical rails) behind the rungs.
+    g.fillStyle(0x55606e, 1);
+    g.fillRect(rungX - 2, floorTop - 14 - 3 * 14 - 4, 2, 3 * 14 + 10);
+    g.fillRect(rungX + 10, floorTop - 14 - 3 * 14 - 4, 2, 3 * 14 + 10);
+
+    // Thin lip outside the shaft at the very bottom, keeps the original
+    // "sealed shaft" read along the edges where the ceiling cap has a twin.
+    g.fillStyle(0x1a1a22, 1);
+    g.fillRect(leftEdge - 12, bottom - 2, capW, 2);
   }
 
   private createPlatforms(): void {
@@ -333,6 +423,92 @@ export class ElevatorSceneLayout {
     scene.add.image(GAME_WIDTH - 80, floorBottom - 32, 'plant_tall').setDepth(11);
 
     scene.add.image(300, floorBottom - 60, 'info_board').setDepth(3);
+  }
+
+  /**
+   * Concrete foundation block + vent grates beneath the lobby walkway, on
+   * both sides of the shaft. Reads as "ground floor" — the building sits on
+   * top of something solid instead of floating over the scene background.
+   */
+  private createBelowLobbyFoundation(): void {
+    const scene = this.deps.scene;
+    const positions = this.deps.floorYPositions;
+    const lobbyY = positions[FLOORS.LOBBY];
+    const walkY = lobbyY + FLOOR_H;
+    const bottom = this.deps.shaftExtent.bottom;
+    const h = bottom - walkY;
+    if (h <= 0) return;
+
+    const cx = GAME_WIDTH / 2;
+    const sw = this.deps.shaftWidth;
+    const leftEdge = cx - sw / 2;
+    const rightEdge = cx + sw / 2;
+
+    const leftWidth = leftEdge - 12;
+    const rightX = rightEdge + 12;
+    const rightWidth = GAME_WIDTH - rightX;
+
+    const g = scene.add.graphics().setDepth(1);
+
+    const paintBand = (x: number, w: number): void => {
+      if (w <= 0) return;
+      // Foundation base slab.
+      g.fillStyle(0x2b2b33, 1);
+      g.fillRect(x, walkY, w, h);
+      // Soft inset shadow right under the lobby walkway (grounds the floor).
+      g.fillStyle(0x14141a, 0.55);
+      g.fillRect(x, walkY, w, 4);
+      // Upper seam — top of the foundation course.
+      g.fillStyle(0x3d3d48, 1);
+      g.fillRect(x, walkY + 6, w, 2);
+      g.fillStyle(0x1a1a22, 1);
+      g.fillRect(x, walkY + 8, w, 1);
+      // Mid-band horizontal seam line.
+      const seamY = walkY + Math.floor(h * 0.55);
+      g.fillStyle(0x3d3d48, 1);
+      g.fillRect(x, seamY, w, 1);
+      g.fillStyle(0x1a1a22, 1);
+      g.fillRect(x, seamY + 1, w, 1);
+      // Bottom shadow where the foundation meets the floor.
+      g.fillStyle(0x14141a, 0.8);
+      g.fillRect(x, bottom - 3, w, 3);
+      // Concrete speckle.
+      g.fillStyle(0x444450, 1);
+      for (let i = 0; i < Math.floor(w / 18); i++) {
+        const sx = x + 4 + ((i * 47) % Math.max(1, w - 8));
+        const sy = walkY + 12 + ((i * 11) % Math.max(1, h - 18));
+        g.fillRect(sx, sy, 1, 1);
+      }
+    };
+
+    const paintVent = (vx: number, vy: number, vw = 34, vh = 20): void => {
+      // Recessed frame.
+      g.fillStyle(0x0e0e14, 1);
+      g.fillRect(vx - 1, vy - 1, vw + 2, vh + 2);
+      // Vent interior.
+      g.fillStyle(0x1a1a22, 1);
+      g.fillRect(vx, vy, vw, vh);
+      // Horizontal louvres.
+      g.fillStyle(0x55606e, 1);
+      for (let ly = vy + 3; ly < vy + vh - 2; ly += 4) {
+        g.fillRect(vx + 2, ly, vw - 4, 1);
+      }
+      // Highlight on the top edge of the frame.
+      g.fillStyle(0x3d3d48, 1);
+      g.fillRect(vx - 1, vy - 1, vw + 2, 1);
+    };
+
+    paintBand(0, leftWidth);
+    paintBand(rightX, rightWidth);
+
+    // One vent grate per side, vertically centred in the foundation band.
+    const ventY = walkY + Math.max(14, Math.floor(h * 0.3));
+    if (leftWidth >= 80) paintVent(leftEdge - 12 - 60, ventY);
+    if (rightWidth >= 80) paintVent(rightX + 26, ventY);
+
+    // Second vent further out on the wide right side, for visual rhythm.
+    if (rightWidth >= 260) paintVent(rightX + 200, ventY + 6, 40, 16);
+    if (leftWidth >= 260) paintVent(80, ventY + 6, 40, 16);
   }
 
   private createFloorDecorations(): void {
