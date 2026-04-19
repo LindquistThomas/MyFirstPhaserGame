@@ -8,7 +8,7 @@ import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { DialogController } from '../../ui/DialogController';
 import { ZoneManager } from '../../systems/ZoneManager';
-import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID, GEIR_F4_ID } from './ElevatorZones';
+import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './ElevatorZones';
 import { ElevatorController } from './ElevatorController';
 import { ElevatorSceneLayout, ShaftExtent } from './ElevatorSceneLayout';
 import { ProductDoorManager, ProductDoor } from './ProductDoorManager';
@@ -137,7 +137,6 @@ export class ElevatorScene extends Phaser.Scene {
     this.dialogs = new DialogController(this, {
       progression: this.progression,
       getIconForContent: (id) => {
-        if (id === GEIR_F4_ID) return this.zones.geirInfoIcon;
         if (id === WELCOME_BOARD_ID) return this.zones.lobbyBoardIcon;
         return this.zones.elevatorInfoIcon;
       },
@@ -147,8 +146,6 @@ export class ElevatorScene extends Phaser.Scene {
           this.zones.elevatorInfoIcon?.markAsSeen();
         } else if (id === WELCOME_BOARD_ID) {
           this.zones.lobbyBoardIcon?.markAsSeen();
-        } else if (id === GEIR_F4_ID) {
-          this.zones.geirInfoIcon?.markAsSeen();
         }
       },
     });
@@ -164,8 +161,6 @@ export class ElevatorScene extends Phaser.Scene {
       isPlayerOnElevator: () => this.elevatorCtrl.isOnElevator,
       boardX: 300,
       boardY: lobbyY + ElevatorScene.FLOOR_H - 60,
-      isCabAtExecutive: () =>
-        this.elevatorCtrl.elevator.getFloorAtCurrentPosition() === FLOORS.EXECUTIVE,
     });
 
     // Cable + LEDs need an initial tick so they render before update() runs.

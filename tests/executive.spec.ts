@@ -88,7 +88,7 @@ test.describe('Executive Suite — Geir Harald', () => {
     errors.assertClean();
   });
 
-  test('Geir Harald OKR dialog opens from ElevatorScene at floor 4', async ({ page }) => {
+  test('elevator cab info (not Geir) is active when cab is docked at F4', async ({ page }) => {
     const errors = attachErrorWatchers(page);
 
     await page.goto('/');
@@ -98,67 +98,18 @@ test.describe('Executive Suite — Geir Harald', () => {
     await page.keyboard.press('Enter');
     await waitForScene(page, 'ElevatorScene');
 
-    await page.evaluate(() => {
-      const g = window.__game!;
-      const scene = g.scene
-        .getScenes(true)
-        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
-      const dialogs = scene['dialogs'] as { open: (id: string) => void };
-      dialogs.open('exec-geir-harald');
-    });
-    await waitForDialogOpen(page, 'ElevatorScene');
-
-    const texts = await page.evaluate(() => {
-      const g = window.__game!;
-      const scene = g.scene
-        .getScenes(true)
-        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
-          children?: { list: unknown[] };
-        };
-      const out: string[] = [];
-      const visit = (obj: unknown): void => {
-        if (!obj || typeof obj !== 'object') return;
-        const o = obj as Record<string, unknown>;
-        if (typeof o['text'] === 'string') out.push(o['text'] as string);
-        if (Array.isArray(o['list'])) (o['list'] as unknown[]).forEach(visit);
-      };
-      scene.children?.list.forEach(visit);
-      return out;
-    });
-
-    const joined = texts.join('\n');
-    expect(joined).toContain('Geir Harald');
-    expect(joined).toContain('OKR 1:');
-    expect(joined).toContain('OKR 5:');
-
-    errors.assertClean();
-  });
-
-  test('Geir zone takes priority over elevator info when cab is at F4', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await page.keyboard.press('Enter');
-    await waitForScene(page, 'ElevatorScene');
-
-    // Force cab docked at F4 and mark the player as on the cab, then tick
-    // zone detection and read the active zone.
+    // Force cab docked at F4 with the player standing on it and verify that
+    // the active content zone is the elevator's own info card — Geir is
+    // reachable only inside ExecutiveSuiteScene by standing next to him.
     const activeZone = await page.evaluate(() => {
       const g = window.__game!;
       const scene = g.scene
         .getScenes(true)
         .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
-          elevatorCtrl: {
-            elevator: { platform: { y: number } };
-          };
+          elevatorCtrl: { elevator: { platform: { y: number } } };
           player: { sprite: { x: number; y: number } };
           zoneManager: { update: () => void; getActiveZone: () => string | null };
         };
-      // Snap the cab to F4's docked y and fake player-on-cab by writing to
-      // the controller's private backing field (isOnElevator is a getter).
       const floorStops = (scene.elevatorCtrl.elevator as unknown as {
         floorStops: Map<number, number>;
       }).floorStops;
@@ -171,7 +122,7 @@ test.describe('Executive Suite — Geir Harald', () => {
       return scene.zoneManager.getActiveZone();
     });
 
-    expect(activeZone).toBe('exec-geir-harald');
+    expect(activeZone).toBe('architecture-elevator');
 
     errors.assertClean();
   });

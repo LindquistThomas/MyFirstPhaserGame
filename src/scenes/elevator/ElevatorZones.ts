@@ -11,7 +11,6 @@ import type { DebugZone } from '../../features/floors/_shared/LevelZoneSetup';
 
 export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
-export const GEIR_F4_ID = 'exec-geir-harald';
 
 const BOARD_RADIUS = 120;
 /**
@@ -31,8 +30,6 @@ export interface ElevatorZonesOptions {
   elevatorButtons: () => ElevatorButtons | undefined;
   /** Returns true while the player is physically standing on the elevator cab. */
   isPlayerOnElevator: () => boolean;
-  /** Returns true when the elevator cab is docked at floor 4 (EXECUTIVE). */
-  isCabAtExecutive: () => boolean;
   /** World-space x of the info board in the lobby. */
   boardX: number;
   /** World-space y of the info board center. */
@@ -40,21 +37,20 @@ export interface ElevatorZonesOptions {
 }
 
 /**
- * Owns the scene's zone registrations, the two lobby info icons, and the
- * "first-ride" elevator-info flow. Encapsulates what used to be
- * `ElevatorScene.registerZones` + `setupElevatorInfo` + `createInfoIcon` and
- * their private fields.
+ * Owns the scene's zone registrations and the two info icons (elevator cab +
+ * lobby welcome board). Designed to be created once per scene in `create()`;
+ * listener cleanup is wired to the scene's `shutdown` event so reuse across
+ * restarts is safe.
  *
- * Designed to be created once per scene in `create()`; listener cleanup is
- * wired to the scene's `shutdown` event so reuse across restarts is safe.
+ * Geir Harald (F4) has a proximity zone in {@link ExecutiveSuiteScene} — he
+ * is not reachable by the player in the elevator shaft preview, so there is
+ * no Geir zone here.
  */
 export class ElevatorZones {
   /** Info icon for the elevator zone. */
   elevatorInfoIcon?: InfoIcon;
   /** Info icon for the lobby welcome board. */
   lobbyBoardIcon?: InfoIcon;
-  /** Info icon for Geir Harald on F4. */
-  geirInfoIcon?: InfoIcon;
 
   private readonly opts: ElevatorZonesOptions;
 
@@ -66,12 +62,6 @@ export class ElevatorZones {
 
   private register(): void {
     const { scene, zoneManager, dialogs, player } = this.opts;
-
-    // --- Geir Harald zone — active when cab is docked at F4 and player is on it.
-    //     Registered BEFORE the elevator zone so getActiveZone() prefers Geir. ---
-    zoneManager.register(GEIR_F4_ID, () =>
-      this.opts.isPlayerOnElevator() && this.opts.isCabAtExecutive(),
-    );
 
     // --- Elevator zone — active while player is standing on the cab ---
     zoneManager.register(ELEVATOR_INFO_ID, () => this.opts.isPlayerOnElevator());
@@ -92,29 +82,13 @@ export class ElevatorZones {
     );
     this.lobbyBoardIcon.setVisible(false);
 
-    this.geirInfoIcon = new InfoIcon(
-      scene,
-      INFO_ICON_X, INFO_ICON_Y,
-      () => dialogs.open(GEIR_F4_ID),
-      GEIR_F4_ID,
-    );
-    this.geirInfoIcon.setVisible(false);
-
     const lifecycle = createSceneLifecycle(scene);
     lifecycle.bindEventBus('zone:enter', (zoneId) => {
       if (zoneId === ELEVATOR_INFO_ID) {
         this.opts.elevatorButtons()?.setVisible(true);
-        // Only show the elevator icon if Geir's zone isn't already active
-        // (both are triggered when the cab reaches F4; Geir takes priority).
-        if (!this.opts.isCabAtExecutive()) {
-          this.elevatorInfoIcon?.setVisible(true);
-        }
+        this.elevatorInfoIcon?.setVisible(true);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(true);
-      } else if (zoneId === GEIR_F4_ID) {
-        // Geir wins the HUD slot while docked at F4.
-        this.elevatorInfoIcon?.setVisible(false);
-        this.geirInfoIcon?.setVisible(true);
       }
     });
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
@@ -123,12 +97,6 @@ export class ElevatorZones {
         this.elevatorInfoIcon?.setVisible(false);
       } else if (zoneId === WELCOME_BOARD_ID) {
         this.lobbyBoardIcon?.setVisible(false);
-      } else if (zoneId === GEIR_F4_ID) {
-        this.geirInfoIcon?.setVisible(false);
-        // Cab left F4 while player is still on it — restore the elevator icon.
-        if (this.opts.isPlayerOnElevator()) {
-          this.elevatorInfoIcon?.setVisible(true);
-        }
       }
     });
   }
@@ -149,8 +117,8 @@ export class ElevatorZones {
 
   /**
    * Spatial shapes for debug overlay. Only the welcome-board zone is truly
-   * spatial; elevator / Geir zones are predicate-driven and aren't drawn
-   * as rectangles in the world.
+   * spatial; the elevator zone is predicate-driven (player-on-cab) and isn't
+   * drawn as a rectangle in the world.
    */
   getDebugZones(): DebugZone[] {
     const { zoneManager, boardX, boardY } = this.opts;
@@ -167,4 +135,3 @@ export class ElevatorZones {
     ];
   }
 }
-
