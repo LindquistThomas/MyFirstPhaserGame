@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Phaser from 'phaser';
 import { eventBus } from '../systems/EventBus';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
-import { FLOORS } from '../config/gameConfig';
+import { FLOORS, GAME_WIDTH } from '../config/gameConfig';
+import { setPlayerSlot, setStorage, type KVStorage } from '../systems/SaveManager';
 
 vi.mock('phaser', () => {
   const Phaser = {
@@ -42,6 +43,15 @@ function makeText(text: string) {
     setScrollFactor: vi.fn().mockReturnThis(),
     setDepth: vi.fn().mockReturnThis(),
     destroy: vi.fn(),
+  };
+}
+
+function memoryStorage(): KVStorage {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key) => (store.has(key) ? store.get(key)! : null),
+    setItem: (key, value) => { store.set(key, value); },
+    removeItem: (key) => { store.delete(key); },
   };
 }
 
@@ -112,38 +122,60 @@ function makeScene(muted = false) {
 
 describe('HUD', () => {
   let progression: ProgressionSystem;
+  let scene: ReturnType<typeof makeScene> | undefined;
+  let toggleSpy: ReturnType<typeof vi.fn> | undefined;
 
   beforeEach(() => {
+    setPlayerSlot('hud-test');
+    setStorage(memoryStorage());
     progression = new ProgressionSystem();
     progression.reset();
+    scene = undefined;
+    toggleSpy = undefined;
+  });
+
+  afterEach(() => {
+    scene?.events.emit('shutdown');
+    if (toggleSpy) eventBus.off('audio:toggle-mute', toggleSpy);
   });
 
   it('updates AU/floor labels and animates coin when AU increases', () => {
-    const scene = makeScene(false);
+    scene = makeScene(false);
     const hud = new HUD(scene as unknown as Phaser.Scene, progression);
 
     progression.addAU(FLOORS.LOBBY, 2);
     hud.update();
 
-    const auText = scene.texts[0];
-    const floorText = scene.texts[1];
+    const auTextCall = scene.add.text.mock.calls.findIndex(
+      ([x, y, initialText]) => x === 46 && y === 6 && initialText === 'AU: 0',
+    );
+    const floorTextCall = scene.add.text.mock.calls.findIndex(
+      ([x, y, initialText]) => x === GAME_WIDTH - 48 && y === 10 && initialText === '',
+    );
+    expect(auTextCall).toBeGreaterThan(-1);
+    expect(floorTextCall).toBeGreaterThan(-1);
+    const auText = scene.add.text.mock.results[auTextCall]?.value as ReturnType<typeof makeText>;
+    const floorText = scene.add.text.mock.results[floorTextCall]?.value as ReturnType<typeof makeText>;
+
     expect(auText.setText).toHaveBeenCalledWith('AU: 2');
     expect(floorText.setText).toHaveBeenCalledWith(expect.stringContaining('F0:'));
     expect(scene.tweens.add).toHaveBeenCalledTimes(2);
-    scene.events.emit('shutdown');
   });
 
   it('emits toggle event on mute click and unsubscribes from mute-changed on shutdown', () => {
-    const scene = makeScene(false);
+    scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);
 
-    const toggleSpy = vi.fn();
+    toggleSpy = vi.fn();
     eventBus.on('audio:toggle-mute', toggleSpy);
 
     scene.zoneHandlers.get('pointerup')?.();
     expect(toggleSpy).toHaveBeenCalledTimes(1);
 
-    const muteGraphics = scene.graphics[3];
+    const muteGraphics = scene.graphics.find((g) =>
+      g.setPosition.mock.calls.some(([x, y]) => x === GAME_WIDTH - 24 && y === 22),
+    );
+    expect(muteGraphics).toBeDefined();
     const clearCountBefore = muteGraphics.clear.mock.calls.length;
     eventBus.emit('audio:mute-changed', true);
     expect(muteGraphics.clear.mock.calls.length).toBeGreaterThan(clearCountBefore);
@@ -152,7 +184,5 @@ describe('HUD', () => {
     scene.events.emit('shutdown');
     eventBus.emit('audio:mute-changed', false);
     expect(muteGraphics.clear.mock.calls.length).toBe(clearCountAfterBind);
-
-    eventBus.off('audio:toggle-mute', toggleSpy);
   });
 });
