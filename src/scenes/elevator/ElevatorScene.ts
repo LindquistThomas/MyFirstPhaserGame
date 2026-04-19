@@ -5,9 +5,9 @@ import { Elevator } from '../../entities/Elevator';
 import { HUD } from '../../ui/HUD';
 import { ElevatorButtons } from '../../ui/ElevatorButtons';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
+import { GameStateManager } from '../../systems/GameStateManager';
 import { DialogController } from '../../ui/DialogController';
 import { ZoneManager } from '../../systems/ZoneManager';
-import { markSeen } from '../../systems/InfoDialogManager';
 import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID } from './ElevatorZones';
 import { ElevatorController } from './ElevatorController';
 import { ElevatorSceneLayout, ShaftExtent } from './ElevatorSceneLayout';
@@ -34,6 +34,7 @@ import type { NavigationContext } from '../NavigationContext';
 export class ElevatorScene extends Phaser.Scene {
   private player!: Player;
   private hud!: HUD;
+  private gameState!: GameStateManager;
   private progression!: ProgressionSystem;
   private isTransitioning = false;
 
@@ -66,16 +67,9 @@ export class ElevatorScene extends Phaser.Scene {
   }
 
   init(data?: NavigationContext): void {
-    if (!this.registry.get('progression')) {
-      const progression = new ProgressionSystem();
-      if (data?.loadSave) {
-        progression.loadFromSave();
-      } else if (data?.loadSave === false) {
-        progression.reset();
-      }
-      this.registry.set('progression', progression);
-    }
-    this.progression = this.registry.get('progression') as ProgressionSystem;
+    this.gameState = this.registry.get('gameState') as GameStateManager;
+    this.gameState.applyInitialLoad(data?.loadSave);
+    this.progression = this.gameState.progression;
     this.spawnAtProductDoor = data?.spawnDoorId;
     this.spawnAtFloor = data?.fromFloor;
     this.spawnAtFloorSide = data?.spawnSide ?? 'left';
@@ -137,7 +131,7 @@ export class ElevatorScene extends Phaser.Scene {
     this.dialogs = new DialogController(this, {
       progression: this.progression,
       getIconForContent: () => this.zones.elevatorInfoIcon,
-      onOpen: (id) => markSeen(id),
+      onOpen: (id) => this.gameState.markSeen(id),
       onClose: (id) => {
         if (id === ELEVATOR_INFO_ID) {
           this.zones.elevatorInfoIcon?.markAsSeen();
@@ -153,6 +147,7 @@ export class ElevatorScene extends Phaser.Scene {
       zoneManager: this.zoneManager,
       dialogs: this.dialogs,
       player: this.player,
+      gameState: this.gameState,
       elevatorButtons: () => this.elevatorButtons,
       isPlayerOnElevator: () => this.elevatorCtrl.isOnElevator,
       boardX: 300,

@@ -8,6 +8,7 @@ import { HUD } from '../../../ui/HUD';
 import { ElevatorButtons } from '../../../ui/ElevatorButtons';
 import { DialogController } from '../../../ui/DialogController';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import { GameStateManager } from '../../../systems/GameStateManager';
 import { allKeyLabels } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
@@ -85,6 +86,7 @@ export interface LevelConfig {
 export class LevelScene extends Phaser.Scene {
   protected player!: Player;
   protected hud!: HUD;
+  protected gameState!: GameStateManager;
   protected progression!: ProgressionSystem;
   protected platformGroup!: Phaser.Physics.Arcade.StaticGroup;
   protected exitDoor!: Phaser.GameObjects.Image;
@@ -149,7 +151,8 @@ export class LevelScene extends Phaser.Scene {
   }
 
   init(): void {
-    this.progression = this.registry.get('progression') as ProgressionSystem;
+    this.gameState = this.registry.get('gameState') as GameStateManager;
+    this.progression = this.gameState.progression;
     this.floorData = LEVEL_DATA[this.floorId];
     this.isTransitioning = false;
     this.roomLifts = [];
@@ -191,6 +194,7 @@ export class LevelScene extends Phaser.Scene {
       scene: this,
       player: this.player,
       dialogs: this.buildDialogs(),
+      gameState: this.gameState,
     });
 
     const cfg = this.getLevelConfig();
@@ -217,7 +221,7 @@ export class LevelScene extends Phaser.Scene {
   /** Construct the DialogController and stash it on this.dialogs. */
   private buildDialogs(): DialogController {
     this.dialogs = createLevelDialogs(this, {
-      progression: this.progression,
+      gameState: this.gameState,
       getIcon: (id) => this.zones.iconsByContentId.get(id),
     });
     return this.dialogs;

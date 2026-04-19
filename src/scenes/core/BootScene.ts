@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { generateSprites } from '../../systems/SpriteGenerator';
 import { generateSounds } from '../../systems/SoundGenerator';
 import { AudioManager } from '../../systems/AudioManager';
+import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
 import { COLORS } from '../../config/gameConfig';
 
@@ -67,6 +68,11 @@ export class BootScene extends Phaser.Scene {
     const audio = new AudioManager(this.sound);
     audio.registerEventListeners();
     this.registry.set('audio', audio);
+
+    // Build the persistent game-state facade once. Subsequent scenes read
+    // `gameState` from the registry instead of constructing their own
+    // ProgressionSystem or reaching into the singleton save managers.
+    this.registry.set('gameState', new GameStateManager());
 
     // Global M-key toggles music/audio mute from any scene or context.
     // Attached to window so it works regardless of which Phaser scene has

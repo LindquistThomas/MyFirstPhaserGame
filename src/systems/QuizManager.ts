@@ -21,6 +21,8 @@ type QuizStore = Record<string, QuizRecord>;
 
 let storage: KVStorage | null = null;
 
+export function setStorage(s: KVStorage): void { storage = s; }
+
 function getStorage(): KVStorage {
   if (storage) return storage;
   try { storage = globalThis.localStorage; return storage; }

@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { QUIZ_DATA } from '../../config/quiz';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { ZoneManager } from '../../systems/ZoneManager';
-import { isQuizPassed } from '../../systems/QuizManager';
+import { GameStateManager } from '../../systems/GameStateManager';
 import { Player } from '../../entities/Player';
 import { ElevatorButtons } from '../../ui/ElevatorButtons';
 import { DialogController } from '../../ui/DialogController';
@@ -24,6 +24,7 @@ export interface ElevatorZonesOptions {
   zoneManager: ZoneManager;
   dialogs: DialogController;
   player: Player;
+  gameState: GameStateManager;
   /** Elevator buttons — shown/hidden together with the elevator zone. */
   elevatorButtons: () => ElevatorButtons | undefined;
   /** Returns true while the player is physically standing on the elevator cab. */
@@ -108,7 +109,7 @@ export class ElevatorZones {
     );
     this.elevatorInfoIcon.setVisible(false);
     if (QUIZ_DATA[ELEVATOR_INFO_ID]) {
-      this.elevatorInfoIcon.setQuizBadge(scene, isQuizPassed(ELEVATOR_INFO_ID));
+      this.elevatorInfoIcon.setQuizBadge(scene, this.opts.gameState.isQuizPassed(ELEVATOR_INFO_ID));
     }
   }
 }

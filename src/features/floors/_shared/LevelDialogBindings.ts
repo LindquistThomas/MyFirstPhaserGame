@@ -1,8 +1,7 @@
 import * as Phaser from 'phaser';
 import { DialogController } from '../../../ui/DialogController';
 import { InfoIcon } from '../../../ui/InfoIcon';
-import { ProgressionSystem } from '../../../systems/ProgressionSystem';
-import { markSeen } from '../../../systems/InfoDialogManager';
+import { GameStateManager } from '../../../systems/GameStateManager';
 
 /**
  * Build a DialogController with the standard level bindings: badge refresh
@@ -13,14 +12,14 @@ import { markSeen } from '../../../systems/InfoDialogManager';
 export function createLevelDialogs(
   scene: Phaser.Scene,
   opts: {
-    progression: ProgressionSystem;
+    gameState: GameStateManager;
     getIcon: (contentId: string) => InfoIcon | undefined;
   },
 ): DialogController {
   return new DialogController(scene, {
-    progression: opts.progression,
+    progression: opts.gameState.progression,
     getIconForContent: opts.getIcon,
-    onOpen: (id) => markSeen(id),
+    onOpen: (id) => opts.gameState.markSeen(id),
     onClose: (id) => {
       // Dialog was just read — switch the icon (if still visible in its
       // zone) from the eye-catching "unseen" animation to the subtle pulse.

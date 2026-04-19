@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
-import { hasSave } from '../../systems/SaveManager';
+import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
@@ -334,7 +334,8 @@ export class MenuScene extends Phaser.Scene {
     btn.setDepth(TEXT_DEPTH);
     this.menuButtons.push({ btn, action: startAction });
 
-    if (hasSave()) {
+    const gameState = this.registry.get('gameState') as GameStateManager;
+    if (gameState?.hasSave()) {
       const continueAction = () => this.continueGame();
       const contBtn = this.makeButton(cx, cy + 100, '[ CONTINUE ]', 22, continueAction);
       contBtn.setDepth(TEXT_DEPTH);

@@ -5,7 +5,7 @@ import { InfoIcon } from '../../../ui/InfoIcon';
 import { DialogController } from '../../../ui/DialogController';
 import { ZoneManager } from '../../../systems/ZoneManager';
 import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
-import { isQuizPassed } from '../../../systems/QuizManager';
+import { GameStateManager } from '../../../systems/GameStateManager';
 import type { LevelConfig } from './LevelScene';
 
 const DEFAULT_ZONE_RADIUS = 120;
@@ -14,6 +14,7 @@ export interface ZoneSetupDeps {
   scene: Phaser.Scene;
   player: Player;
   dialogs: DialogController;
+  gameState: GameStateManager;
 }
 
 /**
@@ -44,7 +45,7 @@ export class LevelZoneSetup {
       }, ip.contentId);
       icon.setVisible(false);
       if (QUIZ_DATA[ip.contentId]) {
-        icon.setQuizBadge(this.deps.scene, isQuizPassed(ip.contentId));
+        icon.setQuizBadge(this.deps.scene, this.deps.gameState.isQuizPassed(ip.contentId));
       }
       this.iconsByContentId.set(ip.contentId, icon);
 
