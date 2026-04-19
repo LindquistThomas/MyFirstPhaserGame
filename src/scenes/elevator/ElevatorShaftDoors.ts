@@ -26,7 +26,7 @@ export class ElevatorShaftDoors {
   private openAmount = 0;
   private target = 0;
 
-  private static readonly OPENING_WIDTH = 36;
+  private static readonly OPENING_WIDTH = 24;
   private static readonly OPENING_HEIGHT = 132;
   /** Cab must be within this Y distance of dock to open. */
   private static readonly PROXIMITY = 28;
@@ -39,21 +39,23 @@ export class ElevatorShaftDoors {
     shaftRightEdge: number,
     walkY: number,
     private readonly dockY: number,
+    private readonly cavityColor: number = 0x1a1a2e,
   ) {
-    // Place each doorway entirely on the hallway side of the shaft wall so
-    // the (purple) cavity never overlaps the shaft interior. The opening's
-    // inner edge is flush with the shaft wall; the 48 px width extends
-    // outward into the hallway.
+    // Place each doorway entirely INSIDE the shaft — the outer edge of the
+    // opening is flush with the shaft wall, and the opening extends inward
+    // toward the cab. This keeps the doorway from protruding past the
+    // shaft's outer pillars in the side view, and the (floor-tinted)
+    // cavity stays within the shaft footprint.
     const halfW = ElevatorShaftDoors.OPENING_WIDTH / 2;
-    this.leftX = shaftLeftEdge - halfW;
-    this.rightX = shaftRightEdge + halfW;
+    this.leftX = shaftLeftEdge + halfW;
+    this.rightX = shaftRightEdge - halfW;
     this.openingBottom = walkY;
     this.openingTop = walkY - ElevatorShaftDoors.OPENING_HEIGHT;
 
     // Depth 2.5: above the concrete back wall + steel pillars (depth 0/1)
     // AND above the hallway floor tiles (depth 2) so the doorway frame and
-    // panel are always visible on both sides. Still below the cab (depth
-    // 3/4) so doors don't appear in front of the cab when it's adjacent.
+    // panel are always visible. Still below the cab (depth 3/4) so the
+    // doors don't appear in front of the cab when it's adjacent.
     this.gfx = scene.add.graphics();
     this.gfx.setDepth(2.5);
     this.draw();
@@ -93,13 +95,13 @@ export class ElevatorShaftDoors {
     const yBot = this.openingBottom;
 
     // 1) The passage cavity (visible when the panel is retracted). Uses
-    //    the regular hallway background colour so the opening reads as
-    //    "look through into the hallway behind" rather than a black hole.
-    //    Clip so it doesn't spill outside the shaft/hallway boundaries
-    //    (the GAME_WIDTH edges).
+    //    the floor's own theme background colour so an opened door reads
+    //    as "look through into this floor's hallway/rooms" — ties the
+    //    doorway visually to the floor it serves. Clip so it doesn't
+    //    spill outside the shaft/hallway boundaries (GAME_WIDTH edges).
     const cavityX = Math.max(0, x);
     const cavityRight = Math.min(GAME_WIDTH, x + w);
-    g.fillStyle(0x1a1a2e, 1);
+    g.fillStyle(this.cavityColor, 1);
     g.fillRect(cavityX, yTop, cavityRight - cavityX, h);
 
     // 2) Header slot above the opening (where the door retracts into).

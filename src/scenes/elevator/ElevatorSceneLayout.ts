@@ -765,20 +765,25 @@ export class ElevatorSceneLayout {
     const positions = this.deps.floorYPositions;
     const lobbyY = positions[FLOORS.LOBBY];
     const floorBottom = lobbyY + FLOOR_H;
-    const cx = GAME_WIDTH / 2;
-    const sw = this.deps.shaftWidth;
-    const leftEdge = cx - sw / 2;
-    const rightEdge = cx + sw / 2;
 
-    scene.add.image(80, floorBottom - 32, 'plant_tall').setDepth(3);
-    scene.add.image(leftEdge - 140, floorBottom - 40, 'plant_tall').setDepth(3);
-    scene.add.image(rightEdge + 140, floorBottom - 40, 'plant_tall').setDepth(3);
+    // Left walkway — reception side.
+    // Wall-mounted logo (anchored to lobbyY band, not floorBottom).
+    scene.add.image(260, lobbyY + 50, 'lobby_logo').setDepth(2);
+    scene.add.image(60, floorBottom - 40, 'plant_tall').setDepth(3);
+    scene.add.image(200, floorBottom - 45, 'reception_desk').setDepth(3);
+    scene.add.image(355, floorBottom - 60, 'info_board').setDepth(3);
+    scene.add.image(425, floorBottom - 32, 'plant_small').setDepth(3);
+    scene.add.image(485, floorBottom - 40, 'plant_tall').setDepth(11);
 
-    scene.add.image(leftEdge - 60, floorBottom - 32, 'plant_small').setDepth(11);
-    scene.add.image(rightEdge + 60, floorBottom - 32, 'plant_small').setDepth(11);
-    scene.add.image(GAME_WIDTH - 80, floorBottom - 32, 'plant_tall').setDepth(11);
-
-    scene.add.image(300, floorBottom - 60, 'info_board').setDepth(3);
+    // Right walkway — waiting area.
+    // Wall-mounted clock (anchored to lobbyY band).
+    scene.add.image(1000, lobbyY + 60, 'wall_clock').setDepth(2);
+    scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
+    scene.add.image(870, floorBottom - 32, 'plant_small').setDepth(11);
+    scene.add.image(960, floorBottom - 30, 'sofa').setDepth(3);
+    scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
+    scene.add.image(1120, floorBottom - 48, 'floor_lamp').setDepth(3);
+    scene.add.image(1210, floorBottom - 40, 'plant_tall').setDepth(3);
   }
 
   /**
@@ -1007,10 +1012,14 @@ export class ElevatorSceneLayout {
     const sw = this.deps.shaftWidth;
     const leftEdge = cx - sw / 2;
     const rightEdge = cx + sw / 2;
-    for (const [, y] of Object.entries(positions)) {
+    for (const [floorIdStr, y] of Object.entries(positions)) {
+      const fId = Number(floorIdStr) as FloorId;
       const walkY = y + FLOOR_H;
       const dockY = walkY + 8;
-      this.shaftDoors.push(new ElevatorShaftDoors(scene, leftEdge, rightEdge, walkY, dockY));
+      const cavityColor = LEVEL_DATA[fId]?.theme.backgroundColor ?? 0x1a1a2e;
+      this.shaftDoors.push(
+        new ElevatorShaftDoors(scene, leftEdge, rightEdge, walkY, dockY, cavityColor),
+      );
     }
   }
 
