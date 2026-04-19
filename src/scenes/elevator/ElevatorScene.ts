@@ -14,7 +14,6 @@ import { ElevatorSceneLayout, ShaftExtent } from './ElevatorSceneLayout';
 import { ProductDoorManager, ProductDoor } from './ProductDoorManager';
 import { ElevatorFloorTransitionManager } from './ElevatorFloorTransitionManager';
 import type { NavigationContext } from '../NavigationContext';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -68,7 +67,6 @@ export class ElevatorScene extends Phaser.Scene {
   }
 
   init(data?: NavigationContext): void {
-    createSceneLifecycle(this);
     this.gameState = this.registry.get('gameState') as GameStateManager;
     this.gameState.applyInitialLoad(data?.loadSave);
     this.progression = this.gameState.progression;

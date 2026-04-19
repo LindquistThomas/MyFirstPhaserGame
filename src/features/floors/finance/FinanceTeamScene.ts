@@ -1,6 +1,5 @@
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
-import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 /**
  * Floor 3 — Finance room (left side of the Business floor).
@@ -16,11 +15,6 @@ import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 export class FinanceTeamScene extends LevelScene {
   constructor() {
     super('FinanceTeamScene', FLOORS.BUSINESS);
-  }
-
-  override create(): void {
-    createSceneLifecycle(this);
-    super.create();
   }
 
   protected override createDecorations(): void {

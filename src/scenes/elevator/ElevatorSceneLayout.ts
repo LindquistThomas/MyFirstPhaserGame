@@ -5,7 +5,6 @@ import { LEVEL_DATA } from '../../config/levelData';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { ElevatorShaftDoors } from './ElevatorShaftDoors';
 import { ElevatorController } from './ElevatorController';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 const FLOOR_TILE_ROWS = 2;
 const FLOOR_H = FLOOR_TILE_ROWS * TILE_SIZE; // 256
@@ -40,7 +39,6 @@ export class ElevatorSceneLayout {
   }>();
 
   constructor(private readonly deps: ElevatorSceneLayoutDeps) {
-    createSceneLifecycle(deps.scene);
     this.platforms = deps.scene.physics.add.staticGroup();
   }
 

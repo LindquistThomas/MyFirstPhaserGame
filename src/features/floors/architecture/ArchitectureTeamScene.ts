@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { theme } from '../../../style/theme';
-import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 /**
  * Floor 1 — Architecture room (right side of the Platform Team floor).
@@ -25,11 +24,6 @@ export class ArchitectureTeamScene extends LevelScene {
   constructor() {
     super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);
     this.returnSide = 'right';
-  }
-
-  override create(): void {
-    createSceneLifecycle(this);
-    super.create();
   }
 
   protected override getBannerTitle(): string {
