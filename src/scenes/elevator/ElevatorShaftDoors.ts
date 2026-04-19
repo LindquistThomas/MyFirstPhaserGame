@@ -46,11 +46,12 @@ export class ElevatorShaftDoors {
     this.openingBottom = walkY;
     this.openingTop = walkY - ElevatorShaftDoors.OPENING_HEIGHT;
 
-    // Depth 3: above the concrete back wall + steel pillars (depth 0/1) so
-    // the opening "cuts through" the pillar visually; below the cab (depth
-    // 2/3/4) so doors don't appear in front of the cab when it's adjacent.
+    // Depth 2.5: above the concrete back wall + steel pillars (depth 0/1)
+    // AND above the hallway floor tiles (depth 2) so the doorway frame and
+    // panel are always visible on both sides. Still below the cab (depth
+    // 3/4) so doors don't appear in front of the cab when it's adjacent.
     this.gfx = scene.add.graphics();
-    this.gfx.setDepth(1.5);
+    this.gfx.setDepth(2.5);
     this.draw();
   }
 
@@ -87,12 +88,14 @@ export class ElevatorShaftDoors {
     const yTop = this.openingTop;
     const yBot = this.openingBottom;
 
-    // 1) The passage cavity (always dark — this is what's visible when the
-    //    panel is retracted). Clip so it doesn't spill outside the shaft/
-    //    hallway boundaries (the GAME_WIDTH edges).
+    // 1) The passage cavity (visible when the panel is retracted). Tinted
+    //    slightly darker than the hallway background so the opening reads
+    //    as "hallway interior behind the shaft wall" — a subtle depth cue
+    //    rather than a near-black hole. Clip so it doesn't spill outside
+    //    the shaft/hallway boundaries (the GAME_WIDTH edges).
     const cavityX = Math.max(0, x);
     const cavityRight = Math.min(GAME_WIDTH, x + w);
-    g.fillStyle(0x07070c, 1);
+    g.fillStyle(0x12121f, 1);
     g.fillRect(cavityX, yTop, cavityRight - cavityX, h);
 
     // 2) Header slot above the opening (where the door retracts into).
