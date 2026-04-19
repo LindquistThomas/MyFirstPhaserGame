@@ -153,8 +153,9 @@ test.describe('Elevator scene', () => {
 
       const left = toDecor('f1-left-');
       const right = toDecor('f1-right-');
-      const leftStaticDecor = left.filter((d) => !d.hasTween);
-      const rightStaticDecor = right.filter((d) => !d.hasTween);
+      const excludedSpatialDecor = new Set(['f1-right-adr-cursor', 'f1-right-slice-highlight']);
+      const leftSpatialDecor = left.filter((d) => !excludedSpatialDecor.has(d.name));
+      const rightSpatialDecor = right.filter((d) => !excludedSpatialDecor.has(d.name));
 
       const intersects = (a: Bounds, b: Bounds): boolean =>
         a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
@@ -172,18 +173,28 @@ test.describe('Elevator scene', () => {
       };
 
       const gameWidth = (scene['scale'] as { width: number }).width;
-      const shaftWidth = 220;
+      const layout = scene['layout'] as { deps?: { shaftWidth?: unknown } } | undefined;
+      const shaftWidth = layout?.deps?.shaftWidth;
+      if (typeof shaftWidth !== 'number') {
+        throw new Error('ElevatorScene layout.deps.shaftWidth is unavailable');
+      }
       const cx = gameWidth / 2;
       const leftEdge = cx - shaftWidth / 2;
       const rightEdge = cx + shaftWidth / 2;
+      const leftNames = left.map((d) => d.name);
+      const rightNames = right.map((d) => d.name);
+      const expectedLeft = ['f1-left-server-rack-1', 'f1-left-router'];
+      const expectedRight = ['f1-right-c4-board', 'f1-right-adr-terminal', 'f1-right-slice-panel'];
 
       return {
         leftCount: left.length,
         rightCount: right.length,
-        leftOverlaps: findOverlaps(leftStaticDecor),
-        rightOverlaps: findOverlaps(rightStaticDecor),
-        leftOutOfSide: leftStaticDecor.filter((d) => d.bounds.right > leftEdge).map((d) => d.name),
-        rightOutOfSide: rightStaticDecor.filter((d) => d.bounds.left < rightEdge).map((d) => d.name),
+        leftOverlaps: findOverlaps(leftSpatialDecor),
+        rightOverlaps: findOverlaps(rightSpatialDecor),
+        leftOutOfSide: leftSpatialDecor.filter((d) => d.bounds.right > leftEdge).map((d) => d.name),
+        rightOutOfSide: rightSpatialDecor.filter((d) => d.bounds.left < rightEdge).map((d) => d.name),
+        missingExpectedLeft: expectedLeft.filter((name) => !leftNames.includes(name)),
+        missingExpectedRight: expectedRight.filter((name) => !rightNames.includes(name)),
         leftAnimated: left.filter((d) => d.hasTween).map((d) => d.name),
         rightAnimated: right.filter((d) => d.hasTween).map((d) => d.name),
       };
@@ -195,6 +206,8 @@ test.describe('Elevator scene', () => {
     expect(result.rightOverlaps).toEqual([]);
     expect(result.leftOutOfSide).toEqual([]);
     expect(result.rightOutOfSide).toEqual([]);
+    expect(result.missingExpectedLeft).toEqual([]);
+    expect(result.missingExpectedRight).toEqual([]);
     expect(result.leftAnimated.length).toBeGreaterThan(0);
     expect(result.rightAnimated.length).toBeGreaterThan(0);
 
