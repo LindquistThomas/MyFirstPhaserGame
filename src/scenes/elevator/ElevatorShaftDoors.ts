@@ -40,9 +40,13 @@ export class ElevatorShaftDoors {
     walkY: number,
     private readonly dockY: number,
   ) {
-    // Place the left doorway straddling the left shaft wall; same on right.
-    this.leftX = shaftLeftEdge;
-    this.rightX = shaftRightEdge;
+    // Place each doorway entirely on the hallway side of the shaft wall so
+    // the (purple) cavity never overlaps the shaft interior. The opening's
+    // inner edge is flush with the shaft wall; the 48 px width extends
+    // outward into the hallway.
+    const halfW = ElevatorShaftDoors.OPENING_WIDTH / 2;
+    this.leftX = shaftLeftEdge - halfW;
+    this.rightX = shaftRightEdge + halfW;
     this.openingBottom = walkY;
     this.openingTop = walkY - ElevatorShaftDoors.OPENING_HEIGHT;
 
