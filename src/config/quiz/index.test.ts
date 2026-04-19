@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import architectureQuizSource from '../../features/floors/architecture/quiz.ts?raw';
 import {
   QUIZ_DATA,
   QUIZ_DIFFICULTY_MIX,
@@ -127,5 +128,19 @@ describe('quiz constants', () => {
   it('QUIZ_REWARDS ordering: fail <= pass <= perfect', () => {
     expect(QUIZ_REWARDS.fail).toBeLessThanOrEqual(QUIZ_REWARDS.pass);
     expect(QUIZ_REWARDS.pass).toBeLessThanOrEqual(QUIZ_REWARDS.perfect);
+  });
+});
+
+describe('architecture quiz module organization', () => {
+  it('enforces the 2,000-line split trigger for architecture quiz.ts', () => {
+    const normalizedSource = architectureQuizSource.replace(/\r\n/g, '\n');
+    const withoutTrailingNewline = normalizedSource.endsWith('\n')
+      ? normalizedSource.slice(0, -1)
+      : normalizedSource;
+    const lineCount = withoutTrailingNewline === '' ? 0 : withoutTrailingNewline.split('\n').length;
+    expect(
+      lineCount,
+      'src/features/floors/architecture/quiz.ts crossed 2,000 lines; split it into topic modules (integration/cloud/patterns/soa + index.ts).',
+    ).toBeLessThanOrEqual(2000);
   });
 });
