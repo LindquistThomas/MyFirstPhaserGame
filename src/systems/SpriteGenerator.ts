@@ -8,6 +8,7 @@ import { generateDoorSprites } from './sprites/doors';
 import { generateParticleSprite } from './sprites/particles';
 import { generatePlantSprites } from './sprites/plants';
 import { generateInfoBoardSprite } from './sprites/infoBoard';
+import { generateLobbyPropSprites } from './sprites/lobbyProps';
 import { generateInfraSprites } from './sprites/infra';
 import { generateEnemySprites } from './sprites/enemies';
 import { generateGeirSprite } from './sprites/npcGeir';
@@ -29,6 +30,7 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateParticleSprite(scene);
   generatePlantSprites(scene);
   generateInfoBoardSprite(scene);
+  generateLobbyPropSprites(scene);
   generateInfraSprites(scene);
   generateEnemySprites(scene);
   generateGeirSprite(scene);
