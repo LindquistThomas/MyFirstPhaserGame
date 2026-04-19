@@ -176,6 +176,7 @@ describe('HUD', () => {
       g.setPosition.mock.calls.some(([x, y]) => x === GAME_WIDTH - 24 && y === 22),
     );
     expect(muteGraphics).toBeDefined();
+    if (!muteGraphics) throw new Error('muteGraphics not found');
     const clearCountBefore = muteGraphics.clear.mock.calls.length;
     eventBus.emit('audio:mute-changed', true);
     expect(muteGraphics.clear.mock.calls.length).toBeGreaterThan(clearCountBefore);
