@@ -68,8 +68,9 @@ test.describe('Token collection', () => {
       const tokenIndex = token.getData('tokenIndex') as number;
 
       const player = scene['player'] as { sprite: unknown };
-      // Protected method — TypeScript visibility is stripped at runtime.
-      (scene['onAUCollect'] as (p: unknown, t: unknown) => void).call(scene, player.sprite, token);
+      // The collection handler lives on LevelTokenManager (private arrow fn).
+      const tokenMgr = scene['tokenMgr'] as { onCollect: (p: unknown, t: unknown) => void };
+      tokenMgr.onCollect(player.sprite, token);
 
       const after = progression.getTotalAU();
       return {
