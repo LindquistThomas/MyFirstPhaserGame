@@ -100,7 +100,6 @@ describe('ProductDoorManager proximity + open-on-approach', () => {
 
     manager = new ProductDoorManager({
       scene,
-      progression: { isFloorUnlocked: () => true } as never,
       player: { sprite: { body: { bottom: 0 } } } as never,
       productsWalkY: WALK_Y,
       isPlayerOnElevator: () => onElevator,

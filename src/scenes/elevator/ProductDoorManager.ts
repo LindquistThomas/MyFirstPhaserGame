@@ -1,7 +1,5 @@
 import * as Phaser from 'phaser';
-import { FLOORS } from '../../config/gameConfig';
 import { Player } from '../../entities/Player';
-import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { theme } from '../../style/theme';
 import { InteractiveDoor } from '../../ui/InteractiveDoor';
 
@@ -18,7 +16,6 @@ export interface ProductDoor {
 
 export interface ProductDoorManagerDeps {
   scene: Phaser.Scene;
-  progression: ProgressionSystem;
   player: Player;
   productsWalkY: number;
   /** Returns true while the player is standing on the elevator cab. */
@@ -96,7 +93,6 @@ export class ProductDoorManager {
   /** The door the player is currently close enough to interact with, if any. */
   private findNearDoor(): ProductDoor | undefined {
     if (this.deps.isPlayerOnElevator()) return undefined;
-    if (!this.deps.progression.isFloorUnlocked(FLOORS.PRODUCTS)) return undefined;
 
     const body = this.deps.player.sprite.body as Phaser.Physics.Arcade.Body;
     if (Math.abs(body.bottom - this.deps.productsWalkY) > FLOOR_DETECTION_TOLERANCE) {

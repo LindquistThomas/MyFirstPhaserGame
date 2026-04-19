@@ -123,7 +123,6 @@ export class ElevatorScene extends Phaser.Scene {
     const productsWalkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
     this.doors = new ProductDoorManager({
       scene: this,
-      progression: this.progression,
       player: this.player,
       productsWalkY,
       isPlayerOnElevator: () => this.elevatorCtrl.isOnElevator,
