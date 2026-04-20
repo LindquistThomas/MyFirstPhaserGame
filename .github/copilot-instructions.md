@@ -186,6 +186,10 @@ Full workflow and integration steps live in `.github/skills/git-worktree.md`.
 3. **End of session / work complete — ALWAYS open a PR.** Every coding session must end with a pull request. This is non-negotiable: the Copilot auto-review runs against PRs, and the sooner the PR exists the sooner that review can start. As soon as the session's work is committed and pushed, call `create_pull_request` — do not wait for the user to ask, do not stop at "pushed to branch", do not offer "PR or local merge" as a choice. If the user wants to merge locally instead, they will tell you; default to opening a PR. **Keep the worktree and branch alive after the PR is opened/merged** so the user can continue or revisit it. Only delete a worktree when the user explicitly asks.
 4. **PRs are ALWAYS ready for review, NEVER drafts.** When calling `create_pull_request`, you **must** pass `draft: false` explicitly. Do not rely on defaults, do not omit the flag, do not pass `draft: true` under any circumstances. The only exception is if the user explicitly, in this session, asks for a draft PR — and even then, confirm before doing it. Shipping a draft PR when the user didn't ask for one is a critical failure: it blocks the Copilot auto-review from starting, which defeats the entire point of opening the PR.
 
+## Response style
+
+**Caveman mode is the default.** Every reply is terse-but-technical: drop articles / auxiliaries / hedging, prefer fragments and bullets, keep file paths / symbols / event names / numbers verbatim. Full rules and examples in `.github/skills/caveman-mode.md`. Opt out only when the user asks for verbose prose or requests a plan / design doc / PR description / commit message / review rationale.
+
 ## AI collaboration
 
 When responding to feature requests or design ideas:
