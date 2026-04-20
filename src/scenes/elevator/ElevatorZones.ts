@@ -13,6 +13,7 @@ export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
 export const GEIR_F4_ID = 'exec-geir-harald';
 export const RECEPTION_GREETING_ID = 'reception-greeting';
+export const SOFA_SIT_ID = 'sofa-sit';
 
 const BOARD_RADIUS = 70;
 /**
@@ -53,6 +54,18 @@ export interface ElevatorZonesOptions {
    * there is no info icon or dialog for this zone.
    */
   receptionBubble?: Phaser.GameObjects.Container;
+  /**
+   * Optional proximity rect for the lobby sofa. Players inside this rect
+   * see the "Press Enter to sit" prompt; the scene owns the sit/stand
+   * toggle itself (this class only registers the zone + bubble toggle).
+   */
+  sofaBounds?: { x: number; y: number; width: number; height: number };
+  /**
+   * Prompt bubble toggled by the sofa zone. Start hidden; zone:enter shows
+   * it, zone:exit hides it. The scene updates the bubble's label when the
+   * seated state changes via {@link ElevatorSceneLayout.setSofaPromptLabel}.
+   */
+  sofaPromptBubble?: Phaser.GameObjects.Container;
 }
 
 /**
@@ -119,6 +132,18 @@ export class ElevatorZones {
       );
     }
 
+    // --- Sofa zone — active when the player is near the lobby sofa.
+    //     The scene owns the sit/stand toggle; this zone just gates the
+    //     prompt bubble's visibility.
+    if (this.opts.sofaBounds) {
+      const sb = this.opts.sofaBounds;
+      const rect = new Phaser.Geom.Rectangle(sb.x, sb.y, sb.width, sb.height);
+      zoneManager.register(SOFA_SIT_ID, () =>
+        !this.opts.isPlayerOnElevator()
+          && Phaser.Geom.Rectangle.Contains(rect, player.sprite.x, player.sprite.y),
+      );
+    }
+
     this.lobbyBoardIcon = new InfoIcon(
       scene,
       INFO_ICON_X, INFO_ICON_Y,
@@ -148,6 +173,8 @@ export class ElevatorZones {
         this.geirInfoIcon?.setVisible(true);
       } else if (zoneId === RECEPTION_GREETING_ID) {
         this.opts.receptionBubble?.setVisible(true);
+      } else if (zoneId === SOFA_SIT_ID) {
+        this.opts.sofaPromptBubble?.setVisible(true);
       }
     });
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
@@ -160,6 +187,8 @@ export class ElevatorZones {
         this.geirInfoIcon?.setVisible(false);
       } else if (zoneId === RECEPTION_GREETING_ID) {
         this.opts.receptionBubble?.setVisible(false);
+      } else if (zoneId === SOFA_SIT_ID) {
+        this.opts.sofaPromptBubble?.setVisible(false);
       }
     });
   }
@@ -218,6 +247,18 @@ export class ElevatorZones {
         width: rb.width,
         height: rb.height,
         active: activeId === RECEPTION_GREETING_ID,
+      });
+    }
+    if (this.opts.sofaBounds) {
+      const sb = this.opts.sofaBounds;
+      out.push({
+        id: SOFA_SIT_ID,
+        shape: 'rect',
+        x: sb.x,
+        y: sb.y,
+        width: sb.width,
+        height: sb.height,
+        active: activeId === SOFA_SIT_ID,
       });
     }
     return out;

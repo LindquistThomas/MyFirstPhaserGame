@@ -8,7 +8,7 @@ import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { DialogController } from '../../ui/DialogController';
 import { ZoneManager } from '../../systems/ZoneManager';
-import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID, GEIR_F4_ID } from './ElevatorZones';
+import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID, GEIR_F4_ID, SOFA_SIT_ID } from './ElevatorZones';
 import { ElevatorController } from './ElevatorController';
 import { ElevatorSceneLayout, ShaftExtent } from './ElevatorSceneLayout';
 import { ProductDoorManager, ProductDoor } from './ProductDoorManager';
@@ -38,6 +38,8 @@ export class ElevatorScene extends Phaser.Scene {
   private gameState!: GameStateManager;
   private progression!: ProgressionSystem;
   private isTransitioning = false;
+  /** True while the player is seated on the lobby sofa. */
+  private isSittingOnSofa = false;
 
   private elevatorButtons?: ElevatorButtons;
 
@@ -172,6 +174,8 @@ export class ElevatorScene extends Phaser.Scene {
       geirBounds: this.layout.getGeirBounds(),
       receptionBounds: this.layout.getReceptionBounds(),
       receptionBubble: this.layout.getReceptionistBubble(),
+      sofaBounds: this.layout.getSofaBounds(),
+      sofaPromptBubble: this.layout.getSofaPromptBubble(),
     });
 
     // Cable + LEDs need an initial tick so they render before update() runs.
@@ -320,13 +324,37 @@ export class ElevatorScene extends Phaser.Scene {
 
     if (this.dialogs.isOpen) return;
 
+    // Emit zone:enter / zone:exit events first so sit-zone state is fresh.
+    this.zoneManager.update();
+    const activeZone = this.zoneManager.getActiveZone();
+
+    // --- Sofa sit/stand toggle. Runs BEFORE the generic info-dialog open
+    //     so pressing Enter at the sofa always triggers sitting (and never
+    //     a dialog — there is no 'sofa-sit' info content by design).
+    if (interactPressed && (activeZone === SOFA_SIT_ID || this.isSittingOnSofa)) {
+      this.toggleSitOnSofa();
+      return;
+    }
+
+    // While seated, the player is frozen — skip physics-input processing,
+    // pin them to the sofa, and let the camera continue to follow. Player
+    // can only stand up via the sit/stand toggle above.
+    if (this.isSittingOnSofa) {
+      const seat = this.layout.getSofaSitPoint();
+      if (seat) this.player.sprite.setX(seat.x);
+      this.player.sprite.setVelocityX(0);
+      this.hud.update();
+      // Keep elevator/doors/LEDs alive so the world doesn't freeze.
+      const cabY = this.elevatorCtrl.elevator.getY();
+      for (const door of this.layout.shaftDoors) door.update(cabY, delta);
+      this.layout.updateShaftCable(this.elevatorCtrl);
+      this.layout.updateFloorLEDs(this.elevatorCtrl);
+      return;
+    }
+
     this.player.update(delta);
     this.hud.update();
 
-    // Emit zone:enter / zone:exit events; ElevatorZones' subscribers react.
-    this.zoneManager.update();
-
-    const activeZone = this.zoneManager.getActiveZone();
     if (infoPressed && activeZone && !this.dialogs.isOpen) {
       this.dialogs.open(activeZone);
       return;
@@ -369,6 +397,30 @@ export class ElevatorScene extends Phaser.Scene {
     this.progression.setCurrentFloor(FLOORS.PRODUCTS);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
+  }
+
+  /**
+   * Toggle the player's seated state on the lobby sofa. Sitting down snaps
+   * them to the sofa sit point, halts their movement, and accelerates the
+   * lobby wall clock so time "passes faster" while they rest. Standing up
+   * restores normal movement and real-time clock speed.
+   */
+  private toggleSitOnSofa(): void {
+    if (this.isSittingOnSofa) {
+      this.isSittingOnSofa = false;
+      this.layout.setClockSpeed(1);
+      this.layout.setSofaPromptLabel('[Enter] Sit');
+      return;
+    }
+    const seat = this.layout.getSofaSitPoint();
+    if (!seat) return;
+    this.isSittingOnSofa = true;
+    // Snap to seat; gravity + the floor collider keep the y-coord honest.
+    this.player.sprite.setX(seat.x);
+    this.player.sprite.setVelocity(0, 0);
+    // 10× real-time while seated — an ordinary moment feels like it flies by.
+    this.layout.setClockSpeed(10);
+    this.layout.setSofaPromptLabel('[Enter] Stand up');
   }
 
   private enterFloor(floorId: FloorId, direction: 'left' | 'right' = 'left'): void {

@@ -52,6 +52,28 @@ export class ElevatorSceneLayout {
    */
   private geirBounds?: { x: number; y: number; width: number; height: number };
 
+  /** World-space bounds of the lobby sofa (proximity for the sit action). */
+  private sofaBounds?: { x: number; y: number; width: number; height: number };
+
+  /** World-space point where the player should stand while seated on the sofa. */
+  private sofaSitPoint?: { x: number; y: number };
+
+  /** "Press Enter to sit / stand up" prompt bubble floated above the sofa. */
+  private sofaPromptBubble?: Phaser.GameObjects.Container;
+
+  /** Text object inside the sofa prompt bubble (for swapping sit/stand labels). */
+  private sofaPromptText?: Phaser.GameObjects.Text;
+
+  /** Millisecond "virtual" wall-clock time the lobby clock displays. */
+  private clockVirtualMs = 0;
+
+  /**
+   * Clock render speed multiplier. 1 = real time; >1 fast-forwards the
+   * virtual time used by the lobby clock. Changed via {@link setClockSpeed}
+   * when the player sits on the sofa.
+   */
+  private clockSpeedMultiplier = 1;
+
   /**
    * World-space bounds of the receptionist desk proximity area in the lobby,
    * for the "Hello!" greeting zone. Populated in
@@ -115,6 +137,45 @@ export class ElevatorSceneLayout {
   /** The receptionist's speech-bubble container — shown on zone:enter. */
   getReceptionistBubble(): Phaser.GameObjects.Container | undefined {
     return this.receptionistBubble;
+  }
+
+  /**
+   * World-space bounds of the lobby sofa proximity area. Consumed by
+   * {@link ElevatorZones} to register the "Press Enter to sit" zone.
+   */
+  getSofaBounds(): { x: number; y: number; width: number; height: number } | undefined {
+    return this.sofaBounds;
+  }
+
+  /** The sofa sit prompt bubble — shown on zone:enter, label swaps on sit/stand. */
+  getSofaPromptBubble(): Phaser.GameObjects.Container | undefined {
+    return this.sofaPromptBubble;
+  }
+
+  /**
+   * World-space point where the player should stand/sit while on the sofa.
+   * Returns undefined if the sofa hasn't been placed (defensive for
+   * non-elevator scenes that might reuse this layout helper).
+   */
+  getSofaSitPoint(): { x: number; y: number } | undefined {
+    return this.sofaSitPoint;
+  }
+
+  /**
+   * Update the sofa prompt text — called by the scene when the player's
+   * seated state toggles so the bubble reads "sit" vs "stand up".
+   */
+  setSofaPromptLabel(label: string): void {
+    this.sofaPromptText?.setText(label);
+  }
+
+  /**
+   * Multiplier applied to the lobby wall clock's virtual time. 1 = real
+   * time; >1 fast-forwards (e.g. 10 = 10× faster). Used to make time feel
+   * like it passes faster while the player is seated on the sofa.
+   */
+  setClockSpeed(multiplier: number): void {
+    this.clockSpeedMultiplier = Math.max(0, multiplier);
   }
 
   updateFloorLEDs(controller: ElevatorController | undefined): void {
@@ -840,7 +901,25 @@ export class ElevatorSceneLayout {
     // small digital HH:MM:SS readout below). Anchored to lobbyY band.
     this.createLobbyClock(1000, lobbyY + 75, 34);
     scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
-    scene.add.image(960, floorBottom - 30, 'sofa').setDepth(3);
+    const sofaX = 960;
+    const sofaY = floorBottom - 30;
+    scene.add.image(sofaX, sofaY, 'sofa').setDepth(3);
+    // Player sits at sofa x; y is handled by the floor collider (gravity
+    // will park them on the lobby slab). Keep x here as the snap target.
+    this.sofaSitPoint = { x: sofaX, y: sofaY };
+    // Proximity rect covers the full width of the sofa and a bit of the
+    // walkway in front so you only need to be near it — not pixel-perfect.
+    this.sofaBounds = { x: sofaX - 80, y: floorBottom - 70, width: 160, height: 100 };
+    // Prompt bubble — starts hidden; toggled by the sofa zone and retexted
+    // by the scene when the player sits down / stands up.
+    this.sofaPromptBubble = this.createSpeechBubble(
+      scene, sofaX, floorBottom - 70, '[Enter] Sit',
+    );
+    // Second child of the bubble container is the text object (see
+    // createSpeechBubble: children are [gfx, txt]). Cache it so we can
+    // swap the label when the seated state changes.
+    this.sofaPromptText = this.sofaPromptBubble.list[1] as Phaser.GameObjects.Text;
+    this.sofaPromptBubble.setVisible(false);
     scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
     scene.add.image(1120, floorBottom - 48, 'floor_lamp').setDepth(3);
     scene.add.image(1210, floorBottom - 40, 'plant_tall').setDepth(3);
@@ -914,8 +993,15 @@ export class ElevatorSceneLayout {
       hands.strokePath();
     };
 
+    // Virtual-clock state: starts in sync with the real system clock and
+    // advances by `tickMs * speedMultiplier` each tick. A higher speed makes
+    // time "feel like it passes faster" — used when the player sits on the
+    // sofa to let them skim through a slow moment in the lobby.
+    this.clockVirtualMs = Date.now();
+    const tickMs = 200;
+
     const render = (): void => {
-      const now = new Date();
+      const now = new Date(this.clockVirtualMs);
       const hh = now.getHours();
       const mm = now.getMinutes();
       const ss = now.getSeconds();
@@ -932,7 +1018,14 @@ export class ElevatorSceneLayout {
     };
 
     render();
-    const timer = scene.time.addEvent({ delay: 1000, loop: true, callback: render });
+    const timer = scene.time.addEvent({
+      delay: tickMs,
+      loop: true,
+      callback: () => {
+        this.clockVirtualMs += tickMs * this.clockSpeedMultiplier;
+        render();
+      },
+    });
 
     // Tear down the timer on scene shutdown so it doesn't leak across
     // scene restarts (EventBus-singleton-style hazard).
