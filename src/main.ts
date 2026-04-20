@@ -20,6 +20,7 @@ import { DebugPlugin } from './plugins/DebugPlugin';
 import { InputService } from './input';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
+import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';
 
 // Render all Text objects at 2x internal resolution so glyphs stay crisp
 // after the canvas is FIT-scaled to the viewport. Applies to both
@@ -64,6 +65,12 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+  // Required so the pillarbox backdrop (src/ui/pillarboxBackdrop.ts) can
+  // `drawImage` the live WebGL canvas. Without this, reads from the GL
+  // context yield blank frames.
+  render: {
+    preserveDrawingBuffer: true,
+  },
   scene: [BootScene, MenuScene, ElevatorScene, PlatformTeamScene, ArchitectureTeamScene, FinanceTeamScene, ProductLeadershipScene, CustomerSuccessScene, ExecutiveSuiteScene, ProductIsyProjectControlsScene, ProductIsyBeskrivelseScene, ProductIsyRoadScene, ProductAdminLisensScene],
   plugins: {
     scene: [{ key: 'InputService', plugin: InputService, mapping: 'inputs' },
@@ -92,3 +99,11 @@ const gameWindow = window as unknown as {
 };
 gameWindow.__game = game;
 gameWindow.__testHooks = { QuizDialog, canRetryQuiz };
+
+// Kick the pillarbox backdrop once the first frame has rendered, so the
+// initial draw copies actual scene pixels rather than a blank buffer. The
+// `.ready` class fades it in (see #pillarbox-bg CSS in index.html).
+game.events.once(Phaser.Core.Events.POST_RENDER, () => {
+  startPillarboxBackdrop(game);
+  document.getElementById('pillarbox-bg')?.classList.add('ready');
+});
