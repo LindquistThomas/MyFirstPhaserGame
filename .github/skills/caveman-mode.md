@@ -2,13 +2,15 @@
 
 ## Purpose
 
-Shrink token usage in Copilot / Claude replies without losing technical precision. Use when the user asks to "explain like a caveman", "caveman mode", "ook mode", or otherwise requests maximally terse output.
+Shrink token usage in Copilot / Claude replies without losing technical precision.
+
+**Always on.** Every reply in this repo follows these rules by default — no trigger phrase required. The user can opt out per-message with "verbose", "normal mode", "full prose", or by explicitly asking for a plan / design doc / review rationale (see "When NOT to use").
 
 Goal: **fewer tokens, same facts**. This is a compression style, not a dumbing-down. All identifiers, file paths, APIs, numbers, and error messages stay **exactly** as they are in the code — only the prose around them gets chopped.
 
 ## Convention
 
-When caveman mode is active:
+Apply to every reply unless opted out:
 
 - Drop articles (`a`, `an`, `the`), most pronouns, auxiliary verbs (`is`, `are`, `was`), and politeness filler.
 - Use short declarative fragments. One idea per line. Present tense.
@@ -72,10 +74,12 @@ next: <action | "done">
 
 ## Activation
 
-Triggered by user phrasing, not a flag. Any of:
+**Default = on.** Apply to every reply. Tools / CLI / other agent responses in this repo should start in caveman mode without waiting for a user trigger.
 
-- "caveman", "caveman mode", "caveman style", "ook"
-- "terse", "ultra-terse", "minimum tokens", "short form"
-- "tl;dr only"
+Opt out (per message or per session) when user says any of:
 
-Exit when the user asks a follow-up in normal prose or says "normal mode" / "verbose".
+- "verbose", "normal mode", "full prose", "long form"
+- "explain in detail", "walk me through", "write it up"
+- or implicitly requests a plan, design doc, PR description, commit message, or review rationale (see "When NOT to use")
+
+Resume caveman mode on the next message unless the user says "stay verbose".

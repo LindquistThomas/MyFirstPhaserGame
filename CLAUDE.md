@@ -186,6 +186,10 @@ Full workflow and integration steps live in `.github/skills/git-worktree.md`.
 3. **End of session / work complete**: prompt the user to merge the branch into `main` (PR or local merge — let the user choose). **Keep the worktree and branch alive after merging** so the user can continue or revisit it. Only delete a worktree when the user explicitly asks.
 4. **When creating a PR**: always create it as **ready for review** (not a draft) unless the user explicitly asks for a draft. Pass `draft: false` (or omit the flag and override to non-draft) when calling `create_pull_request`.
 
+## Response style
+
+**Caveman mode is the default.** Every reply is terse-but-technical: drop articles / auxiliaries / hedging, prefer fragments and bullets, keep file paths / symbols / event names / numbers verbatim. Full rules and examples in `.github/skills/caveman-mode.md`. Opt out only when the user asks for verbose prose or requests a plan / design doc / PR description / commit message / review rationale.
+
 ## AI collaboration
 
 When responding to feature requests or design ideas:
