@@ -18,6 +18,9 @@
  * allocations, easy to unit-test. See `sceneBackdrop.test.ts`.
  */
 import type * as Phaser from 'phaser';
+import { drawFloorPattern, type FloorPatternId } from './floorPatterns';
+
+export type { FloorPatternId } from './floorPatterns';
 
 export interface SceneBackdropTheme {
   /** Base fill (same as legacy `floorData.theme.backgroundColor`). */
@@ -32,6 +35,16 @@ export interface SceneBackdropOptions {
   width: number;
   height: number;
   theme: SceneBackdropTheme;
+  /**
+   * Which decorative pattern to overlay between the gradient and the
+   * vignette. Defaults to the quiet 'grid' used by the legacy look.
+   */
+  pattern?: FloorPatternId;
+  /**
+   * Seed passed to stochastic patterns (wood grain, terrazzo). Using the
+   * floor id keeps the pattern stable across reloads but distinct per floor.
+   */
+  patternSeed?: number;
   /**
    * Called after the base layers so callers can paint floor-specific
    * motifs (silhouettes, skyline prints, etc.) without needing to own
@@ -61,7 +74,7 @@ export function drawSceneBackdrop(
   scene: Phaser.Scene,
   opts: SceneBackdropOptions,
 ): Phaser.GameObjects.Graphics {
-  const { width, height, theme, drawAccents } = opts;
+  const { width, height, theme, drawAccents, pattern = 'grid', patternSeed = 0 } = opts;
   const g = scene.add.graphics().setDepth(0);
 
   // 1. Vertical gradient — approximate via 32 horizontal bands. Cheaper
@@ -78,14 +91,9 @@ export function drawSceneBackdrop(
     g.fillRect(0, i * bandH, width, bandH + 1);
   }
 
-  // 2. Soft grid — much quieter than the legacy 0.15 alpha so decor dominates.
-  g.lineStyle(1, theme.wallColor, 0.08);
-  for (let x = 64; x < width; x += 64) {
-    g.lineBetween(x, 0, x, height);
-  }
-  for (let y = 64; y < height; y += 64) {
-    g.lineBetween(0, y, width, y);
-  }
+  // 2. Themed pattern — 'grid' is the quiet default; floors may opt in
+  // to blueprint / wood / terrazzo / dots for identity.
+  drawFloorPattern(pattern, g, width, height, theme, patternSeed);
 
   // 3. Vignette — four edge fades using triangle strips so the darkening
   // tapers off toward the centre instead of reading as bars. 12 strips

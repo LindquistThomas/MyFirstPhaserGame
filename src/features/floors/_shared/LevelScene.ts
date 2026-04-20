@@ -15,8 +15,21 @@ import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
-import { drawSceneBackdrop } from './sceneBackdrop';
+import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
 import { theme } from '../../../style/theme';
+
+/**
+ * Decorative background pattern assignment per floor. Each motif echoes
+ * the floor's identity without clashing with decor (see `floorPatterns.ts`).
+ * Floors not listed fall back to the quiet default grid.
+ */
+const FLOOR_PATTERNS: Partial<Record<FloorId, FloorPatternId>> = {
+  [FLOORS.LOBBY]: 'grid',
+  [FLOORS.PLATFORM_TEAM]: 'blueprint',
+  [FLOORS.BUSINESS]: 'wood',
+  [FLOORS.EXECUTIVE]: 'terrazzo',
+  [FLOORS.PRODUCTS]: 'dots',
+};
 
 export interface RoomElevator {
   x: number;
@@ -239,8 +252,19 @@ export class LevelScene extends Phaser.Scene {
         wallColor: this.floorData.theme.wallColor,
         platformColor: this.floorData.theme.platformColor,
       },
+      pattern: this.getBackgroundPattern(),
+      patternSeed: this.floorId,
       drawAccents: (g) => this.drawBackgroundAccents(g),
     });
+  }
+
+  /**
+   * Per-floor decorative pattern id. Default picks a motif matching the
+   * floor's identity; subclasses can override to use a different pattern
+   * or fall back to the quiet legacy grid.
+   */
+  protected getBackgroundPattern(): FloorPatternId {
+    return FLOOR_PATTERNS[this.floorId] ?? 'grid';
   }
 
   /**
