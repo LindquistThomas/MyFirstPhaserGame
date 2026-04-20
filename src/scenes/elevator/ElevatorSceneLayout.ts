@@ -52,6 +52,16 @@ export class ElevatorSceneLayout {
    */
   private geirBounds?: { x: number; y: number; width: number; height: number };
 
+  /**
+   * World-space bounds of the receptionist desk proximity area in the lobby,
+   * for the "Hello!" greeting zone. Populated in
+   * {@link createLobbyDecorations}.
+   */
+  private receptionBounds?: { x: number; y: number; width: number; height: number };
+
+  /** Container holding the receptionist's "Hello!" speech bubble. Hidden by default. */
+  private receptionistBubble?: Phaser.GameObjects.Container;
+
   constructor(private readonly deps: ElevatorSceneLayoutDeps) {
     this.platforms = deps.scene.physics.add.staticGroup();
   }
@@ -92,6 +102,19 @@ export class ElevatorSceneLayout {
    */
   getGeirBounds(): { x: number; y: number; width: number; height: number } | undefined {
     return this.geirBounds;
+  }
+
+  /**
+   * World-space bounds of the reception desk proximity area. Consumed by
+   * {@link ElevatorZones} to register the "Hello!" greeting zone.
+   */
+  getReceptionBounds(): { x: number; y: number; width: number; height: number } | undefined {
+    return this.receptionBounds;
+  }
+
+  /** The receptionist's speech-bubble container — shown on zone:enter. */
+  getReceptionistBubble(): Phaser.GameObjects.Container | undefined {
+    return this.receptionistBubble;
   }
 
   updateFloorLEDs(controller: ElevatorController | undefined): void {
@@ -782,10 +805,45 @@ export class ElevatorSceneLayout {
     const floorBottom = lobbyY + FLOOR_H;
 
     // Left walkway — reception side.
-    // Wall-mounted logo (anchored to lobbyY band, not floorBottom).
-    scene.add.image(260, lobbyY + 50, 'lobby_logo').setDepth(2);
+    // Wall-mounted Norconsult Digital sign (anchored to the lobby band).
+    const signY = lobbyY + 50;
+    const signX = 260;
+    scene.add.image(signX, signY, 'lobby_logo').setDepth(2);
+    scene.add.text(signX + 60, signY - 6, 'Norconsult', {
+      fontFamily: 'monospace',
+      fontSize: '18px',
+      color: '#f5f5f5',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(3);
+    scene.add.text(signX + 60, signY + 14, 'Digital', {
+      fontFamily: 'monospace',
+      fontSize: '14px',
+      color: theme.color.css.textAccent,
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(3);
+
     scene.add.image(60, floorBottom - 40, 'plant_tall').setDepth(3);
-    scene.add.image(200, floorBottom - 45, 'reception_desk').setDepth(3);
+    scene.add.image(100, floorBottom - 32, 'plant_small').setDepth(3);
+
+    // Reception desk with the seated receptionist tucked behind it.
+    const deskX = 200;
+    const deskY = floorBottom - 45;
+    // Seated behind counter. Desk texture is 160x90 so the counter top
+    // sits around deskY - 35; place her head a few px above that so her
+    // upper body clears while the counter occludes the rest.
+    scene.add.image(deskX, deskY - 30, 'receptionist').setDepth(2);
+    scene.add.image(deskX, deskY, 'reception_desk').setDepth(3);
+
+    // Blue entry rug in front of the desk (reuse welcome_mat, tinted).
+    scene.add.image(deskX + 30, floorBottom - 6, 'welcome_mat')
+      .setDepth(2)
+      .setTint(0x1a237e);
+
+    // Proximity area for the "Hello!" bubble (centred on the desk).
+    this.receptionBounds = { x: deskX - 80, y: deskY - 60, width: 160, height: 120 };
+    this.receptionistBubble = this.createSpeechBubble(scene, deskX + 40, deskY - 90, 'Hello!');
+    this.receptionistBubble.setVisible(false);
+
     scene.add.image(355, floorBottom - 60, 'info_board').setDepth(3);
     scene.add.image(425, floorBottom - 32, 'plant_small').setDepth(3);
     scene.add.image(485, floorBottom - 40, 'plant_tall').setDepth(11);
@@ -794,11 +852,55 @@ export class ElevatorSceneLayout {
     // Wall-mounted clock (anchored to lobbyY band).
     scene.add.image(1000, lobbyY + 60, 'wall_clock').setDepth(2);
     scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
-    scene.add.image(870, floorBottom - 32, 'plant_small').setDepth(11);
+    // Moved from x=870 -> x=820 so it no longer overlaps the sofa.
+    scene.add.image(820, floorBottom - 32, 'plant_small').setDepth(11);
     scene.add.image(960, floorBottom - 30, 'sofa').setDepth(3);
     scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
     scene.add.image(1120, floorBottom - 48, 'floor_lamp').setDepth(3);
     scene.add.image(1210, floorBottom - 40, 'plant_tall').setDepth(3);
+  }
+
+  /**
+   * Build a small rounded-rect speech bubble with a downward tail, anchored
+   * at (x, y) as the bottom-centre of the tail. Used for the receptionist's
+   * "Hello!" greeting — purely decorative, no input.
+   */
+  private createSpeechBubble(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    message: string,
+  ): Phaser.GameObjects.Container {
+    const padX = 10;
+    const padY = 6;
+    const txt = scene.make.text({
+      x: 0,
+      y: 0,
+      text: message,
+      style: {
+        fontFamily: 'monospace',
+        fontSize: '16px',
+        color: '#102027',
+        fontStyle: 'bold',
+      },
+    }).setOrigin(0.5);
+    const w = Math.ceil(txt.width) + padX * 2;
+    const h = Math.ceil(txt.height) + padY * 2;
+
+    const gfx = scene.add.graphics();
+    gfx.fillStyle(0xffffff, 0.96);
+    gfx.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
+    gfx.lineStyle(2, 0x102027, 1);
+    gfx.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
+    // Downward tail.
+    gfx.fillStyle(0xffffff, 0.96);
+    gfx.fillTriangle(-6, h / 2 - 1, 6, h / 2 - 1, 0, h / 2 + 8);
+    gfx.lineStyle(2, 0x102027, 1);
+    gfx.strokeTriangle(-6, h / 2 - 1, 6, h / 2 - 1, 0, h / 2 + 8);
+
+    const container = scene.add.container(x, y - h / 2 - 6, [gfx, txt]);
+    container.setDepth(12);
+    return container;
   }
 
   /**

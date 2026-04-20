@@ -12,6 +12,7 @@ import type { DebugZone } from '../../features/floors/_shared/LevelZoneSetup';
 export const ELEVATOR_INFO_ID = 'architecture-elevator';
 export const WELCOME_BOARD_ID = 'welcome-board';
 export const GEIR_F4_ID = 'exec-geir-harald';
+export const RECEPTION_GREETING_ID = 'reception-greeting';
 
 const BOARD_RADIUS = 70;
 /**
@@ -41,6 +42,17 @@ export interface ElevatorZonesOptions {
    * scene variants).
    */
   geirBounds?: { x: number; y: number; width: number; height: number };
+  /**
+   * Optional proximity rect for the reception desk. Players inside this
+   * area see the receptionist's "Hello!" speech bubble.
+   */
+  receptionBounds?: { x: number; y: number; width: number; height: number };
+  /**
+   * Speech-bubble container toggled by the reception-greeting zone. Start
+   * hidden; zone:enter shows it, zone:exit hides it. Purely cosmetic —
+   * there is no info icon or dialog for this zone.
+   */
+  receptionBubble?: Phaser.GameObjects.Container;
 }
 
 /**
@@ -95,6 +107,18 @@ export class ElevatorZones {
       ) < BOARD_RADIUS,
     );
 
+    // --- Reception greeting zone — registered AFTER welcome board so
+    //     getActiveZone() prefers the welcome board on any overlap.
+    //     Decorative only: no info icon, no dialog — just toggles the
+    //     receptionist's speech bubble.
+    if (this.opts.receptionBounds) {
+      const rb = this.opts.receptionBounds;
+      const rect = new Phaser.Geom.Rectangle(rb.x, rb.y, rb.width, rb.height);
+      zoneManager.register(RECEPTION_GREETING_ID, () =>
+        Phaser.Geom.Rectangle.Contains(rect, player.sprite.x, player.sprite.y),
+      );
+    }
+
     this.lobbyBoardIcon = new InfoIcon(
       scene,
       INFO_ICON_X, INFO_ICON_Y,
@@ -122,6 +146,8 @@ export class ElevatorZones {
         this.lobbyBoardIcon?.setVisible(true);
       } else if (zoneId === GEIR_F4_ID) {
         this.geirInfoIcon?.setVisible(true);
+      } else if (zoneId === RECEPTION_GREETING_ID) {
+        this.opts.receptionBubble?.setVisible(true);
       }
     });
     lifecycle.bindEventBus('zone:exit', (zoneId) => {
@@ -132,6 +158,8 @@ export class ElevatorZones {
         this.lobbyBoardIcon?.setVisible(false);
       } else if (zoneId === GEIR_F4_ID) {
         this.geirInfoIcon?.setVisible(false);
+      } else if (zoneId === RECEPTION_GREETING_ID) {
+        this.opts.receptionBubble?.setVisible(false);
       }
     });
   }
@@ -178,6 +206,18 @@ export class ElevatorZones {
         width: gb.width,
         height: gb.height,
         active: activeId === GEIR_F4_ID,
+      });
+    }
+    if (this.opts.receptionBounds) {
+      const rb = this.opts.receptionBounds;
+      out.push({
+        id: RECEPTION_GREETING_ID,
+        shape: 'rect',
+        x: rb.x,
+        y: rb.y,
+        width: rb.width,
+        height: rb.height,
+        active: activeId === RECEPTION_GREETING_ID,
       });
     }
     return out;

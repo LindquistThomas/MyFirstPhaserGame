@@ -56,54 +56,43 @@ function generateReceptionDesk(scene: Phaser.Scene): void {
 
 function generateLobbyLogo(scene: Phaser.Scene): void {
   const g = scene.make.graphics({ x: 0, y: 0 }, false);
-  const w = 240, h = 80;
+  const w = 320, h = 72;
 
-  // Backing plaque
-  g.fillStyle(0x0a1422, 0.85);
-  g.fillRoundedRect(0, 0, w, h, 6);
+  // Backing plaque — brushed-metal look with brand-blue top band.
+  g.fillStyle(0x0a1422, 0.9);
+  g.fillRoundedRect(0, 0, w, h, 8);
+  g.fillStyle(0x1a237e, 0.9);
+  g.fillRoundedRect(0, 0, w, 14, { tl: 8, tr: 8, bl: 0, br: 0 });
   g.lineStyle(2, theme.color.ui.border, 0.9);
-  g.strokeRoundedRect(1, 1, w - 2, h - 2, 6);
+  g.strokeRoundedRect(1, 1, w - 2, h - 2, 8);
 
-  // Building silhouette (stepped skyline on the left)
+  // Small accent tick-marks in the top band for visual rhythm.
+  g.fillStyle(theme.color.ui.accent, 0.8);
+  for (let i = 0; i < 6; i++) {
+    g.fillRect(14 + i * 10, 5, 4, 4);
+  }
+
+  // Stepped skyline accent on the left of the plaque body.
   g.fillStyle(theme.color.ui.accent);
-  g.fillRect(16, 28, 10, 40);
-  g.fillRect(28, 20, 12, 48);
-  g.fillRect(42, 12, 14, 56);
-  g.fillRect(58, 24, 10, 44);
-  // Windows on tallest tower
+  g.fillRect(14, 42, 6, 22);
+  g.fillRect(22, 34, 8, 30);
+  g.fillRect(32, 26, 10, 38);
+  g.fillRect(44, 38, 6, 26);
+  // Tower windows.
   g.fillStyle(0x0a1422);
-  for (let row = 0; row < 4; row++) {
+  for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 2; col++) {
-      g.fillRect(46 + col * 5, 18 + row * 10, 2, 4);
+      g.fillRect(34 + col * 4, 32 + row * 6, 2, 3);
     }
   }
 
-  // "ARCHITECT" wordmark — stylised block letters rendered as rectangles
-  // so we don't depend on runtime text for this decorative sprite.
-  const letterColor = 0xf5f5f5;
-  g.fillStyle(letterColor);
-  const baseX = 86;
-  const baseY = 30;
-  const letterH = 20;
-  const strokeW = 3;
-  // A
-  g.fillRect(baseX, baseY + 4, strokeW, letterH - 4);
-  g.fillRect(baseX + 9, baseY + 4, strokeW, letterH - 4);
-  g.fillRect(baseX + 3, baseY + 4, 6, strokeW);
-  g.fillRect(baseX + 3, baseY + 11, 6, strokeW);
-  // Dot separator
-  g.fillRect(baseX + 16, baseY + letterH - 4, strokeW, strokeW);
-  // U
-  g.fillRect(baseX + 22, baseY + 4, strokeW, letterH - 4);
-  g.fillRect(baseX + 31, baseY + 4, strokeW, letterH - 4);
-  g.fillRect(baseX + 22, baseY + letterH - 1, 12, strokeW);
-  // Tagline under wordmark
-  g.fillStyle(theme.color.ui.accent, 0.9);
-  g.fillRect(baseX, baseY + letterH + 6, 120, 2);
+  // Subtle divider between skyline and wordmark area.
+  g.fillStyle(theme.color.ui.accentAlt, 0.5);
+  g.fillRect(58, 26, 2, 36);
 
-  // "BUILDING" secondary line (simple filled bar to suggest text)
-  g.fillStyle(0x90a4ae, 0.7);
-  g.fillRect(baseX, baseY - 10, 80, 4);
+  // Underline stripe below where the wordmark text will be overlaid.
+  g.fillStyle(theme.color.ui.accent, 0.9);
+  g.fillRect(64, 58, w - 78, 2);
 
   g.generateTexture('lobby_logo', w, h);
   g.destroy();

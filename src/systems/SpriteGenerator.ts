@@ -12,6 +12,7 @@ import { generateLobbyPropSprites } from './sprites/lobbyProps';
 import { generateInfraSprites } from './sprites/infra';
 import { generateEnemySprites } from './sprites/enemies';
 import { generateGeirSprite } from './sprites/npcGeir';
+import { generateReceptionistSprite } from './sprites/receptionist';
 
 /**
  * Composition root for runtime sprite generation.
@@ -34,4 +35,5 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateInfraSprites(scene);
   generateEnemySprites(scene);
   generateGeirSprite(scene);
+  generateReceptionistSprite(scene);
 }

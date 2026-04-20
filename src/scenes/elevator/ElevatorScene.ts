@@ -169,6 +169,8 @@ export class ElevatorScene extends Phaser.Scene {
       boardX: 355,
       boardY: lobbyY + ElevatorScene.FLOOR_H - 60,
       geirBounds: this.layout.getGeirBounds(),
+      receptionBounds: this.layout.getReceptionBounds(),
+      receptionBubble: this.layout.getReceptionistBubble(),
     });
 
     // Cable + LEDs need an initial tick so they render before update() runs.
