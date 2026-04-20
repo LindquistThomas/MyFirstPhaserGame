@@ -52,6 +52,17 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
   QuickAnswer3: [K.THREE, K.C],
   QuickAnswer4: [K.FOUR, K.D],
 
+  // --- Elevator floor call buttons ---
+  // Digit keys map to the visual floor order shown on the cab panel
+  // (F0 = lobby at the bottom, F4 = executive at the top). The same
+  // physical keys are also bound to QuickAnswer1..4 above; the active
+  // input context (gameplay vs modal) keeps the two from colliding.
+  ElevatorCallFloor0: [K.ZERO],
+  ElevatorCallFloor1: [K.ONE],
+  ElevatorCallFloor2: [K.TWO],
+  ElevatorCallFloor3: [K.THREE],
+  ElevatorCallFloor4: [K.FOUR],
+
   // --- Debug ---
   ToggleDebug: [K.D],
 };

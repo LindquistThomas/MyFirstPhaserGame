@@ -14,6 +14,7 @@ import { ElevatorSceneLayout, ShaftExtent } from './ElevatorSceneLayout';
 import { ProductDoorManager, ProductDoor } from './ProductDoorManager';
 import { ElevatorFloorTransitionManager } from './ElevatorFloorTransitionManager';
 import type { NavigationContext } from '../NavigationContext';
+import type { GameAction } from '../../input/actions';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -238,7 +239,7 @@ export class ElevatorScene extends Phaser.Scene {
   private createUI(): void {
     this.hud = new HUD(this, this.progression);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  0-4  Call Floor  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
@@ -338,6 +339,13 @@ export class ElevatorScene extends Phaser.Scene {
       delta,
     );
 
+    // Keyboard floor-call: digit keys 0..4 map to the visual floor order
+    // (F0 = lobby at the bottom, F4 = executive at the top). Only honoured
+    // while the player is riding the cab — matches the on-screen ▲/▼ buttons.
+    if (this.elevatorCtrl.isOnElevator) {
+      this.handleFloorCallInput();
+    }
+
     const cabY = this.elevatorCtrl.elevator.getY();
     for (const door of this.layout.shaftDoors) door.update(cabY, delta);
     this.layout.updateShaftCable(this.elevatorCtrl);
@@ -370,5 +378,31 @@ export class ElevatorScene extends Phaser.Scene {
     const sceneKey = ElevatorFloorTransitionManager.resolveSceneKey(floorId, direction);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.time.delayedCall(500, () => this.scene.start(sceneKey));
+  }
+
+  /**
+   * Translate digit-key presses into a `moveToFloor` call. Digits map by
+   * visual stack order (the same order the cab's button panel uses): the
+   * lowest-indexed digit selects the bottom-most floor (lobby = F0), and
+   * the highest selects the top-most.
+   */
+  private handleFloorCallInput(): void {
+    const positions = this.getFloorYPositions();
+    // Sort so the bottom floor (largest Y) comes first → visual index 0.
+    const visualOrder = Object.entries(positions)
+      .map(([id, y]) => ({ id: Number(id) as FloorId, y }))
+      .sort((a, b) => b.y - a.y);
+
+    const inputs = this.inputs;
+    const actions: readonly GameAction[] = [
+      'ElevatorCallFloor0', 'ElevatorCallFloor1', 'ElevatorCallFloor2',
+      'ElevatorCallFloor3', 'ElevatorCallFloor4',
+    ];
+    for (let i = 0; i < visualOrder.length && i < actions.length; i++) {
+      if (inputs.justPressed(actions[i])) {
+        this.elevatorCtrl.elevator.moveToFloor(visualOrder[i].id);
+        return;
+      }
+    }
   }
 }

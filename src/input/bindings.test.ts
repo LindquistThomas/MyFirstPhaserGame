@@ -54,6 +54,8 @@ describe('actions', () => {
       'PageUp', 'PageDown',
       'Confirm', 'Cancel',
       'QuickAnswer1', 'QuickAnswer2', 'QuickAnswer3', 'QuickAnswer4',
+      'ElevatorCallFloor0', 'ElevatorCallFloor1', 'ElevatorCallFloor2',
+      'ElevatorCallFloor3', 'ElevatorCallFloor4',
       'ToggleDebug',
     ];
     for (const a of expected) {
