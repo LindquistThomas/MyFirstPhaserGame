@@ -62,7 +62,7 @@ next: <action | "done">
 
 ✅ Caveman:
 > Space = Jump only. MenuScene start = `Confirm` action = Enter.
-> - bindings: `src/input/bindings.ts:29-56`.
+> - bindings: `src/input/bindings.ts`, `DEFAULT_BINDINGS` (`Jump` / `Confirm` entries).
 > - E2E: press `Enter`, not `Space`.
 
 ## When NOT to use
