@@ -16,7 +16,10 @@ export const INFO_LOBBY: Record<string, InfoPointDef> = {
         '  ← →   Walk\n' +
         '  ↑ ↓   Ride the elevator (stand on it first)\n' +
         '  SPACE  Front-flip!\n' +
+        '  Enter  Interact / enter doors\n' +
         '  I      Open info panels\n' +
+        '  ESC    Close dialogs\n' +
+        '  M      Toggle sound on/off\n' +
         '  D      Toggle debug overlay\n\n' +
         'HOW TO PLAY\n' +
         'Walk right from the lobby onto the elevator platform. Use Up/Down to ' +
