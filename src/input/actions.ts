@@ -31,6 +31,12 @@ export type GameAction =
   | 'QuickAnswer2'
   | 'QuickAnswer3'
   | 'QuickAnswer4'
+  // Elevator floor call buttons (digit keys map to visual floor order F0..F4)
+  | 'ElevatorCallFloor0'
+  | 'ElevatorCallFloor1'
+  | 'ElevatorCallFloor2'
+  | 'ElevatorCallFloor3'
+  | 'ElevatorCallFloor4'
   // Debug
   | 'ToggleDebug';
 
@@ -69,6 +75,12 @@ export const ACTION_CONTEXTS: Record<GameAction, readonly ActionContextTag[]> = 
   QuickAnswer2: ['modal'],
   QuickAnswer3: ['modal'],
   QuickAnswer4: ['modal'],
+
+  ElevatorCallFloor0: ['gameplay'],
+  ElevatorCallFloor1: ['gameplay'],
+  ElevatorCallFloor2: ['gameplay'],
+  ElevatorCallFloor3: ['gameplay'],
+  ElevatorCallFloor4: ['gameplay'],
 
   ToggleDebug: [ALWAYS],
 };
