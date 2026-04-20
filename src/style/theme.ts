@@ -18,6 +18,31 @@ export const theme = {
       menu: 0x0f0f1e,
       dark: 0x000000,
       overlay: 0x060610,
+      /**
+       * Mid tone used for low-alpha washes (floor tints, backdrop accents).
+       * Pulled from the legacy floor-shim "wall" palette average so it sits
+       * between `bg.default` and `ui.panel` without matching either.
+       */
+      mid: 0x2a2f4a,
+    },
+
+    /**
+     * Night-city sky palette used by the elevator scene's exterior backdrop
+     * (sky gradient, moon, stars, lit windows on the façade). Kept separate
+     * from `bg.*` so daytime/dusk variants can coexist later without moving
+     * tokens around.
+     */
+    sky: {
+      zenith: 0x05070f,
+      horizon: 0x0e1730,
+      moon: 0xf5efd8,
+      moonHalo: 0xd8d0b8,
+      starDim: 0x7a8aaa,
+      starBright: 0xe8eeff,
+      skylineSilhouette: 0x050810,
+      skylineAccent: 0x0a1020,
+      windowLit: 0xffd27f,
+      windowDim: 0x8a7344,
     },
 
     /** Floor-specific palettes mirroring `config/levelData.ts`. */

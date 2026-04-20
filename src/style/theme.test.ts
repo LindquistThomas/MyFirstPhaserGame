@@ -5,8 +5,27 @@ describe('theme', () => {
   it('exposes a stable top-level shape', () => {
     expect(Object.keys(theme).sort()).toEqual(['color', 'space']);
     expect(Object.keys(theme.color).sort()).toEqual([
-      'bg', 'css', 'floor', 'status', 'ui',
+      'bg', 'css', 'floor', 'sky', 'status', 'ui',
     ]);
+  });
+
+  it('exposes night-sky palette tokens used by the elevator exterior backdrop', () => {
+    expect(theme.color.sky).toEqual({
+      zenith: 0x05070f,
+      horizon: 0x0e1730,
+      moon: 0xf5efd8,
+      moonHalo: 0xd8d0b8,
+      starDim: 0x7a8aaa,
+      starBright: 0xe8eeff,
+      skylineSilhouette: 0x050810,
+      skylineAccent: 0x0a1020,
+      windowLit: 0xffd27f,
+      windowDim: 0x8a7344,
+    });
+  });
+
+  it('exposes a mid background tone used for low-alpha washes', () => {
+    expect(theme.color.bg.mid).toBe(0x2a2f4a);
   });
 
   it('covers every floor in the palette', () => {

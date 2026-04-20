@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, FLOORS, TILE_SIZE, COLORS, FloorId } from '../../config/gameConfig';
+import { GAME_WIDTH, GAME_HEIGHT, FLOORS, TILE_SIZE, FloorId } from '../../config/gameConfig';
+import { theme } from '../../style/theme';
 import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { HUD } from '../../ui/HUD';
@@ -89,7 +90,10 @@ export class ElevatorScene extends Phaser.Scene {
 
   create(): void {
     this.isTransitioning = false;
-    this.cameras.main.setBackgroundColor(COLORS.background);
+    // Fallback colour behind the sky backdrop (drawn by ElevatorSceneLayout).
+    // Matches the horizon band so any sub-pixel leak reads as "sky", not a
+    // harsh purple notch.
+    this.cameras.main.setBackgroundColor(theme.color.sky.horizon);
 
     this.shaftExtent = this.computeShaftExtent();
     const worldH = this.shaftExtent.bottom;

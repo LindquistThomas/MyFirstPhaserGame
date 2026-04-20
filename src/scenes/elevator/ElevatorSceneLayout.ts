@@ -5,6 +5,7 @@ import { LEVEL_DATA } from '../../config/levelData';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { ElevatorShaftDoors } from './ElevatorShaftDoors';
 import { ElevatorController } from './ElevatorController';
+import { drawSkyBackdrop } from './skyBackdrop';
 
 const FLOOR_TILE_ROWS = 2;
 const FLOOR_H = FLOOR_TILE_ROWS * TILE_SIZE; // 256
@@ -85,6 +86,7 @@ export class ElevatorSceneLayout {
   /** Build the entire elevator-scene visual scaffolding in order. */
   build(): void {
     this.pulleyAnchorY = this.deps.shaftExtent.top;
+    this.createExteriorBackdrop();
     this.createShaftBackground();
     this.createShaftCaps();
     this.createRooftop();
@@ -96,6 +98,18 @@ export class ElevatorSceneLayout {
     this.createShaftDoors();
     this.createShaftCable();
     this.createFloorLEDs();
+  }
+
+  /**
+   * Night-city exterior — gradient sky, moon, and a starfield rendered
+   * behind everything else. Screen-locked; later layers (skyline, façade)
+   * supply parallax. Implementation + tests live in `./skyBackdrop`.
+   */
+  private createExteriorBackdrop(): void {
+    drawSkyBackdrop(this.deps.scene, {
+      width: GAME_WIDTH,
+      height: this.deps.scene.scale.height,
+    });
   }
 
   updateShaftCable(controller: ElevatorController | undefined): void {
