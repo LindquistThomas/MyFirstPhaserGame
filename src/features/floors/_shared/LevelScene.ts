@@ -15,6 +15,7 @@ import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
+import { drawSceneBackdrop } from './sceneBackdrop';
 import { theme } from '../../../style/theme';
 
 export interface RoomElevator {
@@ -230,22 +231,24 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- background ---- */
   protected createBackground(): void {
-    const g = this.add.graphics().setDepth(0);
-
-    g.fillStyle(this.floorData.theme.backgroundColor);
-    g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-    g.lineStyle(1, this.floorData.theme.wallColor, 0.15);
-    for (let x = 0; x < GAME_WIDTH; x += 64) {
-      g.lineBetween(x, 0, x, GAME_HEIGHT);
-    }
-    for (let y = 0; y < GAME_HEIGHT; y += 64) {
-      g.lineBetween(0, y, GAME_WIDTH, y);
-    }
-
-    g.lineStyle(4, this.floorData.theme.platformColor, 0.8);
-    g.strokeRect(2, 2, GAME_WIDTH - 4, GAME_HEIGHT - 4);
+    drawSceneBackdrop(this, {
+      width: GAME_WIDTH,
+      height: GAME_HEIGHT,
+      theme: {
+        backgroundColor: this.floorData.theme.backgroundColor,
+        wallColor: this.floorData.theme.wallColor,
+        platformColor: this.floorData.theme.platformColor,
+      },
+      drawAccents: (g) => this.drawBackgroundAccents(g),
+    });
   }
+
+  /**
+   * Subclass hook for per-floor silhouettes / prints painted on top of
+   * the layered backdrop. Default: no-op. Phase 6 will populate this for
+   * each floor theme.
+   */
+  protected drawBackgroundAccents(_g: Phaser.GameObjects.Graphics): void {}
 
   /* ---- platforms ---- */
   protected createPlatforms(): void {
