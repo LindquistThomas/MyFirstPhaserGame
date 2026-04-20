@@ -46,5 +46,6 @@ export class GameStateManager {
   isQuizPassed(id: string): boolean { return QuizManager.isQuizPassed(id); }
 
   hasBeenSeen(id: string): boolean { return InfoDialogManager.hasBeenSeen(id); }
+  hasSeenAnyInfo(): boolean { return InfoDialogManager.hasSeenAny(); }
   markSeen(id: string): void { InfoDialogManager.markSeen(id); }
 }

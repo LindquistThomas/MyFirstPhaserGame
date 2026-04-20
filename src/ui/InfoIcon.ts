@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
-import { hasBeenSeen } from '../systems/InfoDialogManager';
+import { hasBeenSeen, hasSeenAny } from '../systems/InfoDialogManager';
+import { primaryKeyLabel } from '../input';
 import { theme } from '../style/theme';
 
 const RADIUS = 18;
@@ -147,6 +148,7 @@ export class InfoIcon {
   private ring?: Phaser.GameObjects.Image;
   private tweens: Phaser.Tweens.Tween[] = [];
   private badge?: Phaser.GameObjects.Container;
+  private hint?: Phaser.GameObjects.Container;
   private mode: 'idle' | 'attention' | 'calm' = 'idle';
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void,
@@ -195,6 +197,7 @@ export class InfoIcon {
       this.container.setAlpha(1);
       // offset reset is handled by stopAllTweens via setScale
       if (this.ring) { this.ring.setVisible(false); this.ring.setScale(1).setAlpha(1); }
+      this.hint?.setVisible(false);
       this.mode = 'idle';
       return;
     }
@@ -213,10 +216,15 @@ export class InfoIcon {
         this.playCalmPulse();
       }
     }
+
+    this.refreshHint();
   }
 
   /** Force-switch to the subtle "seen" animation (called after the dialog is closed). */
   markAsSeen(): void {
+    // The player has just opened an info dialog — hide the "Press ↑" hint
+    // everywhere, regardless of whether this icon was the one opened.
+    this.hint?.setVisible(false);
     if (!this.container.visible) return;
     if (this.mode === 'calm') return;
     this.stopAllTweens();
@@ -263,6 +271,48 @@ export class InfoIcon {
   destroy(): void {
     this.stopAllTweens();
     this.container.destroy();
+  }
+
+  /**
+   * First-time teaching hint: a small "Press ↑" chip rendered below the
+   * disc. Shown while the icon is visible AND the player has never opened
+   * any info dialog. Hidden permanently as soon as the first dialog is
+   * opened (see {@link markAsSeen}).
+   */
+  private refreshHint(): void {
+    const shouldShow = this.container.visible && !hasSeenAny();
+    if (!shouldShow) {
+      this.hint?.setVisible(false);
+      return;
+    }
+    if (!this.hint) this.hint = this.createHint();
+    this.hint.setVisible(true);
+  }
+
+  private createHint(): Phaser.GameObjects.Container {
+    const label = `Press ${primaryKeyLabel('ToggleInfo')}`;
+    const text = this.scene.add.text(0, 0, label, {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: theme.color.css.textWhite,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    const padX = 6;
+    const padY = 3;
+    const w = text.width + padX * 2;
+    const h = text.height + padY * 2;
+
+    const bg = this.scene.add.graphics();
+    bg.fillStyle(theme.color.bg.dark, 0.85);
+    bg.fillRoundedRect(-w / 2, -h / 2, w, h, 4);
+    bg.lineStyle(1, 0x50d2ff, 0.9);
+    bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 4);
+
+    // Sit just below the disc (disc radius ≈ RADIUS + rim).
+    const container = this.scene.add.container(0, RADIUS + h / 2 + 6, [bg, text]);
+    this.container.add(container);
+    return container;
   }
 
   private stopAllTweens(): void {

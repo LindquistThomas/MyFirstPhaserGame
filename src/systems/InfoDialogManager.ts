@@ -27,6 +27,11 @@ export function hasBeenSeen(id: string): boolean {
   return loadSeen().has(id);
 }
 
+/** True once the player has opened at least one info dialog. */
+export function hasSeenAny(): boolean {
+  return loadSeen().size > 0;
+}
+
 export function markSeen(id: string): void {
   const seen = loadSeen();
   seen.add(id);

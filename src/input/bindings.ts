@@ -30,9 +30,12 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
   // scene transition or dialog by accident. Action verbs (entering
   // doors, opening info cards) all go through Enter — which is also
   // dispatched by pointer/touch events on interactive game objects.
-  Jump:       [K.SPACE, K.UP, K.W],
+  // ArrowUp is reserved for ToggleInfo so pressing Up near an info
+  // zone opens the card without also firing Jump; W remains the
+  // keyboard-alternative for Jump.
+  Jump:       [K.SPACE, K.W],
   Interact:   [K.ENTER],
-  ToggleInfo: [K.I, K.ENTER],
+  ToggleInfo: [K.UP, K.ENTER, K.I],
 
   // --- Menu / dialog navigation ---
   NavigateUp:    [K.UP, K.W],
