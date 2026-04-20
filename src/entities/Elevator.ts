@@ -365,8 +365,11 @@ export class Elevator {
     g.fillRect(indX, indY, indW, indH);
     g.lineStyle(1, 0x55556a, 1);
     g.strokeRect(indX, indY, indW, indH);
-    // Floor number digit (current floor)
-    this.drawDigit(g, indX + 6, indY + 2, this.currentFloor, 0xff7733);
+    // Visual floor number: sort floors bottom-first (highest Y = F0) so the
+    // displayed digit matches the in-world stack position, not the FloorId.
+    const sortedByYDesc = Array.from(this.floorStops.entries()).sort((a, b) => b[1] - a[1]);
+    const visualFloorNum = sortedByYDesc.findIndex(([id]) => id === this.currentFloor);
+    this.drawDigit(g, indX + 6, indY + 2, visualFloorNum >= 0 ? visualFloorNum : this.currentFloor, 0xff7733);
     // Direction arrow
     const arrowX = indX + indW - 10;
     const arrowCY = indY + indH / 2;
@@ -390,8 +393,12 @@ export class Elevator {
     g.fillRect(panelX, panelY, panelW, panelH);
     g.lineStyle(1, 0x111118, 1);
     g.strokeRect(panelX, panelY, panelW, panelH);
-    // Buttons stacked vertically
-    const floorIds = Array.from(this.floorStops.keys()).sort((a, b) => b - a); // top→bottom = high→low
+    // Buttons stacked vertically — sort by Y position (ascending = top floor
+    // first) so the highest physical floor appears at the top of the panel,
+    // regardless of floor ID ordering.
+    const floorIds = Array.from(this.floorStops.entries())
+      .sort((a, b) => a[1] - b[1])
+      .map(([id]) => id);
     const btnRadius = 4;
     const btnGap = panelH / (floorIds.length + 1);
     floorIds.forEach((id, i) => {
