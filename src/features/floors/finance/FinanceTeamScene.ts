@@ -34,7 +34,20 @@ export class FinanceTeamScene extends LevelScene {
 
     this.addSignpost({ x: 260, label: '  FINANCE', color: '#b8ffd1' });
 
-    // Trading-desk style monitors — proxy for FP&A dashboards.
+    // Parody microtransaction kiosk. Reuses the signpost + monitor sprites
+    // so the gag reads as a tacky sales terminal. The actual interaction
+    // surface is the `microtransaction-kiosk` info point \u2014 no card form,
+    // no buttons, just a dialog whose extendedInfo explains why real apps
+    // don't collect card data themselves.
+    this.addSignpost({
+      x: 460,
+      label: 'AU MegaMart\u2122\n  BUY NOW!!!',
+      color: '#ffd166',
+      fontSize: 11,
+    });
+    this.add.image(460, G - 22, 'monitor_dash').setDepth(3);
+
+    // Trading-desk style monitors \u2014 proxy for FP&A dashboards.
     this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
     this.add.image(720, G - 22, 'monitor_dash').setDepth(3);
     this.add.image(900, G - 36, 'desk_monitor').setDepth(3);
@@ -61,6 +74,10 @@ export class FinanceTeamScene extends LevelScene {
       infoPoints: [
         {
           x: 260, y: G, contentId: 'finance',
+          zone: { shape: 'rect', width: 140, height: 220 },
+        },
+        {
+          x: 460, y: G, contentId: 'microtransaction-kiosk',
           zone: { shape: 'rect', width: 140, height: 220 },
         },
       ],
