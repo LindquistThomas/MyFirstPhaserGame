@@ -43,6 +43,13 @@ export interface BuildingFacadeOptions {
   bands: FacadeBand[];
   /** Max twinkling windows (alpha tweens) across the whole façade, to keep the motion budget honest. */
   twinkleBudget?: number;
+  /**
+   * Vertical parallax factor applied to every façade element so the outer
+   * wall reads as "behind" the shaft. 1 = scrolls with the shaft (no depth);
+   * < 1 = drifts slower than the shaft as the camera moves. Default: 0.85.
+   * The horizontal factor is always 1 — the shaft doesn't pan horizontally.
+   */
+  scrollFactorY?: number;
 }
 
 export interface BuildingFacadeHandle {
@@ -128,7 +135,7 @@ export function drawBuildingFacade(
   scene: Phaser.Scene,
   opts: BuildingFacadeOptions,
 ): BuildingFacadeHandle {
-  const { sides, bands, twinkleBudget = 6 } = opts;
+  const { sides, bands, twinkleBudget = 6, scrollFactorY = 0.85 } = opts;
 
   const objects: Phaser.GameObjects.GameObject[] = [];
   const tweens: Phaser.Tweens.Tween[] = [];
@@ -138,7 +145,7 @@ export function drawBuildingFacade(
     const sideW = side.xRight - side.xLeft;
     if (sideW <= 0) continue;
 
-    const gfx = scene.add.graphics().setDepth(0.4);
+    const gfx = scene.add.graphics().setDepth(0.4).setScrollFactor(1, scrollFactorY);
     objects.push(gfx);
 
     for (let i = 0; i < bands.length; i++) {
@@ -160,12 +167,11 @@ export function drawBuildingFacade(
         gfx.fillRect(rx, band.yTop, 1, bandH);
       }
 
-      // Horizontal slab seam between adjacent bands to delineate floors
-      // even when decor hides the actual slab.
-      if (i > 0) {
-        gfx.fillStyle(theme.color.bg.mid, 0.55);
-        gfx.fillRect(side.xLeft, band.yTop, sideW, 1);
-      }
+      // NOTE: No explicit horizontal "slab seam" line between adjacent bands.
+      // Previous revision drew one for visual separation, but once the façade
+      // has scrollFactor < 1, seam lines authored at slab Y positions drift
+      // out of alignment with the actual slabs and visibly lag behind. The
+      // pinstripe ribs and window grid carry the vertical rhythm on their own.
 
       // Window grid.
       const windows = generateFacadeWindows(sideW, bandH, band.seed ^ (side.xLeft | 0));
@@ -200,7 +206,8 @@ export function drawBuildingFacade(
             theme.color.sky.windowLit,
             0.85,
           )
-          .setDepth(0.41);
+          .setDepth(0.41)
+          .setScrollFactor(1, scrollFactorY);
         objects.push(rect);
         const tw = scene.tweens.add({
           targets: rect,

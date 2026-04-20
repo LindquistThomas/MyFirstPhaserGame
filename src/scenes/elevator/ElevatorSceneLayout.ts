@@ -119,8 +119,14 @@ export class ElevatorSceneLayout {
   /**
    * Outer-building façade filling the hallway strips on either side of the
    * shaft. See `./buildingFacade` for rendering + window-grid generation.
-   * One band per floor, tinted with `LEVEL_DATA[fId].theme.wallColor` so
-   * each floor "reads" with its own temperature even behind plaques/props.
+   *
+   * Parallaxes at 0.85× (configured in drawBuildingFacade) so the wall
+   * reads as "behind" the shaft when the camera rides up or down. The
+   * per-floor band division survives as a source of window-grid variation
+   * (distinct seeds), but every band uses the same neutral wallColor so
+   * the parallax-induced misalignment between bands and real floor slabs
+   * is visually hidden. Per-floor identity is carried by the floor scenes
+   * themselves (see `floorPatterns.ts` / `floorAccents.ts`).
    */
   private createBuildingFacade(): void {
     const sw = this.deps.shaftWidth;
@@ -136,22 +142,24 @@ export class ElevatorSceneLayout {
     ];
 
     const positions = this.deps.floorYPositions;
-    // Sort top-to-bottom (ascending y) so bands tile cleanly.
     const sorted = Object.entries(positions)
       .map(([id, y]) => ({ id: Number(id) as FloorId, y }))
       .sort((a, b) => a.y - b.y);
     const { top, bottom } = this.deps.shaftExtent;
 
+    // Neutral wall colour everywhere — per-floor colour would drift out of
+    // alignment with the real slabs under parallax and look wrong.
+    const wallColor = theme.color.bg.mid;
+
     const bands: FacadeBand[] = [];
     for (let i = 0; i < sorted.length; i++) {
       const yTop = i === 0 ? top : sorted[i].y;
       const yBottom = i < sorted.length - 1 ? sorted[i + 1].y : bottom;
-      const data = LEVEL_DATA[sorted[i].id];
       bands.push({
         yTop,
         yBottom,
-        wallColor: data?.theme.wallColor ?? theme.color.bg.mid,
-        // Seed from floor id so the window pattern is stable but distinct per floor.
+        wallColor,
+        // Keep per-floor seeds so window patterns vary across the height.
         seed: 0xabc123 ^ (sorted[i].id * 0x9e3779b1),
       });
     }
