@@ -829,7 +829,7 @@ export class ElevatorSceneLayout {
 
     // Proximity area for the "Hello!" bubble (centred on the desk).
     this.receptionBounds = { x: deskX - 80, y: deskY - 60, width: 160, height: 120 };
-    this.receptionistBubble = this.createSpeechBubble(scene, deskX + 40, deskY - 90, 'Hello!');
+    this.receptionistBubble = this.createSpeechBubble(scene, deskX + 40, deskY - 90, 'Welcome 😊');
     this.receptionistBubble.setVisible(false);
 
     scene.add.image(395, floorBottom - 60, 'info_board').setDepth(3);
@@ -838,7 +838,7 @@ export class ElevatorSceneLayout {
     // Right walkway — waiting area.
     // Wall-mounted live clock (real time, analog face + second hand and a
     // small digital HH:MM:SS readout below). Anchored to lobbyY band.
-    this.createLobbyClock(1000, lobbyY + 90, 50);
+    this.createLobbyClock(1000, lobbyY + 75, 34);
     scene.add.image(790, floorBottom - 8, 'welcome_mat').setDepth(4);
     scene.add.image(960, floorBottom - 30, 'sofa').setDepth(3);
     scene.add.image(1070, floorBottom - 14, 'coffee_table').setDepth(3);
@@ -883,19 +883,7 @@ export class ElevatorSceneLayout {
     }
 
     // Digital readout background (small plaque just above the 6 o'clock).
-    const plaqueW = radius * 1.0;
-    const plaqueH = 14;
-    const plaqueY = cy + radius * 0.45;
-    face.fillStyle(0x102027, 0.85);
-    face.fillRoundedRect(cx - plaqueW / 2, plaqueY - plaqueH / 2, plaqueW, plaqueH, 3);
-
-    // Digital HH:MM:SS text (updated each tick).
-    const digital = scene.add.text(cx, plaqueY, '', {
-      fontFamily: 'monospace',
-      fontSize: '10px',
-      color: '#00e5ff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(3);
+    // (Removed — see commit history for the digital HH:MM:SS variant.)
 
     // Hands layer (above face, below centre pin).
     const hands = scene.add.graphics().setDepth(3);
@@ -941,9 +929,6 @@ export class ElevatorSceneLayout {
       drawHand(hourAngle, hourLen, hourTail, hourW, 0x263238);
       drawHand(minuteAngle, minuteLen, minuteTail, minuteW, 0x263238);
       drawHand(secondAngle, secondLen, secondTail, secondW, 0xe53935);
-
-      const pad = (n: number) => n.toString().padStart(2, '0');
-      digital.setText(`${pad(hh)}:${pad(mm)}:${pad(ss)}`);
     };
 
     render();
