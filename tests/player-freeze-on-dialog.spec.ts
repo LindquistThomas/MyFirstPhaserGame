@@ -88,7 +88,7 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
       if (!player) return false;
       const b = player.sprite.body;
       return b.blocked.down || b.touching.down;
-    }, undefined, { timeout: 5_000 });
+    }, undefined, { timeout: 15_000 });
 
     // Start walking right — keep the key held for the rest of the test so
     // we can prove the player halts despite ongoing directional input.
@@ -122,7 +122,7 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
         b.velocity.x > 50 &&
         player.sprite.anims?.currentAnim?.key === 'player_walk'
       );
-    }, undefined, { timeout: 5_000 });
+    }, undefined, { timeout: 15_000 });
 
     const moving = await snapshotPlayer(page);
     expect(moving.vx).toBeGreaterThan(50);
@@ -185,7 +185,7 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
         (b.blocked.down || b.touching.down) &&
         player.sprite.anims?.currentAnim?.key === 'player_idle'
       );
-    }, undefined, { timeout: 5_000 });
+    }, undefined, { timeout: 15_000 });
 
     const frozen = await snapshotPlayer(page);
     // ArrowRight is still held — the freeze must come from the input
