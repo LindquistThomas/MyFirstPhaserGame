@@ -28,6 +28,22 @@ export const SCENE_MUSIC: Record<string, string> = {
   ProductAdminLisensScene:        'music_floor2',
 };
 
+export interface SoundtrackTrack {
+  key: string;
+  label: string;
+}
+
+/** Track list exposed in menu listen mode (cycled in-place). */
+export const SOUNDTRACK_PLAYLIST: ReadonlyArray<SoundtrackTrack> = [
+  { key: 'music_menu', label: 'MENU' },
+  { key: 'music_elevator_jazz', label: 'ELEVATOR JAZZ' },
+  { key: 'music_elevator_ride', label: 'ELEVATOR RIDE' },
+  { key: 'music_floor1', label: 'FLOOR 1' },
+  { key: 'music_floor2', label: 'FLOOR 2' },
+  { key: 'music_quiz', label: 'QUIZ' },
+  { key: 'music_lullaby', label: 'LULLABY' },
+];
+
 /** EventBus event name → Phaser SFX audio key. */
 export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:jump':         'jump',

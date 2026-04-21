@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
+import { SOUNDTRACK_PLAYLIST } from '../../config/audioConfig';
 import { GameStateManager } from '../../systems/GameStateManager';
+import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
@@ -18,6 +20,8 @@ export class MenuScene extends Phaser.Scene {
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
   private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
   private selectedIndex = 0;
+  private soundtrackButton?: Phaser.GameObjects.Text;
+  private soundtrackIndex = -1;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -27,6 +31,8 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(0x05060f);
     this.menuButtons = [];
     this.selectedIndex = 0;
+    this.soundtrackButton = undefined;
+    this.soundtrackIndex = -1;
 
     this.createStarfield();
     this.createSkylineBackdrop();
@@ -341,6 +347,13 @@ export class MenuScene extends Phaser.Scene {
       contBtn.setDepth(TEXT_DEPTH);
       this.menuButtons.push({ btn: contBtn, action: continueAction });
     }
+
+    const soundtrackY = gameState?.hasSave() ? cy + 160 : cy + 100;
+    const soundtrackAction = () => this.playNextSoundtrack();
+    const soundtrackBtn = this.makeButton(cx, soundtrackY, '[ SOUNDTRACK MODE ]', 20, soundtrackAction);
+    soundtrackBtn.setDepth(TEXT_DEPTH);
+    this.menuButtons.push({ btn: soundtrackBtn, action: soundtrackAction });
+    this.soundtrackButton = soundtrackBtn;
   }
 
   private makeButton(
@@ -387,5 +400,13 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = { loadSave: true };
     this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
+  }
+
+  private playNextSoundtrack(): void {
+    if (SOUNDTRACK_PLAYLIST.length === 0) return;
+    this.soundtrackIndex = (this.soundtrackIndex + 1) % SOUNDTRACK_PLAYLIST.length;
+    const next = SOUNDTRACK_PLAYLIST[this.soundtrackIndex];
+    eventBus.emit('music:play', next.key);
+    this.soundtrackButton?.setText(`[ SOUNDTRACK: ${next.label} ]`);
   }
 }
