@@ -94,10 +94,13 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
     // we can prove the player halts despite ongoing directional input.
     await page.keyboard.down('ArrowRight');
 
-    // Wait until the player is visibly walking on the ground (not still
-    // mid-spawn-drop, not mid-landing). Opening the dialog while the
-    // player is still airborne would leave them in `player_fall` until
-    // they land, which would mask the freeze assertion below.
+    // Wait until the player is visibly walking on the ground: onGround +
+    // vx > 50 proves the ArrowRight keypress is reaching the game and
+    // physics is responding. The `player_walk` anim is deliberately NOT
+    // part of the precondition — on CI's starved frame loop the
+    // airborne-anim grace / player_land squash can keep the anim out of
+    // `walk` for seconds at a time, while the freeze regression the
+    // test targets is about what happens AFTER `dialogs.open()` fires.
     await page.waitForFunction(() => {
       const g = window.__game!;
       const scene = g.scene
@@ -111,22 +114,16 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
             blocked: { down: boolean };
             touching: { down: boolean };
           };
-          anims?: { currentAnim?: { key?: string } | null };
         };
       } | undefined;
       if (!player) return false;
       const b = player.sprite.body;
       const onGround = b.blocked.down || b.touching.down;
-      return (
-        onGround &&
-        b.velocity.x > 50 &&
-        player.sprite.anims?.currentAnim?.key === 'player_walk'
-      );
+      return onGround && b.velocity.x > 50;
     }, undefined, { timeout: 15_000 });
 
     const moving = await snapshotPlayer(page);
     expect(moving.vx).toBeGreaterThan(50);
-    expect(moving.anim).toBe('player_walk');
 
     // Open the info dialog through the DialogController — same entry point
     // as pressing Enter/Up on a real info zone, but deterministic. Do this
@@ -156,10 +153,13 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
       return snapshot;
     });
     // Sanity-check: the player really was walking on the ground the moment
-    // the dialog opened.
+    // the dialog opened. `anim` isn't checked here — under CI's starved
+    // frame loop the animation controller can lag the physics by several
+    // hundred ms (airborne grace + player_land squash + slope jitter), so
+    // the precondition the regression cares about is vx > 0 while
+    // ArrowRight is held.
     expect(atOpen.onGround).toBe(true);
     expect(atOpen.vx).toBeGreaterThan(50);
-    expect(atOpen.anim).toBe('player_walk');
 
     await waitForDialogOpen(page, 'PlatformTeamScene');
 
