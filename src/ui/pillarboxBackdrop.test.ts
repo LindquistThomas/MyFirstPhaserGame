@@ -30,9 +30,7 @@ function makeEnv(
   rafCallbacks: FrameRequestCallback[];
   runRaf: (t: number) => void;
   resizeListeners: (() => void)[];
-  scaleListeners: Record<string, (() => void)[]>;
   fireResize: () => void;
-  firePhaserResize: () => void;
 } {
   const bg = withBgCanvas ? makeFakeCanvas('pillarbox-bg') : null;
   const src = makeFakeCanvas('game-canvas');
@@ -71,8 +69,6 @@ function makeEnv(
     for (const cb of pending) cb(t);
   };
 
-  const scaleListeners: Record<string, (() => void)[]> = {};
-
   return {
     win,
     doc,
@@ -81,9 +77,7 @@ function makeEnv(
     rafCallbacks,
     runRaf,
     resizeListeners,
-    scaleListeners,
     fireResize: () => resizeListeners.slice().forEach((cb) => cb()),
-    firePhaserResize: () => (scaleListeners.resize ?? []).slice().forEach((cb) => cb()),
   };
 }
 
@@ -157,16 +151,20 @@ describe('startPillarboxBackdrop', () => {
 
   it('resize handler rescales the backdrop to new viewport', () => {
     const env = makeEnv({ w: 1000, h: 800, dpr: 1 });
+    const ctx = { drawImage: vi.fn() };
+    env.bg!.getContext = vi.fn(() => ctx);
     startPillarboxBackdrop(
       { canvas: env.src as unknown as HTMLCanvasElement },
       { win: env.win, doc: env.doc },
     );
+    expect(ctx.drawImage).toHaveBeenCalledTimes(1);
     expect(env.bg!.width).toBe(1000);
     (env.win as unknown as { innerWidth: number }).innerWidth = 2400;
     (env.win as unknown as { innerHeight: number }).innerHeight = 1350;
     env.fireResize();
     expect(env.bg!.width).toBe(2400);
     expect(env.bg!.height).toBe(1350);
+    expect(ctx.drawImage).toHaveBeenCalledTimes(2);
   });
 
   it('returns a no-op handle if #pillarbox-bg is missing', () => {

@@ -46,8 +46,8 @@ export interface PillarboxBackdropHandle {
 type AnyGame = { canvas: HTMLCanvasElement; scale?: { on?: (e: string, cb: () => void) => void; off?: (e: string, cb: () => void) => void } };
 
 /**
- * Start the backdrop loop. Safe to call at most once per page — subsequent
- * calls before `stop()` return the existing handle.
+ * Start the backdrop loop. Call this at most once per page; each call starts
+ * a new loop/listener set, so call `stop()` before starting again.
  *
  * @param game   Phaser.Game-like object (only `canvas` is required).
  * @param opts   Optional overrides (test injection, throttle tuning).
@@ -106,7 +106,10 @@ export function startPillarboxBackdrop(
     rafId = win.requestAnimationFrame(tick);
   };
 
-  const onResize = () => sizeBackdrop();
+  const onResize = () => {
+    sizeBackdrop();
+    draw();
+  };
   win.addEventListener('resize', onResize);
   // Phaser emits 'resize' on its Scale Manager when the viewport changes.
   // Guard for shape — tests pass a minimal game stub.
