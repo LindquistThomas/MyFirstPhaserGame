@@ -457,7 +457,15 @@ export class LevelScene extends Phaser.Scene {
 
     const infoPressed = this.inputs.justPressed('ToggleInfo');
 
-    if (this.dialogs.isOpen) return;
+    // Keep the Player ticking while a dialog is open so it can react to
+    // the `modal` input context (zeroing velocity, switching to `idle`).
+    // Other gameplay systems (enemies, room-lifts, zones, exit-proximity)
+    // intentionally pause — the player is just reading the dialog.
+    if (this.dialogs.isOpen) {
+      this.player.update(delta);
+      this.hud.update();
+      return;
+    }
 
     this.player.update(delta);
     this.hud.update();

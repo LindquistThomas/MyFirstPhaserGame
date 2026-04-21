@@ -104,10 +104,18 @@ describe('bindings', () => {
     // Per the comment in bindings.ts: Space must never trigger a scene
     // transition or dialog by accident — Enter handles those verbs.
     expect(DEFAULT_BINDINGS.Jump).toContain(K.SPACE);
+    // Jump is also reserved against Up so pressing Up near an info zone
+    // opens the card without also triggering a jump frame.
+    expect(DEFAULT_BINDINGS.Jump).not.toContain(K.UP);
     expect(DEFAULT_BINDINGS.Interact).not.toContain(K.SPACE);
     expect(DEFAULT_BINDINGS.Confirm).not.toContain(K.SPACE);
     expect(DEFAULT_BINDINGS.Interact).toContain(K.ENTER);
     expect(DEFAULT_BINDINGS.Confirm).toContain(K.ENTER);
+  });
+
+  it('binds ArrowUp as the primary ToggleInfo key', () => {
+    expect(DEFAULT_BINDINGS.ToggleInfo).toContain(K.UP);
+    expect(DEFAULT_BINDINGS.ToggleInfo[0]).toBe(K.UP);
   });
 
   it('defines a non-empty binding for every action', () => {
@@ -129,6 +137,12 @@ describe('bindings', () => {
     expect(actionsForKey(K.LEFT)).toEqual(
       expect.arrayContaining(['MoveLeft', 'NavigateLeft']),
     );
+
+    // Arrow Up drives MoveUp, NavigateUp, and ToggleInfo — but NOT Jump.
+    expect(actionsForKey(K.UP)).toEqual(
+      expect.arrayContaining(['MoveUp', 'NavigateUp', 'ToggleInfo']),
+    );
+    expect(actionsForKey(K.UP)).not.toContain('Jump');
   });
 
   it('actionsForKey returns empty for an unbound key code', () => {
@@ -163,16 +177,18 @@ describe('keyLabels', () => {
   });
 
   it('primaryKeyLabel returns the label of the first-bound key', () => {
-    // Jump binds [SPACE, UP, W] — primary is Space.
+    // Jump binds [SPACE, W] — primary is Space.
     expect(primaryKeyLabel('Jump')).toBe('Space');
     // MoveLeft binds [LEFT, A] — primary is the arrow.
     expect(primaryKeyLabel('MoveLeft')).toBe('←');
+    // ToggleInfo is primarily Arrow Up so on-screen hints read "Press ↑".
+    expect(primaryKeyLabel('ToggleInfo')).toBe('↑');
   });
 
   it('allKeyLabels joins every bound key with the given separator', () => {
-    // Jump binds [Space, ↑, W] — exercises the multi-key join path.
-    expect(allKeyLabels('Jump')).toBe('Space/↑/W');
-    expect(allKeyLabels('Jump', ', ')).toBe('Space, ↑, W');
+    // Jump binds [Space, W] — exercises the multi-key join path.
+    expect(allKeyLabels('Jump')).toBe('Space/W');
+    expect(allKeyLabels('Jump', ', ')).toBe('Space, W');
     // Single-key actions render without a separator.
     expect(allKeyLabels('Interact')).toBe('Enter');
   });

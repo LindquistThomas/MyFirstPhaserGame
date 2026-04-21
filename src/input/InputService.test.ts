@@ -231,11 +231,17 @@ describe('InputService — justPressed', () => {
     expect(h.svc.justPressed('Jump')).toBe(true);
   });
 
-  it('fires for any key rebound to the action (Jump: Space, Up, W)', () => {
+  it('fires for any key rebound to the action (Jump: Space, W)', () => {
     h.fireKeyDown(K.W);
     expect(h.svc.justPressed('Jump')).toBe(true);
-    h.fireKeyDown(K.UP);
+    h.fireKeyDown(K.SPACE);
     expect(h.svc.justPressed('Jump')).toBe(true);
+  });
+
+  it('binds ArrowUp to ToggleInfo — and not to Jump', () => {
+    h.fireKeyDown(K.UP);
+    expect(h.svc.justPressed('ToggleInfo')).toBe(true);
+    expect(h.svc.justPressed('Jump')).toBe(false);
   });
 
   it('dispatches to all actions a key is bound to (respecting context)', () => {

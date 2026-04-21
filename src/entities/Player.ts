@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
+import { activeContext } from '../input';
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall' | 'land';
 
@@ -197,6 +198,20 @@ export class Player {
 
     const inputs = this.scene.inputs;
     const h = inputs.horizontal();
+
+    // Input-context freeze: whenever a modal or menu is overlaying
+    // gameplay (e.g. the player pressed Interact/ToggleInfo to open an
+    // info dialog while walking), snap to rest and let updateAnimation
+    // drop to `idle`. Without this, `horizontal()` already returns 0 —
+    // but the ground-deceleration path below multiplies vx by 0.8 per
+    // frame, so the character would still slide ~170ms and keep the
+    // walk animation looping while the dialog is on screen.
+    if (activeContext() !== 'gameplay') {
+      this.sprite.setVelocityX(0);
+      this.sprite.setFlipX(!this.facingRight);
+      this.updateAnimation(onGround);
+      return;
+    }
 
     // Hit-stun: skip input-driven horizontal movement so knockback velocity
     // from takeHit() is visibly applied. Jump is also disabled during stun.

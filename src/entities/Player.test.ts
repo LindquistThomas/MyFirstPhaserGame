@@ -5,9 +5,22 @@ import { eventBus } from '../systems/EventBus';
 
 vi.mock('phaser', () => {
   class Sprite {}
+  class ScenePlugin {
+    constructor() {}
+  }
+  const KeyCodes = {
+    LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40,
+    SPACE: 32, ENTER: 13, ESC: 27,
+    PAGE_UP: 33, PAGE_DOWN: 34,
+    A: 65, B: 66, C: 67, D: 68, I: 73, S: 83, W: 87,
+    ONE: 49, TWO: 50, THREE: 51, FOUR: 52,
+    F12: 123,
+  };
   const Phaser = {
     Physics: { Arcade: { Sprite } },
     Animations: { Events: { ANIMATION_UPDATE: 'animationupdate' } },
+    Input: { Keyboard: { KeyCodes } },
+    Plugins: { ScenePlugin },
   };
   return { ...Phaser, default: Phaser };
 });
@@ -151,5 +164,31 @@ describe('Player', () => {
     player.update(16.67);
 
     expect(player.getIsFlipping()).toBe(false);
+  });
+
+  it('snaps horizontal velocity to 0 and plays idle when input context becomes non-gameplay', async () => {
+    // Player is running right on the ground.
+    scene.inputs.horizontal = () => 1;
+    sprite.body.blocked.down = true;
+    player.update(16.67);
+    expect(sprite.lastAnimKey).toBe('player_walk');
+    expect(sprite.body.velocity.x).toBeGreaterThan(0);
+
+    // A modal (info dialog) opens — input context is now 'modal', so
+    // gameplay actions no longer dispatch and horizontal() would return 0
+    // in real code. Simulate that at the API level while also pushing the
+    // real context so the Player's activeContext() check fires.
+    scene.inputs.horizontal = () => 0;
+    const { pushContext, popContext } = await import('../input');
+    const token = pushContext('modal');
+    try {
+      player.update(16.67);
+      // Hard-snap, not gradual deceleration.
+      expect(sprite.body.velocity.x).toBe(0);
+      // And the walk animation has stopped in favour of idle.
+      expect(sprite.lastAnimKey).toBe('player_idle');
+    } finally {
+      popContext(token);
+    }
   });
 });

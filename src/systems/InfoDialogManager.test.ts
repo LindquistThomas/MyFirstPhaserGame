@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { hasBeenSeen, markSeen, resetAll } from './InfoDialogManager';
+import { hasBeenSeen, hasSeenAny, markSeen, resetAll } from './InfoDialogManager';
 
 const STORAGE_KEY = 'architect_info_seen_v1';
 
@@ -52,5 +52,13 @@ describe('InfoDialogManager', () => {
     const raw = localStorage.getItem(STORAGE_KEY);
     const arr = JSON.parse(raw!) as string[];
     expect(arr.filter(id => id === 'x')).toHaveLength(1);
+  });
+
+  it('hasSeenAny flips to true once any info dialog has been opened', () => {
+    expect(hasSeenAny()).toBe(false);
+    markSeen('first-board');
+    expect(hasSeenAny()).toBe(true);
+    resetAll();
+    expect(hasSeenAny()).toBe(false);
   });
 });
