@@ -49,7 +49,10 @@ declare global {
 export async function waitForGame(page: Page): Promise<void> {
   await page.waitForFunction(() => !!window.__game, undefined, { timeout: 30_000 });
   // Ensure the game canvas has focus so keyboard input reaches Phaser.
-  await page.locator('canvas').first().click({ position: { x: 10, y: 10 } });
+  // Target the canvas inside #game-container explicitly — the first <canvas>
+  // in the DOM is the pillarbox backdrop (pointer-events: none, z-index: 0)
+  // and clicks on it get intercepted by <html> instead of reaching Phaser.
+  await page.locator('#game-container canvas').first().click({ position: { x: 10, y: 10 } });
 }
 
 /** Wait until a specific Phaser scene is active (its `create()` has run). */
