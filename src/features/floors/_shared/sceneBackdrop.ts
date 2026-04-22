@@ -124,13 +124,15 @@ export function drawSceneBackdrop(
   // Grounds the room so platforms + props don't float over the vignette.
   const glowHeight = 100;
   const glowBands = 20;
+  const glowBandH = Math.ceil(glowHeight / glowBands);
+  const glowTop = height - glowHeight;
   for (let i = 0; i < glowBands; i++) {
-    const t = i / (glowBands - 1);
+    // t in (0,1]: darker at the top of the band, brightest at the bottom.
+    const t = (i + 1) / glowBands;
     const alpha = 0.18 * Math.pow(t, 2);
-    const bandH = Math.ceil(glowHeight / glowBands);
-    const yTop = height - glowHeight + Math.round(t * glowHeight);
+    const yTop = glowTop + i * glowBandH;
     g.fillStyle(theme.platformColor, alpha);
-    g.fillRect(0, yTop, width, bandH);
+    g.fillRect(0, yTop, width, glowBandH);
   }
 
   drawAccents?.(g);

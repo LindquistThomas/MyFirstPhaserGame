@@ -3,6 +3,7 @@ import * as Phaser from 'phaser';
 export class Token extends Phaser.Physics.Arcade.Sprite {
   private floatTween?: Phaser.Tweens.Tween;
   private haloTween?: Phaser.Tweens.Tween;
+  private pulseTween?: Phaser.Tweens.Tween;
   private halo?: Phaser.GameObjects.Image;
   private collected = false;
 
@@ -44,7 +45,7 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
     });
 
     // Subtle scale pulse
-    scene.tweens.add({
+    this.pulseTween = scene.tweens.add({
       targets: this,
       scaleX: 1.15,
       scaleY: 1.15,
@@ -53,6 +54,14 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
       yoyo: true,
       repeat: -1,
     });
+  }
+
+  preUpdate(time: number, delta: number): void {
+    super.preUpdate(time, delta);
+    // Keep halo locked to the coin so it tracks the float bob.
+    if (this.halo && !this.collected) {
+      this.halo.setPosition(this.x, this.y);
+    }
   }
 
   collect(): void {
@@ -65,6 +74,9 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
     }
     this.floatTween?.stop();
     this.haloTween?.stop();
+    this.pulseTween?.stop();
+    // Ensure no leftover idle tweens on `this` fight the collection animation.
+    this.scene.tweens.killTweensOf(this);
     if (this.halo) {
       const halo = this.halo;
       this.scene.tweens.add({

@@ -105,7 +105,7 @@ interface PendingCall { at: number; cb: () => void }
 
 export interface FakeScene {
   time: { now: number; delayedCall: (ms: number, cb: () => void) => void };
-  tweens: { add: (config: Record<string, unknown>) => { stop: () => void; targets: unknown; onComplete?: () => void } };
+  tweens: { add: (config: Record<string, unknown>) => { stop: () => void; targets: unknown; onComplete?: () => void }; killTweensOf: (targets: unknown) => void };
   anims: {
     exists: (key: string) => boolean;
     create: (config: Record<string, unknown>) => void;
@@ -158,6 +158,7 @@ export function createFakeScene(overrides: Partial<FakeScene> = {}): FakeScene {
         targets: config['targets'],
         onComplete: config['onComplete'] as (() => void) | undefined,
       })),
+      killTweensOf: vi.fn(),
     },
     anims: {
       exists: () => false,
