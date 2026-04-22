@@ -261,24 +261,37 @@ export function drawBuildingFacade(
         const pauseRand = rng(seed);
         const nextPause = (): number => 4000 + Math.floor(pauseRand() * 5000);
 
+        // One reserved slot per flicker window — always holds the single
+        // pending TimerEvent. Swapping in place prevents the array from
+        // growing over time (each flicker spawns two timers per cycle).
+        const slot = timers.length;
+        let pending: Phaser.Time.TimerEvent | null = null;
+        const setPending = (t: Phaser.Time.TimerEvent): void => {
+          pending = t;
+          timers[slot] = t;
+        };
+
         const doFlicker = (): void => {
+          pending = null;
           if (!rect.active) return;
           rect.setAlpha(0.20);
-          const up = scene.time.delayedCall(60, () => {
-            if (!rect.active) return;
-            rect.setAlpha(0.80);
-            const wait = scene.time.delayedCall(nextPause(), doFlicker);
-            timers.push(wait);
-          });
-          timers.push(up);
+          setPending(
+            scene.time.delayedCall(60, () => {
+              pending = null;
+              if (!rect.active) return;
+              rect.setAlpha(0.80);
+              setPending(scene.time.delayedCall(nextPause(), doFlicker));
+            }),
+          );
         };
 
         // Stagger initial fires so they don't all pop at t=0.
-        const initial = scene.time.delayedCall(
-          1000 + Math.floor(pauseRand() * 4000),
-          doFlicker,
+        setPending(
+          scene.time.delayedCall(1000 + Math.floor(pauseRand() * 4000), doFlicker),
         );
-        timers.push(initial);
+        // Reference `pending` once so TS doesn't flag it as write-only — it
+        // exists as a debug-friendly handle on the latest timer.
+        void pending;
         flickersRemaining--;
       }
     }
