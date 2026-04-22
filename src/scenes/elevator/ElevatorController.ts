@@ -4,11 +4,11 @@ import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { clampRiderToCab } from './elevatorCabGeometry';
 
-// Slightly tighter than the cab half-width (80) so the latch only
-// engages when the player is actually inside the cab, not merely
-// standing on the walkway-overlap strip that extends 4 px into the
-// shaft from each side.
-const ELEVATOR_STAND_X_TOLERANCE = 78;
+// Cab half-width (80) minus the walkway-overlap strip (WALK_OVERLAP = 4
+// in ElevatorSceneLayout), so the latch only engages when the player is
+// actually inside the cab, not merely standing on the overlap strip that
+// extends 4 px into the shaft from each side.
+const ELEVATOR_STAND_X_TOLERANCE = 76;
 const ELEVATOR_STAND_Y_MIN = -16;
 const ELEVATOR_STAND_Y_MAX = 24;
 const ELEVATOR_PLAT_HW = 80;

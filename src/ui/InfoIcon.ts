@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { hasBeenSeen, hasSeenAny } from '../systems/InfoDialogManager';
 import { primaryKeyLabel } from '../input';
+import type { GameAction } from '../input';
 import { theme } from '../style/theme';
 
 const RADIUS = 18;
@@ -143,6 +144,7 @@ function ensureTextures(scene: Phaser.Scene): void {
 export class InfoIcon {
   private readonly scene: Phaser.Scene;
   private readonly contentId?: string;
+  private readonly hintAction: GameAction;
   private container: Phaser.GameObjects.Container;
   private bg: Phaser.GameObjects.Image;
   private ring?: Phaser.GameObjects.Image;
@@ -152,9 +154,11 @@ export class InfoIcon {
   private mode: 'idle' | 'attention' | 'calm' = 'idle';
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void,
-              contentId?: string, worldSpace = false) {
+              contentId?: string, worldSpace = false,
+              hintAction: GameAction = 'ToggleInfo') {
     this.scene = scene;
     this.contentId = contentId;
+    this.hintAction = hintAction;
 
     ensureTextures(scene);
 
@@ -290,7 +294,7 @@ export class InfoIcon {
   }
 
   private createHint(): Phaser.GameObjects.Container {
-    const label = `Press ${primaryKeyLabel('ToggleInfo')}`;
+    const label = `Press ${primaryKeyLabel(this.hintAction)}`;
     const text = this.scene.add.text(0, 0, label, {
       fontFamily: 'monospace',
       fontSize: '11px',
