@@ -62,8 +62,9 @@ export default defineConfig({
     // dramatically faster and more stable than `npm run dev`, because Vite
     // in dev mode does on-demand TypeScript transforms per request, and
     // under parallel Playwright workers that would frequently push
-    // per-test time past the 60s timeout. The CI workflow runs `npm run
-    // build` as its own step before Playwright starts (see ci.yml), so
+    // per-test time uncomfortably close to the CI per-test timeout. The CI
+    // workflow runs `npm run build` as its own step before Playwright
+    // starts (see ci.yml), so
     // we deliberately do NOT rebuild here — doing so would double the
     // build cost (~15s wasted per run). Locally we keep `npm run dev` so
     // hot-reload works while iterating on tests.

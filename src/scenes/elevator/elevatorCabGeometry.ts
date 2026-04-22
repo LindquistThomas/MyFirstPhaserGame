@@ -3,8 +3,8 @@
  * tested without booting the renderer. Used by `ElevatorController`.
  */
 
-export const ELEVATOR_STEP_OUT_X_MARGIN = 12;
-export const ELEVATOR_CAB_HALF_WIDTH = 70;
+const ELEVATOR_STEP_OUT_X_MARGIN = 12;
+const ELEVATOR_CAB_HALF_WIDTH = 70;
 
 /**
  * Pure geometry for clamping a rider onto the cab when they request to

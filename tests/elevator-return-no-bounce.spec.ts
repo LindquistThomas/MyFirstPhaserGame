@@ -111,19 +111,15 @@ test.describe('elevator return', () => {
 
       // Approach the cab.
       await page.keyboard.down(walkInKey);
-      if (await observeBounce(400)) {
-        await page.keyboard.up(walkInKey);
-        throw new Error(`Bounced back into ${c.sceneKey} during approach`);
-      }
+      const approachBounced = await observeBounce(400);
       await page.keyboard.up(walkInKey);
+      expect(approachBounced, `Bounced back into ${c.sceneKey} during approach`).toBe(false);
 
       // Retreat to exercise the second half of the sticky-latch bug.
       await page.keyboard.down(walkOutKey);
-      if (await observeBounce(300)) {
-        await page.keyboard.up(walkOutKey);
-        throw new Error(`Bounced back into ${c.sceneKey} during retreat`);
-      }
+      const retreatBounced = await observeBounce(300);
       await page.keyboard.up(walkOutKey);
+      expect(retreatBounced, `Bounced back into ${c.sceneKey} during retreat`).toBe(false);
 
       // Final steady walk toward the cab to confirm we actually reach the
       // cab without ever bouncing.
