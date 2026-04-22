@@ -34,9 +34,7 @@ src/
 │       ├── product/          Product Leadership — Business floor, right room.
 │       └── executive/        ExecutiveSuiteScene.ts (penthouse).
 │   └── products/
-│       ├── hall/
-│       │   └── ProductsHallScene.ts  Floor 5 hall — one door per ISY product.
-│       └── rooms/            Individual product rooms reached from the hall.
+│       └── rooms/            Individual product rooms reached from the Products floor doors.
 │           ├── ProductRoomScene.ts            Shared base for product rooms below.
 │           ├── ProductIsyProjectControlsScene.ts
 │           ├── ProductIsyBeskrivelseScene.ts
@@ -122,7 +120,7 @@ Use this to find the right file to edit for a given feature.
 | Architecture Team room              | `features/floors/architecture/{ArchitectureTeamScene,info,quiz}.ts`                    |
 | Finance room                        | `features/floors/finance/{FinanceTeamScene,info,quiz}.ts`                              |
 | Product Leadership                  | `features/floors/product/{ProductLeadershipScene,info,quiz}.ts`                        |
-| Products hall + product rooms       | `features/products/hall/ProductsHallScene.ts`, `features/products/rooms/Product*Scene.ts` |
+| Products floor + product rooms      | `scenes/elevator/ProductDoorManager.ts` (doors on the Products floor), `features/products/rooms/Product*Scene.ts` |
 | Executive Suite                     | `features/floors/executive/{ExecutiveSuiteScene,info,quiz}.ts`                         |
 | Shared floor base / managers        | `features/floors/_shared/*.ts`                                                         |
 | Elevator shaft + transitions        | `scenes/elevator/*.ts`                                                                 |
@@ -146,15 +144,17 @@ Use this to find the right file to edit for a given feature.
 
 ```
 BootScene  →  MenuScene  →  ElevatorScene  ↔  Floor scenes (features/floors/*)
-                                            ↘  ProductsHallScene  →  product rooms
+                                            ↘  product rooms (features/products/rooms/*)
 ```
 
 `BootScene` generates every sprite + sound once, creates the
 `GameStateManager`, and hands off to `MenuScene`. `ElevatorScene` is
 the central shaft; rides transition into the floor scenes in
 `features/floors/<floor>/` (each a thin wrapper around the shared
-`LevelScene`). The Products hall exits into individual product rooms
-under `features/products/rooms/`.
+`LevelScene`). The Products floor is rendered directly by
+`ElevatorScene` / `scenes/elevator/ProductDoorManager.ts` — one door
+per ISY product, each door launching the corresponding
+`features/products/rooms/Product*Scene.ts`.
 
 ### Scene hand-off
 

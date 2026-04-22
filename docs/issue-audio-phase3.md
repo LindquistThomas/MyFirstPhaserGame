@@ -1,5 +1,7 @@
 ## Audio — Music & Sound Effects (Phase 3)
 
+> **Status: shipped — preserved as historical spec.** Scene music is driven by `SCENE_MUSIC` in `src/config/audioConfig.ts`; procedural SFX come from `src/systems/SoundGenerator.ts`; playback and mute are handled by `src/systems/AudioManager.ts` + `src/plugins/MusicPlugin.ts`; mute persists under localStorage key `architect_audio_muted_v1`. Keep this file for design context; do not treat the checklist below as an active TODO.
+
 Add background music and sound effects to enhance game feel.
 
 ### Music
@@ -26,12 +28,12 @@ Add background music and sound effects to enhance game feel.
 - Music should loop per scene, crossfade on scene transitions
 - SFX should be short, retro-style (8-bit or chiptune)
 - Consider using free assets from [opengameart.org](https://opengameart.org) or [freesound.org](https://freesound.org)
-- Audio files go in `public/assets/audio/`
-- Add mute/volume toggle to HUD
+- Audio files go in `public/music/` (loaded by `BootScene.preload()` via `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts`). No `public/assets/audio/` directory exists.
+- Add mute toggle to HUD (volume slider is not implemented — only mute).
 
 ### Acceptance Criteria
 
-- [ ] Background music for each scene
-- [ ] SFX for core actions (jump, collect, elevator)
-- [ ] Mute toggle in HUD
-- [ ] Audio doesn't play until user interacts (browser autoplay policy)
+- [x] Background music for each scene
+- [x] SFX for core actions (jump, collect, elevator)
+- [x] Mute toggle in HUD
+- [x] Audio doesn't play until user interacts (browser autoplay policy)

@@ -8,7 +8,9 @@ For a playable **floor** (platforming level with tokens, enemies, info points), 
 
 ## Convention
 
-- Infrastructure scenes live in `src/scenes/`; product content scenes live in `src/features/products/{hall,rooms}/`.
+- Infrastructure scenes live under `src/scenes/` (subdivided into `core/` for Boot/Menu and `elevator/` for the lift).
+- Floor scenes live under `src/features/floors/<floor>/` and extend `LevelScene`.
+- Product content scenes live under `src/features/products/rooms/`.
 - Filename = exported class name in PascalCase, suffixed with `Scene` (e.g. `MenuScene.ts`).
 - The string passed to `super(...)` is the scene **key** and must be unique. By convention it matches the class name.
 
@@ -16,8 +18,9 @@ For a playable **floor** (platforming level with tokens, enemies, info points), 
 
 Create one of:
 
-- `src/scenes/<Name>Scene.ts` for infrastructure scenes.
-- `src/features/products/hall/<Name>Scene.ts` or `src/features/products/rooms/<Name>Scene.ts` for product content scenes.
+- `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes.
+- `src/features/floors/<floor>/<Name>TeamScene.ts` for a floor (use the "New floor variant" below).
+- `src/features/products/rooms/<Name>Scene.ts` for product content scenes.
 
 ```ts
 import * as Phaser from 'phaser';
@@ -45,11 +48,11 @@ export class NameScene extends Phaser.Scene {
 
 1. Register the scene in `src/main.ts`:
     ```ts
-    import { NameScene } from './scenes/NameScene';
+    import { NameScene } from './scenes/core/NameScene';
     // …
     scene: [BootScene, MenuScene, ElevatorScene, /* …, */ NameScene],
     ```
-   Product content scenes import from `./features/products/hall/...` or `./features/products/rooms/...`.
+   Floor scenes import from `./features/floors/<floor>/...`; product content scenes import from `./features/products/rooms/...`.
 2. If the scene has background music, add it to `SCENE_MUSIC` in `src/config/audioConfig.ts`:
    ```ts
    NameScene: 'music_floor2',
@@ -59,10 +62,10 @@ export class NameScene extends Phaser.Scene {
 
 ## New floor variant
 
-Floors extend `LevelScene` and declare their content as a `LevelConfig`:
+Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts`, extend `LevelScene`, and declare their content as a `LevelConfig`:
 
 ```ts
-import { LevelScene } from './LevelScene';
+import { LevelScene } from '../_shared/LevelScene';
 
 export class MyFloorScene extends LevelScene {
   constructor() {

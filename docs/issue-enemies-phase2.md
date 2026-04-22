@@ -1,5 +1,7 @@
 ## Enemies & Obstacles (Phase 2)
 
+> **Status: shipped — preserved as historical spec.** Base `Enemy` class, `Slime` / `BureaucracyBot` subclasses, Arcade-physics patrol AI, AU-loss on contact, and level-config placement all live in `src/entities/Enemy.ts`, `src/entities/enemies/`, and each floor's `LevelConfig.enemies`. Keep this file for design context; do not treat the checklist below as an active TODO.
+
 Add enemies and environmental hazards to floor levels to create gameplay challenge.
 
 ### Proposed Enemy Types
@@ -17,7 +19,7 @@ Add enemies and environmental hazards to floor levels to create gameplay challen
 
 ### Acceptance Criteria
 
-- [ ] At least one enemy type per floor
-- [ ] Enemy contact has a consequence (lose AU / respawn)
-- [ ] Enemies have idle/patrol animations
-- [ ] Enemies are placed via level config (same pattern as platforms/tokens)
+- [x] At least one enemy type per floor
+- [x] Enemy contact has a consequence (lose AU / respawn)
+- [x] Enemies have idle/patrol animations
+- [x] Enemies are placed via level config (same pattern as platforms/tokens)
