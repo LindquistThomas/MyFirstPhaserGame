@@ -185,11 +185,17 @@ export class ElevatorZones {
 
   private createElevatorInfoIcon(): void {
     const { scene, dialogs } = this.opts;
+    // Cab-info opens on Enter (Interact), not ArrowUp (ToggleInfo), because
+    // ArrowUp is the MoveUp ride control while standing on the cab — see
+    // ElevatorScene.update. The teaching hint mirrors that so first-time
+    // players see the correct key.
     this.elevatorInfoIcon = new InfoIcon(
       scene,
       INFO_ICON_X, INFO_ICON_Y,
       () => dialogs.open(ELEVATOR_INFO_ID),
       ELEVATOR_INFO_ID,
+      false,
+      'Interact',
     );
     this.elevatorInfoIcon.setVisible(false);
     if (QUIZ_DATA[ELEVATOR_INFO_ID]) {

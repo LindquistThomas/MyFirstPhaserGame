@@ -21,6 +21,12 @@ export class Elevator {
   private scene: Phaser.Scene;
   private floorStops: Map<number, number> = new Map();
   private snapping = false;
+  /**
+   * Active coast-snap tween (rider released mid-shaft). Tracked so that a
+   * fresh directional press can cancel it and return control to the rider
+   * instead of locking them out for up to 400 ms.
+   */
+  private coastSnapTween?: Phaser.Tweens.Tween;
   private currentFloor = 0;
   private direction: -1 | 0 | 1 = 0;
 
@@ -110,9 +116,19 @@ export class Elevator {
    */
   ride(up: boolean, down: boolean, deltaMs: number = 16.67): void {
     // Any tween-driven motion (e.g. moveToFloor) takes over, so skip ramping.
+    // Exception: a coast-snap tween triggered by the rider letting go of
+    // the controls is cancelled the moment they press a direction again,
+    // so Up/Down is never swallowed for the remainder of the tween.
     if (this.snapping) {
-      this.direction = this.velocity < 0 ? -1 : this.velocity > 0 ? 1 : 0;
-      return;
+      const wantDir: -1 | 0 | 1 = up && !down ? -1 : down && !up ? 1 : 0;
+      if (wantDir !== 0 && this.coastSnapTween) {
+        this.coastSnapTween.stop();
+        this.coastSnapTween = undefined;
+        this.snapping = false;
+      } else {
+        this.direction = this.velocity < 0 ? -1 : this.velocity > 0 ? 1 : 0;
+        return;
+      }
     }
 
     const dt = deltaMs / 1000;
@@ -150,10 +166,15 @@ export class Elevator {
       }
     }
 
-    // If coasting to a halt between floors, snap to the nearest stop.
+    // If coasting to a halt between floors, snap to the nearest stop —
+    // but only when we're meaningfully off a stop. Without this guard,
+    // tiny floating-point drift at a parked floor would schedule a
+    // pointless tween every idle frame.
     if (wantDir === 0 && Math.abs(this.velocity) < 1) {
       this.velocity = 0;
-      this.snapToNearest();
+      if (this.distanceToNearestStop() > 1) {
+        this.snapToNearest();
+      }
     }
 
     this.applyVelocity();
@@ -243,13 +264,14 @@ export class Elevator {
     if (bestDist > 1) {
       this.snapping = true;
       const duration = Math.min((bestDist / Elevator.MAX_SPEED) * 1000, 400);
-      this.scene.tweens.add({
+      this.coastSnapTween = this.scene.tweens.add({
         targets: this.platform,
         y: snapY,
         duration,
         ease: 'Sine.easeOut',
         onComplete: () => {
           this.snapping = false;
+          this.coastSnapTween = undefined;
           this.currentFloor = bestId;
           this.platform.setVelocityY(0);
         },
@@ -258,6 +280,16 @@ export class Elevator {
       this.currentFloor = bestId;
       this.platform.setVelocityY(0);
     }
+  }
+
+  /** Distance (px) from the cab's current y to the nearest registered stop. */
+  private distanceToNearestStop(): number {
+    let best = Infinity;
+    for (const y of this.floorStops.values()) {
+      const d = Math.abs(this.platform.y - y);
+      if (d < best) best = d;
+    }
+    return best;
   }
 
   /** Move to a specific floor via tween (for panel / programmatic use). */

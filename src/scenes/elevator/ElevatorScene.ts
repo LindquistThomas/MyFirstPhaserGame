@@ -369,7 +369,15 @@ export class ElevatorScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
 
-    if (infoPressed && activeZone && !this.dialogs.isOpen) {
+    // The elevator cab zone overlaps MoveUp (ArrowUp is bound to both
+    // MoveUp and ToggleInfo). If we let ToggleInfo open the cab info
+    // dialog here, pressing Up on the cab would open the dialog instead
+    // of riding, and while the dialog is open the cab is frozen — the
+    // "can't ride the cab" regression. Cab info is still reachable via
+    // the clickable HUD icon or Enter (Interact) — see below.
+    const infoOpenTrigger =
+      activeZone === ELEVATOR_INFO_ID ? interactPressed : infoPressed;
+    if (infoOpenTrigger && activeZone && !this.dialogs.isOpen) {
       this.dialogs.open(activeZone);
       return;
     }

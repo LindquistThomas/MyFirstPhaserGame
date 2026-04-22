@@ -169,5 +169,36 @@ describe('Elevator', () => {
       // Snapping latches — subsequent ride() calls are skipped.
       expect(elevator.getIsMoving()).toBe(true);
     });
+
+    it('does NOT schedule a snap when already parked at a floor stop', () => {
+      const { scene, elevator } = makeElevator([[0, 100], [1, 500]]);
+      const add = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
+      add.mockClear();
+
+      elevator.platform.y = 100; // exactly on a stop
+      elevator.ride(false, false, 16.67);
+
+      expect(add).not.toHaveBeenCalled();
+      expect(elevator.getIsMoving()).toBe(false);
+    });
+
+    it('lets the rider interrupt a coast-snap tween by pressing a direction', () => {
+      const { scene, elevator } = makeElevator([[0, 100], [1, 500]]);
+      const add = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
+
+      // Schedule a coast-snap first.
+      elevator.platform.y = 300;
+      elevator.ride(false, false, 16.67);
+      expect(elevator.getIsMoving()).toBe(true);
+      const tween = add.mock.results[add.mock.results.length - 1].value as { stop: ReturnType<typeof vi.fn> };
+
+      // Rider presses up — should cancel the snap and resume ramped ride.
+      elevator.ride(true, false, 16.67);
+
+      expect(tween.stop).toHaveBeenCalled();
+      const setVY = elevator.platform.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1];
+      expect(lastCall[0]).toBeLessThan(0); // accelerating upward
+    });
   });
 });

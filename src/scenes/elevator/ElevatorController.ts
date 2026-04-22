@@ -4,7 +4,11 @@ import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { clampRiderToCab } from './elevatorCabGeometry';
 
-const ELEVATOR_STAND_X_TOLERANCE = 96;
+// Cab half-width (80) minus the walkway-overlap strip (WALK_OVERLAP = 4
+// in ElevatorSceneLayout), so the latch only engages when the player is
+// actually inside the cab, not merely standing on the overlap strip that
+// extends 4 px into the shaft from each side.
+const ELEVATOR_STAND_X_TOLERANCE = 76;
 const ELEVATOR_STAND_Y_MIN = -16;
 const ELEVATOR_STAND_Y_MAX = 24;
 const ELEVATOR_PLAT_HW = 80;
@@ -104,8 +108,8 @@ export class ElevatorController {
       // Match velocity so the physics integration step keeps the player
       // and platform in sync within this frame; precise Y alignment is
       // then enforced by postUpdatePin() after the step.
-      (this.player.sprite.body as Phaser.Physics.Arcade.Body)
-        .setVelocityY((this.elevator.platform.body as Phaser.Physics.Arcade.Body).velocity.y);
+      const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+      playerBody.setVelocityY((this.elevator.platform.body as Phaser.Physics.Arcade.Body).velocity.y);
     } else {
       this.elevator.ride(false, false, delta);
     }
@@ -164,6 +168,11 @@ export class ElevatorController {
     // Place the player's feet exactly on top of the platform body.
     const targetY = platBody.y - playerBody.offset.y - playerBody.height + this.player.sprite.displayOriginY;
     this.player.sprite.setY(targetY);
+    // Zero out any residual vy (e.g. from a landing frame the moment
+    // before mounting) and keep the player in lock-step with the cab's
+    // post-step velocity so the next physics tick doesn't flick them
+    // off the platform for a single frame.
+    playerBody.setVelocityY(platBody.velocity.y);
     playerBody.updateFromGameObject();
   }
 }
