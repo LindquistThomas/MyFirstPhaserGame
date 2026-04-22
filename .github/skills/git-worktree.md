@@ -9,6 +9,8 @@ The primary checkout at `C:\code\SoYouWantToBeAnArchitect` keeps `main`'s `node_
 - Sibling directory: `C:\code\SoYouWantToBeAnArchitect-<slug>` on Windows, `../architect-elevator-game-<slug>` (or `~/code/architect-elevator-game-<slug>`) on macOS/Linux.
 - Branch name: `<type>/<slug>` with `<type>` ∈ { `fix`, `feat`, `chore`, `docs`, … } and `<slug>` in kebab-case.
 
+> **Note on primary-checkout names.** The examples below hardcode the Windows team's legacy checkout name `SoYouWantToBeAnArchitect` and the macOS/Linux convention `architect-elevator-game` (matching the GitHub repo name). These are the team's primary clone directory names for each OS, **not** the repo name in both places. If your local clone uses a different directory name, substitute it in every `..\…` / `../…` path below — the worktree sibling path is always `<primary-checkout-name>-<slug>`.
+
 ## Create
 
 **Windows (PowerShell):**

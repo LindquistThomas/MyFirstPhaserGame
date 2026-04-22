@@ -95,7 +95,7 @@ Short index of where things live. Reach for these instead of re-implementing.
 ## How to extend
 
 ### Add a scene
-Follow `.github/skills/new-scene.md`. Key steps: create `src/scenes/<Name>Scene.ts` extending `Phaser.Scene`, register it in the `scene:` array in `src/main.ts`, and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
+Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in the `scene:` array in `src/main.ts`, and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
 
 ### Add a floor / level
 Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene` (import from `../_shared/LevelScene`) and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and in the scene array in `main.ts`.

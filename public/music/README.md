@@ -8,15 +8,15 @@ SFX (jump, land, token collect, quiz feedback, info-card / link clicks, elevator
 
 The tracks currently wired up in `STATIC_MUSIC_ASSETS`:
 
-| Asset key | File | Used by (`SCENE_MUSIC`) |
+| Asset key | File | Used by |
 | --- | --- | --- |
-| `music_menu` | `8bit-chiptune/bgm_menu.mp3` | `MenuScene` |
-| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` |
-| `music_elevator_ride` | `8bit-chiptune/bgm_action_3.mp3` | Emitted imperatively by `ElevatorController` during an active ride. |
-| `music_floor1` | `8bit-chiptune/bgm_action_1.mp3` | `ArchitectureTeamScene` |
-| `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, `ExecutiveSuiteScene`, and the Product sub-scenes (`ProductIsyProjectControlsScene`, `ProductIsyBeskrivelseScene`, `ProductIsyRoadScene`, `ProductAdminLisensScene`) |
-| `music_platform` | `retro-synth/shadow_operations-loop1.ogg` | `PlatformTeamScene` |
-| `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` emits `music:push` while a quiz is active, then pops back to scene music. |
+| `music_menu` | `8bit-chiptune/bgm_menu.mp3` | `MenuScene` (via `SCENE_MUSIC`) |
+| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` (via `SCENE_MUSIC`) |
+| `music_elevator_ride` | `8bit-chiptune/bgm_action_3.mp3` | `ElevatorController` — emitted imperatively with `music:play` during an active ride. |
+| `music_floor1` | `8bit-chiptune/bgm_action_1.mp3` | `ArchitectureTeamScene` (via `SCENE_MUSIC`) |
+| `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, `ExecutiveSuiteScene`, and the Product sub-scenes (`ProductIsyProjectControlsScene`, `ProductIsyBeskrivelseScene`, `ProductIsyRoadScene`, `ProductAdminLisensScene`) (via `SCENE_MUSIC`) |
+| `music_platform` | `retro-synth/shadow_operations-loop1.ogg` | `PlatformTeamScene` (via `SCENE_MUSIC`) |
+| `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` — emits `music:push` while a quiz is active, then pops back to scene music. |
 
 ## Unused tracks present on disk
 
