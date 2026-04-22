@@ -209,6 +209,12 @@ export class Player {
     if (activeContext() !== 'gameplay') {
       this.sprite.setVelocityX(0);
       this.sprite.setFlipX(!this.facingRight);
+      // Bypass the player_land squash gate: if the squash-anim window
+      // happened to overlap with opening a dialog, `updateAnimation`
+      // would otherwise return early and leave the sprite in walk/land
+      // under the modal. The dialog overlays the player, so clearing
+      // the squash flag early is invisible to the user.
+      this.isLanding = false;
       this.updateAnimation(onGround);
       return;
     }
