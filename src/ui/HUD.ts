@@ -23,10 +23,14 @@ export class HUD {
   private muteHit!: Phaser.GameObjects.Zone;
   private bg!: Phaser.GameObjects.Graphics;
   private coinIcon!: Phaser.GameObjects.Graphics;
+  private coinShine!: Phaser.GameObjects.Graphics;
   private progressStrip!: Phaser.GameObjects.Graphics;
   private lastAU = 0;
   private lastFloor: FloorId | -1 = -1;
   private lastProgressSig = '';
+  /** Animated progress-strip ratio (tweened toward the target). */
+  private progressRatio = 0;
+  private progressTween?: Phaser.Tweens.Tween;
   private onMuteChanged = (muted: boolean): void => this.renderMuteIcon(muted);
 
   constructor(scene: Phaser.Scene, progression: ProgressionSystem) {
@@ -50,6 +54,16 @@ export class HUD {
     this.coinIcon.setPosition(COIN_X, COIN_Y);
     this.container.add(this.coinIcon);
 
+    // Shimmer band swept across the coin periodically — small live-UI cue
+    // so the HUD doesn't read as static when idling. Drawn as a separate
+    // graphics so the tween can slide it without re-rendering the coin.
+    this.coinShine = this.scene.add.graphics();
+    this.coinShine.fillStyle(0xffffff, 0.6);
+    this.coinShine.fillRect(-1, -10, 2, 20);
+    this.coinShine.setPosition(COIN_X - 14, COIN_Y).setAlpha(0);
+    this.container.add(this.coinShine);
+    this.scheduleCoinShimmer();
+
     // AU label + counter
     this.auText = this.scene.add.text(46, 6, 'AU: 0', {
       fontFamily: 'monospace', fontSize: '20px',
@@ -69,6 +83,7 @@ export class HUD {
     this.container.add(this.muteIcon);
     this.muteHit = this.scene.add.zone(muteX, muteY, 32, 32).setInteractive({ useHandCursor: true });
     this.muteHit.on('pointerup', () => eventBus.emit('audio:toggle-mute'));
+    this.muteHit.on('pointerdown', () => this.punchMuteIcon());
     this.container.add(this.muteHit);
     this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
     createSceneLifecycle(this.scene).bindEventBus('audio:mute-changed', this.onMuteChanged);
@@ -137,8 +152,6 @@ export class HUD {
     g.clear();
     const next = this.findNextUnlockFloor();
     if (!next) return;
-    const au = this.progression.getTotalAU();
-    const ratio = Phaser.Math.Clamp(au / next.auRequired, 0, 1);
     const x = 46;
     const y = 30;
     const floor = this.progression.getCurrentFloor();
@@ -146,12 +159,78 @@ export class HUD {
     // Background track
     g.fillStyle(0x1a2a3a, 0.6);
     g.fillRect(x, y, PROGRESS_STRIP_WIDTH, PROGRESS_STRIP_HEIGHT);
-    // Fill
-    const fillW = Math.round(ratio * PROGRESS_STRIP_WIDTH);
+    // Fill — uses the tweened `progressRatio`, not the raw AU ratio, so
+    // changes animate instead of snapping.
+    const fillW = Math.round(this.progressRatio * PROGRESS_STRIP_WIDTH);
     if (fillW > 0) {
       g.fillStyle(this.lighten(fillColor, 0.25), 0.95);
       g.fillRect(x, y, fillW, PROGRESS_STRIP_HEIGHT);
     }
+  }
+
+  /** Tween `progressRatio` toward the current AU/required ratio, repainting each frame. */
+  private tweenProgressTo(target: number): void {
+    this.progressTween?.stop();
+    this.progressTween = this.scene.tweens.add({
+      targets: this,
+      progressRatio: target,
+      duration: 260,
+      ease: 'Cubic.easeOut',
+      onUpdate: () => this.redrawProgressStrip(),
+      onComplete: () => this.redrawProgressStrip(),
+    });
+  }
+
+  /** Crossfade the floor label between old and new text. */
+  private crossfadeFloorLabel(nextText: string): void {
+    const g = this.floorText;
+    this.scene.tweens.add({
+      targets: g,
+      alpha: 0,
+      y: g.y - 6,
+      duration: 100,
+      ease: 'Quad.easeIn',
+      onComplete: () => {
+        g.setText(nextText).setY(g.y + 12).setAlpha(0);
+        this.scene.tweens.add({
+          targets: g,
+          alpha: 1,
+          y: g.y - 6,
+          duration: 140,
+          ease: 'Quad.easeOut',
+        });
+      },
+    });
+  }
+
+  /** Schedule a 2s shimmer sweep across the coin, looping every ~6s. */
+  private scheduleCoinShimmer(): void {
+    const fire = (): void => {
+      if (!this.coinShine.scene) return;
+      this.coinShine.setX(COIN_X - 14).setAlpha(0.8);
+      this.scene.tweens.add({
+        targets: this.coinShine,
+        x: COIN_X + 14,
+        alpha: { from: 0.8, to: 0 },
+        duration: 600,
+        ease: 'Sine.easeInOut',
+        onComplete: () => this.coinShine.setAlpha(0),
+      });
+    };
+    // Kick off the first sweep after a short delay, then repeat.
+    this.scene.time.delayedCall(3000, fire);
+    this.scene.time.addEvent({ delay: 6000, loop: true, callback: fire });
+  }
+
+  /** Scale-punch + tint pulse on mute icon press. */
+  private punchMuteIcon(): void {
+    this.scene.tweens.add({
+      targets: this.muteIcon,
+      scale: { from: 1, to: 0.85 },
+      duration: 90,
+      ease: 'Quad.easeOut',
+      yoyo: true,
+    });
   }
 
   /** Punch coin + float "+N" on AU gain. */
@@ -219,11 +298,19 @@ export class HUD {
 
     const floor = this.progression.getCurrentFloor();
     const fd = LEVEL_DATA[floor];
-    if (fd) this.floorText.setText(`F${fd.id}: ${fd.name}`);
+    const nextFloorLabel = fd ? `F${fd.id}: ${fd.name}` : '';
 
     if (floor !== this.lastFloor) {
+      const isFirstRender = this.lastFloor === -1;
       this.lastFloor = floor;
       this.redrawBackground();
+      if (isFirstRender || !fd) {
+        this.floorText.setText(nextFloorLabel);
+      } else {
+        this.crossfadeFloorLabel(nextFloorLabel);
+      }
+    } else if (fd && this.floorText.text !== nextFloorLabel) {
+      this.floorText.setText(nextFloorLabel);
     }
 
     if (au > this.lastAU) {
@@ -235,7 +322,8 @@ export class HUD {
     const sig = next ? `${next.id}:${au}:${floor}` : `none:${floor}`;
     if (sig !== this.lastProgressSig) {
       this.lastProgressSig = sig;
-      this.redrawProgressStrip();
+      const target = next ? Phaser.Math.Clamp(au / next.auRequired, 0, 1) : 0;
+      this.tweenProgressTo(target);
     }
   }
 }

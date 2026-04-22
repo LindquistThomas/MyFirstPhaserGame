@@ -47,7 +47,7 @@ describe('Token', () => {
 
   it('creates float + pulse tweens on construction', () => {
     const add = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
-    // Two tweens: float (yoyo y) and scale pulse.
+    // At minimum: float (yoyo y), scale pulse, and halo alpha/scale pulse.
     expect(add.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -68,7 +68,8 @@ describe('Token', () => {
     expect((token as unknown as { collected: boolean }).collected).toBe(true);
     expect((token.body as { enable: boolean }).enable).toBe(false);
     expect(stopSpy).toHaveBeenCalledTimes(1);
-    expect(add.mock.calls.length).toBe(countBefore + 1);
+    // collect() adds a halo-fade tween (if halo exists) + the coin fade tween.
+    expect(add.mock.calls.length).toBeGreaterThan(countBefore);
   });
 
   it('collect() is idempotent — second call is a no-op', () => {

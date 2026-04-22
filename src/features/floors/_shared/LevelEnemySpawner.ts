@@ -78,6 +78,7 @@ export class LevelEnemySpawner {
     if (enemy.canBeStomped && comingFromAbove && falling) {
       enemy.onStomp();
       this.deps.player.sprite.setVelocityY(-420);
+      this.deps.camera.shake(80, 0.004);
       eventBus.emit('sfx:stomp');
       return;
     }

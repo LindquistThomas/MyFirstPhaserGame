@@ -143,6 +143,11 @@ export class LevelScene extends Phaser.Scene {
   private tokenMgr!: LevelTokenManager;
   private zones!: LevelZoneSetup;
 
+  /** Grounding shadow tracked to the player each frame. */
+  private playerShadow?: Phaser.GameObjects.Image;
+  /** Shadows tracked to each spawned enemy (same index as enemies[]). */
+  private enemyShadows: Array<Phaser.GameObjects.Image | undefined> = [];
+
   constructor(key: string, floorId: FloorId) {
     super({ key });
     this.floorId = floorId;
@@ -232,6 +237,93 @@ export class LevelScene extends Phaser.Scene {
     this.cameras.main.setScroll(0, 0);
     this.showFloorBanner();
     this.cameras.main.fadeIn(500, 0, 0, 0);
+
+    this.createAtmosphericFx();
+  }
+
+  /**
+   * Atmospheric layer added on top of the backdrop but behind gameplay:
+   *   - Per-floor color grading overlay (very low alpha, theme-tinted).
+   *   - Ambient floating motes (6–10 drifting particles).
+   *   - Drop shadow tracked to the player.
+   *   - Drop shadows tracked to each spawned enemy.
+   */
+  private createAtmosphericFx(): void {
+    // 1. Color grading overlay — full-screen rect tinted with the floor's
+    // token color (which reads as the floor's brand color) at 0.05 alpha.
+    // Placed above backdrop (depth 0) and tiles (depth 2) but below the
+    // player (depth 10) so platforms + decor stay legible.
+    const gradeOverlay = this.add.graphics().setDepth(5.5).setScrollFactor(0);
+    gradeOverlay.fillStyle(this.floorData.theme.tokenColor, 0.05);
+    gradeOverlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    // 2. Ambient motes — slow-drifting tinted particles.
+    if (this.textures.exists('particle')) {
+      const motes = this.add.particles(0, 0, 'particle', {
+        x: { min: 0, max: GAME_WIDTH },
+        y: { min: 0, max: GAME_HEIGHT - 64 },
+        speedY: { min: -12, max: -4 },
+        speedX: { min: -8, max: 8 },
+        scale: { start: 0.35, end: 0.1 },
+        alpha: { start: 0.18, end: 0 },
+        lifespan: { min: 6000, max: 11000 },
+        frequency: 1200,
+        quantity: 1,
+        tint: this.floorData.theme.tokenColor,
+      });
+      motes.setDepth(1.5);
+    }
+
+    // 3. Player drop shadow — a dark ellipse tracked each frame so it
+    // shrinks while airborne for height cueing.
+    if (this.textures.exists('shadow_blob')) {
+      this.playerShadow = this.add
+        .image(this.player.sprite.x, this.player.sprite.y + 70, 'shadow_blob')
+        .setDepth(9.5);
+    }
+
+    // 4. Enemy drop shadows, one per enemy, parented-by-index.
+    for (const enemy of this.enemySpawner.enemies) {
+      if (!this.textures.exists('shadow_blob')) break;
+      const sh = this.add.image(enemy.x, enemy.y + 28, 'shadow_blob').setDepth(5.5).setScale(0.7);
+      this.enemyShadows.push(sh);
+    }
+  }
+
+  private updateAtmosphericFx(): void {
+    // Player shadow: follow x, lock to ~feet y when grounded, otherwise
+    // project down to the nearest surface below with a height-faded scale.
+    if (this.playerShadow) {
+      const p = this.player.sprite;
+      const body = p.body as Phaser.Physics.Arcade.Body;
+      const onGround = body.blocked.down || body.touching.down;
+      this.playerShadow.setPosition(p.x, p.y + 70);
+      if (onGround) {
+        this.playerShadow.setAlpha(1).setScale(1);
+      } else {
+        // Fade + shrink with upward velocity for an airborne cue.
+        const vy = body.velocity.y;
+        const fade = Phaser.Math.Clamp(1 - Math.abs(vy) / 600, 0.3, 1);
+        this.playerShadow.setAlpha(fade * 0.85).setScale(fade);
+      }
+    }
+
+    // Enemy shadows: follow x, pin y to the body's bottom with a small
+    // fixed offset. If an enemy has been destroyed, drop its shadow too.
+    const enemies = this.enemySpawner.enemies;
+    for (let i = 0; i < this.enemyShadows.length; i++) {
+      const sh = this.enemyShadows[i];
+      if (!sh) continue;
+      const en = enemies[i];
+      if (!en || en.defeated || !en.active) {
+        sh.destroy();
+        this.enemyShadows[i] = undefined;
+        continue;
+      }
+      const body = en.body as Phaser.Physics.Arcade.Body | null;
+      const footY = body ? body.bottom : en.y + 28;
+      sh.setPosition(en.x, footY + 2);
+    }
   }
 
   /** Construct the DialogController and stash it on this.dialogs. */
@@ -301,10 +393,17 @@ export class LevelScene extends Phaser.Scene {
     for (const plat of config.platforms) {
       for (let i = 0; i < plat.width; i++) {
         // plat.y is the walking surface; shift tile center down so tile top = plat.y
-        const t = this.platformGroup.create(
-          plat.x + i * TILE_SIZE + TILE_SIZE / 2, plat.y + TILE_SIZE / 2, tileKey,
-        ) as Phaser.Physics.Arcade.Image;
+        const tx = plat.x + i * TILE_SIZE + TILE_SIZE / 2;
+        const ty = plat.y + TILE_SIZE / 2;
+        const t = this.platformGroup.create(tx, ty, tileKey) as Phaser.Physics.Arcade.Image;
         t.setDepth(2).refreshBody();
+        // Deterministic scuff overlay on ~25% of placed tiles — picks the
+        // same tiles across reloads so layout reads as authored, not random.
+        // Hash: mix floor id + grid coords so every floor gets its own pattern.
+        const hash = ((plat.x + i * 7) * 31 + plat.y * 17 + this.floorId * 53) & 0xff;
+        if (hash < 64 && this.textures.exists('tile_detail_overlay')) {
+          this.add.image(tx, ty, 'tile_detail_overlay').setDepth(2.5);
+        }
       }
     }
   }
@@ -464,6 +563,7 @@ export class LevelScene extends Phaser.Scene {
     if (this.dialogs.isOpen) {
       this.player.update(delta);
       this.hud.update();
+      this.updateAtmosphericFx();
       return;
     }
 
@@ -471,6 +571,7 @@ export class LevelScene extends Phaser.Scene {
     this.hud.update();
     this.updateRoomElevators();
     this.enemySpawner.update(_time, delta);
+    this.updateAtmosphericFx();
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     this.zones.update();

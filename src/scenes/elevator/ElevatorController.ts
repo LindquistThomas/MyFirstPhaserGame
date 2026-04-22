@@ -115,6 +115,12 @@ export class ElevatorController {
       eventBus.emit('music:play', 'music_elevator_ride');
     } else if (!moving && this.wasElevatorMoving) {
       eventBus.emit('music:play', 'music_elevator_jazz');
+      // Arrival: short low-amplitude shake to sell the cab weight without
+      // nausea. Only shake when the player is actually riding — otherwise
+      // a parked cab sliding to rest between idle presses would shake too.
+      if (this.playerOnElevator) {
+        this.scene.cameras.main.shake(90, 0.003);
+      }
     }
     this.wasElevatorMoving = moving;
 
