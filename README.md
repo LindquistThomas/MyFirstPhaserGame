@@ -23,11 +23,15 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 
 ### Floors
 
-| Floor | Department | Theme |
+Defined in `src/config/gameConfig.ts` (`FLOORS`) and `src/config/levelData.ts` (`LEVEL_DATA`).
+
+| Floor | Department | Notes |
 |-------|-----------|-------|
-| F0 | Lobby | Elevator shaft |
-| F1 | Platform Team | Green — Infrastructure tokens |
-| F2 | Cloud Team | Blue — Cloud certification tokens |
+| 0 | Lobby | Ground floor — elevator shaft, no gameplay tokens. |
+| 1 | Platform Team / Architecture Team | Split floor: Platform on the left, Architecture on the right. Green — Infrastructure AU. |
+| 3 | Business | Split floor: Product Leadership on the left, Customer Success on the right. Amber — Business AU. |
+| 4 | Executive Suite | Penthouse — Strategy AU. |
+| 5 | Products | Rendered directly by `ElevatorScene` / `ProductDoorManager` — one door per ISY product, no standalone scene. |
 
 ## Development
 

@@ -2,94 +2,82 @@
 
 ## Purpose
 
-Bootstrap the Phaser + Vite project from scratch. Use this skill when the repository has no `package.json` or `src/` directory yet.
+Bring a fresh clone of this repo to a runnable state, verify the toolchain, and confirm the dev server is serving the game. Use this skill when:
 
-## Based On
+- You've just cloned the repo.
+- `node_modules/` is missing or stale (e.g. after switching Node versions).
+- You want to confirm typecheck / lint / unit tests still pass before starting work.
 
-- `README.md` — declares this is a Phaser game project.
-- `.gitignore` — contains Node.js and Vite ignore patterns, confirming the intended toolchain.
+The project is already scaffolded (TypeScript strict, Phaser 3.90, Vite, Vitest, Playwright) — there is no "bootstrap from empty directory" step.
+
+## Prerequisites
+
+- **Node.js** — match what `package.json` / the lockfile were last built against. Any recent LTS (≥ 18) generally works.
+- **npm** — the lockfile is `package-lock.json`. Do not substitute pnpm / yarn.
 
 ## Steps
 
-1. Initialize the project:
+1. Install dependencies:
    ```bash
-   npm init -y
+   npm install
    ```
+   This installs Phaser, Vite, Vitest, Playwright, ESLint, TypeScript, and everything declared in `devDependencies`.
 
-2. Install Phaser and Vite:
+2. (First-time only) Install Playwright browsers if you plan to run E2E tests:
    ```bash
-   npm install phaser
-   npm install --save-dev vite
+   npx playwright install
    ```
 
-3. Create `vite.config.js` at the project root:
-   ```js
-   import { defineConfig } from 'vite';
-
-   export default defineConfig({
-     base: './',
-     build: {
-       outDir: 'dist'
-     }
-   });
-   ```
-
-4. Create `index.html` at the project root:
-   ```html
-   <!DOCTYPE html>
-   <html lang="en">
-   <head>
-     <meta charset="UTF-8" />
-     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-     <title>MyFirstPhaserGame</title>
-   </head>
-   <body>
-     <div id="game-container"></div>
-     <script type="module" src="/src/main.js"></script>
-   </body>
-   </html>
-   ```
-
-5. Create `src/main.js` with the Phaser game config:
-   ```js
-   import Phaser from 'phaser';
-   import { Boot } from './scenes/Boot.js';
-   import { Preloader } from './scenes/Preloader.js';
-   import { MainMenu } from './scenes/MainMenu.js';
-   import { Game } from './scenes/Game.js';
-
-   const config = {
-     type: Phaser.AUTO,
-     width: 800,
-     height: 600,
-     parent: 'game-container',
-     scene: [Boot, Preloader, MainMenu, Game]
-   };
-
-   new Phaser.Game(config);
-   ```
-
-6. Create the starter scenes in `src/scenes/` (see the `new-scene` skill for the pattern).
-
-7. Create the `public/assets/` directory for static game assets.
-
-8. Add scripts to `package.json`:
-   ```json
-   {
-     "scripts": {
-       "dev": "vite",
-       "build": "vite build",
-       "preview": "vite preview"
-     }
-   }
-   ```
-
-9. Verify with:
+3. Run the dev server to confirm the toolchain works end-to-end:
    ```bash
    npm run dev
    ```
+   Vite serves on `http://localhost:3000` (port configured in `vite.config.ts`). The game should boot into `MenuScene`.
+
+4. Run the fast local checks before starting or finishing work:
+   ```bash
+   npm run typecheck
+   npm run lint
+   npm run test:unit
+   ```
+   These three together are the "pre-PR gate" for pure-docs changes; for code changes, consider `npm run test:all` (slow — ask the user first).
+
+## Scripts reference
+
+From `package.json`:
+
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Vite dev server (exposes `window.__game` in dev for tests). |
+| `npm run build` | `tsc && vite build` — typecheck is part of the build. |
+| `npm run preview` | Serve the production build locally. |
+| `npm run lint` | ESLint across the repo. |
+| `npm run typecheck` | `tsc --noEmit`. |
+| `npm run test:unit` | Vitest (pure logic; jsdom). |
+| `npm run test:unit:watch` | Vitest in watch mode. |
+| `npm run test:unit:coverage` | Vitest with coverage; 60% floor on `src/systems/**` and `src/input/**`. |
+| `npm run test:e2e` | Playwright integration specs. |
+| `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
+| `npm run test:report` | Open the last Playwright HTML report. |
+| `npm run test:visual:update` | Refresh visual snapshot PNGs. |
+| `npm test` | `test:unit && test:e2e`. |
+| `npm run test:all` | `typecheck && lint && test:unit --coverage && test:e2e` — opt-in, slow. |
+
+## Conventions to keep in mind
+
+- **TypeScript strict, ES modules.** Do not add `.js` source files.
+- **No `public/assets/` directory.** Sprites and SFX are generated procedurally at runtime by `SpriteGenerator` and `SoundGenerator`. Only music is shipped as static files (`public/music/`).
+- **Filenames.** Scenes, entities, UI components, and systems use PascalCase filenames matching the exported class. Config / tooling files are lowercase.
+- **Dev-only global.** `src/main.ts` exposes `window.__game` when `import.meta.env.DEV` is true — Playwright depends on it, so don't remove or rename.
+
+## Adding new scenes / floors / content
+
+See the companion skills:
+
+- `.github/skills/new-scene.md` — adding a Phaser scene (infrastructure, floor, or product room).
+- `CLAUDE.md` → "How to extend" — the canonical how-to index for floors, enemies, sound effects, music, info cards, quizzes, and zones.
 
 ## Notes
 
-- The `.gitignore` already covers `node_modules/`, `dist/`, and Vite cache files.
-- All game assets go in `public/assets/` so Vite serves them without processing.
+- `.gitignore` already covers `node_modules/`, `dist/`, Vite cache, Playwright reports, and coverage output.
+- If `npm install` fails with peer-dep errors, check your Node version against the lockfile's build environment rather than forcing `--legacy-peer-deps`.

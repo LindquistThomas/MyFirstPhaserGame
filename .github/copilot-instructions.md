@@ -20,11 +20,12 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   └── music/                # MP3/OGG music tracks loaded in BootScene
 ├── src/
 │   ├── main.ts               # Phaser.Game config + scene registration
-│   ├── config/               # gameConfig, levelData, audioConfig, infoContent, quizData
+│   ├── config/               # gameConfig, levelData, audioConfig; info/ and quiz/ barrel dirs
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator
+│   ├── features/floors/      # _shared/LevelScene + helpers, one dir per floor team scene
 │   ├── input/                # Typed action bindings (actions.ts, bindings.ts, InputService)
 │   ├── plugins/              # MusicPlugin, DebugPlugin (Phaser ScenePlugins)
-│   ├── scenes/               # BootScene, MenuScene, ElevatorScene, …TeamScene, products/
+│   ├── scenes/               # core/ (BootScene, MenuScene), elevator/, NavigationContext
 │   ├── systems/              # ProgressionSystem, EventBus, ZoneManager, AudioManager,
 │   │                         # QuizManager, InfoDialogManager, SaveManager,
 │   │                         # SpriteGenerator, SoundGenerator, MusicGenerator
@@ -32,7 +33,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
     ├── copilot-instructions.md   # This file
-    └── skills/                   # new-scene, add-game-object, debug-with-playwright, git-worktree
+    └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
 
 There is **no** `public/assets/` directory — only `public/music/` exists today. Procedural sprites and SFX are generated at runtime by `SpriteGenerator` and `SoundGenerator`; only music is shipped as static files.
@@ -66,16 +67,16 @@ Scripts from `package.json`:
 
 Short index of where things live. Reach for these instead of re-implementing.
 
-- **`ProgressionSystem`** (`src/systems/ProgressionSystem.ts`) — the only public API for save/load. Tracks `totalAU`, `floorAU`, `unlockedFloors`, `currentFloor`, `collectedTokens`. Persists via `SaveManager` (localStorage key `architect_default_v1`).
+- **`ProgressionSystem`** (`src/systems/ProgressionSystem.ts`) — the only public API for save/load. Tracks `totalAU`, `floorAU`, `unlockedFloors`, `currentFloor`, `collectedTokens`. Persists via `SaveManager` (localStorage key `architect_<slot>_v1`; default slot `default` → `architect_default_v1`).
 - **`SaveManager`** — infrastructure. Scenes must not import it; use `ProgressionSystem`. The one exception is `SaveManager.hasSave()` for UI checks (e.g. a "Continue" button).
 - **`EventBus`** (`src/systems/EventBus.ts`) — typed pub/sub singleton. The `GameEvents` map is the single source of truth for event names and payloads; add new events there and all call sites become type-checked. No Phaser dependency.
 - **`ZoneManager`** (`src/systems/ZoneManager.ts`) — registers named zones with arbitrary `check: () => boolean` predicates, emits `zone:enter` / `zone:exit` on state change only. UI reacts to events; `getActiveZone()` is a synchronous query for keyboard handlers. Default pattern for anything that should appear only in a specific area of a scene.
-- **`AudioManager`** + **`MusicPlugin`** — fully reactive. Scenes don't play audio directly; entities emit `sfx:*` / `music:*` events. Scene music is auto-driven by `SCENE_MUSIC` in `src/config/audioConfig.ts` via `MusicPlugin`.
+- **`AudioManager`** + **`MusicPlugin`** — fully reactive. Scenes don't play audio directly; entities emit `sfx:*` / `music:*` events. Scene music is auto-driven by `SCENE_MUSIC` in `src/config/audioConfig.ts` via `MusicPlugin`. Mute state persists under localStorage key `architect_audio_muted_v1`.
 - **`SoundGenerator`** — procedural SFX generated at runtime and registered as Phaser audio keys. Music is loaded from `public/music/` in `BootScene.preload()` (MP3/OGG). `MusicGenerator` is a retained but unused procedural fallback.
 - **`SpriteGenerator`** — procedural pixel-art textures for player, enemies, tokens, platforms, elevator cab, etc.
-- **`QuizManager`** (localStorage key `architect_quiz_v1`) — quiz completion + cooldowns. Data in `src/config/quizData.ts`.
-- **`InfoDialogManager`** (localStorage key `architect_info_seen_v1`) — tracks which info dialogs the player has opened. Content in `src/config/infoContent.ts`.
-- **`LevelScene`** (`src/scenes/LevelScene.ts`) — shared base for floor scenes. Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) provide a `LevelConfig` with platforms, tokens, enemies (`type: 'slime' | 'bot'`), and info points. Enemies are scene-local, no persistence; they respawn on re-entry.
+- **`QuizManager`** (localStorage key `architect_quiz_v1`) — quiz completion + cooldowns. Data under `src/config/quiz/` (barrel `index.ts`).
+- **`InfoDialogManager`** (localStorage key `architect_info_seen_v1`) — tracks which info dialogs the player has opened. Content under `src/config/info/` (barrel `index.ts`).
+- **`LevelScene`** (`src/features/floors/_shared/LevelScene.ts`) — shared base for floor scenes. Sibling helpers (`LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`) compose the shared concerns. Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a `LevelConfig` with platforms, tokens, enemies (`type: 'slime' | 'bot'`), and info points. Enemies are scene-local, no persistence; they respawn on re-entry.
 - **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
 
 ## Conventions
@@ -94,10 +95,10 @@ Short index of where things live. Reach for these instead of re-implementing.
 ## How to extend
 
 ### Add a scene
-Follow `.github/skills/new-scene.md`. Key steps: create `src/scenes/<Name>Scene.ts` extending `Phaser.Scene`, register it in the `scene:` array in `src/main.ts`, and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
+Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in the `scene:` array in `src/main.ts`, and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
 
 ### Add a floor / level
-Subclass `LevelScene` and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and in the scene array in `main.ts`.
+Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene` (import from `../_shared/LevelScene`) and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and in the scene array in `main.ts`.
 
 ### Add an enemy
 Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot', x, y, minX, maxX, speed }`. Implementations live in `src/entities/enemies/`. To add a new enemy *type*, create the class there and handle it in `Enemy.ts`.
@@ -113,10 +114,10 @@ Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot',
 2. Add a `SceneKey → music_<name>` entry in `SCENE_MUSIC`. `MusicPlugin` handles playback — no scene code needed.
 
 ### Add an info card
-Add the entry to `src/config/infoContent.ts`. Place an info point in the relevant scene's `LevelConfig.infoPoints` with matching `id`. Zone IDs default to the content ID, so the same string identifies both the zone and the dialog.
+Add the entry under `src/config/info/` (re-exported from `index.ts`). Place an info point in the relevant scene's `LevelConfig.infoPoints` with matching `id`. Zone IDs default to the content ID, so the same string identifies both the zone and the dialog.
 
 ### Add a quiz
-Add the question set to `src/config/quizData.ts` keyed by ID. Quiz state is tracked automatically by `QuizManager`.
+Add the question set under `src/config/quiz/` (re-exported from `index.ts`) keyed by ID. Quiz state is tracked automatically by `QuizManager`.
 
 ### Add a zone
 Register in the scene's `create()`:
