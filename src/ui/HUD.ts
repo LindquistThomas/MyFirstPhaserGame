@@ -25,6 +25,10 @@ export class HUD {
   private coinIcon!: Phaser.GameObjects.Graphics;
   private coinShine!: Phaser.GameObjects.Graphics;
   private progressStrip!: Phaser.GameObjects.Graphics;
+  private auPill!: Phaser.GameObjects.Graphics;
+  private floorPill!: Phaser.GameObjects.Graphics;
+  private floorLabel!: Phaser.GameObjects.Text;
+  private muteHovered = false;
   private lastAU = 0;
   private lastFloor: FloorId | -1 = -1;
   private lastProgressSig = '';
@@ -61,6 +65,15 @@ export class HUD {
 
     this.bg = this.scene.add.graphics();
     this.container.add(this.bg);
+
+    // AU pill — static rounded background behind coin + text + progress strip.
+    this.auPill = this.scene.add.graphics();
+    this.container.add(this.auPill);
+    this.redrawAuPill();
+
+    // Floor pill — repainted per floor via redrawBackground().
+    this.floorPill = this.scene.add.graphics();
+    this.container.add(this.floorPill);
 
     // AU icon (gold coin) — drawn centered at (0,0) so scale tweens pivot on center.
     this.coinIcon = this.scene.add.graphics();
@@ -101,6 +114,14 @@ export class HUD {
     this.muteHit = this.scene.add.zone(muteX, muteY, 32, 32).setInteractive({ useHandCursor: true });
     this.muteHit.on('pointerup', () => eventBus.emit('audio:toggle-mute'));
     this.muteHit.on('pointerdown', () => this.punchMuteIcon());
+    this.muteHit.on('pointerover', () => {
+      this.muteHovered = true;
+      this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
+    });
+    this.muteHit.on('pointerout', () => {
+      this.muteHovered = false;
+      this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
+    });
     this.container.add(this.muteHit);
     this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
 
@@ -116,17 +137,25 @@ export class HUD {
     lifecycle.bindEventBus('buff:caffeine_start', this.onCaffeineStart);
     lifecycle.bindEventBus('buff:caffeine_end', this.onCaffeineEnd);
 
+    // "FLOOR" micro-label above the floor name, anchored inside the floor pill.
+    this.floorLabel = this.scene.add.text(GAME_WIDTH - 210, 9, 'FLOOR', {
+      fontFamily: 'monospace', fontSize: '9px',
+      color: theme.color.css.textQuizHint, fontStyle: 'bold',
+    }).setOrigin(0, 0);
+    this.container.add(this.floorLabel);
+
     // Floor indicator — to the left of the mute icon
     this.floorText = this.scene.add.text(GAME_WIDTH - 48, 10, '', {
       fontFamily: 'monospace', fontSize: '16px', color: COLORS.titleText,
     }).setOrigin(1, 0);
     this.container.add(this.floorText);
 
-    // Game title (center)
+    // Game title (center) — restyled as subdued chrome.
     this.container.add(
-      this.scene.add.text(GAME_WIDTH / 2, 9, 'SO YOU WANT TO BE AN ARCHITECT', {
-        fontFamily: 'monospace', fontSize: '18px', color: '#b8c8dc', fontStyle: 'bold',
-      }).setOrigin(0.5, 0),
+      this.scene.add.text(GAME_WIDTH / 2, 14, 'SO YOU WANT TO BE AN ARCHITECT', {
+        fontFamily: 'monospace', fontSize: '13px',
+        color: theme.color.css.textQuizMuted, fontStyle: 'bold',
+      }).setOrigin(0.5, 0).setAlpha(0.6),
     );
 
     this.lastAU = this.progression.getTotalAU();
@@ -148,9 +177,44 @@ export class HUD {
     // Phaser 3.60+: fillGradientStyle + fillRect produces a 4-corner gradient.
     g.fillGradientStyle(top, top, bottom, bottom, alpha);
     g.fillRect(0, 0, GAME_WIDTH, HUD_HEIGHT);
+    // 1px top inset highlight gives the bar a sense of depth.
+    g.fillStyle(0xffffff, 0.06);
+    g.fillRect(0, 0, GAME_WIDTH, 1);
+    // Faint vertical dividers mark the three visual groups (AU | title | floor).
+    g.fillStyle(0xffffff, 0.04);
+    g.fillRect(216, 10, 1, HUD_HEIGHT - 20);
+    g.fillRect(GAME_WIDTH - 220, 10, 1, HUD_HEIGHT - 20);
     // Accent line (1px) — use the floor theme color so it shifts per floor.
     g.fillStyle(accent, 0.9);
     g.fillRect(0, HUD_HEIGHT - 1, GAME_WIDTH, 1);
+
+    this.redrawFloorPill(fd);
+  }
+
+  /** Static AU pill — painted once in create(). */
+  private redrawAuPill(): void {
+    const g = this.auPill;
+    g.clear();
+    g.fillStyle(this.lighten(theme.color.ui.panel, 0.25), 0.55);
+    g.fillRoundedRect(8, 4, 196, 36, 8);
+    g.fillStyle(theme.color.ui.panel, 0.35);
+    g.fillRoundedRect(9, 5, 194, 34, 7);
+    g.fillStyle(0xffffff, 0.05);
+    g.fillRect(10, 5, 192, 1);
+  }
+
+  /** Floor pill — re-tinted per floor from redrawBackground(). */
+  private redrawFloorPill(fd: typeof LEVEL_DATA[FloorId] | undefined): void {
+    const g = this.floorPill;
+    g.clear();
+    if (!fd) return;
+    const base = fd.theme.platformColor;
+    g.fillStyle(this.lighten(base, 0.45), 0.55);
+    g.fillRoundedRect(GAME_WIDTH - 216, 4, 174, 36, 8);
+    g.fillStyle(this.lighten(base, 0.1), 0.22);
+    g.fillRoundedRect(GAME_WIDTH - 215, 5, 172, 34, 7);
+    g.fillStyle(0xffffff, 0.05);
+    g.fillRect(GAME_WIDTH - 214, 5, 170, 1);
   }
 
   /** Lighten a 0xRRGGBB int by `amount` (0..1) toward white. */
@@ -184,15 +248,19 @@ export class HUD {
     const y = 30;
     const floor = this.progression.getCurrentFloor();
     const fillColor = LEVEL_DATA[floor]?.theme.platformColor ?? theme.color.ui.accent;
-    // Background track
-    g.fillStyle(0x1a2a3a, 0.6);
-    g.fillRect(x, y, PROGRESS_STRIP_WIDTH, PROGRESS_STRIP_HEIGHT);
+    // Background track — rounded, darker inset against the AU pill wash.
+    g.fillStyle(0x0a1422, 0.7);
+    g.fillRoundedRect(x, y, PROGRESS_STRIP_WIDTH, PROGRESS_STRIP_HEIGHT, 3);
     // Fill — uses the tweened `progressRatio`, not the raw AU ratio, so
     // changes animate instead of snapping.
     const fillW = Math.round(this.progressRatio * PROGRESS_STRIP_WIDTH);
     if (fillW > 0) {
       g.fillStyle(this.lighten(fillColor, 0.25), 0.95);
-      g.fillRect(x, y, fillW, PROGRESS_STRIP_HEIGHT);
+      g.fillRoundedRect(x, y, fillW, PROGRESS_STRIP_HEIGHT, 3);
+      if (fillW >= 4) {
+        g.fillStyle(0xffffff, 0.18);
+        g.fillRect(x + 1, y + 1, fillW - 2, 1);
+      }
     }
   }
 
@@ -325,7 +393,7 @@ export class HUD {
   private renderMuteIcon(muted: boolean): void {
     const g = this.muteIcon;
     g.clear();
-    const color = muted ? 0x808080 : theme.color.ui.accent;
+    const color = muted ? 0x808080 : (this.muteHovered ? theme.color.ui.hover : theme.color.ui.accent);
     // Note stem
     g.lineStyle(2, color, 1);
     g.beginPath();
