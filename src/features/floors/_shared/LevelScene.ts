@@ -98,11 +98,7 @@ export interface LevelConfig {
     maxX?: number;
     speed?: number;
   }>;
-  /**
-   * Consumable coffee pickups. Applying a caffeine buff on collection —
-   * faster ground speed + a slightly higher jump for a few seconds.
-   * Not persisted; respawns every scene entry.
-   */
+  /** Consumable — not persisted, respawns every scene entry. */
   coffees?: Array<{ x: number; y: number }>;
 }
 

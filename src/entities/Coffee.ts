@@ -1,10 +1,6 @@
 import * as Phaser from 'phaser';
 
-/**
- * Collectible coffee mug. Consumable — not persisted, respawns every
- * time the scene is re-entered. Visual contract mirrors {@link Token}:
- * idle float + pulse, soft halo behind, squash-out on collect.
- */
+/** Consumable pickup — not persisted; respawns on scene entry. */
 export class Coffee extends Phaser.Physics.Arcade.Sprite {
   private floatTween?: Phaser.Tweens.Tween;
   private haloTween?: Phaser.Tweens.Tween;
@@ -19,8 +15,6 @@ export class Coffee extends Phaser.Physics.Arcade.Sprite {
 
     this.setDepth(5);
 
-    // Steam halo — positioned above the mug so it reads as rising vapor
-    // rather than a glow around the cup itself.
     if (scene.textures.exists('coffee_steam')) {
       this.steam = scene.add
         .image(x, y - 22, 'coffee_steam')
@@ -61,8 +55,7 @@ export class Coffee extends Phaser.Physics.Arcade.Sprite {
 
   preUpdate(time: number, delta: number): void {
     super.preUpdate(time, delta);
-    // Steam floats above the bobbing mug — keep horizontal x tracking but
-    // let the halo y-tween drive vertical motion so it doesn't jitter.
+    // x-only follow so the halo's own y-tween isn't fought by the mug's bob.
     if (this.steam && !this.collected) {
       this.steam.setX(this.x);
     }

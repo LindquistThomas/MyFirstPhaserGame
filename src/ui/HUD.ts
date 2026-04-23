@@ -33,10 +33,9 @@ export class HUD {
   private progressTween?: Phaser.Tweens.Tween;
   private onMuteChanged = (muted: boolean): void => this.renderMuteIcon(muted);
 
-  /** Caffeine buff indicator — mug + shrinking countdown arc. */
   private caffeineIcon!: Phaser.GameObjects.Graphics;
   private caffeineRing!: Phaser.GameObjects.Graphics;
-  /** Scene time (ms) when the active buff ends. 0 when inactive. */
+  /** 0 when inactive. */
   private caffeineEndAt = 0;
   private caffeineDuration = 0;
   private onCaffeineStart = (durationMs: number): void => {
@@ -105,8 +104,6 @@ export class HUD {
     this.container.add(this.muteHit);
     this.renderMuteIcon(this.getAudio()?.isMuted() ?? false);
 
-    // Caffeine buff indicator — mug + shrinking arc, sits between the
-    // floor label and the mute icon. Hidden until the first buff start.
     const CAF_X = GAME_WIDTH - 76;
     const CAF_Y = 22;
     this.caffeineRing = this.scene.add.graphics().setPosition(CAF_X, CAF_Y).setVisible(false);
@@ -289,25 +286,18 @@ export class HUD {
     });
   }
 
-  /**
-   * Draw the mug icon + a shrinking arc. `ratio` is 1..0 over the buff
-   * window. Called on `buff:caffeine_start` and every HUD update tick
-   * while the buff is active.
-   */
   private renderCaffeineIcon(ratio: number): void {
     this.caffeineIcon.setVisible(true);
     this.caffeineRing.setVisible(true);
 
     const icon = this.caffeineIcon;
     icon.clear();
-    // Mug body.
     icon.fillStyle(0x6b3b23, 1);
     icon.fillRoundedRect(-6, -5, 11, 12, 2);
     icon.fillStyle(0x3a1e10, 1);
     icon.fillRect(-6, -5, 11, 2);
     icon.fillStyle(0xc9a27a, 1);
     icon.fillRect(-5, -5, 9, 1);
-    // Handle stroke (right).
     icon.lineStyle(1.5, 0x4a2b1a, 1);
     icon.beginPath();
     icon.arc(6, 1, 4, -Math.PI / 2, Math.PI / 2, false);
@@ -315,12 +305,10 @@ export class HUD {
 
     const ring = this.caffeineRing;
     ring.clear();
-    // Background track — full circle, dim.
     ring.lineStyle(2, 0x3b4a5c, 0.6);
     ring.beginPath();
     ring.arc(0, 0, 12, 0, Math.PI * 2);
     ring.strokePath();
-    // Countdown arc — shrinks clockwise from the top.
     const start = -Math.PI / 2;
     const end = start + Math.PI * 2 * Math.max(0, Math.min(1, ratio));
     ring.lineStyle(2, 0xffb84a, 0.95);

@@ -193,8 +193,6 @@ export class ExecutiveSuiteScene extends LevelScene {
         { x: 740,  y: T1 - 40 },
       ],
 
-      // An executive espresso on the strategy-lounge mezzanine — rewards
-      // the detour up the in-room lift before strolling toward the doors.
       coffees: [
         { x: 680, y: T1 - 40 },
       ],

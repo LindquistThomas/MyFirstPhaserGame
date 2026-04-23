@@ -322,7 +322,6 @@ export class ArchitectureTeamScene extends LevelScene {
         { x: 1200, y: G - 40, index: K + 3 },
       ],
 
-      // Single coffee tucked between the C4 whiteboard and the slice wall.
       coffees: [
         { x: 600, y: G - 40 },
       ],

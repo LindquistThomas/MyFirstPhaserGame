@@ -9,12 +9,7 @@ export interface CoffeeManagerDeps {
   player: Player;
 }
 
-/**
- * Owns the coffee pickups for a level. Unlike {@link LevelTokenManager},
- * coffee has no progression persistence — every scene entry spawns a
- * fresh mug at each configured position. On overlap the mug tweens out
- * and the player's caffeine buff is applied.
- */
+/** Coffee pickups are consumable — no progression persistence, respawn on scene entry. */
 export class LevelCoffeeManager {
   readonly coffeeGroup: Phaser.Physics.Arcade.StaticGroup;
 
