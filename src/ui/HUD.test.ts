@@ -25,6 +25,7 @@ function makeGraphics() {
     'fillStyle',
     'fillCircle',
     'fillRect',
+    'fillRoundedRect',
     'fillGradientStyle',
     'lineStyle',
     'beginPath',
@@ -32,8 +33,10 @@ function makeGraphics() {
     'lineTo',
     'strokePath',
     'fillEllipse',
+    'arc',
     'setPosition',
     'setAlpha',
+    'setVisible',
     'setX',
     'setScale',
   ];

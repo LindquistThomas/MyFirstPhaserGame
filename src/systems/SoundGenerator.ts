@@ -15,6 +15,7 @@ import {
   generateRecoverAUSound,
 } from './sounds/movement';
 import { generateDatacenterAmbience } from './sounds/ambience';
+import { generateCoffeeSipSound } from './sounds/items';
 
 /**
  * Composition root for runtime audio generation.
@@ -39,6 +40,7 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'drop_au', generateDropAUSound());
   loadWav(scene, 'recover_au', generateRecoverAUSound());
   loadWav(scene, 'ambience_datacenter', generateDatacenterAmbience());
+  loadWav(scene, 'coffee_sip', generateCoffeeSipSound());
 }
 
 export { loadWav, encodeWAV } from './sounds/wav';

@@ -67,6 +67,10 @@ export class CustomerSuccessScene extends LevelScene {
         { x: 900,  y: G - 40, index: off + 4 },
       ],
 
+      coffees: [
+        { x: 120, y: G - 40 },
+      ],
+
       infoPoints: [
         {
           x: 1050, y: G, contentId: 'customer-success',

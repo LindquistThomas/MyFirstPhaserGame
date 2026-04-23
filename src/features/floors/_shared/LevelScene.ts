@@ -13,6 +13,7 @@ import { allKeyLabels } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
+import { LevelCoffeeManager } from './LevelCoffeeManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
 import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
@@ -97,6 +98,12 @@ export interface LevelConfig {
     maxX?: number;
     speed?: number;
   }>;
+  /**
+   * Consumable coffee pickups. Applying a caffeine buff on collection —
+   * faster ground speed + a slightly higher jump for a few seconds.
+   * Not persisted; respawns every scene entry.
+   */
+  coffees?: Array<{ x: number; y: number }>;
 }
 
 /**
@@ -155,6 +162,7 @@ export class LevelScene extends Phaser.Scene {
 
   private enemySpawner!: LevelEnemySpawner;
   private tokenMgr!: LevelTokenManager;
+  private coffeeMgr!: LevelCoffeeManager;
   private zones!: LevelZoneSetup;
 
   /** Grounding shadow tracked to the player each frame. */
@@ -225,6 +233,10 @@ export class LevelScene extends Phaser.Scene {
       droppedAUGroup: this.tokenMgr.droppedAUGroup,
       camera: this.cameras.main,
     });
+    this.coffeeMgr = new LevelCoffeeManager({
+      scene: this,
+      player: this.player,
+    });
     this.zones = new LevelZoneSetup({
       scene: this,
       player: this.player,
@@ -235,11 +247,13 @@ export class LevelScene extends Phaser.Scene {
     const cfg = this.getLevelConfig();
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
+    this.coffeeMgr.spawn(cfg);
     this.zones.create(cfg);
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
     this.tokenMgr.wireColliders();
     this.enemySpawner.wireColliders();
+    this.coffeeMgr.wireColliders();
 
     for (let i = 0; i < this.roomLifts.length; i++) {
       const idx = i;

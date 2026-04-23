@@ -46,6 +46,13 @@ export interface GameEvents {
   'sfx:drop_au': [];
   /** Dropped AU recovered. */
   'sfx:recover_au': [];
+  /** Coffee pickup — a short slurp. */
+  'sfx:coffee_sip': [];
+
+  /** Caffeine buff activated; payload is the total duration in ms. */
+  'buff:caffeine_start': [durationMs: number];
+  /** Caffeine buff expired. */
+  'buff:caffeine_end': [];
 }
 
 export type GameEventName = keyof GameEvents;

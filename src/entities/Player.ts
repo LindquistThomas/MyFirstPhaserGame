@@ -2,6 +2,13 @@ import * as Phaser from 'phaser';
 import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
 import { activeContext } from '../input';
+import { CaffeineBuff } from '../systems/CaffeineBuff';
+
+/** Coffee buff tuning. Air speed is deliberately NOT buffed — see
+ *  AIR_HORIZONTAL_SPEED note above for the shaft-width invariant. */
+export const CAFFEINE_DURATION_MS = 6000;
+export const CAFFEINE_SPEED_MULT = 1.4;
+export const CAFFEINE_JUMP_MULT = 1.15;
 
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall' | 'land';
 
@@ -75,6 +82,10 @@ export class Player {
   /** Last applied walk fps, rounded — avoids restarting the tween every frame. */
   private currentWalkFps = 10;
 
+  /** Caffeine buff timer + steam particle trail. */
+  private caffeine = new CaffeineBuff();
+  private caffeineSteam?: Phaser.GameObjects.Particles.ParticleEmitter;
+
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
 
@@ -87,6 +98,7 @@ export class Player {
     this.createAnimations();
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.onAnimationFrame, this);
     this.createDustEmitter();
+    this.createCaffeineEmitter();
   }
 
   private createAnimations(): void {
@@ -166,6 +178,8 @@ export class Player {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
 
+    this.tickCaffeine();
+
     // Clear the mid-jump flag the moment we land so subsequent input/anim
     // logic reflects that the player is grounded again.
     if (this.isFlipping && onGround && body.velocity.y >= 0) {
@@ -229,8 +243,12 @@ export class Player {
 
     // Horizontal movement. Air control is capped below ground speed so the
     // player can't clear wide gaps (in particular the elevator shaft) by
-    // jumping off the edge.
-    const maxX = onGround ? PLAYER_SPEED : AIR_HORIZONTAL_SPEED;
+    // jumping off the edge. Coffee buff multiplies ground speed only —
+    // air speed stays at the base cap to preserve the shaft invariant.
+    const groundSpeed = this.isCaffeinated()
+      ? PLAYER_SPEED * CAFFEINE_SPEED_MULT
+      : PLAYER_SPEED;
+    const maxX = onGround ? groundSpeed : AIR_HORIZONTAL_SPEED;
     if (h < 0) {
       this.sprite.setVelocityX(-maxX);
       this.facingRight = false;
@@ -271,7 +289,10 @@ export class Player {
    */
   private startJump(): void {
     this.isFlipping = true;
-    this.sprite.setVelocityY(PLAYER_JUMP_VELOCITY);
+    const jumpV = this.isCaffeinated()
+      ? PLAYER_JUMP_VELOCITY * CAFFEINE_JUMP_MULT
+      : PLAYER_JUMP_VELOCITY;
+    this.sprite.setVelocityY(jumpV);
 
     this.currentAnim = 'flip';
     this.sprite.anims.play('player_flip', true);
@@ -366,6 +387,57 @@ export class Player {
       this.dustEmitter.setPosition(this.sprite.x, this.sprite.y + 70);
       this.dustEmitter.explode(5);
     }
+  }
+
+  private createCaffeineEmitter(): void {
+    if (!this.scene.textures.exists('particle')) return;
+    this.caffeineSteam = this.scene.add.particles(0, 0, 'particle', {
+      speed: { min: 20, max: 60 },
+      angle: { min: 250, max: 290 },
+      scale: { start: 0.5, end: 0 },
+      alpha: { start: 0.55, end: 0 },
+      lifespan: 520,
+      frequency: 80,
+      quantity: 1,
+      tint: 0xe8d8c0,
+      emitting: false,
+    });
+    this.caffeineSteam.setDepth(9);
+  }
+
+  /**
+   * Called every tick from {@link update}. Follows the steam emitter to
+   * the sprite while active and transitions out cleanly on expiry.
+   */
+  private tickCaffeine(): void {
+    const now = this.scene.time.now;
+    if (this.caffeine.isActive(now)) {
+      if (this.caffeineSteam) {
+        this.caffeineSteam.setPosition(this.sprite.x, this.sprite.y - 10);
+      }
+    } else if (this.caffeineSteam?.emitting) {
+      this.caffeineSteam.stop();
+      eventBus.emit('buff:caffeine_end');
+    }
+  }
+
+  /**
+   * Activate (or refresh) the caffeine buff. Re-applying while active
+   * refreshes the timer to the full `durationMs` — no stacking.
+   */
+  applyCaffeine(durationMs: number = CAFFEINE_DURATION_MS): void {
+    const now = this.scene.time.now;
+    this.caffeine.activate(now, durationMs);
+    this.caffeineSteam?.setPosition(this.sprite.x, this.sprite.y - 10);
+    this.caffeineSteam?.start();
+    // Emit on every activation — the HUD listener resets its countdown
+    // ring to full, which is the right behaviour for both a fresh buff
+    // and a refresh of an already-active one.
+    eventBus.emit('buff:caffeine_start', durationMs);
+  }
+
+  isCaffeinated(): boolean {
+    return this.caffeine.isActive(this.scene.time.now);
   }
 
   setFlipEnabled(enabled: boolean): void {

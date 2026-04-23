@@ -13,6 +13,7 @@ import { generateInfraSprites } from './sprites/infra';
 import { generateEnemySprites } from './sprites/enemies';
 import { generateGeirSprite } from './sprites/npcGeir';
 import { generateReceptionistSprite } from './sprites/receptionist';
+import { generateCoffeeSprites } from './sprites/coffee';
 
 /**
  * Composition root for runtime sprite generation.
@@ -36,4 +37,5 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateEnemySprites(scene);
   generateGeirSprite(scene);
   generateReceptionistSprite(scene);
+  generateCoffeeSprites(scene);
 }

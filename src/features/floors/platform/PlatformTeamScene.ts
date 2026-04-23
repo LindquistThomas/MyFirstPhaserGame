@@ -592,6 +592,12 @@ export class PlatformTeamScene extends LevelScene {
         { x: 540,  y: T4 - 40, index: 6 }, // T4 island-left (ride lift B, step left)
       ],
 
+      // A caffeine hit on the T4 island — rewards climbing the spine lift
+      // and smooths the return trip across the mezzanines.
+      coffees: [
+        { x: 720, y: T4 - 40 }, // T4 island-right
+      ],
+
       infoPoints: [
         // Ground signpost. Default offsetY = -h/2 places the rect
         // directly above the anchor (y ≈ 632..832). No catwalk body sits

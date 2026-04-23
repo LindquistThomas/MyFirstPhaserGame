@@ -66,6 +66,10 @@ export class ProductLeadershipScene extends LevelScene {
         { x: 1040, y: G - 40, index: off + 4 },
       ],
 
+      coffees: [
+        { x: 1180, y: G - 40 },
+      ],
+
       infoPoints: [
         {
           x: 230, y: G, contentId: 'product-leadership',
