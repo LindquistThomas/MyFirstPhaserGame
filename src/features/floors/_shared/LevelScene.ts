@@ -761,6 +761,20 @@ export class LevelScene extends Phaser.Scene {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
 
+    // player.update() runs just before this and consumes `justPressed('Jump')`
+    // to set body.velocity.y = PLAYER_JUMP_VELOCITY (−520). Detect a jump by
+    // looking for a vy more negative than a lift can produce (ROOM_LIFT_SPEED
+    // is 400), so a lift ascending at −400 isn't mistaken for a jump. Release
+    // the lift and bail out so the velocity sync at the end doesn't stomp
+    // the jump impulse. postUpdatePinToLift() early-outs once activeRoomLift
+    // is -1.
+    if (this.activeRoomLift >= 0 && body.velocity.y < -(ROOM_LIFT_SPEED + 20)) {
+      for (const lift of this.roomLifts) lift.platform.setVelocityY(0);
+      this.activeRoomLift = -1;
+      this.liftButtons?.setVisible(false);
+      return;
+    }
+
     let onLift = false;
     if (onGround) {
       for (let i = 0; i < this.roomLifts.length; i++) {
