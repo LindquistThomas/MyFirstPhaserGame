@@ -369,7 +369,9 @@ export class ElevatorScene extends Phaser.Scene {
     this.player.update(delta);
     this.hud.update();
 
-    if (infoPressed && activeZone && !this.dialogs.isOpen) {
+    if (infoPressed && activeZone && !this.dialogs.isOpen
+      && !inputs.justPressed('MoveUp') && !inputs.justPressed('MoveDown')
+    ) {
       this.dialogs.open(activeZone);
       return;
     }

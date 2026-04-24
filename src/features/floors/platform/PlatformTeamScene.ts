@@ -98,8 +98,8 @@ export class PlatformTeamScene extends LevelScene {
     //     panel so it doesn't overlap the panel body. Platform Team is
     //     already labelled by the signpost; the central lift is labelled
     //     inline on the shaft graphics (see createDecorations' lift hint). ---
-    this.addStationNameplate(384,  C - 180, '[ SCALING LAB ]',   '#b8e6ff');
-    this.addStationNameplate(896,  C - 180, '[ OBSERVABILITY ]', '#b8e6ff');
+    this.addStationNameplate(384,  C - 240, '[ SCALING LAB ]',   '#b8e6ff');
+    this.addStationNameplate(896,  C - 240, '[ OBSERVABILITY ]', '#b8e6ff');
     this.addStationNameplate(1180, G - 220, '[ EDGE SECURITY ]', '#ff8fa8');
 
     // --- Central lift hint — a tiny label above the lift shaft so the
@@ -159,7 +159,10 @@ export class PlatformTeamScene extends LevelScene {
    */
   private createScalingDiagram(cx: number, baseY: number): void {
     const W = 240, H = 150;
-    const x = cx - W / 2, y = baseY - H - 10;
+    // Raised 70 px (was baseY - H - 10) so the panel body sits well above
+    // the catwalk walking surface and doesn't overlap the mezzanine AU
+    // token at y = baseY - 40.
+    const x = cx - W / 2, y = baseY - H - 80;
 
     const frame = this.add.graphics().setDepth(3);
     frame.fillStyle(0x1a1a22, 1).fillRoundedRect(x, y, W, H, 6);
@@ -283,7 +286,10 @@ export class PlatformTeamScene extends LevelScene {
   private createMonitoringWall(cx: number, baseY: number): void {
     const frame = this.add.graphics().setDepth(3);
     const W = 240, H = 130;
-    const x = cx - W / 2, y = baseY - H - 20;
+    // Raised 60 px (was baseY - H - 20) so the panel body sits well above
+    // the catwalk walking surface and doesn't overlap the mezzanine AU
+    // token / rogue bot patrolling along y ≈ baseY - 30.
+    const x = cx - W / 2, y = baseY - H - 80;
     frame.fillStyle(0x1a1a22, 1).fillRoundedRect(x, y, W, H, 6);
     frame.lineStyle(2, 0x3b4a5c, 1).strokeRoundedRect(x, y, W, H, 6);
     frame.fillStyle(0x2a2a33, 1);
@@ -536,7 +542,9 @@ export class PlatformTeamScene extends LevelScene {
         // Left side: low stepping stone between ground and the left catwalk.
         // Placed JUST OUTSIDE the catwalk's x-range so the step tile doesn't
         // overlap the catwalk tile physics body (catwalk bottom y = C + TILE_SIZE).
-        { x: 128,  y: 720, width: 1 },
+        // Y = G - TILE_SIZE so the step's body sits exactly on top of the
+        // ground row (no vertical overlap between tile bodies).
+        { x: 128,  y: G - TILE_SIZE, width: 1 },
         // Left catwalk — Scaling Lab mezzanine.
         { x: 256,  y: C,   width: 2 },
         // Right catwalk — Observability mezzanine.
@@ -560,8 +568,8 @@ export class PlatformTeamScene extends LevelScene {
         { x: 192,  y: G - 40, index: 0 }, // near the signpost (entry reward)
         { x: 660,  y: G - 40, index: 1 }, // between router (x≈580) and rack (x≈740)
         { x: 1000, y: G - 40, index: 2 }, // clear ground between rack and WAF panel
-        // Stepping-stone reward.
-        { x: 192,  y: 680,    index: 3 }, // on top of the left low step
+        // Stepping-stone reward (40 px above the step's walking surface).
+        { x: 192,  y: G - TILE_SIZE - 40, index: 3 }, // on top of the left low step
         // Mezzanine trail.
         { x: 384,  y: C - 40, index: 4 }, // left catwalk (Scaling)
         { x: 896,  y: C - 40, index: 5 }, // right catwalk (Observability)
