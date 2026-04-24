@@ -9,6 +9,14 @@ import type { LevelConfig } from './LevelScene';
 /** Radius (px) within which the interact prompt appears. */
 const PROXIMITY_RADIUS = 80;
 
+/** Label shown in the interact prompt. */
+const FRIDGE_ITEM_NAME = 'Energy Drink';
+
+/** Horizontal px to shift the prompt left of the fridge centre. */
+const PROMPT_OFFSET_X = -80;
+/** Vertical px to shift the prompt above the fridge top edge. */
+const PROMPT_OFFSET_Y = -36;
+
 export interface FridgeManagerDeps {
   scene: Phaser.Scene;
   player: Player;
@@ -62,8 +70,8 @@ export class LevelFridgeManager {
 
     if (nearFridge) {
       this.prompt
-        .setText(`Press ${allKeyLabels('Interact')} \u2192 Energy Drink`)
-        .setPosition(nearFridge.x - 80, nearFridge.y - nearFridge.displayHeight - 36)
+        .setText(`Press ${allKeyLabels('Interact')} \u2192 ${FRIDGE_ITEM_NAME}`)
+        .setPosition(nearFridge.x + PROMPT_OFFSET_X, nearFridge.y - nearFridge.displayHeight + PROMPT_OFFSET_Y)
         .setVisible(true);
 
       if (this.deps.scene.inputs.justPressed('Interact')) {

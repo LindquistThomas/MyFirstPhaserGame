@@ -64,7 +64,7 @@ function generateFridgeClosed(scene: Phaser.Scene): void {
   g.destroy();
 }
 
-/** Fridge with door swung open — 64 × 72 px (wider for open door). */
+/** Open fridge, door swung to the right — 64×72 px (wider for open door). */
 function generateFridgeOpen(scene: Phaser.Scene): void {
   const W = 64;
   const H = 72;
