@@ -3,8 +3,20 @@
  * the elevator shaft. Gives the spaces between floor slabs a believable
  * "inside a lit office tower at night" backdrop — a dark wall with
  * pinstripe structural ribs, per-floor colour wash, and a grid of small
- * lit / dim / dark windows. A handful of windows tween alpha slowly so
- * the building feels occupied.
+ * lit / dim / dark windows.
+ *
+ * Beyond the base "mostly dark with scattered warm squares" grid, lit
+ * windows come in three tints (warm / cool / green) and three kinds
+ * (plain / blinds / monitor). A handful of render-time effects are
+ * layered on top with strict per-façade budgets so total motion cost
+ * stays bounded regardless of shaft height:
+ *
+ *   - twinkle    — slow alpha yoyo (most lit windows eligible).
+ *   - flicker    — quick fluorescent stutter on a long random interval.
+ *   - switch     — discrete on/off toggle on a 15–60s cycle.
+ *   - occupant   — tiny dark silhouette briefly crosses a lit window.
+ *   - monitor    — fast subtle alpha jitter on cool/green monitor windows.
+ *   - blinds     — stripe overlay slowly scales open/closed (rare).
  *
  * Everything is painted (no cutouts) — windows don't reveal the actual
  * sky/skyline behind them. Rationale: the player is *inside* this
@@ -41,10 +53,18 @@ export interface BuildingFacadeOptions {
   sides: [FacadeSide, FacadeSide];
   /** Per-floor bands, sorted by yTop ascending. */
   bands: FacadeBand[];
-  /** Max twinkling windows (alpha tweens) across the whole façade, to keep the motion budget honest. */
+  /** Max slow alpha-yoyo windows across the whole façade. */
   twinkleBudget?: number;
-  /** Max flickering windows (brief alpha dips) across the whole façade. */
+  /** Max fluorescent-flicker windows across the whole façade. */
   flickerBudget?: number;
+  /** Max lit windows that discretely toggle on/off across the whole façade. */
+  switchBudget?: number;
+  /** Max windows that host an occupant silhouette crosser. */
+  occupantBudget?: number;
+  /** Max cool/green windows that receive a fast monitor-glow flicker. */
+  monitorBudget?: number;
+  /** Max blinds windows where the stripe overlay slowly scales open/closed. */
+  blindsAnimBudget?: number;
   /**
    * Vertical parallax factor applied to every façade element so the outer
    * wall reads as "behind" the shaft. 1 = scrolls with the shaft (no depth);
@@ -60,6 +80,9 @@ export interface BuildingFacadeHandle {
   timers: Phaser.Time.TimerEvent[];
 }
 
+export type FacadeWindowTint = 'warm' | 'cool' | 'green';
+export type FacadeWindowKind = 'plain' | 'blinds' | 'monitor';
+
 export interface FacadeWindowSpec {
   /** Local x, relative to the side's xLeft + band's yTop. */
   x: number;
@@ -67,6 +90,10 @@ export interface FacadeWindowSpec {
   width: number;
   height: number;
   state: 'lit' | 'dim' | 'dark';
+  /** Colour family for lit/dim windows. Ignored visually for `dark`. */
+  tint: FacadeWindowTint;
+  /** Rendering variant for lit windows. `dim` + `dark` always read as plain. */
+  kind: FacadeWindowKind;
   /** Twinklers get their own GameObject + tween. */
   twinkle: boolean;
   /** Flickerers get their own GameObject + timer chain. */
@@ -84,10 +111,29 @@ function rng(seed: number): () => number {
   };
 }
 
+function pickTint(roll: number): FacadeWindowTint {
+  // 70% warm, 20% cool, 10% green — warm is the default "occupied office".
+  if (roll < 0.70) return 'warm';
+  if (roll < 0.90) return 'cool';
+  return 'green';
+}
+
+function tintColor(tint: FacadeWindowTint): number {
+  switch (tint) {
+    case 'cool':
+      return theme.color.sky.windowLitCool;
+    case 'green':
+      return theme.color.sky.windowLitGreen;
+    case 'warm':
+    default:
+      return theme.color.sky.windowLit;
+  }
+}
+
 /**
  * Deterministically generate a grid of windows that fits inside a
  * rectangle of the given dimensions, with sensible margins. Distribution:
- * ~28% lit, ~22% dim, ~50% dark.
+ * ~28% lit, ~22% dim, ~50% dark. Lit windows receive a stable tint + kind.
  */
 export function generateFacadeWindows(
   width: number,
@@ -120,6 +166,22 @@ export function generateFacadeWindows(
       else if (roll > 0.50) state = 'dim';
       else state = 'dark';
 
+      // Tint + kind decided up-front so later effect passes can key off
+      // them (e.g. monitor-glow flicker only attaches to kind=monitor).
+      const tint: FacadeWindowTint = pickTint(rand());
+      let kind: FacadeWindowKind = 'plain';
+      if (state === 'lit') {
+        const kindRoll = rand();
+        if (kindRoll < 0.70) kind = 'plain';
+        else if (kindRoll < 0.90) kind = 'blinds';
+        else kind = 'monitor';
+      } else {
+        // Consume an RNG draw so lit/non-lit windows advance the stream
+        // by the same amount — avoids state distribution drift as the
+        // effect set grows.
+        rand();
+      }
+
       const canTwinkle = state === 'lit' && twinklesPlaced < twinkles && rand() < 0.18;
       // Flickers only on windows that aren't already twinkling — avoid
       // layered alpha animations fighting over the same rectangle.
@@ -131,6 +193,8 @@ export function generateFacadeWindows(
         width: winW,
         height: winH,
         state,
+        tint,
+        kind,
         twinkle: canTwinkle,
         flicker: canFlicker,
       });
@@ -147,13 +211,38 @@ export function drawBuildingFacade(
   scene: Phaser.Scene,
   opts: BuildingFacadeOptions,
 ): BuildingFacadeHandle {
-  const { sides, bands, twinkleBudget = 10, flickerBudget = 4, scrollFactorY = 0.72 } = opts;
+  const {
+    sides,
+    bands,
+    twinkleBudget = 14,
+    flickerBudget = 6,
+    switchBudget = 16,
+    occupantBudget = 6,
+    monitorBudget = 8,
+    blindsAnimBudget = 4,
+    scrollFactorY = 0.72,
+  } = opts;
 
   const objects: Phaser.GameObjects.GameObject[] = [];
   const tweens: Phaser.Tweens.Tween[] = [];
   const timers: Phaser.Time.TimerEvent[] = [];
+
   let twinklesRemaining = twinkleBudget;
   let flickersRemaining = flickerBudget;
+  let switchesRemaining = switchBudget;
+  let occupantsRemaining = occupantBudget;
+  let monitorsRemaining = monitorBudget;
+  let blindsAnimsRemaining = blindsAnimBudget;
+
+  // Seeded per-façade RNG for effect selection so which lit windows get
+  // which effect is stable per build. Tween/timer *timing* uses
+  // Math.random — invisible drift, no determinism needed.
+  const effectRand = rng(
+    0xfacade ^
+      (sides[0].xLeft | 0) ^
+      ((sides[1].xRight | 0) << 3) ^
+      (bands.length * 0x9e3779b1),
+  );
 
   for (const side of sides) {
     const sideW = side.xRight - side.xLeft;
@@ -192,6 +281,9 @@ export function drawBuildingFacade(
         twinkles: Math.max(0, twinklesRemaining),
         flickers: Math.max(0, flickersRemaining),
       });
+
+      // Static paint pass (everything except twinkle/flicker, which own
+      // their own Rectangle so a tween/timer can manipulate alpha).
       for (const w of windows) {
         if (w.twinkle || w.flicker) continue;
         if (w.state === 'dark') {
@@ -200,13 +292,27 @@ export function drawBuildingFacade(
           gfx.fillRect(side.xLeft + w.x, band.yTop + w.y, w.width, w.height);
           continue;
         }
-        const color = w.state === 'lit' ? theme.color.sky.windowLit : theme.color.sky.windowDim;
-        const alpha = w.state === 'lit' ? 0.80 : 0.45;
-        gfx.fillStyle(color, alpha);
+        const baseColor =
+          w.state === 'lit' ? tintColor(w.tint) : theme.color.sky.windowDim;
+        // Monitor windows read slightly softer so the flicker tween has
+        // somewhere to travel without clipping.
+        const alpha =
+          w.state === 'lit' ? (w.kind === 'monitor' ? 0.72 : 0.80) : 0.45;
+        gfx.fillStyle(baseColor, alpha);
         gfx.fillRect(side.xLeft + w.x, band.yTop + w.y, w.width, w.height);
+
+        // Static blinds stripes — thin dark horizontals drawn over the lit
+        // fill so the window reads as "shade drawn".
+        if (w.state === 'lit' && w.kind === 'blinds') {
+          gfx.fillStyle(theme.color.sky.windowBlinds, 0.55);
+          for (let sy = 1; sy < w.height; sy += 2) {
+            gfx.fillRect(side.xLeft + w.x, band.yTop + w.y + sy, w.width, 1);
+          }
+        }
+
         // Warm halo under lit windows to imply interior glow spilling onto the sill.
         if (w.state === 'lit') {
-          gfx.fillStyle(color, 0.15);
+          gfx.fillStyle(baseColor, 0.15);
           gfx.fillRect(side.xLeft + w.x - 1, band.yTop + w.y + w.height, w.width + 2, 1);
         }
       }
@@ -220,7 +326,7 @@ export function drawBuildingFacade(
             band.yTop + w.y + w.height / 2,
             w.width,
             w.height,
-            theme.color.sky.windowLit,
+            tintColor(w.tint),
             0.85,
           )
           .setDepth(0.41)
@@ -249,7 +355,7 @@ export function drawBuildingFacade(
             band.yTop + w.y + w.height / 2,
             w.width,
             w.height,
-            theme.color.sky.windowLit,
+            tintColor(w.tint),
             0.80,
           )
           .setDepth(0.41)
@@ -293,6 +399,148 @@ export function drawBuildingFacade(
         // exists as a debug-friendly handle on the latest timer.
         void pending;
         flickersRemaining--;
+      }
+
+      // Extra dynamic layers — switch / monitor / blinds-anim / occupant.
+      // All attach to lit windows that aren't already twinkling or flickering
+      // so competing animations don't stack on the same rectangle.
+      for (const w of windows) {
+        if (w.state !== 'lit' || w.twinkle || w.flicker) continue;
+        const cx = side.xLeft + w.x + w.width / 2;
+        const cy = band.yTop + w.y + w.height / 2;
+        const baseColor = tintColor(w.tint);
+
+        // Light switches on/off. An "off" overlay (dark body + thin frame)
+        // is drawn on top of the static lit paint and toggled visible on
+        // each timer fire. Cheaper than managing two competing paints.
+        if (
+          switchesRemaining > 0 &&
+          w.kind !== 'monitor' &&
+          effectRand() < 0.10
+        ) {
+          const offPatch = scene.add
+            .rectangle(cx, cy, w.width, w.height, theme.color.bg.dark, 1)
+            .setDepth(0.405)
+            .setScrollFactor(1, scrollFactorY)
+            .setVisible(false);
+          const offFrame = scene.add
+            .rectangle(cx, cy, w.width, w.height, theme.color.bg.mid, 0.35)
+            .setDepth(0.406)
+            .setScrollFactor(1, scrollFactorY)
+            .setVisible(false);
+          objects.push(offPatch, offFrame);
+          const fire = (): void => {
+            if (!offPatch.active) return;
+            const on = offPatch.visible;
+            offPatch.setVisible(!on);
+            offFrame.setVisible(!on);
+          };
+          timers.push(
+            scene.time.addEvent({
+              delay: 15000 + Math.random() * 45000,
+              loop: true,
+              callback: fire,
+            }),
+          );
+          switchesRemaining--;
+          continue;
+        }
+
+        // Monitor glow — fast subtle alpha jitter on cool/green monitors.
+        if (
+          monitorsRemaining > 0 &&
+          w.kind === 'monitor' &&
+          (w.tint === 'cool' || w.tint === 'green')
+        ) {
+          const rect = scene.add
+            .rectangle(cx, cy, w.width, w.height, baseColor, 0.72)
+            .setDepth(0.412)
+            .setScrollFactor(1, scrollFactorY);
+          objects.push(rect);
+          tweens.push(
+            scene.tweens.add({
+              targets: rect,
+              alpha: { from: 0.55, to: 0.9 },
+              duration: 140 + Math.floor(Math.random() * 160),
+              yoyo: true,
+              repeat: -1,
+              ease: 'Sine.inOut',
+            }),
+          );
+          monitorsRemaining--;
+          continue;
+        }
+
+        // Animated blinds — overlay scales between closed (1) and nearly
+        // open (0.1) with a long random repeat delay so it reads as
+        // "someone occasionally adjusts their shade", not a constant tween.
+        if (
+          blindsAnimsRemaining > 0 &&
+          w.kind === 'blinds' &&
+          effectRand() < 0.35
+        ) {
+          const blind = scene.add
+            .rectangle(cx, cy, w.width, w.height, theme.color.sky.windowBlinds, 0.55)
+            .setDepth(0.413)
+            .setScrollFactor(1, scrollFactorY);
+          objects.push(blind);
+          tweens.push(
+            scene.tweens.add({
+              targets: blind,
+              scaleY: { from: 1, to: 0.1 },
+              duration: 1800 + Math.floor(Math.random() * 1200),
+              yoyo: true,
+              repeat: -1,
+              delay: 10000 + Math.floor(Math.random() * 30000),
+              repeatDelay: 40000 + Math.floor(Math.random() * 50000),
+              ease: 'Sine.inOut',
+            }),
+          );
+          blindsAnimsRemaining--;
+          continue;
+        }
+
+        // Occupant silhouette — rare crosser. Tiny dark figure slides from
+        // one edge of the window to the other on a long interval.
+        if (
+          occupantsRemaining > 0 &&
+          w.kind !== 'monitor' &&
+          effectRand() < 0.06
+        ) {
+          const figureW = Math.max(2, Math.floor(w.width / 2));
+          const figureH = Math.max(3, w.height - 1);
+          const leftEdge = side.xLeft + w.x - figureW;
+          const rightEdge = side.xLeft + w.x + w.width + figureW;
+          const figure = scene.add
+            .rectangle(leftEdge, cy, figureW, figureH, theme.color.bg.dark, 0.9)
+            .setDepth(0.414)
+            .setScrollFactor(1, scrollFactorY)
+            .setVisible(false);
+          objects.push(figure);
+          const cross = (): void => {
+            if (!figure.active) return;
+            const direction = Math.random() < 0.5 ? 1 : -1;
+            const fromX = direction === 1 ? leftEdge : rightEdge;
+            const toX = direction === 1 ? rightEdge : leftEdge;
+            figure.x = fromX;
+            figure.setVisible(true);
+            scene.tweens.add({
+              targets: figure,
+              x: toX,
+              duration: 1000 + Math.floor(Math.random() * 900),
+              ease: 'Linear',
+              onComplete: () => figure.setVisible(false),
+            });
+          };
+          timers.push(
+            scene.time.addEvent({
+              delay: 20000 + Math.random() * 40000,
+              loop: true,
+              callback: cross,
+            }),
+          );
+          occupantsRemaining--;
+        }
       }
     }
   }

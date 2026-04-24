@@ -43,6 +43,14 @@ export const theme = {
       skylineAccent: 0x0a1020,
       windowLit: 0xffd27f,
       windowDim: 0x8a7344,
+      // Additional lit-window tints for the hallway façade so the tower
+      // reads as a mix of warm offices, cool fluorescent rooms, and the
+      // occasional green-tinged monitor-lit space.
+      windowLitCool: 0xbfd7ff,
+      windowLitGreen: 0x9ad39a,
+      // Darker overlay used to draw horizontal "blinds" stripes over a lit
+      // window. Blended with the window fill; reads as a drawn shade.
+      windowBlinds: 0x3a2e18,
     },
 
     /** Floor-specific palettes mirroring `config/levelData.ts`. */

@@ -23,7 +23,30 @@ describe('generateFacadeWindows', () => {
       expect(w.x + w.width).toBeLessThanOrEqual(W);
       expect(w.y + w.height).toBeLessThanOrEqual(H);
       expect(['lit', 'dim', 'dark']).toContain(w.state);
+      expect(['warm', 'cool', 'green']).toContain(w.tint);
+      expect(['plain', 'blinds', 'monitor']).toContain(w.kind);
     }
+  });
+
+  it('restricts non-plain kinds to lit windows', () => {
+    // `dim` and `dark` always report `kind: 'plain'` so downstream rendering
+    // doesn't have to special-case blinds/monitor on non-lit fills.
+    const windows = generateFacadeWindows(600, 480, 19);
+    for (const w of windows) {
+      if (w.state !== 'lit') {
+        expect(w.kind).toBe('plain');
+      }
+    }
+  });
+
+  it('emits all three tints across a decent sample', () => {
+    const windows = generateFacadeWindows(600, 480, 101);
+    const tints = new Set(windows.map((w) => w.tint));
+    // Not strictly guaranteed for tiny samples, but 600x480 produces plenty.
+    expect(tints.has('warm')).toBe(true);
+    // Cool/green are rarer; assert at least one of the two appears to catch
+    // a regression where pickTint returned a single value.
+    expect(tints.has('cool') || tints.has('green')).toBe(true);
   });
 
   it('emits a plausible mix of states (dark is majority)', () => {

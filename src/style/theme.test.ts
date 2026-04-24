@@ -21,6 +21,9 @@ describe('theme', () => {
       skylineAccent: 0x0a1020,
       windowLit: 0xffd27f,
       windowDim: 0x8a7344,
+      windowLitCool: 0xbfd7ff,
+      windowLitGreen: 0x9ad39a,
+      windowBlinds: 0x3a2e18,
     });
   });
 
