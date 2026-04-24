@@ -72,10 +72,28 @@ test.describe('elevator ride controls', () => {
       return ctrl.elevator.platform.y;
     });
 
-    // Hold ArrowUp for long enough to ramp past the commit threshold.
+    // Hold ArrowUp until the cab has clearly lifted off the starting
+    // floor. Using a wall-clock waitForTimeout is flaky on CI where
+    // Phaser's update loop can be starved — we'd release the key
+    // before the cab accumulated enough velocity to cross the commit
+    // threshold, and it would coast back to the start stop.
     await page.keyboard.down('ArrowUp');
-    await page.waitForTimeout(800);
-    await page.keyboard.up('ArrowUp');
+    try {
+      await page.waitForFunction((startY: number) => {
+        const g = window.__game as unknown as {
+          scene: { getScenes: (a?: boolean) => { sys: { settings: { key: string } } }[] };
+        } | undefined;
+        if (!g) return false;
+        const scene = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+        const ctrl = scene?.['elevatorCtrl'] as { elevator: { platform: { y: number } } } | undefined;
+        if (!ctrl) return false;
+        return ctrl.elevator.platform.y < startY - 50;
+      }, cabYBefore, { timeout: 15_000 });
+    } finally {
+      await page.keyboard.up('ArrowUp');
+    }
 
     const state = await page.evaluate(() => {
       const g = window.__game as unknown as {

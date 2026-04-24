@@ -167,7 +167,13 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
     // to 0 immediately, but the `player_land` squash anim (played if the
     // player just finished the initial spawn drop) gates animation
     // updates for up to 120ms. We want to observe the steady state.
-    await page.waitForFunction(() => {
+    //
+    // Read the snapshot INSIDE the wait and return it when the freeze
+    // condition holds. This avoids a flake where the wait succeeds, then
+    // between ticks a 1-frame onGround/touching jitter or anim swap leaks
+    // into the follow-up `snapshotPlayer(page)` roundtrip and the final
+    // asserts see stale/other values.
+    const frozenHandle = await page.waitForFunction(() => {
       const g = window.__game!;
       const scene = g.scene
         .getScenes(true)
@@ -180,14 +186,18 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
         };
       };
       const b = player.sprite.body;
-      return (
+      const animKey = player.sprite.anims?.currentAnim?.key ?? null;
+      if (
         b.velocity.x === 0 &&
         (b.blocked.down || b.touching.down) &&
-        player.sprite.anims?.currentAnim?.key === 'player_idle'
-      );
+        animKey === 'player_idle'
+      ) {
+        return { vx: b.velocity.x, anim: animKey };
+      }
+      return null;
     }, undefined, { timeout: 15_000 });
+    const frozen = (await frozenHandle.jsonValue()) as { vx: number; anim: string };
 
-    const frozen = await snapshotPlayer(page);
     // ArrowRight is still held — the freeze must come from the input
     // context check, not from the player releasing the key.
     expect(frozen.vx).toBe(0);
