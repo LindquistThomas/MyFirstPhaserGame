@@ -1,5 +1,17 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, ELEVATOR_SPEED, FLOORS, FloorId } from '../../../config/gameConfig';
+import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS, FloorId } from '../../../config/gameConfig';
+
+/**
+ * Room-lift speed in px/s. Slower than the main cab's `ELEVATOR_SPEED`
+ * (760) because room lifts travel short distances — a slower ride makes
+ * the rider reliably stick to the platform (gravity can't outpace the
+ * descent) and keeps the per-frame overshoot inside the clamp tolerance.
+ */
+const ROOM_LIFT_SPEED = 400;
+
+/** Extra px added above `minY` so the platform sprite (12 px tall, centre-
+ *  origin) stays fully inside the shaft graphic when parked at the top. */
+const SHAFT_TOP_PAD = 16;
 import { LEVEL_DATA, FloorData } from '../../../config/levelData';
 import { Player } from '../../../entities/Player';
 import { Enemy } from '../../../entities/Enemy';
@@ -524,11 +536,16 @@ export class LevelScene extends Phaser.Scene {
     for (const re of config.roomElevators) {
       const shaft = this.add.graphics().setDepth(1);
       const shaftW = 80;
+      // Extend shaft upward past `minY` so the platform sprite (centre-origin,
+      // ~12 px tall) sits fully inside the black background when parked at
+      // the top. Otherwise the platform's top edge pokes above the shaft.
+      const topY = re.minY - SHAFT_TOP_PAD;
+      const bottomY = re.maxY + 16;
       shaft.fillStyle(theme.color.bg.overlay, 0.85);
-      shaft.fillRect(re.x - shaftW / 2, re.minY, shaftW, re.maxY - re.minY + 16);
+      shaft.fillRect(re.x - shaftW / 2, topY, shaftW, bottomY - topY);
       shaft.lineStyle(2, theme.color.ui.border, 0.5);
-      shaft.lineBetween(re.x - shaftW / 2, re.minY, re.x - shaftW / 2, re.maxY + 16);
-      shaft.lineBetween(re.x + shaftW / 2, re.minY, re.x + shaftW / 2, re.maxY + 16);
+      shaft.lineBetween(re.x - shaftW / 2, topY, re.x - shaftW / 2, bottomY);
+      shaft.lineBetween(re.x + shaftW / 2, topY, re.x + shaftW / 2, bottomY);
 
       const plat = this.physics.add.image(re.x, re.startY, 'room_elevator_platform');
       plat.setImmovable(true);
@@ -537,6 +554,35 @@ export class LevelScene extends Phaser.Scene {
 
       this.roomLifts.push({ platform: plat, shaft, minY: re.minY, maxY: re.maxY });
     }
+
+    // Pin the active rider to the lift AFTER Phaser has stepped physics
+    // for this frame — mirrors `ElevatorController.postUpdatePin()` so
+    // the player follows the lift with zero lag and gravity can't pull
+    // them off the platform while descending.
+    if (this.roomLifts.length > 0) {
+      const onPost = () => this.postUpdatePinToLift();
+      this.events.on(Phaser.Scenes.Events.POST_UPDATE, onPost);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        this.events.off(Phaser.Scenes.Events.POST_UPDATE, onPost);
+      });
+    }
+  }
+
+  /**
+   * Post-physics-step rider pin. Runs after Phaser has moved both the lift
+   * platform and the player body this frame, so we can align the player's
+   * feet to the platform's actual (post-step) position with zero lag.
+   */
+  private postUpdatePinToLift(): void {
+    if (this.activeRoomLift < 0) return;
+    if (this.dialogs?.isOpen) return;
+    const lift = this.roomLifts[this.activeRoomLift];
+    const platBody = lift.platform.body as Phaser.Physics.Arcade.Body;
+    const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
+    const targetY = platBody.y - playerBody.offset.y - playerBody.height
+      + this.player.sprite.displayOriginY;
+    this.player.sprite.setY(targetY);
+    playerBody.updateFromGameObject();
   }
 
   /* ---- decorations (override in subclass to add floor-specific props) ---- */
@@ -690,8 +736,14 @@ export class LevelScene extends Phaser.Scene {
     this.zones.update();
 
     // I key opens the info dialog for the currently-active content zone.
+    // `ArrowUp` is bound to both `MoveUp` and `ToggleInfo`; suppress the
+    // info-open path when the player is driving movement this frame so
+    // pressing Up to ride a lift never also pops an info card. Enter and
+    // I still open dialogs normally.
+    const movingThisFrame = this.inputs.justPressed('MoveUp')
+      || this.inputs.justPressed('MoveDown');
     const activeZone = this.zones.getActiveZone();
-    if (infoPressed && activeZone && !this.dialogs.isOpen) {
+    if (infoPressed && activeZone && !this.dialogs.isOpen && !movingThisFrame) {
       this.dialogs.open(activeZone);
       return;
     }
@@ -709,13 +761,30 @@ export class LevelScene extends Phaser.Scene {
     const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
 
+    // player.update() runs just before this and consumes `justPressed('Jump')`
+    // to set body.velocity.y = PLAYER_JUMP_VELOCITY (−520). Detect a jump by
+    // looking for a vy more negative than a lift can produce (ROOM_LIFT_SPEED
+    // is 400), so a lift ascending at −400 isn't mistaken for a jump. Release
+    // the lift and bail out so the velocity sync at the end doesn't stomp
+    // the jump impulse. postUpdatePinToLift() early-outs once activeRoomLift
+    // is -1.
+    if (this.activeRoomLift >= 0 && body.velocity.y < -(ROOM_LIFT_SPEED + 20)) {
+      for (const lift of this.roomLifts) lift.platform.setVelocityY(0);
+      this.activeRoomLift = -1;
+      this.liftButtons?.setVisible(false);
+      return;
+    }
+
     let onLift = false;
     if (onGround) {
       for (let i = 0; i < this.roomLifts.length; i++) {
         const lift = this.roomLifts[i];
         const dx = Math.abs(this.player.sprite.x - lift.platform.x);
         const dy = this.player.sprite.y + (body.halfHeight) - lift.platform.y;
-        if (dx < 50 && dy >= -4 && dy <= 12) {
+        // Widened tolerance (was [-4, 12]) so a fast descent doesn't
+        // momentarily separate the player from the platform and stop
+        // the ride. postUpdatePinToLift() re-snaps them each frame.
+        if (dx < 50 && dy >= -6 && dy <= 28) {
           this.activeRoomLift = i;
           onLift = true;
           break;
@@ -742,25 +811,33 @@ export class LevelScene extends Phaser.Scene {
     const down = inputs.isDown('MoveDown') || (btnState?.down ?? false);
 
     if (up) {
-      lift.platform.setVelocityY(-ELEVATOR_SPEED);
+      lift.platform.setVelocityY(-ROOM_LIFT_SPEED);
     } else if (down) {
-      lift.platform.setVelocityY(ELEVATOR_SPEED);
+      lift.platform.setVelocityY(ROOM_LIFT_SPEED);
     } else {
       lift.platform.setVelocityY(0);
     }
 
-    // Only clamp when moving out of bounds — otherwise starting at a
-    // boundary (startY === maxY) would zero velocity every frame and
-    // block motion back into range. Same tripwire as src/entities/Elevator.ts.
+    // Directional clamp — only zero velocity when moving OUTWARD past the
+    // bound. Clamping unconditionally (as before) blocked re-entry after
+    // touching a bound; this mirrors `Elevator.applyVelocity` on the main
+    // cab. Also clamp the position the same frame to absorb the overshoot
+    // produced by velocity integration at ROOM_LIFT_SPEED.
     const vy = (lift.platform.body as Phaser.Physics.Arcade.Body).velocity.y;
     if (lift.platform.y <= lift.minY && vy < 0) {
       lift.platform.y = lift.minY;
       lift.platform.setVelocityY(0);
-    }
-    if (lift.platform.y >= lift.maxY && vy > 0) {
+    } else if (lift.platform.y >= lift.maxY && vy > 0) {
       lift.platform.y = lift.maxY;
       lift.platform.setVelocityY(0);
     }
+
+    // Match the player's vertical velocity to the lift so the physics step
+    // keeps them together within this frame; postUpdatePinToLift() then
+    // pins them to the lift's top with zero lag.
+    body.setVelocityY(
+      (lift.platform.body as Phaser.Physics.Arcade.Body).velocity.y,
+    );
   }
 
   /* ---- exit check ---- */
