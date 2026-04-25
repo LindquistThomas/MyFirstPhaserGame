@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { settingsStore, type MusicStyle } from '../../systems/SettingsStore';
-import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
@@ -305,7 +304,5 @@ export class SettingsScene extends Phaser.Scene {
     this.time.delayedCall(300, () => {
       this.scene.start(this.callerScene);
     });
-    // Emit one last volume-changed so the returning scene picks up any changes
-    eventBus.emit('audio:volume-changed');
   }
 }

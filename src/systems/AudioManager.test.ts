@@ -4,8 +4,6 @@ import { eventBus } from './EventBus';
 import { MUSIC_VOLUME, SFX_EVENTS } from '../config/audioConfig';
 import { settingsStore, SETTINGS_STORAGE_KEY } from './SettingsStore';
 
-const LEGACY_MUTE_KEY = 'architect_audio_muted_v1';
-
 interface FakeSoundInstance {
   play: ReturnType<typeof vi.fn>;
   stop: ReturnType<typeof vi.fn>;

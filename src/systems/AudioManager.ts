@@ -64,8 +64,8 @@ export class AudioManager {
 
   /** Play a one-shot sound effect. */
   private playSfx(key: string): void {
-    const { masterVolume, sfxVolume } = settingsStore.read();
-    const vol = (masterVolume / 100) * (sfxVolume / 100);
+    const s = settingsStore.read();
+    const vol = this.scaleVolume(1, s.masterVolume) * this.scaleVolume(1, s.sfxVolume);
     this.sound.play(key, { volume: vol });
   }
 
@@ -155,13 +155,21 @@ export class AudioManager {
   }
 
   /**
+   * Scale a base volume (0–1) by a user preference in the 0–100 range.
+   * Returns a value in [0, 1].
+   */
+  private scaleVolume(base: number, pref: number): number {
+    return base * (pref / 100);
+  }
+
+  /**
    * Effective music volume = authored level (MUSIC_VOLUME) × player's music
    * channel preference (0–1). Master volume is applied at the sound-manager
    * level so individual tracks don't need to account for it.
    */
   private effectiveMusicVolume(): number {
     const { musicVolume } = settingsStore.read();
-    return MUSIC_VOLUME * (musicVolume / 100);
+    return this.scaleVolume(MUSIC_VOLUME, musicVolume);
   }
 
   /**
@@ -170,7 +178,7 @@ export class AudioManager {
    */
   private effectiveAmbienceVolume(): number {
     const { musicVolume } = settingsStore.read();
-    return AMBIENCE_VOLUME * (musicVolume / 100);
+    return this.scaleVolume(AMBIENCE_VOLUME, musicVolume);
   }
 
   toggleMute(): void {
