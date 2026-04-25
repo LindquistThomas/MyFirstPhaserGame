@@ -17,6 +17,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
+│   ├── brand/                # Norconsult Digital wordmark SVG (loaded as `lobby_logo` at boot)
 │   └── music/                # MP3/OGG music tracks loaded in BootScene
 ├── src/
 │   ├── main.ts               # Phaser.Game config + scene registration
@@ -36,7 +37,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
     └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
 
-There is **no** `public/assets/` directory — only `public/music/` exists today. Procedural sprites and SFX are generated at runtime by `SpriteGenerator` and `SoundGenerator`; only music is shipped as static files.
+There is **no** `public/assets/` directory. Static files: `public/music/` (MP3/OGG tracks loaded in `BootScene.preload()`) and `public/brand/` (the Norconsult Digital wordmark SVG, loaded as `lobby_logo`). Sprites and SFX are still generated procedurally by `SpriteGenerator` / `SoundGenerator`.
 
 ## Language, tooling, scripts
 
