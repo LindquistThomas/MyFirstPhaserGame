@@ -64,7 +64,13 @@ export function load(): SaveData | null {
     if (!raw) return null;
     let data = JSON.parse(raw) as Record<string, unknown>;
     // Saves written before versioning was introduced have no `version` field → treat as v0.
-    let version = typeof data['version'] === 'number' ? (data['version'] as number) : 0;
+    // Non-integer or negative values are invalid; return null rather than guess.
+    const rawVersion = data['version'];
+    let version = 0;
+    if (typeof rawVersion === 'number') {
+      if (!Number.isInteger(rawVersion) || rawVersion < 0) return null;
+      version = rawVersion;
+    }
     while (version < CURRENT_SAVE_VERSION) {
       const migrate = MIGRATIONS[version];
       // A missing migration entry is a developer error — throw so the outer catch

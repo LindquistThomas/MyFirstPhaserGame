@@ -12,7 +12,7 @@ function memoryStorage(): KVStorage & { store: Map<string, string> } {
 }
 
 const sample: SaveData = {
-  version: 1,
+  version: CURRENT_SAVE_VERSION,
   totalAU: 7,
   floorAU: { 0: 1, 1: 4, 2: 2 },
   unlockedFloors: [0, 1, 2],
@@ -199,10 +199,13 @@ describe('SaveManager — schema versioning & migration', () => {
     setStorage(memoryStorage());
   });
 
-  it('save() always writes CURRENT_SAVE_VERSION to storage', () => {
-    save(sample);
+  it('save() persists the version provided by the caller', () => {
+    // save() is a thin serialiser — it does not enforce CURRENT_SAVE_VERSION.
+    // Callers (e.g. ProgressionSystem.persist) are responsible for stamping the right version.
+    const customVersionedSample: SaveData = { ...sample, version: CURRENT_SAVE_VERSION + 1 };
+    save(customVersionedSample);
     const loaded = load();
-    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION + 1);
   });
 
   it('load() migrates a legacy save (no version field) to CURRENT_SAVE_VERSION', () => {
@@ -246,19 +249,39 @@ describe('SaveManager — schema versioning & migration', () => {
     expect(loaded?.collectedTokens).toEqual({ 0: [0], 1: [1, 2] });
   });
 
-  it('load() returns null when a migration entry is missing (fails fast instead of returning corrupted data)', () => {
+  it('load() returns a future-version save unchanged when no downgrade path exists', () => {
     const store = memoryStorage();
-    // Simulate a save at a hypothetical version 99 — no migration exists for it.
+    // Simulate a save from a newer build. Since version 99 > CURRENT_SAVE_VERSION,
+    // the migration loop is skipped and the save is returned as-is.
     store.store.set('architect_test_v1', JSON.stringify({ version: 99, totalAU: 0, floorAU: {}, unlockedFloors: [], currentFloor: 0, collectedTokens: {} }));
     setStorage(store);
 
-    // version 99 > CURRENT_SAVE_VERSION so the loop is skipped; load succeeds.
-    // This only fires when 0 < missing_version < CURRENT_SAVE_VERSION.
-    // Test a gap within the current range by patching a mid-range version.
-    // Since CURRENT_SAVE_VERSION=1 there's no gap to test right now, so
-    // verify the opposite: a future-version save is returned as-is (version stamped).
     const loaded = load();
     expect(loaded).not.toBeNull();
     expect(loaded?.version).toBe(99); // unchanged — higher than current
+  });
+
+  it.skip('load() returns null when a required migration entry is missing', () => {
+    // This path only occurs when 0 < save.version < CURRENT_SAVE_VERSION and
+    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=1
+    // there is no constructible version-gap case yet.
+    //
+    // Once a gap can be created, seed a save at the missing intermediate version,
+    // call load(), and assert:
+    // expect(load()).toBeNull();
+  });
+
+  it('load() returns null for a non-integer version field', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify({ ...sample, version: 1.5 }));
+    setStorage(store);
+    expect(load()).toBeNull();
+  });
+
+  it('load() returns null for a negative version field', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify({ ...sample, version: -1 }));
+    setStorage(store);
+    expect(load()).toBeNull();
   });
 });
