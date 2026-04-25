@@ -37,6 +37,8 @@ export type GameAction =
   | 'ElevatorCallFloor2'
   | 'ElevatorCallFloor3'
   | 'ElevatorCallFloor4'
+  // Pause / resume
+  | 'Pause'
   // Debug
   | 'ToggleDebug';
 
@@ -81,6 +83,8 @@ export const ACTION_CONTEXTS: Record<GameAction, readonly ActionContextTag[]> = 
   ElevatorCallFloor2: ['gameplay'],
   ElevatorCallFloor3: ['gameplay'],
   ElevatorCallFloor4: ['gameplay'],
+
+  Pause: ['gameplay'],
 
   ToggleDebug: [ALWAYS],
 };

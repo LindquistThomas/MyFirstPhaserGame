@@ -19,6 +19,10 @@ export interface GameEvents {
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
+  /** Pause the currently-playing music track (e.g. when game is paused). */
+  'music:pause': [];
+  /** Resume a music track that was paused via `music:pause`. */
+  'music:resume': [];
 
   /** Start looping an ambience bed on the dedicated ambience channel. */
   'ambience:play': [key: string];
