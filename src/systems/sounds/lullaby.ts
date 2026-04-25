@@ -22,8 +22,9 @@ function triangle(phase: number): number {
 function lowPass(samples: Float32Array, amount: number): void {
   let prev = 0;
   for (let i = 0; i < samples.length; i++) {
-    samples[i] = prev + amount * (samples[i] - prev);
-    prev = samples[i];
+    const val = prev + amount * (samples[i]! - prev);
+    samples[i] = val;
+    prev = val;
   }
 }
 
@@ -108,11 +109,11 @@ export function generateLullaby(): ArrayBuffer {
     // --- Melody ---
     let noteIdx = 0;
     for (let k = melody.length - 1; k >= 0; k--) {
-      if (beat >= noteStarts[k]) { noteIdx = k; break; }
+      if (beat >= noteStarts[k]!) { noteIdx = k; break; }
     }
-    const [note, noteBeats] = melody[noteIdx];
+    const [note, noteBeats] = melody[noteIdx]!;
     const noteDur = noteBeats * beatDur;
-    const tInNote = t - noteStarts[noteIdx] * beatDur;
+    const tInNote = t - noteStarts[noteIdx]! * beatDur;
     let melSample = 0;
     if (note > 0) {
       const freq = midiToFreq(note);
@@ -124,15 +125,15 @@ export function generateLullaby(): ArrayBuffer {
 
     // --- Pad (one bar = 3 beats per padBars entry) ---
     const barIdx = Math.floor(beat / 3) % padBars.length;
-    const bar = padBars[barIdx];
+    const bar = padBars[barIdx]!;
     const tInBar = (beat % 3) * beatDur;
     const barDur = 3 * beatDur;
     const padEnv = noteEnvelope(tInBar, barDur, 0.5, 0.8);
     let padSample = 0;
     for (let p = 0; p < bar.length; p++) {
-      const freq = midiToFreq(bar[p]);
-      padPhases[p] += (2 * Math.PI * freq) / SAMPLE_RATE;
-      padSample += sine(padPhases[p]);
+      const freq = midiToFreq(bar[p]!);
+      padPhases[p] = padPhases[p]! + (2 * Math.PI * freq) / SAMPLE_RATE;
+      padSample += sine(padPhases[p]!);
     }
     padSample = (padSample / bar.length) * padEnv * 0.09;
 

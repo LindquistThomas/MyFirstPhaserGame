@@ -107,7 +107,7 @@ export class LevelRoomElevators {
     const scene = this.deps.scene;
     for (let i = 0; i < this.lifts.length; i++) {
       const idx = i;
-      scene.physics.add.collider(this.deps.player.sprite, this.lifts[i].platform, () => {
+      scene.physics.add.collider(this.deps.player.sprite, this.lifts[i]!.platform, () => {
         this.activeIndex = idx;
       });
     }
@@ -127,7 +127,7 @@ export class LevelRoomElevators {
   private postUpdatePin(): void {
     if (this.activeIndex < 0) return;
     if (this.deps.dialogs.isOpen) return;
-    const lift = this.lifts[this.activeIndex];
+    const lift = this.lifts[this.activeIndex]!;
     const platBody = lift.platform.body as Phaser.Physics.Arcade.Body;
     const playerBody = this.deps.player.sprite.body as Phaser.Physics.Arcade.Body;
     const targetY = platBody.y - playerBody.offset.y - playerBody.height
@@ -157,7 +157,7 @@ export class LevelRoomElevators {
     let onLift = false;
     if (onGround) {
       for (let i = 0; i < this.lifts.length; i++) {
-        const lift = this.lifts[i];
+        const lift = this.lifts[i]!;
         const dx = Math.abs(player.sprite.x - lift.platform.x);
         const dy = player.sprite.y + body.halfHeight - lift.platform.y;
         // Widened tolerance (was [-4, 12]) so a fast descent doesn't
@@ -184,7 +184,7 @@ export class LevelRoomElevators {
     }
 
     const inputs = scene.inputs;
-    const lift = this.lifts[this.activeIndex];
+    const lift = this.lifts[this.activeIndex]!;
     const btnState = this.liftButtons.getState();
     const up = inputs.isDown('MoveUp') || (btnState?.up ?? false);
     const down = inputs.isDown('MoveDown') || (btnState?.down ?? false);

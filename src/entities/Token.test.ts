@@ -89,10 +89,10 @@ describe('Token', () => {
 
     token.collect();
 
-    const lastAdd = add.mock.calls[add.mock.calls.length - 1][0] as Record<string, unknown>;
+    const lastAdd = add.mock.calls[add.mock.calls.length - 1]![0] as Record<string, unknown>;
     expect(lastAdd['targets']).toBe(token);
     // The fake tween exposes the onComplete passed in — invoke it.
-    const lastResult = add.mock.results[add.mock.results.length - 1].value as {
+    const lastResult = add.mock.results[add.mock.results.length - 1]!.value as {
       onComplete?: () => void;
     };
     lastResult.onComplete?.();

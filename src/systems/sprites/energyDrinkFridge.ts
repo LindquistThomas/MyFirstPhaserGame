@@ -33,7 +33,7 @@ function generateFridgeClosed(scene: Phaser.Scene): void {
   const canColors = [0x00cc44, 0x0077ff, 0xff4400];
   for (let i = 0; i < 3; i++) {
     const cx = 10 + i * 9;
-    g.fillStyle(canColors[i], 1);
+    g.fillStyle(canColors[i]!, 1);
     g.fillRect(cx, 7, 6, 16);
     // Can top highlight
     g.fillStyle(0xffffff, 0.3);
@@ -89,7 +89,7 @@ function generateFridgeOpen(scene: Phaser.Scene): void {
     const shelfY = row === 0 ? 6 : row === 1 ? 26 : 50;
     for (let col = 0; col < 3; col++) {
       const cx = 5 + col * 12;
-      const color = canColors[(row * 3 + col) % canColors.length];
+      const color = canColors[(row * 3 + col) % canColors.length]!;
       g.fillStyle(color, 1);
       g.fillRect(cx, shelfY, 9, 14);
       // Can shine

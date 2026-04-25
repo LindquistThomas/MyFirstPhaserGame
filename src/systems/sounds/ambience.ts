@@ -78,7 +78,7 @@ export function generateDatacenterAmbience(): ArrayBuffer {
       // Tonal "tick" ~2.5 kHz mixed with narrow-band noise.
       const tick = Math.sin(2 * Math.PI * 2500 * (j / SAMPLE_RATE)) * 0.6;
       const noise = (Math.random() * 2 - 1) * 0.4;
-      samples[idx] += (tick + noise) * env * 0.08;
+      samples[idx] = samples[idx]! + (tick + noise) * env * 0.08;
     }
   }
 
@@ -87,8 +87,8 @@ export function generateDatacenterAmbience(): ArrayBuffer {
   const fadeLen = Math.floor(SAMPLE_RATE * 0.25);
   for (let j = 0; j < fadeLen; j++) {
     const t = fadeLen > 1 ? j / (fadeLen - 1) : 1; // 0 at tail start, 1 at buffer end
-    const tail = samples[numSamples - fadeLen + j];
-    const head = samples[j];
+    const tail = samples[numSamples - fadeLen + j]!;
+    const head = samples[j]!;
     // Linear crossfade: tail ramps out (1→0), head ramps in (0→1) at the seam.
     samples[numSamples - fadeLen + j] = tail * (1 - t) + head * t;
   }
@@ -96,12 +96,12 @@ export function generateDatacenterAmbience(): ArrayBuffer {
   // --- Normalise with a soft ceiling so the bed never exceeds ~0.25 peak.
   let peak = 0;
   for (let i = 0; i < numSamples; i++) {
-    const a = Math.abs(samples[i]);
+    const a = Math.abs(samples[i]!);
     if (a > peak) peak = a;
   }
   if (peak > 0) {
     const gain = 0.25 / peak;
-    for (let i = 0; i < numSamples; i++) samples[i] *= gain;
+    for (let i = 0; i < numSamples; i++) samples[i] = samples[i]! * gain;
   }
 
   return encodeWAV(samples, SAMPLE_RATE);

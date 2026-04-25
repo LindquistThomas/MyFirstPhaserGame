@@ -344,7 +344,7 @@ describe('context stack', () => {
       // inner is on top; popping outer first must be refused.
       popContext(outer);
       expect(warnSpy).toHaveBeenCalledOnce();
-      expect(warnSpy.mock.calls[0][0]).toMatch(/popContext/);
+      expect(warnSpy.mock.calls[0]![0]).toMatch(/popContext/);
       expect(activeContext()).toBe('modal'); // stack unchanged
       // Correct tear-down order still works after the refused pop.
       popContext(inner);

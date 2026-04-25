@@ -172,7 +172,7 @@ describe('MovingPlatform', () => {
       const { scene } = makePlatform({ mode: 'tween', duration: 1500, ease: 'Linear' });
       const add = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
       expect(add).toHaveBeenCalled();
-      const cfg = add.mock.calls[0][0] as Record<string, unknown>;
+      const cfg = add.mock.calls[0]![0] as Record<string, unknown>;
       expect(cfg['duration']).toBe(1500);
       expect(cfg['ease']).toBe('Linear');
       expect(cfg['yoyo']).toBe(true);
@@ -192,7 +192,7 @@ describe('MovingPlatform', () => {
     it('phase delays the tween start', () => {
       const { scene } = makePlatform({ mode: 'tween', duration: 2000, phase: 0.5 });
       const add = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
-      const cfg = add.mock.calls[0][0] as Record<string, unknown>;
+      const cfg = add.mock.calls[0]![0] as Record<string, unknown>;
       expect(cfg['delay']).toBe(1000);
     });
   });

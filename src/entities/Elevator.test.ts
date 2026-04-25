@@ -22,7 +22,7 @@ function makeElevator(floors: Array<[number, number]> = [[0, 100], [1, 500]]): {
   elevator: Elevator;
 } {
   const scene = createFakeScene();
-  const startY = floors.length > 0 ? floors[0][1] : 100;
+  const startY = floors.length > 0 ? floors[0]![1] : 100;
   const elevator = new Elevator(scene as unknown as Phaser.Scene, 100, startY);
   for (const [id, y] of floors) elevator.addFloor(id, y);
   return { scene, elevator };
@@ -44,7 +44,7 @@ describe('Elevator', () => {
       // Velocity should have started ramping negative (upwards), NOT be zeroed.
       // We can only observe it via setVelocityY being called with a negative.
       const setVY = elevator.platform.setVelocityY as unknown as ReturnType<typeof vi.fn>;
-      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1];
+      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1]!;
       expect(lastCall[0]).toBeLessThan(0);
       // Cab still moving, so getIsMoving is true (|velocity| > 1).
       expect(elevator.getIsMoving()).toBe(true);
@@ -57,7 +57,7 @@ describe('Elevator', () => {
       elevator.ride(false, true, 16.67);
 
       const setVY = elevator.platform.setVelocityY as unknown as ReturnType<typeof vi.fn>;
-      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1];
+      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1]!;
       expect(lastCall[0]).toBeGreaterThan(0);
       expect(elevator.getIsMoving()).toBe(true);
     });
@@ -74,7 +74,7 @@ describe('Elevator', () => {
       elevator.ride(false, true, 16.67);
 
       const setVY = elevator.platform.setVelocityY as unknown as ReturnType<typeof vi.fn>;
-      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1];
+      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1]!;
       expect(lastCall[0]).toBe(0);
     });
   });
@@ -89,13 +89,13 @@ describe('Elevator', () => {
       elevator.platform.y = 100;
       elevator.ride(true, false, 16.67);
       const setVY = elevator.platform.setVelocityY as unknown as ReturnType<typeof vi.fn>;
-      expect(setVY.mock.calls[setVY.mock.calls.length - 1][0]).toBe(0);
+      expect(setVY.mock.calls[setVY.mock.calls.length - 1]![0]).toBe(0);
       expect(elevator.getIsMoving()).toBe(false);
 
       // At maxY pressing down (outward) must also clamp to 0.
       elevator.platform.y = 500;
       elevator.ride(false, true, 16.67);
-      expect(setVY.mock.calls[setVY.mock.calls.length - 1][0]).toBe(0);
+      expect(setVY.mock.calls[setVY.mock.calls.length - 1]![0]).toBe(0);
     });
   });
 
@@ -190,14 +190,14 @@ describe('Elevator', () => {
       elevator.platform.y = 300;
       elevator.ride(false, false, 16.67);
       expect(elevator.getIsMoving()).toBe(true);
-      const tween = add.mock.results[add.mock.results.length - 1].value as { stop: ReturnType<typeof vi.fn> };
+      const tween = add.mock.results[add.mock.results.length - 1]!.value as { stop: ReturnType<typeof vi.fn> };
 
       // Rider presses up — should cancel the snap and resume ramped ride.
       elevator.ride(true, false, 16.67);
 
       expect(tween.stop).toHaveBeenCalled();
       const setVY = elevator.platform.setVelocityY as unknown as ReturnType<typeof vi.fn>;
-      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1];
+      const lastCall = setVY.mock.calls[setVY.mock.calls.length - 1]!;
       expect(lastCall[0]).toBeLessThan(0); // accelerating upward
     });
   });
