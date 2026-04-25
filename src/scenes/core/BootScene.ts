@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { generateSprites } from '../../systems/SpriteGenerator';
 import { generateSounds } from '../../systems/SoundGenerator';
-import { generateLullabyMusic } from '../../systems/MusicGenerator';
 import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
@@ -51,17 +50,14 @@ export class BootScene extends Phaser.Scene {
       percentText.destroy();
     });
 
-    // Generate procedural SFX and queue for Phaser's loader
+    // Generate procedural SFX and queue for Phaser's loader.
+    // This also generates the procedural lullaby music track.
     generateSounds(this);
 
     // Load static background music files.
     for (const { key, path } of STATIC_MUSIC_ASSETS) {
       this.load.audio(key, path);
     }
-
-    // Procedurally generated lullaby — used while the player sits on the
-    // lobby sofa. Keeps the feature self-contained with no extra asset.
-    generateLullabyMusic(this);
 
     // Brand assets. The Norconsult Digital wordmark (white) is used as the
     // wall-mounted company sign in the lobby. Rendered from SVG so it stays
