@@ -80,9 +80,11 @@ export class BootScene extends Phaser.Scene {
     // ProgressionSystem or reaching into the singleton save managers.
     this.registry.set('gameState', new GameStateManager());
 
-    // Global M-key toggles music/audio mute from any scene or context.
+    // Global M-key toggles audio mute from any scene or context.
     // Attached to window so it works regardless of which Phaser scene has
     // keyboard focus or what input context is active.
+    // Mute state is persisted via SettingsStore (architect_settings_v1).
+    // The Settings screen mentions this hotkey so players can discover it.
     window.addEventListener('keydown', (ev) => {
       if (ev.repeat) return;
       if (ev.key === 'm' || ev.key === 'M') {

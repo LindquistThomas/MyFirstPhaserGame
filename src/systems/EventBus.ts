@@ -19,6 +19,12 @@ export interface GameEvents {
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
+  /**
+   * Emitted by SettingsStore whenever any volume-related setting changes
+   * (masterVolume, musicVolume, sfxVolume, muteAll). AudioManager listens
+   * and re-applies the new levels to all active channels.
+   */
+  'audio:volume-changed': [];
 
   /** Start looping an ambience bed on the dedicated ambience channel. */
   'ambience:play': [key: string];

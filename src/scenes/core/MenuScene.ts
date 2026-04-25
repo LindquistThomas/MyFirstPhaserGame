@@ -361,6 +361,12 @@ export class MenuScene extends Phaser.Scene {
       this.menuButtons.push({ btn: soundtrackBtn, action: soundtrackAction });
       this.soundtrackButton = soundtrackBtn;
     }
+
+    const settingsYOffset = gameState?.hasSave() ? 220 : 160;
+    const settingsAction = () => this.openSettings();
+    const settingsBtn = this.makeButton(cx, cy + settingsYOffset, '[ SETTINGS ]', 20, settingsAction);
+    settingsBtn.setDepth(TEXT_DEPTH);
+    this.menuButtons.push({ btn: settingsBtn, action: settingsAction });
   }
 
   private makeButton(
@@ -407,6 +413,11 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = { loadSave: true };
     this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
+  }
+
+  private openSettings(): void {
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.time.delayedCall(300, () => this.scene.start('SettingsScene', { from: 'MenuScene' }));
   }
 
   private playNextSoundtrack(): void {
