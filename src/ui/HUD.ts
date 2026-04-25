@@ -6,12 +6,22 @@ import { eventBus } from '../systems/EventBus';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 import { theme } from '../style/theme';
 import type { AudioManager } from '../systems/AudioManager';
+import { Toast } from './Toast';
 
 const HUD_HEIGHT = 44;
 const COIN_X = 26;
 const COIN_Y = 22;
 const PROGRESS_STRIP_WIDTH = 140;
 const PROGRESS_STRIP_HEIGHT = 6;
+
+function persistenceMessage(reason: 'quota' | 'unavailable' | 'parse' | 'unknown'): string {
+  switch (reason) {
+    case 'quota':       return 'Storage full — close other tabs or clear site data to save progress.';
+    case 'unavailable': return 'Browser storage is unavailable. Progress will not be saved (try disabling Private Browsing).';
+    case 'parse':       return "Existing save couldn't be read. Starting a new save.";
+    default:            return 'Save failed — your progress may not be stored.';
+  }
+}
 
 export class HUD {
   private scene: Phaser.Scene;
@@ -42,6 +52,7 @@ export class HUD {
   /** 0 when inactive. */
   private caffeineEndAt = 0;
   private caffeineDuration = 0;
+  private toast!: Toast;
   private onCaffeineStart = (durationMs: number): void => {
     this.caffeineDuration = durationMs;
     this.caffeineEndAt = this.scene.time.now + durationMs;
@@ -136,6 +147,11 @@ export class HUD {
     lifecycle.bindEventBus('audio:mute-changed', this.onMuteChanged);
     lifecycle.bindEventBus('buff:caffeine_start', this.onCaffeineStart);
     lifecycle.bindEventBus('buff:caffeine_end', this.onCaffeineEnd);
+
+    this.toast = new Toast(this.scene);
+    lifecycle.bindEventBus('persistence:failed', (payload) => {
+      this.toast.show(persistenceMessage(payload.reason));
+    });
 
     // "FLOOR" micro-label above the floor name, anchored inside the floor pill.
     this.floorLabel = this.scene.add.text(GAME_WIDTH - 210, 9, 'FLOOR', {

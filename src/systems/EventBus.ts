@@ -19,6 +19,10 @@ export interface GameEvents {
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
+  /** Pause the currently-playing music track (e.g. when game is paused). */
+  'music:pause': [];
+  /** Resume a music track that was paused via `music:pause`. */
+  'music:resume': [];
 
   /** Start looping an ambience bed on the dedicated ambience channel. */
   'ambience:play': [key: string];
@@ -62,6 +66,15 @@ export interface GameEvents {
    * Payload: storage key that failed, and the human-readable error message.
    */
   'persistence:error': [storageKey: string, message: string];
+
+  /**
+   * SaveManager failed to read or write a save slot.
+   * `reason` discriminates the failure mode so HUD can show a tailored message.
+   * Emitted at most once per `unavailable` session (noop storage detection),
+   * on every quota error, on every JSON parse failure, and on other unknown
+   * storage errors.
+   */
+  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string }];
 }
 
 export type GameEventName = keyof GameEvents;

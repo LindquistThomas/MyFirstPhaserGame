@@ -512,7 +512,7 @@ export class Elevator {
       8: ['t', 'tl', 'tr', 'm', 'bl', 'br', 'b'],
       9: ['t', 'tl', 'tr', 'm', 'br', 'b'],
     };
-    const on = segs[digit] ?? segs[0];
+    const on = segs[digit] ?? segs[0] ?? [];
     g.fillStyle(color, 1);
     const w = 6, h = 8, t = 1;
     if (on.includes('t')) g.fillRect(x, y, w, t);

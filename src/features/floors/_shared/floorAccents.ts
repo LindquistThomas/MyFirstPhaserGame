@@ -153,14 +153,14 @@ const businessAccent: AccentFn = ({ scene, g, width, height, theme }) => {
   const heights = [0.35, 0.55, 0.45, 0.72, 0.60, 0.88, 0.50];
   for (let i = 0; i < barCount; i++) {
     const bx = chartX + 20 + i * (barW + barGap);
-    const bh = Math.round(heights[i] * (chartH - 40));
+    const bh = Math.round(heights[i]! * (chartH - 40));
     g.fillStyle(theme.tokenColor, 0.45);
     g.fillRect(bx, chartY + chartH - 20 - bh, barW, bh);
   }
   // Animated: pulse the tallest bar (index 5).
   const pulseI = 5;
   const pulseX = chartX + 20 + pulseI * (barW + barGap);
-  const maxH = Math.round(heights[pulseI] * (chartH - 40));
+  const maxH = Math.round(heights[pulseI]! * (chartH - 40));
   const bar = scene.add
     .rectangle(pulseX, chartY + chartH - 20, barW, maxH, theme.tokenColor, 0.85)
     .setOrigin(0, 1)

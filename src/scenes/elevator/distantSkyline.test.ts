@@ -8,8 +8,8 @@ describe('generateSkyline', () => {
     expect(skyline.length).toBeGreaterThan(6);
 
     // First building starts at or before x=0 (pre-seam) and last finishes at or past `width`.
-    expect(skyline[0].x).toBeLessThanOrEqual(0);
-    const last = skyline[skyline.length - 1];
+    expect(skyline[0]!.x).toBeLessThanOrEqual(0);
+    const last = skyline[skyline.length - 1]!;
     expect(last.x + last.width).toBeGreaterThanOrEqual(width);
   });
 

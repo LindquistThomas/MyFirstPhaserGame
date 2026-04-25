@@ -16,7 +16,7 @@ const contextStack: InputContext[] = [];
 
 /** The currently active context (top of stack, or 'gameplay' by default). */
 export function activeContext(): InputContext {
-  return contextStack.length > 0 ? contextStack[contextStack.length - 1] : 'gameplay';
+  return contextStack.length > 0 ? contextStack[contextStack.length - 1]! : 'gameplay';
 }
 
 /** Push a context. Returns a token that must be passed back to `popContext`. */

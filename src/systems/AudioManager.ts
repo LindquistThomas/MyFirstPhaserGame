@@ -54,6 +54,8 @@ export class AudioManager {
     eventBus.on('music:stop', () => this.stopMusic());
     eventBus.on('music:push', (key) => this.pushMusic(key));
     eventBus.on('music:pop', () => this.popMusic());
+    eventBus.on('music:pause', () => this.pauseMusic());
+    eventBus.on('music:resume', () => this.resumeMusic());
     eventBus.on('ambience:play', (key) => this.playAmbience(key));
     eventBus.on('ambience:stop', () => this.stopAmbience());
     eventBus.on('audio:toggle-mute', () => this.toggleMute());
@@ -93,6 +95,20 @@ export class AudioManager {
       this.playMusic(prev);
     } else {
       this.stopMusic();
+    }
+  }
+
+  /** Pause the current music track without stopping it. */
+  private pauseMusic(): void {
+    if (this.currentMusic && (this.currentMusic as { isPlaying?: boolean }).isPlaying) {
+      (this.currentMusic as { pause(): void }).pause();
+    }
+  }
+
+  /** Resume a music track that was paused. */
+  private resumeMusic(): void {
+    if (this.currentMusic && (this.currentMusic as { isPaused?: boolean }).isPaused) {
+      (this.currentMusic as { resume(): void }).resume();
     }
   }
 
