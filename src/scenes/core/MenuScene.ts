@@ -412,7 +412,7 @@ export class MenuScene extends Phaser.Scene {
   private playNextSoundtrack(): void {
     if (SOUNDTRACK_PLAYLIST.length === 0) return;
     this.soundtrackIndex = (this.soundtrackIndex + 1) % SOUNDTRACK_PLAYLIST.length;
-    const next = SOUNDTRACK_PLAYLIST[this.soundtrackIndex];
+    const next = SOUNDTRACK_PLAYLIST[this.soundtrackIndex]!;
     eventBus.emit('music:play', next.key);
     this.soundtrackButton?.setText(`[ SOUNDTRACK: ${next.label} ]`).setInteractive({ useHandCursor: true });
   }

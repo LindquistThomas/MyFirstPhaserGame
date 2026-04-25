@@ -37,8 +37,8 @@ function sine(phase: number): number {
 function lowPass(samples: Float32Array, amount: number): void {
   let prev = 0;
   for (let i = 0; i < samples.length; i++) {
-    samples[i] = prev + amount * (samples[i] - prev);
-    prev = samples[i];
+    samples[i] = prev + amount * (samples[i]! - prev);
+    prev = samples[i]!;
   }
 }
 
@@ -120,12 +120,12 @@ function generateRetroSynth(): ArrayBuffer {
     const t = i / SAMPLE_RATE;
     const beat = t / beatDur;
     const chordIdx = Math.floor(beat / beatsPerChord) % chordProgression.length;
-    const chord = chordProgression[chordIdx];
+    const chord = chordProgression[chordIdx]!;
 
     // --- Arpeggio (square wave, 16th notes) ---
     const arpNotesPerBeat = 4;
     const arpNoteIdx = Math.floor(beat * arpNotesPerBeat) % chord.arp.length;
-    const arpFreq = midiToFreq(chord.arp[arpNoteIdx]);
+    const arpFreq = midiToFreq(chord.arp[arpNoteIdx]!);
     const arpNoteDur = beatDur / arpNotesPerBeat;
     const tInArpNote = (t % arpNoteDur);
     const arpEnv = noteEnvelope(tInArpNote, arpNoteDur, 0.005, arpNoteDur * 0.3);
@@ -143,8 +143,8 @@ function generateRetroSynth(): ArrayBuffer {
     const bassSample = sawtooth(bassPhase) * bassEnv * 0.12;
 
     // --- Pad (soft triangle chord, root + 5th) ---
-    const padFreq1 = midiToFreq(chord.arp[0]);
-    const padFreq2 = midiToFreq(chord.arp[2]);
+    const padFreq1 = midiToFreq(chord.arp[0]!);
+    const padFreq2 = midiToFreq(chord.arp[2]!);
     padPhase1 += (2 * Math.PI * padFreq1) / SAMPLE_RATE;
     padPhase2 += (2 * Math.PI * padFreq2) / SAMPLE_RATE;
     const padSample = (triangle(padPhase1) + triangle(padPhase2)) * 0.04;
@@ -200,12 +200,10 @@ function generateElevatorJazz(): ArrayBuffer {
     const t = i / SAMPLE_RATE;
     const beat = t / beatDur;
     const chordIdx = Math.floor(beat / beatsPerChord) % chordProgression.length;
-    const chord = chordProgression[chordIdx];
+    const chord = chordProgression[chordIdx]!;
     const beatInChord = beat - Math.floor(beat / beatsPerChord) * beatsPerChord;
-
-    // --- Walking bass (quarter notes) ---
     const bassNoteIdx = Math.floor(beatInChord) % chord.bass.length;
-    const bassFreq = midiToFreq(chord.bass[bassNoteIdx]);
+    const bassFreq = midiToFreq(chord.bass[bassNoteIdx]!);
     const tInBassNote = (beatInChord % 1) * beatDur;
     const bassEnv = noteEnvelope(tInBassNote, beatDur, 0.02, beatDur * 0.15);
 
@@ -216,9 +214,9 @@ function generateElevatorJazz(): ArrayBuffer {
     // --- Pad (sine chord, whole notes with slow attack) ---
     let padSample = 0;
     for (let p = 0; p < chord.pad.length; p++) {
-      const padFreq = midiToFreq(chord.pad[p]);
-      padPhases[p] += (2 * Math.PI * padFreq) / SAMPLE_RATE;
-      padSample += sine(padPhases[p]);
+      const padFreq = midiToFreq(chord.pad[p]!);
+      padPhases[p] = padPhases[p]! + (2 * Math.PI * padFreq) / SAMPLE_RATE;
+      padSample += sine(padPhases[p]!);
     }
     const padChordDur = beatsPerChord * beatDur;
     const tInChord = beatInChord * beatDur;
@@ -226,9 +224,9 @@ function generateElevatorJazz(): ArrayBuffer {
     padSample = (padSample / chord.pad.length) * padEnv * 0.08;
 
     // --- Melody (quarter notes, sine + slight triangle) ---
-    const melody = melodyPattern[chordIdx];
+    const melody = melodyPattern[chordIdx]!;
     const melNoteIdx = Math.floor(beatInChord) % melody.length;
-    const melFreq = midiToFreq(melody[melNoteIdx]);
+    const melFreq = midiToFreq(melody[melNoteIdx]!);
     const tInMelNote = (beatInChord % 1) * beatDur;
     const melEnv = noteEnvelope(tInMelNote, beatDur, 0.03, beatDur * 0.4);
 
@@ -298,11 +296,11 @@ function generateLullaby(): ArrayBuffer {
     // --- Melody ---
     let noteIdx = 0;
     for (let k = melody.length - 1; k >= 0; k--) {
-      if (beat >= noteStarts[k]) { noteIdx = k; break; }
+      if (beat >= noteStarts[k]!) { noteIdx = k; break; }
     }
-    const [note, noteBeats] = melody[noteIdx];
+    const [note, noteBeats] = melody[noteIdx]!;
     const noteDur = noteBeats * beatDur;
-    const tInNote = t - noteStarts[noteIdx] * beatDur;
+    const tInNote = t - noteStarts[noteIdx]! * beatDur;
     let melSample = 0;
     if (note > 0) {
       const freq = midiToFreq(note);
@@ -314,15 +312,15 @@ function generateLullaby(): ArrayBuffer {
 
     // --- Pad (one bar = 3 beats per padBars entry) ---
     const barIdx = Math.floor(beat / 3) % padBars.length;
-    const bar = padBars[barIdx];
+    const bar = padBars[barIdx]!;
     const tInBar = (beat % 3) * beatDur;
     const barDur = 3 * beatDur;
     const padEnv = noteEnvelope(tInBar, barDur, 0.5, 0.8);
     let padSample = 0;
     for (let p = 0; p < bar.length; p++) {
-      const freq = midiToFreq(bar[p]);
-      padPhases[p] += (2 * Math.PI * freq) / SAMPLE_RATE;
-      padSample += sine(padPhases[p]);
+      const freq = midiToFreq(bar[p]!);
+      padPhases[p] = padPhases[p]! + (2 * Math.PI * freq) / SAMPLE_RATE;
+      padSample += sine(padPhases[p]!);
     }
     padSample = (padSample / bar.length) * padEnv * 0.09;
 

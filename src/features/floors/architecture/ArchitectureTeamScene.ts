@@ -177,7 +177,7 @@ export class ArchitectureTeamScene extends LevelScene {
     const sliceRects: Phaser.GameObjects.Rectangle[] = [];
     for (let i = 0; i < slices.length; i++) {
       const sy = top + i * (sliceH + 2);
-      const r = this.add.rectangle(sliceX, sy, sliceW, sliceH, slices[i].col, 0.9)
+      const r = this.add.rectangle(sliceX, sy, sliceW, sliceH, slices[i]!.col, 0.9)
         .setOrigin(0, 0).setDepth(4).setStrokeStyle(1, 0xffffff, 0.25);
       sliceRects.push(r);
       // left tab — HTTP | logic | data bands
@@ -187,7 +187,7 @@ export class ArchitectureTeamScene extends LevelScene {
       g2.fillRect(sliceX + 14, sy + 4, 6, sliceH - 8);
       g2.fillRect(sliceX + 24, sy + 4, 6, sliceH - 8);
 
-      this.add.text(sliceX + 38, sy + sliceH / 2, slices[i].name, {
+      this.add.text(sliceX + 38, sy + sliceH / 2, slices[i]!.name, {
         fontFamily: 'monospace', fontSize: '10px', color: '#0b1322', fontStyle: 'bold',
       }).setOrigin(0, 0.5).setDepth(5);
     }
@@ -211,7 +211,7 @@ export class ArchitectureTeamScene extends LevelScene {
         ease: 'Sine.easeInOut',
       });
       // subtle flash on the active slice
-      const r = sliceRects[active];
+      const r = sliceRects[active]!;
       this.tweens.add({
         targets: r, alpha: 1, duration: 120, yoyo: true, onComplete: () => r.setAlpha(0.9),
       });
@@ -272,7 +272,7 @@ export class ArchitectureTeamScene extends LevelScene {
     const LINE_H = 11;
     const textObjs: Phaser.GameObjects.Text[] = [];
     for (let i = 0; i < ADRS.length; i++) {
-      const t = this.add.text(sx + 6, 0, ADRS[i], {
+      const t = this.add.text(sx + 6, 0, ADRS[i]!, {
         fontFamily: 'monospace', fontSize: '9px', color: '#f5c36a',
       });
       textLayer.add(t);
@@ -293,7 +293,7 @@ export class ArchitectureTeamScene extends LevelScene {
         const baseTY = sy + 6 + i * LINE_H - scroll;
         let ty = baseTY;
         if (ty < sy - LINE_H) ty += total;
-        textObjs[i].setY(ty);
+        textObjs[i]!.setY(ty);
       }
       live.clear();
       cursorState.on = !cursorState.on;

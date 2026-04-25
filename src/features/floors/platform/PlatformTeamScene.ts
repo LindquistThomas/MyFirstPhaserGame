@@ -337,7 +337,7 @@ export class PlatformTeamScene extends LevelScene {
       live.beginPath();
       for (let i = 0; i < spark.length; i++) {
         const px = lineRect.x + 2 + (i * (lineRect.w - 4)) / (SPARK_POINTS - 1);
-        const py = lineRect.y + lineRect.h - 2 - spark[i] * (lineRect.h - 4);
+        const py = lineRect.y + lineRect.h - 2 - spark[i]! * (lineRect.h - 4);
         if (i === 0) live.moveTo(px, py);
         else live.lineTo(px, py);
       }
@@ -348,15 +348,15 @@ export class PlatformTeamScene extends LevelScene {
       live.lineBetween(lineRect.x + 2, thresholdY, lineRect.x + lineRect.w - 2, thresholdY);
 
       for (let i = 0; i < bars.length; i++) {
-        bars[i] = Phaser.Math.Linear(bars[i], barTargets[i], 0.15);
-        if (Math.abs(bars[i] - barTargets[i]) < 0.02) {
+        bars[i] = Phaser.Math.Linear(bars[i]!, barTargets[i]!, 0.15);
+        if (Math.abs(bars[i]! - barTargets[i]!) < 0.02) {
           barTargets[i] = 0.25 + Math.random() * 0.7;
         }
         const slotW = (barRect.w - 4) / bars.length;
         const bx = barRect.x + 2 + i * slotW;
-        const bh = bars[i] * (barRect.h - 6);
+        const bh = bars[i]! * (barRect.h - 6);
         const by = barRect.y + barRect.h - 3 - bh;
-        const col = bars[i] > 0.8 ? 0xff5577 : bars[i] > 0.6 ? theme.color.status.warning : 0x4caf50;
+        const col = bars[i]! > 0.8 ? 0xff5577 : bars[i]! > 0.6 ? theme.color.status.warning : 0x4caf50;
         live.fillStyle(col, 1);
         live.fillRect(bx + 1, by, slotW - 3, bh);
       }
@@ -503,7 +503,7 @@ export class PlatformTeamScene extends LevelScene {
       // Retire packets that have exited off the left (allowed) or have
       // been stopped long enough to fade.
       for (let i = packets.length - 1; i >= 0; i--) {
-        const p = packets[i];
+        const p = packets[i]!;
         if (!p.stopped && p.pos < trackLeft) {
           if (p.kind === 'safe') allowed++;
           packets.splice(i, 1);

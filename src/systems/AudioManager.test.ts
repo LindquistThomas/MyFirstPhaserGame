@@ -80,7 +80,7 @@ describe('AudioManager', () => {
       eventBus.emit('music:play', 'music_menu');
       expect(fakeSound.add).toHaveBeenCalledWith('music_menu', expect.objectContaining({ loop: true }));
       expect(fakeSound._instances).toHaveLength(1);
-      expect(fakeSound._instances[0].play).toHaveBeenCalledTimes(1);
+      expect(fakeSound._instances[0]!.play).toHaveBeenCalledTimes(1);
     });
 
     it('music:play with the same key twice in a row skips the second add', () => {
@@ -91,7 +91,7 @@ describe('AudioManager', () => {
 
     it('music:play with a different key stops the previous track', () => {
       eventBus.emit('music:play', 'track_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('music:play', 'track_b');
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
@@ -100,7 +100,7 @@ describe('AudioManager', () => {
 
     it('music:stop halts the current track', () => {
       eventBus.emit('music:play', 'track_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('music:stop');
       expect(first.stop).toHaveBeenCalledTimes(1);
     });
@@ -121,7 +121,7 @@ describe('AudioManager', () => {
 
     it('music:pop with an empty stack stops music', () => {
       eventBus.emit('music:play', 'base');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('music:pop');
       expect(first.stop).toHaveBeenCalledTimes(1);
     });
@@ -134,11 +134,11 @@ describe('AudioManager', () => {
         'ambience_datacenter',
         expect.objectContaining({ loop: true }),
       );
-      const callVolume = (fakeSound.add.mock.calls[0][1] as { volume: number }).volume;
+      const callVolume = (fakeSound.add.mock.calls[0]![1] as { volume: number }).volume;
       // Ambience must be quieter than music so it sits UNDER the main track.
       expect(callVolume).toBeLessThan(MUSIC_VOLUME);
       expect(fakeSound._instances).toHaveLength(1);
-      expect(fakeSound._instances[0].play).toHaveBeenCalledTimes(1);
+      expect(fakeSound._instances[0]!.play).toHaveBeenCalledTimes(1);
     });
 
     it('ambience:play with the same key twice skips the second add', () => {
@@ -149,7 +149,7 @@ describe('AudioManager', () => {
 
     it('ambience:play with a different key stops the previous bed', () => {
       eventBus.emit('ambience:play', 'ambience_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('ambience:play', 'ambience_b');
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
@@ -158,7 +158,7 @@ describe('AudioManager', () => {
 
     it('ambience:stop halts the current bed', () => {
       eventBus.emit('ambience:play', 'ambience_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('ambience:stop');
       expect(first.stop).toHaveBeenCalledTimes(1);
     });
@@ -170,7 +170,7 @@ describe('AudioManager', () => {
     it('ambience is independent of music — music:stop does not stop ambience', () => {
       eventBus.emit('music:play', 'music_x');
       eventBus.emit('ambience:play', 'ambience_a');
-      const ambienceInst = fakeSound._instances[1];
+      const ambienceInst = fakeSound._instances[1]!;
       eventBus.emit('music:stop');
       expect(ambienceInst.stop).not.toHaveBeenCalled();
     });

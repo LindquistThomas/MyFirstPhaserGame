@@ -295,7 +295,7 @@ export class LevelScene extends Phaser.Scene {
 
     for (let i = 0; i < this.roomLifts.length; i++) {
       const idx = i;
-      this.physics.add.collider(this.player.sprite, this.roomLifts[i].platform, () => {
+      this.physics.add.collider(this.player.sprite, this.roomLifts[i]!.platform, () => {
         this.activeRoomLift = idx;
       });
     }
@@ -585,7 +585,7 @@ export class LevelScene extends Phaser.Scene {
   private postUpdatePinToLift(): void {
     if (this.activeRoomLift < 0) return;
     if (this.dialogs?.isOpen) return;
-    const lift = this.roomLifts[this.activeRoomLift];
+    const lift = this.roomLifts[this.activeRoomLift]!;
     const platBody = lift.platform.body as Phaser.Physics.Arcade.Body;
     const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
     const targetY = platBody.y - playerBody.offset.y - playerBody.height
@@ -791,7 +791,7 @@ export class LevelScene extends Phaser.Scene {
     let onLift = false;
     if (onGround) {
       for (let i = 0; i < this.roomLifts.length; i++) {
-        const lift = this.roomLifts[i];
+        const lift = this.roomLifts[i]!;
         const dx = Math.abs(this.player.sprite.x - lift.platform.x);
         const dy = this.player.sprite.y + (body.halfHeight) - lift.platform.y;
         // Widened tolerance (was [-4, 12]) so a fast descent doesn't
@@ -818,7 +818,7 @@ export class LevelScene extends Phaser.Scene {
     }
 
     const inputs = this.inputs;
-    const lift = this.roomLifts[this.activeRoomLift];
+    const lift = this.roomLifts[this.activeRoomLift]!;
     const btnState = this.liftButtons?.getState();
     const up = inputs.isDown('MoveUp') || (btnState?.up ?? false);
     const down = inputs.isDown('MoveDown') || (btnState?.down ?? false);

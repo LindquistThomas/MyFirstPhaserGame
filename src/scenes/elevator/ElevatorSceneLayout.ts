@@ -236,14 +236,14 @@ export class ElevatorSceneLayout {
 
     const bands: FacadeBand[] = [];
     for (let i = 0; i < sorted.length; i++) {
-      const yTop = i === 0 ? top : sorted[i].y;
-      const yBottom = i < sorted.length - 1 ? sorted[i + 1].y : bottom;
+      const yTop = i === 0 ? top : sorted[i]!.y;
+      const yBottom = i < sorted.length - 1 ? sorted[i + 1]!.y : bottom;
       bands.push({
         yTop,
         yBottom,
         wallColor,
         // Keep per-floor seeds so window patterns vary across the height.
-        seed: 0xabc123 ^ (sorted[i].id * 0x9e3779b1),
+        seed: 0xabc123 ^ (sorted[i]!.id * 0x9e3779b1),
       });
     }
 
@@ -645,7 +645,7 @@ export class ElevatorSceneLayout {
     const heights = [62, 86, 46, 70];
     for (let i = 0; i < heights.length; i++) {
       const px = x + i * 14;
-      const ph = heights[i];
+      const ph = heights[i]!;
       // Pipe body.
       g.fillStyle(0x1a1a22, 1);
       g.fillRect(px, roofY - ph, 8, ph);
@@ -1010,7 +1010,7 @@ export class ElevatorSceneLayout {
   private createLobbyDecorations(): void {
     const scene = this.deps.scene;
     const positions = this.deps.floorYPositions;
-    const lobbyY = positions[FLOORS.LOBBY];
+    const lobbyY = positions[FLOORS.LOBBY]!;
     const floorBottom = lobbyY + FLOOR_H;
 
     // Left walkway — reception side.
@@ -1221,7 +1221,7 @@ export class ElevatorSceneLayout {
   private createBelowLobbyFoundation(): void {
     const scene = this.deps.scene;
     const positions = this.deps.floorYPositions;
-    const lobbyY = positions[FLOORS.LOBBY];
+    const lobbyY = positions[FLOORS.LOBBY]!;
     const walkY = lobbyY + FLOOR_H;
     const bottom = this.deps.shaftExtent.bottom;
     const h = bottom - walkY;
@@ -1305,23 +1305,23 @@ export class ElevatorSceneLayout {
     const rightEdge = GAME_WIDTH / 2 + this.deps.shaftWidth / 2;
 
     // F1 — Platform Team
-    const f1Bottom = positions[FLOORS.PLATFORM_TEAM] + FLOOR_H;
+    const f1Bottom = positions[FLOORS.PLATFORM_TEAM]! + FLOOR_H;
     this.createF1PlatformDecorations(f1Bottom);
     this.createF1ArchitectureDecorations(f1Bottom, rightEdge);
 
     // PRODUCTS — doors are rendered by ProductDoorManager across both sides
     // of the shaft, so keep ambient dressing minimal to avoid visual clash.
-    const fProductsBottom = positions[FLOORS.PRODUCTS] + FLOOR_H;
+    const fProductsBottom = positions[FLOORS.PRODUCTS]! + FLOOR_H;
     scene.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
     scene.add.image(rightEdge + 440, fProductsBottom - 40, 'plant_tall').setDepth(3);
 
     // F3 — Business (Product Leadership on the left, Customer Success on the right)
-    const f3Bottom = positions[FLOORS.BUSINESS] + FLOOR_H;
+    const f3Bottom = positions[FLOORS.BUSINESS]! + FLOOR_H;
     this.createF3ProductLeadershipDecorations(f3Bottom);
     this.createF3CustomerSuccessDecorations(f3Bottom, rightEdge);
 
     // F4 — Executive Suite
-    const f4Bottom = positions[FLOORS.EXECUTIVE] + FLOOR_H;
+    const f4Bottom = positions[FLOORS.EXECUTIVE]! + FLOOR_H;
     scene.add.image(120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
     // Geir Harald — pacing the walkway in the F4 shaft preview. Sprite origin
