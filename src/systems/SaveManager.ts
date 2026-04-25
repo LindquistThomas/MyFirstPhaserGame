@@ -15,6 +15,8 @@ export interface SaveData {
   unlockedFloors: number[];
   currentFloor: number;
   collectedTokens: Record<number, number[]>;
+  /** Floors the player has entered at least once. Optional for backward-compat. */
+  visitedFloors?: number[];
 }
 
 

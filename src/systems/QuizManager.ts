@@ -68,3 +68,17 @@ export function saveQuizResult(infoId: string, score: number): void {
 export function resetAllQuizzes(): void {
   store.clear();
 }
+
+/** Number of distinct quizzes the player has passed at least once. */
+export function getPassedCount(): number {
+  const s = store.read();
+  return Object.values(s).filter((r: QuizRecord) => r.passed).length;
+}
+
+/** All infoIds for which the player has a passing record. */
+export function getAllPassed(): string[] {
+  const s = store.read();
+  return Object.entries(s)
+    .filter(([, r]) => (r as QuizRecord).passed)
+    .map(([id]) => id);
+}
