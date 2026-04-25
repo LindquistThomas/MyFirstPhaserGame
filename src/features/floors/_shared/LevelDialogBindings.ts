@@ -19,11 +19,17 @@ export function createLevelDialogs(
   return new DialogController(scene, {
     progression: opts.gameState.progression,
     getIconForContent: opts.getIcon,
-    onOpen: (id) => opts.gameState.markSeen(id),
+    onOpen: (id) => {
+      opts.gameState.markSeen(id);
+      // Info panel read — may unlock Curious Mind / Knowledge Seeker / Fully Informed.
+      opts.gameState.checkAchievements();
+    },
     onClose: (id) => {
       // Dialog was just read — switch the icon (if still visible in its
       // zone) from the eye-catching "unseen" animation to the subtle pulse.
       opts.getIcon(id)?.markAsSeen();
+      // Quiz may have been completed during this dialog session.
+      opts.gameState.checkAchievements();
     },
   });
 }

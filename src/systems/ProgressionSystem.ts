@@ -19,6 +19,8 @@ export interface ProgressionState {
   unlockedFloors: Set<FloorId>;
   currentFloor: FloorId;
   collectedTokens: Record<FloorId, Set<number>>;
+  /** Floors the player has physically entered at least once. */
+  visitedFloors: Set<FloorId>;
 }
 
 export class ProgressionSystem {
@@ -41,6 +43,7 @@ export class ProgressionSystem {
       unlockedFloors: new Set(allFloors),
       currentFloor: FLOORS.LOBBY,
       collectedTokens: Object.fromEntries(allFloors.map(id => [id, new Set<number>()])) as Record<FloorId, Set<number>>,
+      visitedFloors: new Set<FloorId>(),
     };
   }
 
@@ -86,6 +89,24 @@ export class ProgressionSystem {
 
   isTokenCollected(floorId: FloorId, tokenIndex: number): boolean {
     return this.tokensFor(floorId).has(tokenIndex);
+  }
+
+  /** Mark a floor as having been physically entered by the player. */
+  markFloorVisited(floorId: FloorId): void {
+    if (this.state.visitedFloors.has(floorId)) return;
+    this.state.visitedFloors.add(floorId);
+    this.persist();
+  }
+
+  /** Number of distinct floors the player has visited. */
+  getVisitedFloorCount(): number {
+    return this.state.visitedFloors.size;
+  }
+
+  /** Total number of tokens collected across all floors. */
+  getTotalCollectedTokens(): number {
+    return Object.values(this.state.collectedTokens)
+      .reduce((sum, s) => sum + s.size, 0);
   }
 
   private checkUnlocks(): void {
@@ -151,6 +172,7 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
       ) as Record<FloorId, Set<number>>,
+      visitedFloors: new Set<FloorId>((data.visitedFloors ?? []) as FloorId[]),
     };
     this.checkUnlocks();
     return true;
@@ -165,6 +187,7 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(this.state.collectedTokens).map(([k, v]) => [Number(k), Array.from(v)]),
       ),
+      visitedFloors: Array.from(this.state.visitedFloors),
     });
   }
 }

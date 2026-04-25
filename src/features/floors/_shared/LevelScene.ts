@@ -219,6 +219,7 @@ export class LevelScene extends Phaser.Scene {
       player: this.player,
       platformGroup: this.platformGroup,
       camera: this.cameras.main,
+      gameState: this.gameState,
     });
     this.enemySpawner = new LevelEnemySpawner({
       scene: this,
@@ -274,6 +275,11 @@ export class LevelScene extends Phaser.Scene {
     this.roomElevators.wireColliders();
 
     this.cameras.main.setScroll(0, 0);
+
+    // Record the floor visit and check for floor-exploration achievements.
+    this.progression.markFloorVisited(this.floorId);
+    this.gameState.checkAchievements();
+
     this.showFloorBanner();
     this.cameras.main.fadeIn(500, 0, 0, 0);
 

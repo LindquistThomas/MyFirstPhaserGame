@@ -153,7 +153,10 @@ export class ElevatorScene extends Phaser.Scene {
         if (id === WELCOME_BOARD_ID) return this.zones.lobbyBoardIcon;
         return this.zones.elevatorInfoIcon;
       },
-      onOpen: (id) => this.gameState.markSeen(id),
+      onOpen: (id) => {
+        this.gameState.markSeen(id);
+        this.gameState.checkAchievements();
+      },
       onClose: (id) => {
         if (id === ELEVATOR_INFO_ID) {
           this.zones.elevatorInfoIcon?.markAsSeen();
@@ -162,6 +165,7 @@ export class ElevatorScene extends Phaser.Scene {
         } else if (id === GEIR_F4_ID) {
           this.zones.geirInfoIcon?.markAsSeen();
         }
+        this.gameState.checkAchievements();
       },
     });
 
@@ -187,6 +191,10 @@ export class ElevatorScene extends Phaser.Scene {
     // Cable + LEDs need an initial tick so they render before update() runs.
     this.layout.updateShaftCable(this.elevatorCtrl);
     this.layout.updateFloorLEDs(this.elevatorCtrl);
+
+    // Mark the lobby as visited and check for first-time achievements.
+    this.progression.markFloorVisited(FLOORS.LOBBY);
+    this.gameState.checkAchievements();
   }
 
   /* ---- player ---- */
