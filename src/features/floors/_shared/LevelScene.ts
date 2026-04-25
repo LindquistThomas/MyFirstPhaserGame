@@ -27,6 +27,7 @@ import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPl
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
+import { LevelFridgeManager } from './LevelFridgeManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { createLevelDialogs } from './LevelDialogBindings';
 import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
@@ -121,6 +122,8 @@ export interface LevelConfig {
   }>;
   /** Consumable — not persisted, respawns every scene entry. */
   coffees?: Array<{ x: number; y: number }>;
+  /** Energy drink fridges — interact to open for a long caffeine buff; not persisted. */
+  fridges?: Array<{ x: number; y: number }>;
 }
 
 /**
@@ -183,6 +186,7 @@ export class LevelScene extends Phaser.Scene {
   private enemySpawner!: LevelEnemySpawner;
   private tokenMgr!: LevelTokenManager;
   private coffeeMgr!: LevelCoffeeManager;
+  private fridgeMgr!: LevelFridgeManager;
   private zones!: LevelZoneSetup;
 
   /** Grounding shadow tracked to the player each frame. */
@@ -259,6 +263,10 @@ export class LevelScene extends Phaser.Scene {
       scene: this,
       player: this.player,
     });
+    this.fridgeMgr = new LevelFridgeManager({
+      scene: this,
+      player: this.player,
+    });
     this.zones = new LevelZoneSetup({
       scene: this,
       player: this.player,
@@ -270,6 +278,7 @@ export class LevelScene extends Phaser.Scene {
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
     this.coffeeMgr.spawn(cfg);
+    this.fridgeMgr.spawn(cfg);
     this.zones.create(cfg);
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
@@ -734,6 +743,10 @@ export class LevelScene extends Phaser.Scene {
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     this.zones.update();
+
+    // Fridge proximity + interact (runs after zones so Interact isn't
+    // double-consumed by an info-dialog open on the same frame).
+    this.fridgeMgr.update();
 
     // I key opens the info dialog for the currently-active content zone.
     // `ArrowUp` is bound to both `MoveUp` and `ToggleInfo`; suppress the

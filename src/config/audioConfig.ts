@@ -103,6 +103,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:drop_au':      'drop_au',
   'sfx:recover_au':   'recover_au',
   'sfx:coffee_sip':   'coffee_sip',
+  'sfx:fridge_open':  'fridge_open',
 };
 
 /** Default volume for background music (0–1). */

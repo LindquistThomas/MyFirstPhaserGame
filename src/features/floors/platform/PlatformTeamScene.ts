@@ -596,6 +596,10 @@ export class PlatformTeamScene extends LevelScene {
         { x: 720, y: T4 - 40 },
       ],
 
+      fridges: [
+        { x: 870, y: T3 },  // T3 Observability station — beside the monitoring desk
+      ],
+
       infoPoints: [
         // Ground signpost. Default offsetY = -h/2 places the rect
         // directly above the anchor (y ≈ 632..832). No catwalk body sits

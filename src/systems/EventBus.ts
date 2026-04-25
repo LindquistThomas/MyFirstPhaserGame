@@ -48,6 +48,8 @@ export interface GameEvents {
   'sfx:recover_au': [];
   /** Coffee pickup — a short slurp. */
   'sfx:coffee_sip': [];
+  /** Energy drink fridge opened — mechanical click + cold air whoosh. */
+  'sfx:fridge_open': [];
 
   /** Caffeine buff activated; payload is the total duration in ms. */
   'buff:caffeine_start': [durationMs: number];
