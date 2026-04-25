@@ -41,6 +41,20 @@ npm run dev      # Start dev server (localhost:3000)
 npm run build    # Production build → dist/
 ```
 
+### Build flags
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `VITE_EXPOSE_TEST_HOOKS` | `true` (unset) | Attaches `window.__game` and `window.__testHooks` to the browser global. Required by the Playwright E2E suite. Set to `false` to produce a security-hardened bundle where neither global is present. |
+
+Example — hardened build without test globals:
+
+```bash
+VITE_EXPOSE_TEST_HOOKS=false npm run build
+# Verify:
+grep __game dist/assets/*.js || echo "clean"
+```
+
 ### Playwright screenshot tests
 
 End-to-end tests that boot the game in a real browser and save PNG
