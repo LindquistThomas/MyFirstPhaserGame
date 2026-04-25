@@ -114,7 +114,7 @@ Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot',
 2. Add a `SceneKey → music_<name>` entry in `SCENE_MUSIC`. `MusicPlugin` handles playback — no scene code needed.
 
 ### Add an info card
-Add the entry under `src/config/info/` (re-exported from `index.ts`). Place an info point in the relevant scene's `LevelConfig.infoPoints` with matching `id`. Zone IDs default to the content ID, so the same string identifies both the zone and the dialog.
+Add the entry under `src/config/info/` (re-exported from `index.ts`). Place an info point in the relevant scene's `LevelConfig.infoPoints` with matching `contentId`. Zone IDs default to the content ID, so the same string identifies both the zone and the dialog.
 
 ### Add a quiz
 Add the question set under `src/config/quiz/` (re-exported from `index.ts`) keyed by ID. Quiz state is tracked automatically by `QuizManager`.

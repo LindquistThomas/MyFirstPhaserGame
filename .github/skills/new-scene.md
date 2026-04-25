@@ -65,17 +65,26 @@ export class NameScene extends Phaser.Scene {
 Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts`, extend `LevelScene`, and declare their content as a `LevelConfig`:
 
 ```ts
-import { LevelScene } from '../_shared/LevelScene';
+import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { FLOORS } from '../../../config/gameConfig';
 
 export class MyFloorScene extends LevelScene {
   constructor() {
-    super('MyFloorScene', {
+    super('MyFloorScene', FLOORS.MY_FLOOR);
+  }
+
+  protected override getLevelConfig(): LevelConfig {
+    return {
       floorId: FLOORS.MY_FLOOR,
       platforms: [/* … */],
       tokens:    [/* … */],
+      roomElevators: [],
+      playerStart: { x: 120, y: 700 },
+      exitPosition: { x: 80, y: 700 },
       enemies:   [{ type: 'slime', x: 400, y: 700, minX: 300, maxX: 600, speed: 60 }],
-      infoPoints:[{ id: 'my-info-card', x: 800, y: 700 /*, zoneRadius?: number */ }],
-    });
+      infoPoints:[{ contentId: 'my-info-card', x: 800, y: 700,
+                    zone: { shape: 'circle', radius: 120 } }],
+    };
   }
 }
 ```
