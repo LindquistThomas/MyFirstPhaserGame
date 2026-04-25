@@ -99,15 +99,20 @@ const game = new Phaser.Game(config);
 // suite constructs directly (the QuizDialog class); it replaces a Vite
 // dev-only `import('/src/ui/QuizDialog.ts')` that did not survive the
 // production bundle.
-const gameWindow = window as unknown as {
-  __game?: Phaser.Game;
-  __testHooks?: {
-    QuizDialog: typeof QuizDialog;
-    canRetryQuiz: typeof canRetryQuiz;
+//
+// Set VITE_EXPOSE_TEST_HOOKS=false at build time to omit both globals from
+// the bundle (e.g. for a security-hardened production build).
+if (import.meta.env.VITE_EXPOSE_TEST_HOOKS !== 'false') {
+  const gameWindow = window as unknown as {
+    __game?: Phaser.Game;
+    __testHooks?: {
+      QuizDialog: typeof QuizDialog;
+      canRetryQuiz: typeof canRetryQuiz;
+    };
   };
-};
-gameWindow.__game = game;
-gameWindow.__testHooks = { QuizDialog, canRetryQuiz };
+  gameWindow.__game = game;
+  gameWindow.__testHooks = { QuizDialog, canRetryQuiz };
+}
 
 // Kick the pillarbox backdrop once the first frame has rendered, so the
 // initial draw copies actual scene pixels rather than a blank buffer. The
