@@ -8,6 +8,7 @@ import { InputService } from './input';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
 import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';
+import { initVirtualGamepad } from './ui/VirtualGamepad';
 
 // Render all Text objects at 2x internal resolution so glyphs stay crisp
 // after the canvas is FIT-scaled to the viewport. Applies to both
@@ -125,3 +126,8 @@ if (needsPillarboxBackdrop) {
     document.getElementById('pillarbox-bg')?.classList.add('ready');
   });
 }
+
+// Mount the on-screen virtual gamepad for touch-primary devices (phones/tablets).
+// No-op on desktop (pointer: fine) so keyboard players are unaffected.
+initVirtualGamepad();
+

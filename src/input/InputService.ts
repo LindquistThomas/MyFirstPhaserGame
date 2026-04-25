@@ -5,6 +5,56 @@ import {
 } from './actions';
 import { ALL_BOUND_KEYS, DEFAULT_BINDINGS, actionsForKey, type KeyCode } from './bindings';
 
+/* ---------- Virtual (on-screen) button state ---------- */
+
+/**
+ * Hold state for virtual buttons. `isDown()` checks this in addition to
+ * physical keyboard keys so the on-screen D-pad integrates transparently.
+ */
+const virtualButtonsDown = new Map<GameAction, boolean>();
+
+/**
+ * One-shot queue consumed by `justPressed()`. Set on virtual press so that
+ * tap-style actions (Jump, Interact, Confirm) fire correctly even when the
+ * caller polls `justPressed()` rather than subscribing via `on()`.
+ */
+const virtualJustPressedQueue = new Set<GameAction>();
+
+/**
+ * All currently active (started) InputService instances. Populated in
+ * `onSceneStart`, cleared in `onShutdown`. Used to dispatch virtual presses
+ * to event-handler subscribers across all running scenes.
+ */
+const liveInputServices = new Set<InputService>();
+
+/**
+ * Set or release a virtual button for `action`.
+ *
+ * Call with `pressed = true` on touch-start; call with `pressed = false`
+ * on touch-end / touch-cancel. The hold state drives `isDown()` (polling)
+ * and the press edge drives `justPressed()` and event subscribers, exactly
+ * like a physical key press.
+ *
+ * All actions are still filtered by the active `InputContext`, so virtual
+ * `Jump` is suppressed while a modal is open, etc.
+ */
+export function setVirtualButton(action: GameAction, pressed: boolean): void {
+  virtualButtonsDown.set(action, pressed);
+  if (pressed) {
+    virtualJustPressedQueue.add(action);
+    for (const svc of liveInputServices) {
+      svc._dispatchAction(action);
+    }
+  }
+}
+
+/** @internal Reset all virtual-button state. For unit tests only. */
+export function _resetVirtualButtons(): void {
+  virtualButtonsDown.clear();
+  virtualJustPressedQueue.clear();
+  liveInputServices.clear();
+}
+
 /* ---------- Global context stack ---------- */
 
 /**
@@ -110,6 +160,10 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
     this.keyDownListener = (ev: KeyboardEvent) => this.dispatchKeyDown(ev.keyCode);
     kb.on('keydown', this.keyDownListener);
 
+    // Register as a live instance so setVirtualButton can dispatch to
+    // our event handlers while this scene is running.
+    liveInputServices.add(this);
+
     this.systems!.events.once('shutdown', this.onShutdown, this);
   }
 
@@ -117,14 +171,28 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
     const actions = actionsForKey(keyCode);
     if (actions.length === 0) return;
     for (const action of actions) {
-      if (!actionAllowed(action)) continue;
-      this.justPressedFlags.set(action, true);
-      const set = this.handlers.get(action);
-      if (!set) continue;
-      // Copy to tolerate handlers that unsubscribe during dispatch.
-      for (const handler of Array.from(set)) {
-        handler(action);
-      }
+      this._dispatchAction(action);
+    }
+  }
+
+  /**
+   * Dispatch a single action press to this service instance — sets the
+   * `justPressedFlags` entry and fires any registered event handlers.
+   *
+   * Used internally by `dispatchKeyDown` and by the module-level
+   * `setVirtualButton` so that virtual presses are indistinguishable
+   * from physical key presses.
+   *
+   * @internal Do not call from outside `src/input/`.
+   */
+  _dispatchAction(action: GameAction): void {
+    if (!actionAllowed(action)) return;
+    this.justPressedFlags.set(action, true);
+    const set = this.handlers.get(action);
+    if (!set) return;
+    // Copy to tolerate handlers that unsubscribe during dispatch.
+    for (const handler of Array.from(set)) {
+      handler(action);
     }
   }
 
@@ -133,6 +201,7 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   /** True while any key bound to `action` is held AND its context is active. */
   isDown(action: GameAction): boolean {
     if (!actionAllowed(action)) return false;
+    if (virtualButtonsDown.get(action)) return true;
     const codes = DEFAULT_BINDINGS[action];
     for (const code of codes) {
       if (this.keys.get(code)?.isDown) return true;
@@ -141,12 +210,22 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   }
 
   /**
-   * True exactly once per key press of `action`. Consumes the flag
-   * — a subsequent call in the same press returns false.
+   * True exactly once per action press (keyboard or virtual). Consumes the
+   * flag — a subsequent call in the same press returns false.
    */
   justPressed(action: GameAction): boolean {
     if (this.justPressedFlags.get(action)) {
       this.justPressedFlags.set(action, false);
+      // Remove from the virtual queue too so a second service instance
+      // can't get a spurious fire from the same virtual press.
+      virtualJustPressedQueue.delete(action);
+      return true;
+    }
+    // Fallback: check the module-level virtual queue (context-filtered at
+    // consumption time). This catches the case where the service was not
+    // live when setVirtualButton fired (e.g. started after the press).
+    if (virtualJustPressedQueue.has(action) && actionAllowed(action)) {
+      virtualJustPressedQueue.delete(action);
       return true;
     }
     return false;
@@ -192,6 +271,7 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   /* ---- lifecycle ---- */
 
   private onShutdown(): void {
+    liveInputServices.delete(this);
     const kb = this.scene?.input.keyboard;
     if (kb && this.keyDownListener) kb.off('keydown', this.keyDownListener);
     this.keyDownListener = undefined;

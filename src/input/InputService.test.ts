@@ -36,6 +36,8 @@ import {
   pushContext,
   popContext,
   _resetContextStack,
+  setVirtualButton,
+  _resetVirtualButtons,
 } from './InputService';
 
 const K = Phaser.Input.Keyboard.KeyCodes;
@@ -361,3 +363,100 @@ describe('context stack', () => {
     expect(activeContext()).toBe('gameplay');
   });
 });
+
+describe('InputService — virtual buttons (setVirtualButton)', () => {
+  let h: Harness;
+  beforeEach(() => {
+    drainContextStack();
+    _resetVirtualButtons();
+    h = mountService();
+  });
+  afterEach(() => {
+    drainContextStack();
+    _resetVirtualButtons();
+  });
+
+  it('isDown() returns true while a virtual button is held', () => {
+    expect(h.svc.isDown('MoveLeft')).toBe(false);
+    setVirtualButton('MoveLeft', true);
+    expect(h.svc.isDown('MoveLeft')).toBe(true);
+    setVirtualButton('MoveLeft', false);
+    expect(h.svc.isDown('MoveLeft')).toBe(false);
+  });
+
+  it('isDown() respects context even for virtual buttons', () => {
+    setVirtualButton('Jump', true);
+    expect(h.svc.isDown('Jump')).toBe(true);
+    const tok = pushContext('modal');
+    expect(h.svc.isDown('Jump')).toBe(false);
+    popContext(tok);
+    expect(h.svc.isDown('Jump')).toBe(true);
+    setVirtualButton('Jump', false);
+  });
+
+  it('justPressed() returns true exactly once after a virtual press', () => {
+    setVirtualButton('Jump', true);
+    expect(h.svc.justPressed('Jump')).toBe(true);
+    expect(h.svc.justPressed('Jump')).toBe(false);
+  });
+
+  it('justPressed() does not re-arm while button stays held', () => {
+    setVirtualButton('MoveRight', true);
+    expect(h.svc.justPressed('MoveRight')).toBe(true);
+    expect(h.svc.justPressed('MoveRight')).toBe(false);
+    // Still held — no new press, still false
+    expect(h.svc.justPressed('MoveRight')).toBe(false);
+    setVirtualButton('MoveRight', false);
+  });
+
+  it('justPressed() is suppressed when the context forbids the action', () => {
+    const tok = pushContext('modal');
+    setVirtualButton('Jump', true);
+    expect(h.svc.justPressed('Jump')).toBe(false);
+    popContext(tok);
+  });
+
+  it('event handlers fire on virtual press', () => {
+    const fn = vi.fn();
+    h.svc.on('Interact', fn);
+    setVirtualButton('Interact', true);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledWith('Interact');
+  });
+
+  it('event handlers are suppressed when context forbids the action', () => {
+    const fn = vi.fn();
+    h.svc.on('Jump', fn);
+    const tok = pushContext('modal');
+    setVirtualButton('Jump', true);
+    popContext(tok);
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('virtual Confirm fires in modal context but not gameplay context', () => {
+    const fn = vi.fn();
+    h.svc.on('Confirm', fn);
+    // Default context is gameplay — Confirm is not allowed, so handler must NOT fire.
+    setVirtualButton('Confirm', true);
+    setVirtualButton('Confirm', false);
+    expect(fn).toHaveBeenCalledTimes(0);
+    // Push modal context — next press must dispatch to the handler.
+    const tok = pushContext('modal');
+    setVirtualButton('Confirm', true);
+    expect(fn).toHaveBeenCalledTimes(1);
+    popContext(tok);
+  });
+
+  it('horizontal() includes virtual button hold state', () => {
+    expect(h.svc.horizontal()).toBe(0);
+    setVirtualButton('MoveRight', true);
+    expect(h.svc.horizontal()).toBe(1);
+    setVirtualButton('MoveLeft', true);
+    expect(h.svc.horizontal()).toBe(0); // cancel
+    setVirtualButton('MoveRight', false);
+    expect(h.svc.horizontal()).toBe(-1);
+    setVirtualButton('MoveLeft', false);
+    expect(h.svc.horizontal()).toBe(0);
+  });
+});
+
