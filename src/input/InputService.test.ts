@@ -35,6 +35,7 @@ import {
   activeContext,
   pushContext,
   popContext,
+  _resetContextStack,
 } from './InputService';
 
 const K = Phaser.Input.Keyboard.KeyCodes;
@@ -127,15 +128,9 @@ function mountService(): Harness {
   };
 }
 
-/** Drain the module-level context stack so leaked state from a failing
- *  test doesn't cascade into every subsequent one. popContext's slow
- *  path removes any occurrence of the named context, so a dummy token
- *  with the current top's name suffices. */
+/** Reset the module-level context stack between tests. */
 function drainContextStack(): void {
-  // Guard against infinite loops if activeContext somehow never returns 'gameplay'.
-  for (let i = 0; i < 32 && activeContext() !== 'gameplay'; i++) {
-    popContext({ ctx: activeContext(), idx: 0 });
-  }
+  _resetContextStack();
 }
 
 describe('InputService — axes', () => {
@@ -341,14 +336,24 @@ describe('context stack', () => {
     expect(activeContext()).toBe('gameplay');
   });
 
-  it('out-of-order pop removes the token by identity without stranding the stack', () => {
-    const outer = pushContext('menu');
-    const inner = pushContext('modal');
-    // Pop the outer token first; stack should still drain cleanly.
-    popContext(outer);
-    expect(activeContext()).toBe('modal');
-    popContext(inner);
-    expect(activeContext()).toBe('gameplay');
+  it('out-of-order pop is rejected and leaves the stack unchanged', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const outer = pushContext('menu');
+      const inner = pushContext('modal');
+      // inner is on top; popping outer first must be refused.
+      popContext(outer);
+      expect(warnSpy).toHaveBeenCalledOnce();
+      expect(warnSpy.mock.calls[0][0]).toMatch(/popContext/);
+      expect(activeContext()).toBe('modal'); // stack unchanged
+      // Correct tear-down order still works after the refused pop.
+      popContext(inner);
+      expect(activeContext()).toBe('menu');
+      popContext(outer);
+      expect(activeContext()).toBe('gameplay');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('popContext on an empty stack is a no-op', () => {

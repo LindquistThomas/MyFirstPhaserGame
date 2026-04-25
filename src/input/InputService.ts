@@ -31,26 +31,31 @@ export interface ContextToken {
 }
 
 /**
- * Pop a previously-pushed context. Robust against out-of-order pops —
- * if the exact token is no longer on top, we remove it by identity so
- * a misbehaving consumer cannot permanently strand the stack.
+ * Pop a previously-pushed context.
+ *
+ * The token MUST be the one currently at the top of the stack. Out-of-order
+ * pops are rejected: in development a `console.warn` is emitted and the
+ * stack is left unchanged so callers can diagnose the mismatch.
  */
 export function popContext(token: ContextToken): void {
   const top = contextStack.length - 1;
   if (top < 0) return;
-  // Fast path: token is on top.
   if (top === token.idx && contextStack[top] === token.ctx) {
     contextStack.pop();
     return;
   }
-  // Slow path: remove any later occurrence. We splice by value/position
-  // since tokens hold the index at push-time which may shift.
-  for (let i = contextStack.length - 1; i >= 0; i--) {
-    if (contextStack[i] === token.ctx) {
-      contextStack.splice(i, 1);
-      return;
-    }
+  if (import.meta.env.DEV) {
+    console.warn(
+      `[InputService] popContext: token mismatch — ` +
+      `expected top "${contextStack[top]}" (idx ${top}), ` +
+      `got "${token.ctx}" (idx ${token.idx}). Pop refused.`,
+    );
   }
+}
+
+/** @internal Reset the context stack to empty. For unit tests only. */
+export function _resetContextStack(): void {
+  contextStack.length = 0;
 }
 
 /** True if an action may dispatch given the active context. */
