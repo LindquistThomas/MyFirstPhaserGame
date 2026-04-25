@@ -27,7 +27,7 @@ export class AchievementsDialog extends ModalBase {
   private scrollY = 0;
   private maxScrollY = 0;
 
-  private wheelHandler?: (_ptr: unknown, _over: unknown[], _dx: number, dy: number) => void;
+  private wheelHandler?: (_pointer: unknown, _objectsOver: unknown[], _deltaX: number, deltaY: number) => void;
   private keyHandlers: Array<{ key: string; fn: () => void }> = [];
 
   constructor(scene: Phaser.Scene, onClose?: () => void) {
@@ -106,8 +106,8 @@ export class AchievementsDialog extends ModalBase {
     this.maxScrollY = Math.max(0, rowY - viewportH + 8);
 
     // Mouse wheel scroll
-    this.wheelHandler = (_ptr, _over, _dx, dy) => {
-      this.setScroll(this.scrollY + dy * 0.5);
+    this.wheelHandler = (_pointer, _objectsOver, _deltaX, deltaY) => {
+      this.setScroll(this.scrollY + deltaY * 0.5);
     };
     this.scene.input.on('wheel', this.wheelHandler);
 

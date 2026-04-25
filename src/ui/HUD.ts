@@ -149,7 +149,7 @@ export class HUD {
     lifecycle.bindEventBus('buff:caffeine_end', this.onCaffeineEnd);
     lifecycle.bindEventBus('achievement:unlocked', this.onAchievementUnlocked);
 
-    // Trophy / achievements button — shows unlocked count, opens the dialog.
+    // Trophy / achievements button — click to open the achievements dialog.
     this.trophyIcon = this.scene.add.text(TROPHY_X, TROPHY_Y, '🏆', {
       fontFamily: 'monospace', fontSize: '18px',
     }).setOrigin(0.5, 0.5).setAlpha(0.7).setInteractive({ useHandCursor: true });

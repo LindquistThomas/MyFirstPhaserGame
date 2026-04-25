@@ -132,20 +132,20 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
         title: 'Quiz Master',
         description: `Pass all ${TOTAL_QUIZZES} quizzes.`,
         icon: '🏆',
-        check: ({ passedQuizIds }: AchievementCheckState) =>
+        check: ({ passedQuizIds }) =>
           passedQuizIds.length >= TOTAL_QUIZZES,
-      }]
+      } satisfies AchievementDef]
     : []),
 
   // ── Token collecting ─────────────────────────────────────────────────────
-  ...TOKEN_FLOORS.map((floorId) => {
+  ...TOKEN_FLOORS.map((floorId): AchievementDef => {
     const fd = LEVEL_DATA[floorId];
     return {
       id: `tokens-floor-${floorId}`,
       title: `${fd.name} Complete`,
       description: `Collect all ${fd.totalAU} tokens on the ${fd.name} floor.`,
       icon: '🪙',
-      check: ({ collectedTokens }: AchievementCheckState) =>
+      check: ({ collectedTokens }) =>
         (collectedTokens[floorId]?.size ?? 0) >= fd.totalAU,
     };
   }),
@@ -156,10 +156,10 @@ export const ACHIEVEMENT_DEFS: AchievementDef[] = [
         description: `Collect every token in the building (${TOTAL_TOKENS} total).`,
         icon: '👑',
         secret: true,
-        check: ({ collectedTokens }: AchievementCheckState) =>
+        check: ({ collectedTokens }) =>
           TOKEN_FLOORS.every(
             (f) => (collectedTokens[f]?.size ?? 0) >= LEVEL_DATA[f].totalAU,
           ),
-      }]
+      } satisfies AchievementDef]
     : []),
 ];
