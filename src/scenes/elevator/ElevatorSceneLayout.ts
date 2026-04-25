@@ -8,6 +8,8 @@ import { ElevatorController } from './ElevatorController';
 import { drawSkyBackdrop } from './skyBackdrop';
 import { drawDistantSkyline } from './distantSkyline';
 import { drawBuildingFacade, type FacadeBand } from './buildingFacade';
+import { drawFloorBackdrops, type FloorBackdropBand, type BlockedRange } from './floorBackdrops';
+import { ProductDoorManager } from './ProductDoorManager';
 
 const FLOOR_TILE_ROWS = 2;
 const FLOOR_H = FLOOR_TILE_ROWS * TILE_SIZE; // 256
@@ -248,6 +250,52 @@ export class ElevatorSceneLayout {
     }
 
     drawBuildingFacade(this.deps.scene, { sides, bands });
+
+    this.createFloorBackdrops(sides, sorted, top, bottom);
+  }
+
+  /**
+   * Per-floor themed near-layer backdrop. Sits just in front of the far
+   * façade (depth 0.4) and behind the shaft pillars (depth 2.1), at
+   * scrollFactor 1 so each band stays locked to its real floor slab —
+   * this is the layer that carries per-floor identity (server racks,
+   * whiteboard, monitor, panelling, pipes, etc.). See `./floorBackdrops`.
+   */
+  private createFloorBackdrops(
+    sides: { xLeft: number; xRight: number }[],
+    sortedFloors: { id: FloorId; y: number }[],
+    shaftTop: number,
+    shaftBottom: number,
+  ): void {
+    const left = sides[0];
+    const right = sides[1];
+    if (!left || !right) return;
+
+    const bands: FloorBackdropBand[] = [];
+    for (let i = 0; i < sortedFloors.length; i++) {
+      const cur = sortedFloors[i];
+      if (!cur) continue;
+      const next = sortedFloors[i + 1];
+      const yTop = i === 0 ? shaftTop : cur.y;
+      const yBottom = next ? next.y : shaftBottom;
+      bands.push({ floorId: cur.id, yTop, yBottom });
+    }
+
+    // PRODUCTS-floor décor must steer clear of the product doors. Pull
+    // door positions from the static accessor so this stays in sync if
+    // doors are repositioned. We treat each door as a 120-px-wide
+    // blocked range to leave room for door sprites + above-door labels.
+    const DOOR_KEEPOUT_HALF_WIDTH = 60;
+    const blockedRanges: BlockedRange[] = ProductDoorManager.doors.map((d) => ({
+      xMin: d.x - DOOR_KEEPOUT_HALF_WIDTH,
+      xMax: d.x + DOOR_KEEPOUT_HALF_WIDTH,
+    }));
+
+    drawFloorBackdrops(this.deps.scene, {
+      sides: [left, right],
+      bands,
+      blockedRanges,
+    });
   }
 
   /**
