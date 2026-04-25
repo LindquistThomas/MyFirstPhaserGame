@@ -4,6 +4,7 @@ import { QUIZ_REWARDS, QUIZ_PASS_THRESHOLD } from '../config/quiz';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { saveQuizResult } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
+import { isReducedMotion } from '../systems/MotionPreference';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
 
 export interface QuizResultsScreenOptions {
@@ -71,10 +72,12 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   container.add(title);
 
   if (passed) {
-    scene.tweens.add({
-      targets: title, scaleX: 1.15, scaleY: 1.15,
-      duration: 300, yoyo: true, repeat: 1, ease: 'Sine.easeInOut',
-    });
+    if (!isReducedMotion()) {
+      scene.tweens.add({
+        targets: title, scaleX: 1.15, scaleY: 1.15,
+        duration: 300, yoyo: true, repeat: 1, ease: 'Sine.easeInOut',
+      });
+    }
   }
 
   curY += 50;
@@ -96,14 +99,16 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
     ).setOrigin(0.5, 0);
     container.add(auText);
 
-    scene.tweens.add({
-      targets: auText, alpha: { from: 1, to: 0.6 },
-      duration: 600, yoyo: true, repeat: 2, ease: 'Sine.easeInOut',
-    });
+    if (!isReducedMotion()) {
+      scene.tweens.add({
+        targets: auText, alpha: { from: 1, to: 0.6 },
+        duration: 600, yoyo: true, repeat: 2, ease: 'Sine.easeInOut',
+      });
+
+      scene.cameras.main.flash(200, 255, 215, 0);
+    }
 
     curY += 40;
-    scene.cameras.main.flash(200, 255, 215, 0);
-  } else if (passed && alreadyPassed) {
     const alreadyText = scene.add.text(
       GAME_WIDTH / 2, curY,
       'Quiz already completed \u2014 no additional AU',
@@ -121,7 +126,7 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
     curY += 40;
   }
 
-  if (passed) {
+  if (passed && !isReducedMotion()) {
     spawnCelebrationParticles(scene);
   }
 

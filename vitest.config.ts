@@ -19,7 +19,6 @@ export default defineConfig({
         'src/systems/sprites/**',
         'src/systems/SoundGenerator.ts',
         'src/systems/sounds/**',
-        'src/systems/MusicGenerator.ts',
         // Initial UI threshold phase: exclude heavier modal/panel files so
         // HUD and DialogController drive coverage first. Remove these as
         // additional UI unit tests are added.

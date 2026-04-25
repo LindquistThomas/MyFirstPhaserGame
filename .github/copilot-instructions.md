@@ -3,7 +3,7 @@
 <!-- SYNC NOTICE: This file and CLAUDE.md (repo root) share the same
      project instructions. When you edit one, update the other to match. -->
 
-A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Units) to unlock floors of a building, each representing a domain team.
+A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Utility) to unlock floors of a building, each representing a domain team.
 
 ## Repository structure
 
@@ -17,6 +17,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
+│   ├── brand/                # Norconsult Digital wordmark SVG (loaded as `lobby_logo` at boot)
 │   └── music/                # MP3/OGG music tracks loaded in BootScene
 ├── src/
 │   ├── main.ts               # Phaser.Game bootstrap; spreads SCENE_CLASSES from sceneRegistry
@@ -46,7 +47,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 
 See `docs/architecture.md` for the full module map.
 
-There is **no** `public/assets/` directory — only `public/music/` exists today. Procedural sprites and SFX are generated at runtime by `SpriteGenerator` and `SoundGenerator`; only music is shipped as static files.
+There is **no** `public/assets/` directory. Static files: `public/music/` (MP3/OGG tracks loaded in `BootScene.preload()`) and `public/brand/` (the Norconsult Digital wordmark SVG, loaded as `lobby_logo`). Sprites and SFX are still generated procedurally by `SpriteGenerator` / `SoundGenerator`.
 
 ## Language, tooling, scripts
 
@@ -59,7 +60,7 @@ Scripts from `package.json`:
 
 | Script | Purpose |
 | --- | --- |
-| `npm run dev` | Vite dev server (exposes `window.__game` for tests). |
+| `npm run dev` | Vite dev server (`window.__game` / `__testHooks` always on unless `VITE_EXPOSE_TEST_HOOKS=false`). |
 | `npm run build` | `tsc && vite build` — typecheck is part of the build. |
 | `npm run lint` | ESLint across the repo. |
 | `npm run typecheck` | `tsc --noEmit`. |
@@ -77,16 +78,17 @@ Scripts from `package.json`:
 
 Short index of where things live. Reach for these instead of re-implementing.
 
-- **`ProgressionSystem`** (`src/systems/ProgressionSystem.ts`) — the only public API for save/load. Tracks `totalAU`, `floorAU`, `unlockedFloors`, `currentFloor`, `collectedTokens`. Persists via `SaveManager` (localStorage key `architect_<slot>_v1`; default slot `default` → `architect_default_v1`).
+- **`GameStateManager`** (`src/systems/GameStateManager.ts`) — composition root for persistent state. Constructed once in `BootScene.create()` and stashed in `scene.registry` under the key `gameState`. Owns the `ProgressionSystem` instance and exposes facades over `SaveManager`, `QuizManager`, `InfoDialogManager`. **New scene/UI code reads it via `this.registry.get('gameState') as GameStateManager` rather than importing the underlying stores directly** — tests inject a fake `KVStorage` into the constructor to swap localStorage atomically. Some legacy UI modules still import the stores directly; treat them as a migration target, not a pattern.
+- **`ProgressionSystem`** (`src/systems/ProgressionSystem.ts`) — tracks `totalAU`, `floorAU`, `unlockedFloors`, `currentFloor`, `collectedTokens`. Exposed via `gameState.progression` in scenes — direct construction is reserved for tests. Persists via `SaveManager` (localStorage key `architect_<slot>_v1`; default slot `default` → `architect_default_v1`).
 - **`SaveManager`** — infrastructure. Scenes must not import it; use `ProgressionSystem`. The one exception is `SaveManager.hasSave()` for UI checks (e.g. a "Continue" button).
 - **`EventBus`** (`src/systems/EventBus.ts`) — typed pub/sub singleton. The `GameEvents` map is the single source of truth for event names and payloads; add new events there and all call sites become type-checked. No Phaser dependency.
 - **`ZoneManager`** (`src/systems/ZoneManager.ts`) — registers named zones with arbitrary `check: () => boolean` predicates, emits `zone:enter` / `zone:exit` on state change only. UI reacts to events; `getActiveZone()` is a synchronous query for keyboard handlers. Default pattern for anything that should appear only in a specific area of a scene.
 - **`AudioManager`** + **`MusicPlugin`** — fully reactive. Scenes don't play audio directly; entities emit `sfx:*` / `music:*` events. Scene music is auto-driven by `SCENE_MUSIC` in `src/config/audioConfig.ts` via `MusicPlugin`. Mute state persists under localStorage key `architect_audio_muted_v1`.
-- **`SoundGenerator`** — procedural SFX generated at runtime and registered as Phaser audio keys. Music is loaded from `public/music/` in `BootScene.preload()` (MP3/OGG). `MusicGenerator` is a retained but unused procedural fallback.
+- **`SoundGenerator`** — procedural SFX generated at runtime and registered as Phaser audio keys. Music is loaded from `public/music/` in `BootScene.preload()` (MP3/OGG). The procedural lullaby track is also generated here (no separate MusicGenerator module).
 - **`SpriteGenerator`** — procedural pixel-art textures for player, enemies, tokens, platforms, elevator cab, etc.
 - **`QuizManager`** (localStorage key `architect_quiz_v1`) — quiz completion + cooldowns. Data under `src/config/quiz/` (barrel `index.ts`).
 - **`InfoDialogManager`** (localStorage key `architect_info_seen_v1`) — tracks which info dialogs the player has opened. Content under `src/config/info/` (barrel `index.ts`).
-- **`LevelScene`** (`src/features/floors/_shared/LevelScene.ts`) — shared base for floor scenes. Sibling helpers (`LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`) compose the shared concerns. Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a `LevelConfig` with platforms, tokens, enemies (`type: 'slime' | 'bot'`), and info points. Enemies are scene-local, no persistence; they respawn on re-entry.
+- **`LevelScene`** (`src/features/floors/_shared/LevelScene.ts`) — shared base for floor scenes. Sibling helpers (`LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`) compose the shared concerns. Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a `LevelConfig` with platforms, tokens, enemies (`type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost'`), and info points. Enemies are scene-local, no persistence; they respawn on re-entry.
 - **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
 
 ## Conventions
@@ -100,18 +102,18 @@ Short index of where things live. Reach for these instead of re-implementing.
   2. Update `defaultState()`, `persist()`, `loadFromSave()`.
   3. Call `this.persist()` after any mutation that must survive a reload.
 - **Text resolution**: `main.ts` monkey-patches `scene.add.text` / `scene.make.text` to default to `resolution: 2` so glyphs stay crisp after FIT scaling. Don't re-override this unless you have a reason.
-- **Dev-only global**: `main.ts` exposes `window.__game` when `import.meta.env.DEV` is true. Playwright relies on this.
+- **Test-hook globals**: `main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle without the globals (see README "Build flags").
 
 ## How to extend
 
 ### Add a scene
-Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in the `scene:` array in `src/main.ts`, and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
+Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts` (the single source of truth — `main.ts` spreads `SCENE_CLASSES` from there; do **not** edit the `scene:` array in `main.ts` directly), and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`.
 
 ### Add a floor / level
-Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene` (import from `../_shared/LevelScene`) and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and in the scene array in `main.ts`.
+Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene` (import from `../_shared/LevelScene`) and provide a `LevelConfig` (platforms, `tokens`, `enemies`, `infoPoints`). Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and add a `{ key: 'NameScene', cls: NameScene }` entry to `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts`. `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys do not match registered scene keys.
 
 ### Add an enemy
-Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot', x, y, minX, maxX, speed }`. Implementations live in `src/entities/enemies/`. To add a new enemy *type*, create the class there and handle it in `Enemy.ts`.
+Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost', x, y, minX?, maxX?, speed? }`. `minX`/`maxX` default to `x ± 160` when omitted (per `LevelEnemySpawner.spawn`). Implementations live in `src/entities/enemies/`. To add a new enemy *type*, create the class there and handle it in `Enemy.ts`.
 
 ### Add a sound effect
 1. Generate the waveform in `SoundGenerator.generateSounds()` and register the audio key.
@@ -177,14 +179,14 @@ Short list of recurring mistakes. Check here first when something breaks inexpli
 
 ## Git branching — MANDATORY worktree-first workflow
 
-**Rule (no exceptions unless the user overrides):** Before making ANY file edit that would land on a branch other than `main`, create a sibling git worktree at `C:\code\SoYouWantToBeAnArchitect-<slug>` on a new `fix/…` | `feat/…` | `chore/…` | `docs/…` branch. The primary checkout at `C:\code\SoYouWantToBeAnArchitect` stays on `main` and is **read-only for edits** during a session.
+**Rule (no exceptions unless the user overrides):** Before making ANY file edit that would land on a branch other than `main`, create a sibling git worktree on a new `fix/…` | `feat/…` | `chore/…` | `docs/…` branch. Sibling path: `<primary-checkout-name>-<slug>` (Windows convention: `C:\code\SoYouWantToBeAnArchitect-<slug>`; macOS/Linux convention: `../architect-elevator-game-<slug>`). The primary checkout stays on `main` and is **read-only for edits** during a session. **Full OS-specific commands live in `.github/skills/git-worktree.md` — defer to it.**
 
 This applies to **every** task, including:
 - Documentation-only changes (yes, even a one-line README tweak).
 - "Trivial" or "tiny" edits — size is not an exemption.
 - Updates to `.github/copilot-instructions.md` or `CLAUDE.md` themselves.
 
-Do not rationalize skipping the worktree ("it's just docs", "it's one line", "I'll move it later"). If you catch yourself about to edit a file in `C:\code\SoYouWantToBeAnArchitect` that isn't in the session worktree, **stop and create the worktree first**.
+Do not rationalize skipping the worktree ("it's just docs", "it's one line", "I'll move it later"). If you catch yourself about to edit a file in the primary checkout (the directory you cloned into) that isn't in the session worktree, **stop and create the worktree first**.
 
 The only exception: the user explicitly says to work on the current checkout / on `main` / without a worktree. Treat anything less explicit than that as "use a worktree".
 

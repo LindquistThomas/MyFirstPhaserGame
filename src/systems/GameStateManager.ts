@@ -56,6 +56,10 @@ export class GameStateManager {
   hasSeenAnyInfo(): boolean { return InfoDialogManager.hasSeenAny(); }
   markSeen(id: string): void { InfoDialogManager.markSeen(id); }
 
+  isOnboardingComplete(): boolean { return this.progression.isOnboardingComplete(); }
+  completeOnboarding(): void { this.progression.completeOnboarding(); }
+  resetOnboarding(): void { this.progression.resetOnboarding(); }
+
   isAchievementUnlocked(id: string): boolean {
     return AchievementManager.isUnlocked(id as Parameters<typeof AchievementManager.isUnlocked>[0]);
   }

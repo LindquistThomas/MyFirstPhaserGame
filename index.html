@@ -58,6 +58,23 @@
          look fine under bilinear filtering. */
       image-rendering: auto;
     }
+    /* Visible keyboard focus ring on the game canvas for screen-reader users. */
+    canvas:focus-visible {
+      outline: 3px solid #00d4ff;
+      outline-offset: 2px;
+    }
+    /* Screen-reader-only utility: visually hidden but accessible to AT. */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
 
     /* ------------------------------------------------------------------ */
     /* Virtual gamepad — rendered by src/ui/VirtualGamepad.ts on touch     */
@@ -159,7 +176,13 @@
 </head>
 <body>
   <canvas id="pillarbox-bg" aria-hidden="true" role="presentation"></canvas>
-  <div id="game-container"></div>
+  <div
+    id="game-container"
+    role="application"
+    aria-label="So You Want To Be An Architect — platformer game"
+  ></div>
+  <!-- Off-screen live region: game events are announced to assistive technologies. -->
+  <div id="game-aria-live" aria-live="polite" aria-atomic="true" class="sr-only"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

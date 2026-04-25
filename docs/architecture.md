@@ -84,7 +84,6 @@ src/
 │   ├── sceneLifecycle.ts     `createSceneLifecycle(scene)` — uniform teardown.
 │   ├── SpriteGenerator.ts    Composition root → `./sprites/` per-asset modules.
 │   ├── SoundGenerator.ts     Composition root → `./sounds/` per-family modules.
-│   ├── MusicGenerator.ts     Procedural fallback tracks.
 │   ├── sounds/               One file per SFX family (combat, footsteps, ui, …).
 │   │   ├── footsteps.ts
 │   │   ├── movement.ts
@@ -134,7 +133,7 @@ Use this to find the right file to edit for a given feature.
 | Quiz runtime                        | `systems/QuizManager.ts`, `ui/QuizDialog.ts`, `ui/QuizResultsScreen.ts`                |
 | Info modal runtime                  | `systems/InfoDialogManager.ts`, `ui/InfoDialog.ts`, `ui/DialogController.ts`           |
 | Input (keyboard + touch)            | `input/*`                                                                              |
-| Audio                               | `systems/AudioManager.ts`, `systems/SoundGenerator.ts`, `systems/sounds/*`, `systems/MusicGenerator.ts` |
+| Audio                               | `systems/AudioManager.ts`, `systems/SoundGenerator.ts` (also generates procedural lullaby), `systems/sounds/*` |
 | Procedural sprites                  | `systems/SpriteGenerator.ts`, `systems/sprites/*.ts`                                   |
 | Theme tokens (colours + spacing)    | `style/theme.ts`                                                                       |
 
