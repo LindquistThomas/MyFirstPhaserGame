@@ -1,5 +1,9 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import {
+  TIER_Y_T1 as TIER_T1, TIER_Y_T2 as TIER_T2,
+  CATWALK_THICKNESS,
+} from '../../../config/levelGeometry';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { theme } from '../../../style/theme';
 
@@ -20,16 +24,6 @@ import { theme } from '../../../style/theme';
 export class ArchitectureTeamScene extends LevelScene {
   /** First token index used in this room — must not overlap PlatformTeamScene. */
   private static readonly TOKEN_INDEX_OFFSET = 7;
-
-  /**
-   * Catwalk tiers match PlatformTeamScene so the jump physics carry
-   * across rooms on the same floor. Single jump from ground (G=832,
-   * gravity=900, jump=-520) clears ~150 px, and each tier sits 140 px
-   * above the one below.
-   */
-  private static readonly MID_Y = 692;
-  private static readonly UP_Y = 552;
-  private static readonly CAT_T = 20;
 
   constructor() {
     super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);
@@ -312,9 +306,9 @@ export class ArchitectureTeamScene extends LevelScene {
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
     const K = ArchitectureTeamScene.TOKEN_INDEX_OFFSET;
-    const MID = ArchitectureTeamScene.MID_Y;
-    const UP = ArchitectureTeamScene.UP_Y;
-    const T = ArchitectureTeamScene.CAT_T;
+    const MID = TIER_T1;
+    const UP = TIER_T2;
+    const T = CATWALK_THICKNESS;
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,

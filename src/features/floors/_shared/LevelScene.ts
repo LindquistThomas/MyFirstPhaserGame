@@ -1,23 +1,10 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS, FloorId } from '../../../config/gameConfig';
-
-/**
- * Room-lift speed in px/s. Slower than the main cab's `ELEVATOR_SPEED`
- * (760) because room lifts travel short distances — a slower ride makes
- * the rider reliably stick to the platform (gravity can't outpace the
- * descent) and keeps the per-frame overshoot inside the clamp tolerance.
- */
-const ROOM_LIFT_SPEED = 400;
-
-/** Extra px added above `minY` so the platform sprite (12 px tall, centre-
- *  origin) stays fully inside the shaft graphic when parked at the top. */
-const SHAFT_TOP_PAD = 16;
 import { LEVEL_DATA, FloorData } from '../../../config/levelData';
 import { Player } from '../../../entities/Player';
 import { Enemy } from '../../../entities/Enemy';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { HUD } from '../../../ui/HUD';
-import { ElevatorButtons } from '../../../ui/ElevatorButtons';
 import { DialogController } from '../../../ui/DialogController';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
@@ -29,6 +16,7 @@ import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
 import { LevelFridgeManager } from './LevelFridgeManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
+import { LevelRoomElevators } from './LevelRoomElevators';
 import { createLevelDialogs } from './LevelDialogBindings';
 import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
 import { drawFloorAccents } from './floorAccents';
@@ -159,26 +147,11 @@ export class LevelScene extends Phaser.Scene {
    */
   protected returnSide: 'left' | 'right' = 'left';
 
-  /** In-room elevator platforms + their shaft graphics. */
-  private roomLifts: Array<{
-    platform: Phaser.Physics.Arcade.Image;
-    shaft: Phaser.GameObjects.Graphics;
-    minY: number;
-    maxY: number;
-  }> = [];
-
-  /** Which room-lift is the player currently riding? (-1 = none) */
-  private activeRoomLift = -1;
-
   /** Auto-moving floating platforms (bounce or tween). */
   private movingPlatforms: MovingPlatform[] = [];
 
-  /**
-   * On-screen lift buttons for in-room elevators.
-   * These are a gameplay mechanic (not content-zone gated) so visibility
-   * is set directly based on physics state — not via zone events.
-   */
-  private liftButtons?: ElevatorButtons;
+  /** In-room elevator manager (shafts, platforms, input, rider-pin). */
+  private roomElevators!: LevelRoomElevators;
 
   /** Info + quiz dialog orchestration. */
   protected dialogs!: DialogController;
@@ -222,8 +195,6 @@ export class LevelScene extends Phaser.Scene {
     this.progression = this.gameState.progression;
     this.floorData = LEVEL_DATA[this.floorId];
     this.isTransitioning = false;
-    this.roomLifts = [];
-    this.activeRoomLift = -1;
     this.movingPlatforms = [];
   }
 
@@ -234,7 +205,6 @@ export class LevelScene extends Phaser.Scene {
     this.createBackground();
     this.createPlatforms();
     this.createMovingPlatforms();
-    this.createRoomElevators();
     this.createDecorations();
     this.createExit();
     this.createPlayer();
@@ -293,12 +263,15 @@ export class LevelScene extends Phaser.Scene {
       this.physics.add.collider(this.tokenMgr.droppedAUGroup, mp);
     }
 
-    for (let i = 0; i < this.roomLifts.length; i++) {
-      const idx = i;
-      this.physics.add.collider(this.player.sprite, this.roomLifts[i].platform, () => {
-        this.activeRoomLift = idx;
-      });
-    }
+    // Room elevators: build shafts + platforms, then wire player colliders.
+    // Constructed after zones so this.dialogs is available for the rider-pin.
+    this.roomElevators = new LevelRoomElevators({
+      scene: this,
+      player: this.player,
+      dialogs: this.dialogs,
+    });
+    this.roomElevators.build(cfg);
+    this.roomElevators.wireColliders();
 
     this.cameras.main.setScroll(0, 0);
     this.showFloorBanner();
@@ -539,61 +512,6 @@ export class LevelScene extends Phaser.Scene {
     }
   }
 
-  /* ---- in-room elevators ---- */
-  protected createRoomElevators(): void {
-    const config = this.getLevelConfig();
-    for (const re of config.roomElevators) {
-      const shaft = this.add.graphics().setDepth(1);
-      const shaftW = 80;
-      // Extend shaft upward past `minY` so the platform sprite (centre-origin,
-      // ~12 px tall) sits fully inside the black background when parked at
-      // the top. Otherwise the platform's top edge pokes above the shaft.
-      const topY = re.minY - SHAFT_TOP_PAD;
-      const bottomY = re.maxY + 16;
-      shaft.fillStyle(theme.color.bg.overlay, 0.85);
-      shaft.fillRect(re.x - shaftW / 2, topY, shaftW, bottomY - topY);
-      shaft.lineStyle(2, theme.color.ui.border, 0.5);
-      shaft.lineBetween(re.x - shaftW / 2, topY, re.x - shaftW / 2, bottomY);
-      shaft.lineBetween(re.x + shaftW / 2, topY, re.x + shaftW / 2, bottomY);
-
-      const plat = this.physics.add.image(re.x, re.startY, 'room_elevator_platform');
-      plat.setImmovable(true);
-      (plat.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
-      plat.setDepth(3);
-
-      this.roomLifts.push({ platform: plat, shaft, minY: re.minY, maxY: re.maxY });
-    }
-
-    // Pin the active rider to the lift AFTER Phaser has stepped physics
-    // for this frame — mirrors `ElevatorController.postUpdatePin()` so
-    // the player follows the lift with zero lag and gravity can't pull
-    // them off the platform while descending.
-    if (this.roomLifts.length > 0) {
-      const onPost = () => this.postUpdatePinToLift();
-      this.events.on(Phaser.Scenes.Events.POST_UPDATE, onPost);
-      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        this.events.off(Phaser.Scenes.Events.POST_UPDATE, onPost);
-      });
-    }
-  }
-
-  /**
-   * Post-physics-step rider pin. Runs after Phaser has moved both the lift
-   * platform and the player body this frame, so we can align the player's
-   * feet to the platform's actual (post-step) position with zero lag.
-   */
-  private postUpdatePinToLift(): void {
-    if (this.activeRoomLift < 0) return;
-    if (this.dialogs?.isOpen) return;
-    const lift = this.roomLifts[this.activeRoomLift];
-    const platBody = lift.platform.body as Phaser.Physics.Arcade.Body;
-    const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    const targetY = platBody.y - playerBody.offset.y - playerBody.height
-      + this.player.sprite.displayOriginY;
-    this.player.sprite.setY(targetY);
-    playerBody.updateFromGameObject();
-  }
-
   /* ---- decorations (override in subclass to add floor-specific props) ---- */
   protected createDecorations(): void { /* no-op by default */ }
 
@@ -672,7 +590,6 @@ export class LevelScene extends Phaser.Scene {
   /* ---- UI ---- */
   protected createUI(): void {
     this.hud = new HUD(this, this.progression);
-    this.liftButtons = new ElevatorButtons(this, 48);
   }
 
   /* ---- banner ---- */
@@ -736,7 +653,7 @@ export class LevelScene extends Phaser.Scene {
 
     this.player.update(delta);
     this.hud.update();
-    this.updateRoomElevators();
+    this.roomElevators.update();
     for (const mp of this.movingPlatforms) mp.update();
     this.enemySpawner.update(_time, delta);
     this.updateAtmosphericFx();
@@ -767,90 +684,6 @@ export class LevelScene extends Phaser.Scene {
   /** Debug overlay hook: expose spatial zones for DebugPlugin to render. */
   getDebugZones(): import('./LevelZoneSetup').DebugZone[] {
     return this.zones?.getDebugZones() ?? [];
-  }
-
-  /* ---- ride in-room elevators ---- */
-  private updateRoomElevators(): void {
-    const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
-    const onGround = body.blocked.down || body.touching.down;
-
-    // player.update() runs just before this and consumes `justPressed('Jump')`
-    // to set body.velocity.y = PLAYER_JUMP_VELOCITY (−520). Detect a jump by
-    // looking for a vy more negative than a lift can produce (ROOM_LIFT_SPEED
-    // is 400), so a lift ascending at −400 isn't mistaken for a jump. Release
-    // the lift and bail out so the velocity sync at the end doesn't stomp
-    // the jump impulse. postUpdatePinToLift() early-outs once activeRoomLift
-    // is -1.
-    if (this.activeRoomLift >= 0 && body.velocity.y < -(ROOM_LIFT_SPEED + 20)) {
-      for (const lift of this.roomLifts) lift.platform.setVelocityY(0);
-      this.activeRoomLift = -1;
-      this.liftButtons?.setVisible(false);
-      return;
-    }
-
-    let onLift = false;
-    if (onGround) {
-      for (let i = 0; i < this.roomLifts.length; i++) {
-        const lift = this.roomLifts[i];
-        const dx = Math.abs(this.player.sprite.x - lift.platform.x);
-        const dy = this.player.sprite.y + (body.halfHeight) - lift.platform.y;
-        // Widened tolerance (was [-4, 12]) so a fast descent doesn't
-        // momentarily separate the player from the platform and stop
-        // the ride. postUpdatePinToLift() re-snaps them each frame.
-        if (dx < 50 && dy >= -6 && dy <= 28) {
-          this.activeRoomLift = i;
-          onLift = true;
-          break;
-        }
-      }
-    }
-
-    // Lift buttons are a gameplay mechanic (riding in-room lifts), not a
-    // content zone, so visibility is set directly from physics state here.
-    this.liftButtons?.setVisible(onLift);
-
-    if (!onLift) {
-      this.activeRoomLift = -1;
-      for (const lift of this.roomLifts) {
-        lift.platform.setVelocityY(0);
-      }
-      return;
-    }
-
-    const inputs = this.inputs;
-    const lift = this.roomLifts[this.activeRoomLift];
-    const btnState = this.liftButtons?.getState();
-    const up = inputs.isDown('MoveUp') || (btnState?.up ?? false);
-    const down = inputs.isDown('MoveDown') || (btnState?.down ?? false);
-
-    if (up) {
-      lift.platform.setVelocityY(-ROOM_LIFT_SPEED);
-    } else if (down) {
-      lift.platform.setVelocityY(ROOM_LIFT_SPEED);
-    } else {
-      lift.platform.setVelocityY(0);
-    }
-
-    // Directional clamp — only zero velocity when moving OUTWARD past the
-    // bound. Clamping unconditionally (as before) blocked re-entry after
-    // touching a bound; this mirrors `Elevator.applyVelocity` on the main
-    // cab. Also clamp the position the same frame to absorb the overshoot
-    // produced by velocity integration at ROOM_LIFT_SPEED.
-    const vy = (lift.platform.body as Phaser.Physics.Arcade.Body).velocity.y;
-    if (lift.platform.y <= lift.minY && vy < 0) {
-      lift.platform.y = lift.minY;
-      lift.platform.setVelocityY(0);
-    } else if (lift.platform.y >= lift.maxY && vy > 0) {
-      lift.platform.y = lift.maxY;
-      lift.platform.setVelocityY(0);
-    }
-
-    // Match the player's vertical velocity to the lift so the physics step
-    // keeps them together within this frame; postUpdatePinToLift() then
-    // pins them to the lift's top with zero lag.
-    body.setVelocityY(
-      (lift.platform.body as Phaser.Physics.Arcade.Body).velocity.y,
-    );
   }
 
   /* ---- exit check ---- */

@@ -1,4 +1,5 @@
 import type { LevelConfig } from '../_shared/LevelScene';
+import { TIER_Y_T2, TIER_Y_T3 } from '../../../config/levelGeometry';
 
 type EnemyList = NonNullable<LevelConfig['enemies']>;
 
@@ -16,9 +17,8 @@ type EnemyList = NonNullable<LevelConfig['enemies']>;
  *     "traffic arriving from the internet" just below Edge Security.
  */
 export function enemiesForGroundY(G: number): EnemyList {
-  // Tier Ys — must match PlatformTeamScene.getLevelConfig().
-  const T3 = 412;
-  const T2 = 552;
+  const T3 = TIER_Y_T3;
+  const T2 = TIER_Y_T2;
   return [
     // Ground workstations lane slime — between lift A (x≈160) and lift B
     // (x≈640), clear of the signpost (x≈260).
