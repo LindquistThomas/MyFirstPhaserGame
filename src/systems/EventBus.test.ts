@@ -57,4 +57,36 @@ describe('EventBus', () => {
   it('ignores emits for events with no subscribers', () => {
     expect(() => eventBus.emit('music:stop')).not.toThrow();
   });
+
+  describe('once()', () => {
+    it('fires exactly once', () => {
+      const fn = vi.fn();
+      eventBus.once('zone:enter', fn);
+      eventBus.emit('zone:enter', 'a');
+      eventBus.emit('zone:enter', 'b');
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(fn).toHaveBeenCalledWith('a');
+    });
+
+    it('can be cancelled via off() before it fires', () => {
+      const fn = vi.fn();
+      eventBus.once('zone:enter', fn);
+      eventBus.off('zone:enter', fn);
+      eventBus.emit('zone:enter', 'x');
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    it('leaves no ghost wrapper after firing', () => {
+      const fn = vi.fn();
+      eventBus.once('sfx:jump', fn);
+      eventBus.emit('sfx:jump');
+      // A second on() + emit verifies the listener set is clean
+      const fn2 = vi.fn();
+      eventBus.on('sfx:jump', fn2);
+      eventBus.emit('sfx:jump');
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(fn2).toHaveBeenCalledTimes(1);
+      eventBus.off('sfx:jump', fn2);
+    });
+  });
 });

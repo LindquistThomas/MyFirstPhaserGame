@@ -3,6 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS, PLAYER_GRAVITY } from './config/gameCo
 import { SCENE_CLASSES, validateSceneRegistry } from './scenes/sceneRegistry';
 import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
+import { ScopedEventBus } from './plugins/ScopedEventBus';
 import { InputService } from './input';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
@@ -73,7 +74,8 @@ const config: Phaser.Types.Core.GameConfig = {
   plugins: {
     scene: [{ key: 'InputService', plugin: InputService, mapping: 'inputs' },
             { key: 'MusicPlugin', plugin: MusicPlugin, mapping: 'music' },
-            { key: 'DebugPlugin', plugin: DebugPlugin, mapping: 'debug' }],
+            { key: 'DebugPlugin', plugin: DebugPlugin, mapping: 'debug' },
+            { key: 'ScopedEventBus', plugin: ScopedEventBus, mapping: 'scopedEvents' }],
   },
 };
 

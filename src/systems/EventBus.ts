@@ -69,6 +69,8 @@ export type GameEventHandler<K extends GameEventName> = (...args: GameEvents[K])
 
 class EventBus {
   private listeners = new Map<GameEventName, Set<GameEventHandler<GameEventName>>>();
+  /** Maps original handler → once-wrapper handler so off(event, fn) can cancel a once() subscription. */
+  private onceWrappers = new Map<GameEventHandler<GameEventName>, GameEventHandler<GameEventName>>();
 
   /** Subscribe to an event. */
   on<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
@@ -77,9 +79,31 @@ class EventBus {
     return this;
   }
 
-  /** Unsubscribe from an event. */
+  /**
+   * Subscribe to an event for exactly one invocation, then auto-unsubscribe.
+   * Calling `off(event, fn)` with the original function cancels the subscription
+   * before it fires.
+   */
+  once<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
+    const typed = fn as GameEventHandler<GameEventName>;
+    const wrapper = (...args: GameEvents[K]): void => {
+      this.off(event, fn);
+      fn(...args);
+    };
+    this.onceWrappers.set(typed, wrapper as GameEventHandler<GameEventName>);
+    return this.on(event, wrapper as GameEventHandler<K>);
+  }
+
+  /** Unsubscribe from an event. Also cancels a pending `once()` subscription. */
   off<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
-    this.listeners.get(event)?.delete(fn as GameEventHandler<GameEventName>);
+    const typed = fn as GameEventHandler<GameEventName>;
+    const wrapper = this.onceWrappers.get(typed);
+    if (wrapper) {
+      this.onceWrappers.delete(typed);
+      this.listeners.get(event)?.delete(wrapper);
+    } else {
+      this.listeners.get(event)?.delete(typed);
+    }
     return this;
   }
 
@@ -97,6 +121,7 @@ class EventBus {
    */
   removeAllListeners(): this {
     this.listeners.clear();
+    this.onceWrappers.clear();
     return this;
   }
 }
