@@ -12,6 +12,25 @@ export const CAFFEINE_JUMP_MULT = 1.15;
 type PlayerAnimState = 'idle' | 'walk' | 'flip' | 'fall' | 'land';
 
 /**
+ * Explicit FSM states for Player. A single `playerState` field replaces the
+ * former scatter of `isFlipping`, `wasOnGround`, and `isLanding` booleans.
+ *
+ * Transitions:
+ *   grounded → airborne  (walked off ledge)
+ *   grounded → flipping  (jump input, flipEnabled)
+ *   airborne → grounded  (landed, airborne < AIRBORNE_ANIM_GRACE_MS)
+ *   airborne → landing   (landed, airborne ≥ AIRBORNE_ANIM_GRACE_MS)
+ *   flipping → grounded  (landed, airborne < AIRBORNE_ANIM_GRACE_MS)
+ *   flipping → landing   (landed, airborne ≥ AIRBORNE_ANIM_GRACE_MS)
+ *   landing  → grounded  (land-squash anim completes — 120 ms delayed call)
+ *   landing  → airborne  (fell off while squash was playing)
+ *   any      → hitStun   (takeHit(), not already invulnerable / flipping)
+ *   hitStun  → grounded  (hitStunUntil expires while on ground)
+ *   hitStun  → airborne  (hitStunUntil expires while airborne)
+ */
+export type PlayerState = 'grounded' | 'airborne' | 'flipping' | 'landing' | 'hitStun';
+
+/**
  * Horizontal air-speed cap. Kept lower than `PLAYER_SPEED` so the maximum
  * horizontal distance covered during a jump stays well under the elevator
  * shaft width (`SHAFT_WIDTH = 220` in ElevatorScene). With the default
@@ -38,17 +57,19 @@ export class Player {
   private footstepToggle = false;
 
   /**
-   * True from the moment a jump is initiated until the player next lands.
-   * Kept as a boolean flag (not derived from vy sign) so callers like
-   * takeHit() and the room-elevator logic have a stable definition of
-   * "mid-jump" that doesn't flicker at the apex.
+   * Current FSM state. Replaces the former `isFlipping`, `wasOnGround`, and
+   * `isLanding` boolean flags. All movement and animation logic in `update()`
+   * dispatches through a `switch` on this single field.
    */
-  private isFlipping = false;
+  private playerState: PlayerState = 'grounded';
+
   /** When false, jump input is ignored (e.g. while riding the elevator). */
   private flipEnabled = true;
 
   /**
-   * Invulnerability / hit-stun state.
+   * Invulnerability / hit-stun timing — meaningful while in `hitStun` state
+   * (and briefly after, since the invulnerability window outlasts the input
+   * lock).
    *
    * `invulnerableUntil` is a scene-time timestamp (ms). While scene.time.now
    * is below it, `takeHit()` is a no-op, and the sprite flashes via tween.
@@ -59,11 +80,7 @@ export class Player {
   private hitStunUntil = 0;
   private hitFlashTween?: Phaser.Tweens.Tween;
 
-  /** Tracks airborne→grounded transitions for the land-squash tell. */
-  private wasOnGround = true;
-  /** True while the short `player_land` anim is playing; gates updateAnimation. */
-  private isLanding = false;
-  /** Scene time (ms) when the player left the ground; null while grounded. */
+  /** Scene time (ms) when the player left the ground; set in airborne/flipping states. */
   private airborneSince: number | null = null;
   /** Minimum airborne duration before a walk-off-ledge landing emits dust. */
   private readonly LANDING_DUST_MIN_AIRBORNE_MS = 150;
@@ -178,38 +195,8 @@ export class Player {
 
     this.tickCaffeine();
 
-    // Clear the mid-jump flag the moment we land so subsequent input/anim
-    // logic reflects that the player is grounded again.
-    if (this.isFlipping && onGround && body.velocity.y >= 0) {
-      this.isFlipping = false;
-    }
-
-    // Land tell: fire once on airborne→grounded transition (walking off ledges).
-    // Require a brief airborne window to filter out 1-frame physics flicker
-    // (Arcade `touching.down` can drop out for a single tick even at rest),
-    // which would otherwise re-trigger playLandAnim every couple of frames
-    // and keep `isLanding` permanently true — freezing the sprite on the
-    // walk frames that player_land reuses.
-    if (!this.wasOnGround && onGround) {
-      const now = this.scene.time.now;
-      const airborneMs =
-        this.airborneSince !== null ? now - this.airborneSince : 0;
-      if (airborneMs > this.AIRBORNE_ANIM_GRACE_MS) {
-        this.playLandAnim();
-        // Only emit landing dust if the player was airborne long enough to
-        // avoid spamming particles on slope/edge jitter.
-        if (airborneMs > this.LANDING_DUST_MIN_AIRBORNE_MS) {
-          this.emitDust();
-        }
-      }
-      this.airborneSince = null;
-    } else if (this.wasOnGround && !onGround) {
-      this.airborneSince = this.scene.time.now;
-    }
-    this.wasOnGround = onGround;
-
-    const inputs = this.scene.inputs;
-    const h = inputs.horizontal();
+    // Advance the FSM one step based on current physics / time state.
+    this.advanceFSM(onGround, body);
 
     // Input-context freeze: whenever a modal or menu is overlaying
     // gameplay (e.g. the player pressed Interact/ToggleInfo to open an
@@ -226,56 +213,144 @@ export class Player {
       // would otherwise return early and leave the sprite in walk/land
       // under the modal. The dialog overlays the player, so clearing
       // the squash flag early is invisible to the user.
-      this.isLanding = false;
-      this.updateAnimation(onGround);
-      return;
-    }
-
-    // Hit-stun: skip input-driven horizontal movement so knockback velocity
-    // from takeHit() is visibly applied. Jump is also disabled during stun.
-    if (this.isHitStunned()) {
-      this.updateAnimation(onGround);
-      this.sprite.setFlipX(!this.facingRight);
-      return;
-    }
-
-    // Horizontal movement. Air control is capped below ground speed so the
-    // player can't clear wide gaps (in particular the elevator shaft) by
-    // jumping off the edge.
-    const groundSpeed = this.isCaffeinated()
-      ? PLAYER_SPEED * CAFFEINE_SPEED_MULT
-      : PLAYER_SPEED;
-    const maxX = onGround ? groundSpeed : AIR_HORIZONTAL_SPEED;
-    if (h < 0) {
-      this.sprite.setVelocityX(-maxX);
-      this.facingRight = false;
-    } else if (h > 0) {
-      this.sprite.setVelocityX(maxX);
-      this.facingRight = true;
-    } else if (onGround) {
-      // Ground deceleration. Airborne we let Arcade physics carry the
-      // existing vx so arcs feel ballistic instead of mushy.
-      this.sprite.setVelocityX(this.sprite.body!.velocity.x * 0.8);
-      if (Math.abs(this.sprite.body!.velocity.x) < 10) {
-        this.sprite.setVelocityX(0);
+      if (this.playerState === 'landing') {
+        this.playerState = 'grounded';
       }
-    } else if (Math.abs(this.sprite.body!.velocity.x) > maxX) {
-      // Clamp residual ground momentum to the air-control cap so launching
-      // at full PLAYER_SPEED can't push past AIR_HORIZONTAL_SPEED mid-flight.
-      const sign = Math.sign(this.sprite.body!.velocity.x);
-      this.sprite.setVelocityX(sign * maxX);
+      this.updateAnimation(onGround);
+      return;
     }
 
-    // Flip sprite based on direction
-    this.sprite.setFlipX(!this.facingRight);
+    // FSM-driven update: dispatch on current state.
+    switch (this.playerState) {
+      case 'landing':
+        // Land-squash anim is playing; block all input until it completes.
+        this.updateAnimation(onGround);
+        return;
 
-    // Jump → apply an upward impulse; gravity does the rest.
-    if (inputs.justPressed('Jump') && onGround && this.flipEnabled) {
-      this.startJump();
+      case 'hitStun':
+        // Knockback is applied; skip input-driven movement so the arc is
+        // visible and the hit feels weighty. Jump is also disabled.
+        this.updateAnimation(onGround);
+        this.sprite.setFlipX(!this.facingRight);
+        return;
+
+      default: {
+        // grounded | airborne | flipping — normal input-driven movement.
+
+        // Horizontal movement. Air control is capped below ground speed so the
+        // player can't clear wide gaps (in particular the elevator shaft) by
+        // jumping off the edge.
+        const groundSpeed = this.isCaffeinated()
+          ? PLAYER_SPEED * CAFFEINE_SPEED_MULT
+          : PLAYER_SPEED;
+        const maxX = onGround ? groundSpeed : AIR_HORIZONTAL_SPEED;
+        const h = this.scene.inputs.horizontal();
+        if (h < 0) {
+          this.sprite.setVelocityX(-maxX);
+          this.facingRight = false;
+        } else if (h > 0) {
+          this.sprite.setVelocityX(maxX);
+          this.facingRight = true;
+        } else if (onGround) {
+          // Ground deceleration. Airborne we let Arcade physics carry the
+          // existing vx so arcs feel ballistic instead of mushy.
+          this.sprite.setVelocityX(this.sprite.body!.velocity.x * 0.8);
+          if (Math.abs(this.sprite.body!.velocity.x) < 10) {
+            this.sprite.setVelocityX(0);
+          }
+        } else if (Math.abs(this.sprite.body!.velocity.x) > maxX) {
+          // Clamp residual ground momentum to the air-control cap so launching
+          // at full PLAYER_SPEED can't push past AIR_HORIZONTAL_SPEED mid-flight.
+          const sign = Math.sign(this.sprite.body!.velocity.x);
+          this.sprite.setVelocityX(sign * maxX);
+        }
+
+        // Flip sprite based on direction
+        this.sprite.setFlipX(!this.facingRight);
+
+        // Jump → apply an upward impulse; gravity does the rest.
+        if (this.scene.inputs.justPressed('Jump') && onGround && this.flipEnabled) {
+          this.startJump();
+        }
+
+        // Animations
+        this.updateAnimation(onGround);
+      }
     }
+  }
 
-    // Animations
-    this.updateAnimation(onGround);
+  /**
+   * Advance the FSM one step based on current physics state and time.
+   * Called at the top of every `update()` tick.
+   *
+   * Transitions are listed in the `PlayerState` JSDoc above.
+   */
+  private advanceFSM(onGround: boolean, body: Phaser.Physics.Arcade.Body): void {
+    const now = this.scene.time.now;
+
+    switch (this.playerState) {
+      case 'grounded':
+        if (!onGround) {
+          this.playerState = 'airborne';
+          this.airborneSince = now;
+        }
+        break;
+
+      case 'airborne':
+        if (onGround) {
+          this.handleLanding(now);
+        }
+        break;
+
+      case 'flipping':
+        // Only leave the flipping state when fully descending / grounded to
+        // avoid a false positive on the jump frame itself (vy is still < 0).
+        if (onGround && body.velocity.y >= 0) {
+          this.handleLanding(now);
+        }
+        break;
+
+      case 'landing':
+        // The delayed call in playLandAnim() drives the landing→grounded
+        // transition. Handle the edge case of falling off during the squash.
+        if (!onGround) {
+          this.playerState = 'airborne';
+          this.airborneSince = now;
+        }
+        break;
+
+      case 'hitStun':
+        // Transition out once the input-lock window has elapsed.
+        if (now >= this.hitStunUntil) {
+          if (onGround) {
+            this.playerState = 'grounded';
+            this.airborneSince = null;
+          } else {
+            this.playerState = 'airborne';
+            // Preserve airborneSince if it was set before the hit, otherwise
+            // start counting from now so landing detection works correctly.
+            this.airborneSince = this.airborneSince ?? now;
+          }
+        }
+        break;
+    }
+  }
+
+  /**
+   * Shared landing logic for `airborne → grounded/landing` and
+   * `flipping → grounded/landing` transitions.
+   */
+  private handleLanding(now: number): void {
+    const airborneMs = this.airborneSince !== null ? now - this.airborneSince : 0;
+    if (airborneMs > this.AIRBORNE_ANIM_GRACE_MS) {
+      this.playLandAnim();
+      if (airborneMs > this.LANDING_DUST_MIN_AIRBORNE_MS) {
+        this.emitDust();
+      }
+    } else {
+      this.playerState = 'grounded';
+    }
+    this.airborneSince = null;
   }
 
   /**
@@ -285,7 +360,8 @@ export class Player {
    * used `setPosition` and teleported through collisions.
    */
   private startJump(): void {
-    this.isFlipping = true;
+    this.playerState = 'flipping';
+    this.airborneSince = this.scene.time.now;
     const jumpV = this.isCaffeinated()
       ? PLAYER_JUMP_VELOCITY * CAFFEINE_JUMP_MULT
       : PLAYER_JUMP_VELOCITY;
@@ -311,7 +387,7 @@ export class Player {
   }
 
   private playLandAnim(): void {
-    this.isLanding = true;
+    this.playerState = 'landing';
     this.currentAnim = 'land';
     this.sprite.anims.play('player_land', true);
     this.scene.tweens.add({
@@ -321,13 +397,13 @@ export class Player {
       ease: 'Quad.easeOut',
     });
     this.scene.time.delayedCall(120, () => {
-      this.isLanding = false;
+      this.playerState = 'grounded';
       this.sprite.setScale(1, 1);
     });
   }
 
   private updateAnimation(onGround: boolean): void {
-    if (this.isLanding) return;
+    if (this.playerState === 'landing') return;
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     const vx = Math.abs(body.velocity.x);
     let newAnim: PlayerAnimState;
@@ -343,7 +419,7 @@ export class Player {
       }
       // Ascending after a jump → flip rotation. Descending (or walking off
       // a ledge) → tucked fall pose.
-      if (this.isFlipping && body.velocity.y < 0) {
+      if (this.playerState === 'flipping' && body.velocity.y < 0) {
         newAnim = 'flip';
       } else {
         newAnim = 'fall';
@@ -449,11 +525,12 @@ export class Player {
    */
   takeHit(knockX: number, knockY: number, durationMs = 1000): void {
     if (this.isInvulnerable()) return;
-    if (this.isFlipping) return;
+    if (this.playerState === 'flipping') return;
 
     const now = this.scene.time.now;
     this.invulnerableUntil = now + durationMs;
     this.hitStunUntil = now + 220;
+    this.playerState = 'hitStun';
 
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(true);
@@ -481,8 +558,13 @@ export class Player {
     this.sprite.setVelocity(0, 0);
   }
 
-  /** Whether the player is currently performing a scripted flip. */
+  /** Whether the player is currently performing a scripted flip/jump. */
   getIsFlipping(): boolean {
-    return this.isFlipping;
+    return this.playerState === 'flipping';
+  }
+
+  /** Current FSM state. Intended for tests and debug tooling. */
+  getPlayerState(): PlayerState {
+    return this.playerState;
   }
 }

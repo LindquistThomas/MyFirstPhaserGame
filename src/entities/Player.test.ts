@@ -191,4 +191,167 @@ describe('Player', () => {
       popContext(token);
     }
   });
+
+  // ── FSM transition tests ──────────────────────────────────────────────────
+
+  describe('FSM transitions', () => {
+    it('grounded → airborne when player walks off a ledge', () => {
+      // Start confirmed on ground.
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('grounded');
+
+      // Walk off ledge: no longer on ground.
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('airborne');
+    });
+
+    it('airborne → grounded when landed within grace window (no squash)', () => {
+      // Go airborne.
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('airborne');
+
+      // Land immediately — airborne duration is under AIRBORNE_ANIM_GRACE_MS
+      // so no landing squash; state goes straight to grounded.
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('grounded');
+    });
+
+    it('airborne → landing → grounded when landed after grace window', () => {
+      // Go airborne.
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('airborne');
+
+      // Advance past AIRBORNE_ANIM_GRACE_MS (80 ms).
+      scene.advanceTime(120);
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('airborne');
+
+      // Land — triggers squash → landing state.
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('landing');
+
+      // Squash anim completes (120 ms delayed call) → grounded.
+      scene.advanceTime(120);
+      scene.runDelayedCalls();
+      expect(player.getPlayerState()).toBe('grounded');
+    });
+
+    it('grounded → flipping on jump input', () => {
+      scene.inputs.justPressed = () => true;
+      sprite.body.blocked.down = true;
+
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('flipping');
+    });
+
+    it('flipping → grounded on land within grace window (no squash)', () => {
+      // Initiate jump while on ground.
+      scene.inputs.justPressed = () => true;
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('flipping');
+
+      // Go airborne with descending velocity (simulate apex + descent in
+      // the same frame to keep the test simple).
+      scene.inputs.justPressed = () => false;
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      sprite.body.velocity.y = 100; // descending
+
+      // Land immediately (under grace window) → grounded directly.
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('grounded');
+    });
+
+    it('flipping → landing → grounded after full arc', () => {
+      // Initiate jump.
+      scene.inputs.justPressed = () => true;
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('flipping');
+
+      // Go airborne past grace window.
+      scene.inputs.justPressed = () => false;
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      sprite.body.velocity.y = -400; // ascending
+      scene.advanceTime(120);
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('flipping');
+
+      // Descend and land → should go to landing (squash).
+      sprite.body.velocity.y = 400;
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('landing');
+
+      // Squash completes → grounded.
+      scene.advanceTime(120);
+      scene.runDelayedCalls();
+      expect(player.getPlayerState()).toBe('grounded');
+    });
+
+    it('any state → hitStun on takeHit (not while flipping)', () => {
+      // Start grounded.
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('grounded');
+
+      player.takeHit(100, -200, 500);
+      expect(player.getPlayerState()).toBe('hitStun');
+    });
+
+    it('hitStun → grounded when stun expires while on ground', () => {
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+
+      // scene.time.now = 0; takeHit sets hitStunUntil = 220.
+      player.takeHit(100, -200, 500);
+      expect(player.getPlayerState()).toBe('hitStun');
+
+      // Advance past hitStunUntil (220 ms).
+      scene.advanceTime(250);
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('grounded');
+    });
+
+    it('hitStun → airborne when stun expires while airborne', () => {
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+
+      player.takeHit(100, -400, 500);
+      expect(player.getPlayerState()).toBe('hitStun');
+
+      // Player is now airborne (knocked upward).
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+
+      // Advance past hitStunUntil.
+      scene.advanceTime(250);
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('airborne');
+    });
+
+    it('takeHit is blocked while in flipping state', () => {
+      // Initiate a jump → enter flipping state.
+      scene.inputs.justPressed = () => true;
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('flipping');
+
+      // takeHit should be ignored mid-flip.
+      player.takeHit(100, -200, 500);
+      expect(player.getPlayerState()).toBe('flipping');
+    });
+  });
 });
