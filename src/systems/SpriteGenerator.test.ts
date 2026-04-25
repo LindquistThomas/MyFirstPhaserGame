@@ -19,6 +19,7 @@ vi.mock('./sprites/npcGeir', () => ({ generateGeirSprite: vi.fn() }));
 vi.mock('./sprites/receptionist', () => ({ generateReceptionistSprite: vi.fn() }));
 vi.mock('./sprites/coffee', () => ({ generateCoffeeSprites: vi.fn() }));
 vi.mock('./sprites/energyDrinkFridge', () => ({ generateEnergyDrinkFridgeSprites: vi.fn() }));
+vi.mock('./sprites/npcRubberDuck', () => ({ generateRubberDuckSprite: vi.fn() }));
 
 import { generatePlayerSprites } from './sprites/player';
 import { generateTileSprites } from './sprites/tiles';
@@ -37,6 +38,7 @@ import { generateGeirSprite } from './sprites/npcGeir';
 import { generateReceptionistSprite } from './sprites/receptionist';
 import { generateCoffeeSprites } from './sprites/coffee';
 import { generateEnergyDrinkFridgeSprites } from './sprites/energyDrinkFridge';
+import { generateRubberDuckSprite } from './sprites/npcRubberDuck';
 
 const allGenerators = [
   generatePlayerSprites,
@@ -56,6 +58,7 @@ const allGenerators = [
   generateReceptionistSprite,
   generateCoffeeSprites,
   generateEnergyDrinkFridgeSprites,
+  generateRubberDuckSprite,
 ];
 
 function makeScene(playerTextureExists: boolean) {
