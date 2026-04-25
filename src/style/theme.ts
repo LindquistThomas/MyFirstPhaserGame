@@ -53,6 +53,56 @@ export const theme = {
       windowBlinds: 0x3a2e18,
     },
 
+    /**
+     * Per-floor near-layer backdrop palette. Used by `floorBackdrops.ts` to
+     * draw themed silhouettes inside the hallway strips on either side of
+     * the elevator shaft (server racks, whiteboard, monitor, panelling,
+     * pipes, etc.). Tuned darker / desaturated so backdrop reads as
+     * "behind the floor" against the foreground decor at depth 3+.
+     */
+    floorBackdrop: {
+      // Generic
+      panelDark: 0x1a1a22,
+      panelMid: 0x2a2a36,
+      panelEdge: 0x3a3a48,
+      stencil: 0x55556a,
+      // Platform Team — server cabinets
+      rackBody: 0x14181f,
+      rackEdge: 0x2a3140,
+      rackLedOff: 0x223028,
+      rackLedOn: 0x4cd07a,
+      rackLedAmber: 0xe0a040,
+      // Architecture — whiteboard
+      boardSurface: 0xc8cdd4,
+      boardFrame: 0x6a6a78,
+      boardMarker: 0x2a3d6b,
+      boardMarkerAlt: 0x8a3a3a,
+      // Business — desk + monitor
+      deskSurface: 0x3a2e22,
+      deskEdge: 0x5a4a36,
+      monitorBezel: 0x14181c,
+      monitorScreen: 0x0e2030,
+      monitorChart: 0x4cc0d0,
+      // Customer Success — cubicles
+      cubicleDivider: 0x44485a,
+      cubicleAccent: 0x5a607a,
+      ticketScreen: 0x143a3a,
+      ticketGlow: 0x4cd0c0,
+      // Executive — wood panelling + bookshelf
+      woodDark: 0x2a1a10,
+      woodMid: 0x4a2e1c,
+      woodLight: 0x6a4830,
+      brass: 0xd8a040,
+      lampWarm: 0xffb060,
+      // Products — utility corridor
+      pipeBody: 0x4a4f5a,
+      pipeEdge: 0x6a7080,
+      ventGrille: 0x14181c,
+      ventSlit: 0x2a3036,
+      signYellow: 0xe0c040,
+      signRed: 0xc04040,
+    },
+
     /** Floor-specific palettes mirroring `config/levelData.ts`. */
     floor: {
       lobby:     { platform: 0x444466, background: 0x1a1a2e, wall: 0x333355, token: 0xffd700 },
