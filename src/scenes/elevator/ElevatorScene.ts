@@ -130,7 +130,7 @@ export class ElevatorScene extends Phaser.Scene {
 
     this.elevatorCtrl = new ElevatorController(this, this.player, this.buildElevator(positions));
 
-    const productsWalkY = positions[FLOORS.PRODUCTS]! + ElevatorScene.FLOOR_H;
+    const productsWalkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
     this.doors = new ProductDoorManager({
       scene: this,
       player: this.player,
@@ -165,7 +165,7 @@ export class ElevatorScene extends Phaser.Scene {
       },
     });
 
-    const lobbyY = positions[FLOORS.LOBBY]!;
+    const lobbyY = positions[FLOORS.LOBBY];
     this.zones = new ElevatorZones({
       scene: this,
       zoneManager: this.zoneManager,
@@ -190,7 +190,7 @@ export class ElevatorScene extends Phaser.Scene {
   }
 
   /* ---- player ---- */
-  private createPlayer(positions: Record<number, number>): void {
+  private createPlayer(positions: Record<FloorId, number>): void {
     const spawn = this.resolveInitialSpawn(positions);
     this.player = new Player(this, spawn.x, spawn.y);
     this.physics.add.collider(this.player.sprite, this.layout.platforms);
@@ -202,34 +202,31 @@ export class ElevatorScene extends Phaser.Scene {
    *   - returning from a floor/room     → just outside the shaft on that side
    *   - otherwise                       → lobby default
    */
-  private resolveInitialSpawn(positions: Record<number, number>): { x: number; y: number } {
+  private resolveInitialSpawn(positions: Record<FloorId, number>): { x: number; y: number } {
     const SPAWN_OFFSET = 56;
     if (this.spawnAtProductDoor) {
-      const productsWalkY = positions[FLOORS.PRODUCTS]! + ElevatorScene.FLOOR_H;
+      const productsWalkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
       const door = ProductDoorManager.doors.find((d) => d.contentId === this.spawnAtProductDoor);
       if (door) {
         return { x: door.x, y: productsWalkY - SPAWN_OFFSET };
       }
     }
     if (this.spawnAtFloor !== undefined && this.spawnAtFloor !== FLOORS.LOBBY) {
-      const floorY = positions[this.spawnAtFloor];
-      if (floorY !== undefined) {
-        const walkY = floorY + ElevatorScene.FLOOR_H;
-        const cx = GAME_WIDTH / 2;
-        const sw = ElevatorScene.SHAFT_WIDTH;
-        const x = this.spawnAtFloorSide === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
-        return { x, y: walkY - SPAWN_OFFSET };
-      }
+      const walkY = positions[this.spawnAtFloor] + ElevatorScene.FLOOR_H;
+      const cx = GAME_WIDTH / 2;
+      const sw = ElevatorScene.SHAFT_WIDTH;
+      const x = this.spawnAtFloorSide === 'right' ? cx + sw / 2 + 60 : cx - sw / 2 - 60;
+      return { x, y: walkY - SPAWN_OFFSET };
     }
-    const lobbyY = positions[FLOORS.LOBBY]!;
+    const lobbyY = positions[FLOORS.LOBBY];
     return { x: 110, y: lobbyY + ElevatorScene.FLOOR_H - SPAWN_OFFSET };
   }
 
   /* ---- elevator ---- */
-  private buildElevator(positions: Record<number, number>): Elevator {
+  private buildElevator(positions: Record<FloorId, number>): Elevator {
     const cx = GAME_WIDTH / 2;
     const floorH = ElevatorScene.FLOOR_H;
-    const startY = positions[this.progression.getCurrentFloor()]! + floorH + 8;
+    const startY = positions[this.progression.getCurrentFloor()] + floorH + 8;
 
     const elevator = new Elevator(this, cx, startY);
     for (const [id, y] of Object.entries(positions)) {
@@ -263,7 +260,7 @@ export class ElevatorScene extends Phaser.Scene {
    * bottom and executive at the top; {@link computeShaftExtent} derives
    * the shaft range from these.
    */
-  private getFloorYPositions(): Record<number, number> {
+  private getFloorYPositions(): Record<FloorId, number> {
     return {
       [FLOORS.LOBBY]: 2410,
       [FLOORS.PLATFORM_TEAM]: 1936,

@@ -23,7 +23,7 @@ export interface ElevatorSceneLayoutDeps {
   progression: ProgressionSystem;
   shaftWidth: number;
   shaftExtent: ShaftExtent;
-  floorYPositions: Record<number, number>;
+  floorYPositions: Record<FloorId, number>;
   floorLabels: Record<number, string>;
 }
 
@@ -1010,7 +1010,7 @@ export class ElevatorSceneLayout {
   private createLobbyDecorations(): void {
     const scene = this.deps.scene;
     const positions = this.deps.floorYPositions;
-    const lobbyY = positions[FLOORS.LOBBY]!;
+    const lobbyY = positions[FLOORS.LOBBY];
     const floorBottom = lobbyY + FLOOR_H;
 
     // Left walkway — reception side.
@@ -1221,7 +1221,7 @@ export class ElevatorSceneLayout {
   private createBelowLobbyFoundation(): void {
     const scene = this.deps.scene;
     const positions = this.deps.floorYPositions;
-    const lobbyY = positions[FLOORS.LOBBY]!;
+    const lobbyY = positions[FLOORS.LOBBY];
     const walkY = lobbyY + FLOOR_H;
     const bottom = this.deps.shaftExtent.bottom;
     const h = bottom - walkY;
@@ -1305,23 +1305,23 @@ export class ElevatorSceneLayout {
     const rightEdge = GAME_WIDTH / 2 + this.deps.shaftWidth / 2;
 
     // F1 — Platform Team
-    const f1Bottom = positions[FLOORS.PLATFORM_TEAM]! + FLOOR_H;
+    const f1Bottom = positions[FLOORS.PLATFORM_TEAM] + FLOOR_H;
     this.createF1PlatformDecorations(f1Bottom);
     this.createF1ArchitectureDecorations(f1Bottom, rightEdge);
 
     // PRODUCTS — doors are rendered by ProductDoorManager across both sides
     // of the shaft, so keep ambient dressing minimal to avoid visual clash.
-    const fProductsBottom = positions[FLOORS.PRODUCTS]! + FLOOR_H;
+    const fProductsBottom = positions[FLOORS.PRODUCTS] + FLOOR_H;
     scene.add.image(150, fProductsBottom - 60, 'info_board').setDepth(3);
     scene.add.image(rightEdge + 440, fProductsBottom - 40, 'plant_tall').setDepth(3);
 
     // F3 — Business (Product Leadership on the left, Customer Success on the right)
-    const f3Bottom = positions[FLOORS.BUSINESS]! + FLOOR_H;
+    const f3Bottom = positions[FLOORS.BUSINESS] + FLOOR_H;
     this.createF3ProductLeadershipDecorations(f3Bottom);
     this.createF3CustomerSuccessDecorations(f3Bottom, rightEdge);
 
     // F4 — Executive Suite
-    const f4Bottom = positions[FLOORS.EXECUTIVE]! + FLOOR_H;
+    const f4Bottom = positions[FLOORS.EXECUTIVE] + FLOOR_H;
     scene.add.image(120, f4Bottom - 40, 'plant_tall').setDepth(3);
     scene.add.image(280, f4Bottom - 60, 'info_board').setDepth(3);
     // Geir Harald — pacing the walkway in the F4 shaft preview. Sprite origin
