@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION } from './SaveManager';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
@@ -13,6 +13,7 @@ function memoryStorage(): KVStorage & { store: Map<string, string> } {
 }
 
 const sample: SaveData = {
+  version: CURRENT_SAVE_VERSION,
   totalAU: 7,
   floorAU: { 0: 1, 1: 4, 2: 2 },
   unlockedFloors: [0, 1, 2],
@@ -118,16 +119,15 @@ describe('SaveManager — forward compatibility & robustness', () => {
   });
 
   it('returns an empty object cast to SaveData when storage holds "{}" (no validation)', () => {
-    // Quirk: SaveManager performs no runtime validation — a partial save is
-    // returned as-is with missing fields left undefined. Consumers are
-    // expected to merge with defaults (ProgressionSystem.loadFromSave does).
+    // load() applies migrations (v0 → v1) and stamps `version: 1`.
+    // All other fields remain absent; consumers merge with defaults.
     const store = memoryStorage();
     store.store.set('architect_test_v1', '{}');
     setStorage(store);
 
     const loaded = load();
     expect(loaded).not.toBeNull();
-    expect(loaded).toEqual({});
+    expect(loaded).toEqual({ version: CURRENT_SAVE_VERSION });
     expect((loaded as Partial<SaveData>).totalAU).toBeUndefined();
     expect((loaded as Partial<SaveData>).floorAU).toBeUndefined();
   });
@@ -139,7 +139,7 @@ describe('SaveManager — forward compatibility & robustness', () => {
     setStorage(store);
 
     const loaded = load() as Partial<SaveData> | null;
-    expect(loaded).toEqual(partial);
+    expect(loaded).toEqual({ ...partial, version: CURRENT_SAVE_VERSION });
     expect(loaded?.unlockedFloors).toBeUndefined();
     expect(loaded?.collectedTokens).toBeUndefined();
   });
@@ -193,6 +193,101 @@ describe('SaveManager — forward compatibility & robustness', () => {
     expect(load()?.totalAU).toBe(3);
   });
 });
+
+
+describe('SaveManager — schema versioning & migration', () => {
+  beforeEach(() => {
+    setPlayerSlot('test');
+    setStorage(memoryStorage());
+  });
+
+  it('save() persists the version provided by the caller', () => {
+    // save() is a thin serialiser — it does not enforce CURRENT_SAVE_VERSION.
+    // Callers (e.g. ProgressionSystem.persist) are responsible for stamping the right version.
+    const customVersionedSample: SaveData = { ...sample, version: CURRENT_SAVE_VERSION + 1 };
+    save(customVersionedSample);
+    const loaded = load();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION + 1);
+  });
+
+  it('load() migrates a legacy save (no version field) to CURRENT_SAVE_VERSION', () => {
+    const store = memoryStorage();
+    // Simulate a save written before versioning was introduced.
+    const legacy = { totalAU: 5, floorAU: { 0: 5 }, unlockedFloors: [0], currentFloor: 0, collectedTokens: {} };
+    store.store.set('architect_test_v1', JSON.stringify(legacy));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.totalAU).toBe(5);
+    expect(loaded?.currentFloor).toBe(0);
+  });
+
+  it('load() does not re-migrate a save already at CURRENT_SAVE_VERSION', () => {
+    save(sample);
+    // Load twice — second load must see the same version, not an incremented one.
+    expect(load()?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(load()?.version).toBe(CURRENT_SAVE_VERSION);
+  });
+
+  it('load() preserves all game fields after migration', () => {
+    const store = memoryStorage();
+    const legacy = {
+      totalAU: 3,
+      floorAU: { 0: 1, 1: 2 },
+      unlockedFloors: [0, 1],
+      currentFloor: 1,
+      collectedTokens: { 0: [0], 1: [1, 2] },
+    };
+    store.store.set('architect_test_v1', JSON.stringify(legacy));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded?.totalAU).toBe(3);
+    expect(loaded?.floorAU).toEqual({ 0: 1, 1: 2 });
+    expect(loaded?.unlockedFloors).toEqual([0, 1]);
+    expect(loaded?.currentFloor).toBe(1);
+    expect(loaded?.collectedTokens).toEqual({ 0: [0], 1: [1, 2] });
+  });
+
+  it('load() returns a future-version save unchanged when no downgrade path exists', () => {
+    const store = memoryStorage();
+    // Simulate a save from a newer build. Since version 99 > CURRENT_SAVE_VERSION,
+    // the migration loop is skipped and the save is returned as-is.
+    store.store.set('architect_test_v1', JSON.stringify({ version: 99, totalAU: 0, floorAU: {}, unlockedFloors: [], currentFloor: 0, collectedTokens: {} }));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(99); // unchanged — higher than current
+  });
+
+  it.skip('load() returns null when a required migration entry is missing', () => {
+    // This path only occurs when 0 < save.version < CURRENT_SAVE_VERSION and
+    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=1
+    // there is no constructible version-gap case yet.
+    //
+    // Once a gap can be created, seed a save at the missing intermediate version,
+    // call load(), and assert:
+    // expect(load()).toBeNull();
+  });
+
+  it('load() returns null for a non-integer version field', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify({ ...sample, version: 1.5 }));
+    setStorage(store);
+    expect(load()).toBeNull();
+  });
+
+  it('load() returns null for a negative version field', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify({ ...sample, version: -1 }));
+    setStorage(store);
+    expect(load()).toBeNull();
+  });
+});
+
 
 describe('SaveManager — persistence:failed events', () => {
   const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
