@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, KVStorage, SaveData } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, KVStorage, SaveData, CURRENT_SAVE_VERSION } from './SaveManager';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
   const store = new Map<string, string>();
@@ -12,6 +12,7 @@ function memoryStorage(): KVStorage & { store: Map<string, string> } {
 }
 
 const sample: SaveData = {
+  version: 1,
   totalAU: 7,
   floorAU: { 0: 1, 1: 4, 2: 2 },
   unlockedFloors: [0, 1, 2],
@@ -117,16 +118,15 @@ describe('SaveManager — forward compatibility & robustness', () => {
   });
 
   it('returns an empty object cast to SaveData when storage holds "{}" (no validation)', () => {
-    // Quirk: SaveManager performs no runtime validation — a partial save is
-    // returned as-is with missing fields left undefined. Consumers are
-    // expected to merge with defaults (ProgressionSystem.loadFromSave does).
+    // load() applies migrations (v0 → v1) and stamps `version: 1`.
+    // All other fields remain absent; consumers merge with defaults.
     const store = memoryStorage();
     store.store.set('architect_test_v1', '{}');
     setStorage(store);
 
     const loaded = load();
     expect(loaded).not.toBeNull();
-    expect(loaded).toEqual({});
+    expect(loaded).toEqual({ version: CURRENT_SAVE_VERSION });
     expect((loaded as Partial<SaveData>).totalAU).toBeUndefined();
     expect((loaded as Partial<SaveData>).floorAU).toBeUndefined();
   });
@@ -138,7 +138,7 @@ describe('SaveManager — forward compatibility & robustness', () => {
     setStorage(store);
 
     const loaded = load() as Partial<SaveData> | null;
-    expect(loaded).toEqual(partial);
+    expect(loaded).toEqual({ ...partial, version: CURRENT_SAVE_VERSION });
     expect(loaded?.unlockedFloors).toBeUndefined();
     expect(loaded?.collectedTokens).toBeUndefined();
   });
@@ -190,5 +190,59 @@ describe('SaveManager — forward compatibility & robustness', () => {
     setPlayerSlot('carol');
     expect(hasSave()).toBe(true);
     expect(load()?.totalAU).toBe(3);
+  });
+});
+
+describe('SaveManager — schema versioning & migration', () => {
+  beforeEach(() => {
+    setPlayerSlot('test');
+    setStorage(memoryStorage());
+  });
+
+  it('save() always writes CURRENT_SAVE_VERSION to storage', () => {
+    save(sample);
+    const loaded = load();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+  });
+
+  it('load() migrates a legacy save (no version field) to CURRENT_SAVE_VERSION', () => {
+    const store = memoryStorage();
+    // Simulate a save written before versioning was introduced.
+    const legacy = { totalAU: 5, floorAU: { 0: 5 }, unlockedFloors: [0], currentFloor: 0, collectedTokens: {} };
+    store.store.set('architect_test_v1', JSON.stringify(legacy));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.totalAU).toBe(5);
+    expect(loaded?.currentFloor).toBe(0);
+  });
+
+  it('load() does not re-migrate a save already at CURRENT_SAVE_VERSION', () => {
+    save(sample);
+    // Load twice — second load must see the same version, not an incremented one.
+    expect(load()?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(load()?.version).toBe(CURRENT_SAVE_VERSION);
+  });
+
+  it('load() preserves all game fields after migration', () => {
+    const store = memoryStorage();
+    const legacy = {
+      totalAU: 3,
+      floorAU: { 0: 1, 1: 2 },
+      unlockedFloors: [0, 1],
+      currentFloor: 1,
+      collectedTokens: { 0: [0], 1: [1, 2] },
+    };
+    store.store.set('architect_test_v1', JSON.stringify(legacy));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded?.totalAU).toBe(3);
+    expect(loaded?.floorAU).toEqual({ 0: 1, 1: 2 });
+    expect(loaded?.unlockedFloors).toEqual([0, 1]);
+    expect(loaded?.currentFloor).toBe(1);
+    expect(loaded?.collectedTokens).toEqual({ 0: [0], 1: [1, 2] });
   });
 });
