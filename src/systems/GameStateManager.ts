@@ -48,4 +48,8 @@ export class GameStateManager {
   hasBeenSeen(id: string): boolean { return InfoDialogManager.hasBeenSeen(id); }
   hasSeenAnyInfo(): boolean { return InfoDialogManager.hasSeenAny(); }
   markSeen(id: string): void { InfoDialogManager.markSeen(id); }
+
+  isOnboardingComplete(): boolean { return this.progression.isOnboardingComplete(); }
+  completeOnboarding(): void { this.progression.completeOnboarding(); }
+  resetOnboarding(): void { this.progression.resetOnboarding(); }
 }

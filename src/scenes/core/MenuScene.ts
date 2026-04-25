@@ -19,6 +19,7 @@ import type { NavigationContext } from '../NavigationContext';
 export class MenuScene extends Phaser.Scene {
   private static readonly SOUNDTRACK_BUTTON_Y_WITH_SAVE_OFFSET = 160;
   private static readonly SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET = 100;
+  private static readonly SETTINGS_BUTTON_Y_EXTRA_OFFSET = 60;
 
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
   private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
@@ -361,6 +362,16 @@ export class MenuScene extends Phaser.Scene {
       this.menuButtons.push({ btn: soundtrackBtn, action: soundtrackAction });
       this.soundtrackButton = soundtrackBtn;
     }
+
+    // Settings button — always visible at the bottom of the button list.
+    const lastBtn = this.menuButtons[this.menuButtons.length - 1];
+    const settingsY = lastBtn
+      ? lastBtn.btn.y + MenuScene.SETTINGS_BUTTON_Y_EXTRA_OFFSET
+      : cy + 100;
+    const settingsAction = () => this.openSettings();
+    const settingsBtn = this.makeButton(cx, settingsY, '[ SETTINGS ]', 18, settingsAction);
+    settingsBtn.setDepth(TEXT_DEPTH);
+    this.menuButtons.push({ btn: settingsBtn, action: settingsAction });
   }
 
   private makeButton(
@@ -407,6 +418,11 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = { loadSave: true };
     this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
+  }
+
+  private openSettings(): void {
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.time.delayedCall(500, () => this.scene.start('SettingsScene', { from: 'MenuScene' }));
   }
 
   private playNextSoundtrack(): void {
