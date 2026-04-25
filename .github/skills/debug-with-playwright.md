@@ -16,9 +16,9 @@ npm run test:report           # Open the last HTML report
 
 Playwright specs live in `tests/*.spec.ts`; shared helpers live in `tests/helpers/playwright.ts`.
 
-## Dev-only global
+## Test-hook globals
 
-`src/main.ts` attaches `window.__game` (the `Phaser.Game`) in dev builds only. Tests use it to inspect scenes and trigger transitions without going through menus.
+`src/main.ts` attaches `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Tests use both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle (see README "Build flags").
 
 ## Debug screenshot
 

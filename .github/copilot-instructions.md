@@ -49,7 +49,7 @@ Scripts from `package.json`:
 
 | Script | Purpose |
 | --- | --- |
-| `npm run dev` | Vite dev server (exposes `window.__game` for tests). |
+| `npm run dev` | Vite dev server (`window.__game` / `__testHooks` always on unless `VITE_EXPOSE_TEST_HOOKS=false`). |
 | `npm run build` | `tsc && vite build` — typecheck is part of the build. |
 | `npm run lint` | ESLint across the repo. |
 | `npm run typecheck` | `tsc --noEmit`. |
@@ -91,7 +91,7 @@ Short index of where things live. Reach for these instead of re-implementing.
   2. Update `defaultState()`, `persist()`, `loadFromSave()`.
   3. Call `this.persist()` after any mutation that must survive a reload.
 - **Text resolution**: `main.ts` monkey-patches `scene.add.text` / `scene.make.text` to default to `resolution: 2` so glyphs stay crisp after FIT scaling. Don't re-override this unless you have a reason.
-- **Dev-only global**: `main.ts` exposes `window.__game` when `import.meta.env.DEV` is true. Playwright relies on this.
+- **Test-hook globals**: `main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle without the globals (see README "Build flags").
 
 ## How to extend
 
