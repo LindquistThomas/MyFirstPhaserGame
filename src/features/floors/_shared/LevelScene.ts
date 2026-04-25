@@ -21,6 +21,7 @@ import { createLevelDialogs } from './LevelDialogBindings';
 import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
 import { drawFloorAccents } from './floorAccents';
 import { theme } from '../../../style/theme';
+import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 /**
  * Decorative background pattern assignment per floor. Each motif echoes
@@ -278,6 +279,7 @@ export class LevelScene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     this.createAtmosphericFx();
+    this.setupPause();
   }
 
   /**
@@ -327,6 +329,37 @@ export class LevelScene extends Phaser.Scene {
       const sh = this.add.image(enemy.x, enemy.y + 28, 'shadow_blob').setDepth(5.5).setScale(0.7);
       this.enemyShadows.push(sh);
     }
+  }
+
+  /**
+   * Wire the Pause action and the browser visibility-change handler.
+   * Pressing Esc or P during gameplay launches `PauseScene` as a sibling
+   * overlay; the same keys resume from `PauseScene`.
+   * Auto-pauses when the browser tab becomes hidden.
+   */
+  private setupPause(): void {
+    const lc = createSceneLifecycle(this);
+
+    lc.bindInput('Pause', () => {
+      if (!this.isTransitioning && !this.dialogs.isOpen) {
+        this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
+      }
+    });
+
+    // Auto-pause on tab switch.  Switching back leaves the game paused so
+    // the player can press Resume intentionally.
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') {
+        // Only launch PauseScene if the level is currently running (not
+        // already paused and not in a transition).
+        if (!this.isTransitioning && !this.dialogs.isOpen
+            && !this.scene.isActive('PauseScene')) {
+          this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    lc.add(() => document.removeEventListener('visibilitychange', onVisibilityChange));
   }
 
   private updateAtmosphericFx(): void {

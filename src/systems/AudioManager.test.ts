@@ -9,6 +9,10 @@ interface FakeSoundInstance {
   play: ReturnType<typeof vi.fn>;
   stop: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
+  pause: ReturnType<typeof vi.fn>;
+  resume: ReturnType<typeof vi.fn>;
+  isPlaying: boolean;
+  isPaused: boolean;
 }
 
 interface FakeSoundManager {
@@ -25,9 +29,13 @@ function makeFakeSoundManager(): FakeSoundManager {
     play: vi.fn(),
     add: vi.fn((_key: string) => {
       const inst: FakeSoundInstance = {
-        play: vi.fn(),
-        stop: vi.fn(),
+        play: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = true; this.isPaused = false; }),
+        stop: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = false; this.isPaused = false; }),
         destroy: vi.fn(),
+        pause: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = false; this.isPaused = true; }),
+        resume: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = true; this.isPaused = false; }),
+        isPlaying: false,
+        isPaused: false,
       };
       instances.push(inst);
       return inst;
@@ -124,6 +132,57 @@ describe('AudioManager', () => {
       const first = fakeSound._instances[0]!;
       eventBus.emit('music:pop');
       expect(first.stop).toHaveBeenCalledTimes(1);
+    });
+
+    it('music:pause calls pause() on the playing track', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0];
+      inst.isPlaying = true;
+      eventBus.emit('music:pause');
+      expect(inst.pause).toHaveBeenCalledTimes(1);
+    });
+
+    it('music:pause is a no-op when no track is playing', () => {
+      expect(() => eventBus.emit('music:pause')).not.toThrow();
+    });
+
+    it('music:pause is a no-op when track is already paused', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0];
+      inst.isPlaying = false; // not playing (e.g. already paused)
+      eventBus.emit('music:pause');
+      expect(inst.pause).not.toHaveBeenCalled();
+    });
+
+    it('music:resume calls resume() on a paused track', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0];
+      inst.isPaused = true;
+      eventBus.emit('music:resume');
+      expect(inst.resume).toHaveBeenCalledTimes(1);
+    });
+
+    it('music:resume is a no-op when no track exists', () => {
+      expect(() => eventBus.emit('music:resume')).not.toThrow();
+    });
+
+    it('music:resume is a no-op when track is not paused', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0];
+      inst.isPaused = false;
+      eventBus.emit('music:resume');
+      expect(inst.resume).not.toHaveBeenCalled();
+    });
+
+    it('pause then resume round-trip leaves track playing', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0];
+      inst.isPlaying = true;
+      eventBus.emit('music:pause');
+      // After pause, isPlaying is false and isPaused is true (set by mock).
+      eventBus.emit('music:resume');
+      expect(inst.pause).toHaveBeenCalledTimes(1);
+      expect(inst.resume).toHaveBeenCalledTimes(1);
     });
   });
 

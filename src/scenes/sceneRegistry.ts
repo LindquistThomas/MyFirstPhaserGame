@@ -14,6 +14,7 @@
 import * as Phaser from 'phaser';
 import { BootScene } from './core/BootScene';
 import { MenuScene } from './core/MenuScene';
+import { PauseScene } from './core/PauseScene';
 import { ElevatorScene } from './elevator/ElevatorScene';
 import {
   PlatformTeamScene,
@@ -41,6 +42,7 @@ export interface SceneRegistration {
 export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
   { key: 'BootScene', cls: BootScene },
   { key: 'MenuScene', cls: MenuScene },
+  { key: 'PauseScene', cls: PauseScene },
   { key: 'ElevatorScene', cls: ElevatorScene },
   { key: 'PlatformTeamScene', cls: PlatformTeamScene },
   { key: 'ArchitectureTeamScene', cls: ArchitectureTeamScene },

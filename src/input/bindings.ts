@@ -66,6 +66,11 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
   ElevatorCallFloor3: [K.THREE],
   ElevatorCallFloor4: [K.FOUR],
 
+  // --- Pause / resume ---
+  // Esc pauses gameplay only (not modals/menus — Cancel covers those).
+  // P is an alternate pause key during gameplay; Esc remains Cancel in menu/modal contexts.
+  Pause: [K.ESC, K.P],
+
   // --- Debug ---
   ToggleDebug: [K.D],
 };

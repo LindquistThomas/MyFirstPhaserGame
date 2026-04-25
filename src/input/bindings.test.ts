@@ -8,7 +8,7 @@ vi.mock('phaser', () => {
     LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40,
     SPACE: 32, ENTER: 13, ESC: 27,
     PAGE_UP: 33, PAGE_DOWN: 34,
-    A: 65, B: 66, C: 67, D: 68, I: 73, S: 83, W: 87,
+    A: 65, B: 66, C: 67, D: 68, I: 73, P: 80, S: 83, W: 87,
     ONE: 49, TWO: 50, THREE: 51, FOUR: 52,
     F12: 123,
   };
@@ -56,6 +56,7 @@ describe('actions', () => {
       'QuickAnswer1', 'QuickAnswer2', 'QuickAnswer3', 'QuickAnswer4',
       'ElevatorCallFloor0', 'ElevatorCallFloor1', 'ElevatorCallFloor2',
       'ElevatorCallFloor3', 'ElevatorCallFloor4',
+      'Pause',
       'ToggleDebug',
     ];
     for (const a of expected) {
@@ -76,6 +77,7 @@ describe('actions', () => {
     expect(ACTION_CONTEXTS.Jump).toEqual(['gameplay']);
     expect(ACTION_CONTEXTS.MoveLeft).toEqual(['gameplay']);
     expect(ACTION_CONTEXTS.Interact).toEqual(['gameplay']);
+    expect(ACTION_CONTEXTS.Pause).toEqual(['gameplay']);
   });
 
   it('marks ToggleDebug as always-available', () => {
@@ -156,6 +158,15 @@ describe('bindings', () => {
       for (const k of keys) every.add(k);
     }
     expect(new Set(ALL_BOUND_KEYS)).toEqual(every);
+  });
+
+  it('binds Esc and P to Pause (gameplay-only)', () => {
+    expect(DEFAULT_BINDINGS.Pause).toContain(K.ESC);
+    expect(DEFAULT_BINDINGS.Pause).toContain(K.P);
+    // Esc must NOT fire Cancel in gameplay context (Cancel is menu/modal only).
+    expect(ACTION_CONTEXTS.Cancel).not.toContain('gameplay');
+    expect(ACTION_CONTEXTS.Pause).not.toContain('menu');
+    expect(ACTION_CONTEXTS.Pause).not.toContain('modal');
   });
 });
 
