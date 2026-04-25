@@ -62,6 +62,15 @@ export interface GameEvents {
    * Payload: storage key that failed, and the human-readable error message.
    */
   'persistence:error': [storageKey: string, message: string];
+
+  /**
+   * SaveManager failed to read or write a save slot.
+   * `reason` discriminates the failure mode so HUD can show a tailored message.
+   * Emitted at most once per `unavailable` session (noop storage detection),
+   * on every quota error, on every JSON parse failure, and on other unknown
+   * storage errors.
+   */
+  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string }];
 }
 
 export type GameEventName = keyof GameEvents;

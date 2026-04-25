@@ -143,6 +143,39 @@ test.describe('Visual regression (static UI)', () => {
     await expect(page).toHaveScreenshot('quiz-dialog-architecture-elevator.png', SNAPSHOT_OPTS);
     errors.assertClean();
   });
+
+  test('Toast — persistence:failed quota toast visible after fade-in', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await seedFullProgressSave(page);
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+    await page.keyboard.press('Enter');
+    await waitForScene(page, 'ElevatorScene');
+
+    // Emit persistence:failed via the test-hooks eventBus so the HUD shows the toast.
+    // The cast uses the concrete payload shape for 'persistence:failed' — browser context
+    // erases TypeScript types so we can't import GameEvents here directly.
+    await page.evaluate(() => {
+      type PersistenceFailedPayload = { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string };
+      const hooks = (window as unknown as {
+        __testHooks?: { eventBus: { emit: (event: 'persistence:failed', payload: PersistenceFailedPayload) => void } };
+      }).__testHooks;
+      if (!hooks) throw new Error('__testHooks not available');
+      hooks.eventBus.emit('persistence:failed', { reason: 'quota' });
+    });
+
+    // Allow the 200 ms fade-in tween to complete before snapping
+    await page.waitForTimeout(300);
+
+    await expect(page).toHaveScreenshot('toast-persistence-quota.png', {
+      ...SNAPSHOT_OPTS,
+      // Clip to the bottom-right corner where the toast appears
+      clip: { x: 864, y: 888, width: 416, height: 72 },
+    });
+    errors.assertClean();
+  });
 });
 
 /**

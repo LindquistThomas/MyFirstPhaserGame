@@ -8,6 +8,7 @@ import { InputService } from './input';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
 import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';
+import { eventBus } from './systems/EventBus';
 
 // Render all Text objects at 2x internal resolution so glyphs stay crisp
 // after the canvas is FIT-scaled to the viewport. Applies to both
@@ -110,10 +111,11 @@ if (import.meta.env.VITE_EXPOSE_TEST_HOOKS !== 'false') {
     __testHooks?: {
       QuizDialog: typeof QuizDialog;
       canRetryQuiz: typeof canRetryQuiz;
+      eventBus: typeof eventBus;
     };
   };
   gameWindow.__game = game;
-  gameWindow.__testHooks = { QuizDialog, canRetryQuiz };
+  gameWindow.__testHooks = { QuizDialog, canRetryQuiz, eventBus };
 }
 
 // Kick the pillarbox backdrop once the first frame has rendered, so the
