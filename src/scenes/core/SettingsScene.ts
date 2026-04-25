@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
+import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
@@ -32,6 +33,7 @@ export class SettingsScene extends Phaser.Scene {
   private sliderBars: Phaser.GameObjects.Graphics[] = [];
   /** Key of the scene that opened settings (returned to on back/cancel). */
   private callerScene = 'MenuScene';
+  private gameState!: GameStateManager;
 
   constructor() {
     super({ key: 'SettingsScene' });
@@ -39,6 +41,7 @@ export class SettingsScene extends Phaser.Scene {
 
   init(data: { from?: string }): void {
     this.callerScene = data.from ?? 'MenuScene';
+    this.gameState = this.registry.get('gameState') as GameStateManager;
   }
 
   create(): void {
@@ -85,6 +88,11 @@ export class SettingsScene extends Phaser.Scene {
         label: 'MUTE ALL  [M]',
         get: () => settingsStore.read().muteAll,
         set: (v) => settingsStore.setMuteAll(v),
+      },
+      {
+        kind: 'action',
+        label: '[ REPLAY TUTORIAL ]',
+        action: () => this.replayTutorial(),
       },
       {
         kind: 'action',
@@ -265,6 +273,11 @@ export class SettingsScene extends Phaser.Scene {
     } else if (item.kind === 'action') {
       item.action();
     }
+  }
+
+  private replayTutorial(): void {
+    this.gameState?.resetOnboarding();
+    this.goBack();
   }
 
   private goBack(): void {
