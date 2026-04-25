@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ProgressionSystem } from './ProgressionSystem';
 import { setStorage, setPlayerSlot, KVStorage } from './SaveManager';
 import { FLOORS } from '../config/gameConfig';
+import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage {
   const store = new Map<string, string>();
@@ -136,6 +137,40 @@ describe('ProgressionSystem', () => {
       expect(p.loseAU(FLOORS.PLATFORM_TEAM, 0)).toBe(0);
       expect(p.loseAU(FLOORS.PLATFORM_TEAM, -5)).toBe(0);
       expect(p.getTotalAU()).toBe(3);
+    });
+  });
+
+  describe('progression events', () => {
+    afterEach(() => {
+      eventBus.removeAllListeners();
+    });
+
+    it('emits progression:au_milestone at each 50-AU boundary crossed', () => {
+      const p = new ProgressionSystem();
+      const milestones: number[] = [];
+      eventBus.on('progression:au_milestone', (total) => milestones.push(total));
+      p.addAU(FLOORS.PLATFORM_TEAM, 49);
+      expect(milestones).toEqual([]);
+      p.addAU(FLOORS.PLATFORM_TEAM, 1); // crosses 50
+      expect(milestones).toEqual([50]);
+      p.addAU(FLOORS.PLATFORM_TEAM, 50); // crosses 100
+      expect(milestones).toEqual([50, 100]);
+    });
+
+    it('emits every boundary when a single addAU call crosses multiple milestones', () => {
+      const p = new ProgressionSystem();
+      const milestones: number[] = [];
+      eventBus.on('progression:au_milestone', (total) => milestones.push(total));
+      p.addAU(FLOORS.PLATFORM_TEAM, 120); // crosses 50 and 100
+      expect(milestones).toEqual([50, 100]);
+    });
+
+    it('does not emit progression:au_milestone when total stays below first boundary', () => {
+      const p = new ProgressionSystem();
+      const fn = vi.fn();
+      eventBus.on('progression:au_milestone', fn);
+      p.addAU(FLOORS.PLATFORM_TEAM, 49);
+      expect(fn).not.toHaveBeenCalled();
     });
   });
 });

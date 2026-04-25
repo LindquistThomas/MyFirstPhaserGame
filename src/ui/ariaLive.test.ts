@@ -44,6 +44,13 @@ describe('announce', () => {
     expect(el.textContent).toBe('');
   });
 
+  it('only delivers the last message when called twice within the delay window', async () => {
+    announce('first message');
+    announce('second message');
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('second message');
+  });
+
   it('is a no-op when the live region is absent', () => {
     el.remove();
     expect(() => announce('test')).not.toThrow();

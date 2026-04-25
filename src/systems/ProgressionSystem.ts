@@ -67,15 +67,18 @@ export class ProgressionSystem {
     this.checkUnlocks();
     this.persist();
 
-    // Announce AU milestones every AU_MILESTONE_STEP AU earned.
-    // We emit the milestone boundary (e.g. 50, 100, 150) rather than the
-    // actual total so the announced message is round and unambiguous ("50
+    // We emit each crossed milestone boundary (e.g. 50, 100, 150) rather than
+    // the actual total so the announced message is round and unambiguous ("50
     // Architecture Units collected" even if the player jumped from 45 to 60).
+    // Looping ensures every boundary is announced when a single addAU call
+    // crosses multiple steps (e.g. 0 → 120 emits both 50 and 100).
     const newTotal = this.state.totalAU;
     const prevMilestone = Math.floor(prevTotal / AU_MILESTONE_STEP);
     const newMilestone = Math.floor(newTotal / AU_MILESTONE_STEP);
     if (newTotal > 0 && newMilestone > prevMilestone) {
-      eventBus.emit('progression:au_milestone', newMilestone * AU_MILESTONE_STEP);
+      for (let m = prevMilestone + 1; m <= newMilestone; m += 1) {
+        eventBus.emit('progression:au_milestone', m * AU_MILESTONE_STEP);
+      }
     }
   }
 
