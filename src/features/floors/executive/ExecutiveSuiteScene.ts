@@ -39,9 +39,10 @@ export class ExecutiveSuiteScene extends LevelScene {
   }
 
   preload(): void {
-    // Spy-theme MP3 is large (~6MB) — load on first suite entry instead
-    // of during BootScene to keep initial startup lean. Phaser caches
-    // by key, so subsequent visits skip the network round-trip.
+    // Pre-load the boss track during this scene's preload phase so it is
+    // ready by the time create() runs (avoids a brief silence on first
+    // entry). MusicPlugin's lazy-loading is the fallback for scenes without
+    // an explicit preload step.
     loadDeferredMusic(this, 'music_executive');
   }
 

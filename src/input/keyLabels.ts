@@ -40,7 +40,7 @@ export function keyLabel(key: KeyCode): string {
 export function primaryKeyLabel(action: GameAction): string {
   const keys = DEFAULT_BINDINGS[action];
   if (!keys || keys.length === 0) return '?';
-  return keyLabel(keys[0]);
+  return keyLabel(keys[0]!);
 }
 
 /**

@@ -9,6 +9,10 @@ interface FakeSoundInstance {
   stop: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
   setVolume: ReturnType<typeof vi.fn>;
+  pause: ReturnType<typeof vi.fn>;
+  resume: ReturnType<typeof vi.fn>;
+  isPlaying: boolean;
+  isPaused: boolean;
 }
 
 interface FakeSoundManager {
@@ -27,10 +31,14 @@ function makeFakeSoundManager(): FakeSoundManager {
     play: vi.fn(),
     add: vi.fn((_key: string) => {
       const inst: FakeSoundInstance = {
-        play: vi.fn(),
-        stop: vi.fn(),
+        play: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = true; this.isPaused = false; }),
+        stop: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = false; this.isPaused = false; }),
         destroy: vi.fn(),
         setVolume: vi.fn(),
+        pause: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = false; this.isPaused = true; }),
+        resume: vi.fn().mockImplementation(function (this: FakeSoundInstance) { this.isPlaying = true; this.isPaused = false; }),
+        isPlaying: false,
+        isPaused: false,
       };
       instances.push(inst);
       return inst;
@@ -83,7 +91,7 @@ describe('AudioManager', () => {
       eventBus.emit('music:play', 'music_menu');
       expect(fakeSound.add).toHaveBeenCalledWith('music_menu', expect.objectContaining({ loop: true }));
       expect(fakeSound._instances).toHaveLength(1);
-      expect(fakeSound._instances[0].play).toHaveBeenCalledTimes(1);
+      expect(fakeSound._instances[0]!.play).toHaveBeenCalledTimes(1);
     });
 
     it('music:play with the same key twice in a row skips the second add', () => {
@@ -94,7 +102,7 @@ describe('AudioManager', () => {
 
     it('music:play with a different key stops the previous track', () => {
       eventBus.emit('music:play', 'track_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('music:play', 'track_b');
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
@@ -103,7 +111,7 @@ describe('AudioManager', () => {
 
     it('music:stop halts the current track', () => {
       eventBus.emit('music:play', 'track_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('music:stop');
       expect(first.stop).toHaveBeenCalledTimes(1);
     });
@@ -124,9 +132,60 @@ describe('AudioManager', () => {
 
     it('music:pop with an empty stack stops music', () => {
       eventBus.emit('music:play', 'base');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('music:pop');
       expect(first.stop).toHaveBeenCalledTimes(1);
+    });
+
+    it('music:pause calls pause() on the playing track', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0]!;
+      inst.isPlaying = true;
+      eventBus.emit('music:pause');
+      expect(inst.pause).toHaveBeenCalledTimes(1);
+    });
+
+    it('music:pause is a no-op when no track is playing', () => {
+      expect(() => eventBus.emit('music:pause')).not.toThrow();
+    });
+
+    it('music:pause is a no-op when track is already paused', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0]!;
+      inst.isPlaying = false; // not playing (e.g. already paused)
+      eventBus.emit('music:pause');
+      expect(inst.pause).not.toHaveBeenCalled();
+    });
+
+    it('music:resume calls resume() on a paused track', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0]!;
+      inst.isPaused = true;
+      eventBus.emit('music:resume');
+      expect(inst.resume).toHaveBeenCalledTimes(1);
+    });
+
+    it('music:resume is a no-op when no track exists', () => {
+      expect(() => eventBus.emit('music:resume')).not.toThrow();
+    });
+
+    it('music:resume is a no-op when track is not paused', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0]!;
+      inst.isPaused = false;
+      eventBus.emit('music:resume');
+      expect(inst.resume).not.toHaveBeenCalled();
+    });
+
+    it('pause then resume round-trip leaves track playing', () => {
+      eventBus.emit('music:play', 'track_a');
+      const inst = fakeSound._instances[0]!;
+      inst.isPlaying = true;
+      eventBus.emit('music:pause');
+      // After pause, isPlaying is false and isPaused is true (set by mock).
+      eventBus.emit('music:resume');
+      expect(inst.pause).toHaveBeenCalledTimes(1);
+      expect(inst.resume).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -137,11 +196,11 @@ describe('AudioManager', () => {
         'ambience_datacenter',
         expect.objectContaining({ loop: true }),
       );
-      const callVolume = (fakeSound.add.mock.calls[0][1] as { volume: number }).volume;
+      const callVolume = (fakeSound.add.mock.calls[0]![1] as { volume: number }).volume;
       // Ambience must be quieter than music so it sits UNDER the main track.
       expect(callVolume).toBeLessThan(MUSIC_VOLUME);
       expect(fakeSound._instances).toHaveLength(1);
-      expect(fakeSound._instances[0].play).toHaveBeenCalledTimes(1);
+      expect(fakeSound._instances[0]!.play).toHaveBeenCalledTimes(1);
     });
 
     it('ambience:play with the same key twice skips the second add', () => {
@@ -152,7 +211,7 @@ describe('AudioManager', () => {
 
     it('ambience:play with a different key stops the previous bed', () => {
       eventBus.emit('ambience:play', 'ambience_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('ambience:play', 'ambience_b');
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
@@ -161,7 +220,7 @@ describe('AudioManager', () => {
 
     it('ambience:stop halts the current bed', () => {
       eventBus.emit('ambience:play', 'ambience_a');
-      const first = fakeSound._instances[0];
+      const first = fakeSound._instances[0]!;
       eventBus.emit('ambience:stop');
       expect(first.stop).toHaveBeenCalledTimes(1);
     });
@@ -173,7 +232,7 @@ describe('AudioManager', () => {
     it('ambience is independent of music — music:stop does not stop ambience', () => {
       eventBus.emit('music:play', 'music_x');
       eventBus.emit('ambience:play', 'ambience_a');
-      const ambienceInst = fakeSound._instances[1];
+      const ambienceInst = fakeSound._instances[1]!;
       eventBus.emit('music:stop');
       expect(ambienceInst.stop).not.toHaveBeenCalled();
     });

@@ -36,9 +36,9 @@ export class LevelTokenManager {
   spawn(config: LevelConfig): void {
     const tokenKey = this.tokenKey();
     for (let i = 0; i < config.tokens.length; i++) {
-      const idx = config.tokens[i].index ?? i;
+      const idx = config.tokens[i]!.index ?? i;
       if (this.deps.progression.isTokenCollected(this.deps.floorId, idx)) continue;
-      const token = new Token(this.deps.scene, config.tokens[i].x, config.tokens[i].y, tokenKey);
+      const token = new Token(this.deps.scene, config.tokens[i]!.x, config.tokens[i]!.y, tokenKey);
       token.setData('tokenIndex', idx);
       this.tokenGroup.add(token);
     }

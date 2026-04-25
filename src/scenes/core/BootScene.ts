@@ -54,9 +54,10 @@ export class BootScene extends Phaser.Scene {
     // This also generates the procedural lullaby music track.
     generateSounds(this);
 
-    // Load static background music files.
-    for (const { key, path } of STATIC_MUSIC_ASSETS) {
-      this.load.audio(key, path);
+    // Load only eager music tracks at boot (everything else is lazy-loaded
+    // by MusicPlugin on first play so the initial download stays small).
+    for (const { key, path, eager } of STATIC_MUSIC_ASSETS) {
+      if (eager) this.load.audio(key, path);
     }
 
     // Brand assets. The Norconsult Digital wordmark (white) is used as the

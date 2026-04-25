@@ -23,7 +23,7 @@ export interface ElevatorSceneLayoutDeps {
   progression: ProgressionSystem;
   shaftWidth: number;
   shaftExtent: ShaftExtent;
-  floorYPositions: Record<number, number>;
+  floorYPositions: Record<FloorId, number>;
   floorLabels: Record<number, string>;
 }
 
@@ -236,14 +236,14 @@ export class ElevatorSceneLayout {
 
     const bands: FacadeBand[] = [];
     for (let i = 0; i < sorted.length; i++) {
-      const yTop = i === 0 ? top : sorted[i].y;
-      const yBottom = i < sorted.length - 1 ? sorted[i + 1].y : bottom;
+      const yTop = i === 0 ? top : sorted[i]!.y;
+      const yBottom = i < sorted.length - 1 ? sorted[i + 1]!.y : bottom;
       bands.push({
         yTop,
         yBottom,
         wallColor,
         // Keep per-floor seeds so window patterns vary across the height.
-        seed: 0xabc123 ^ (sorted[i].id * 0x9e3779b1),
+        seed: 0xabc123 ^ (sorted[i]!.id * 0x9e3779b1),
       });
     }
 
@@ -645,7 +645,7 @@ export class ElevatorSceneLayout {
     const heights = [62, 86, 46, 70];
     for (let i = 0; i < heights.length; i++) {
       const px = x + i * 14;
-      const ph = heights[i];
+      const ph = heights[i]!;
       // Pipe body.
       g.fillStyle(0x1a1a22, 1);
       g.fillRect(px, roofY - ph, 8, ph);

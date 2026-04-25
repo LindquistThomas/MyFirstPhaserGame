@@ -86,7 +86,7 @@ export class ModalKeyboardNavigator {
     const prev = this.focusables[this.focusIndex];
     if (prev) prev.blur();
     this.focusIndex = index;
-    const cur = this.focusables[index];
+    const cur = this.focusables[index]!;
     cur.focus();
     this.refreshArrow();
   }
