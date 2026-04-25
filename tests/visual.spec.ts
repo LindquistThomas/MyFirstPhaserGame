@@ -208,6 +208,8 @@ test.describe('Visual regression (floor layouts)', () => {
     // rather than seedFullProgressSave so we can set unlockedFloors explicitly
     // for floors beyond the default [0, 1] pair.
     await page.addInitScript(() => {
+      // Floor IDs: LOBBY=0, PLATFORM_TEAM=1, BUSINESS=3, EXECUTIVE=4, PRODUCTS=5.
+      // Floor 2 does not exist in the game's numbering scheme (intentional gap).
       const save = {
         totalAU: 50,
         floorAU: { 0: 0, 1: 25, 3: 10, 4: 15, 5: 0 },
