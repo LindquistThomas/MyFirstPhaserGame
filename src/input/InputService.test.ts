@@ -414,6 +414,8 @@ describe('InputService — virtual buttons (setVirtualButton)', () => {
     setVirtualButton('Jump', true);
     expect(h.svc.justPressed('Jump')).toBe(false);
     popContext(tok);
+    // The blocked press must be discarded — it must NOT fire after context is restored.
+    expect(h.svc.justPressed('Jump')).toBe(false);
   });
 
   it('event handlers fire on virtual press', () => {

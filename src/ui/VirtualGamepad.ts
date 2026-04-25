@@ -57,6 +57,13 @@ function onTouchEnd(e: TouchEvent): void {
 export function initVirtualGamepad(): void {
   if (!isTouchPrimary()) return;
 
+  const existingPad = document.getElementById('virtual-pad');
+  if (existingPad) {
+    // Already mounted (e.g. HMR or repeated init); just ensure it is visible.
+    existingPad.classList.add('active');
+    return;
+  }
+
   const pad = document.createElement('div');
   pad.id = 'virtual-pad';
   pad.setAttribute('aria-hidden', 'true');

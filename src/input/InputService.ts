@@ -35,16 +35,30 @@ const liveInputServices = new Set<InputService>();
  * and the press edge drives `justPressed()` and event subscribers, exactly
  * like a physical key press.
  *
+ * Press events are edge-detected: calling with `pressed = true` while the
+ * button is already held is a no-op, preventing spurious re-fires from
+ * multi-touch quirks or repeated touchstart events.
+ *
  * All actions are still filtered by the active `InputContext`, so virtual
  * `Jump` is suppressed while a modal is open, etc.
  */
 export function setVirtualButton(action: GameAction, pressed: boolean): void {
-  virtualButtonsDown.set(action, pressed);
-  if (pressed) {
-    virtualJustPressedQueue.add(action);
-    for (const svc of liveInputServices) {
-      svc._dispatchAction(action);
-    }
+  const wasPressed = virtualButtonsDown.get(action) === true;
+
+  if (!pressed) {
+    virtualButtonsDown.delete(action);
+    return;
+  }
+
+  if (wasPressed) {
+    // Already held — ignore repeated touchstart to avoid double-fires.
+    return;
+  }
+
+  virtualButtonsDown.set(action, true);
+  virtualJustPressedQueue.add(action);
+  for (const svc of liveInputServices) {
+    svc._dispatchAction(action);
   }
 }
 
@@ -221,11 +235,13 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
       virtualJustPressedQueue.delete(action);
       return true;
     }
-    // Fallback: check the module-level virtual queue (context-filtered at
-    // consumption time). This catches the case where the service was not
-    // live when setVirtualButton fired (e.g. started after the press).
-    if (virtualJustPressedQueue.has(action) && actionAllowed(action)) {
+    // Fallback: check the module-level virtual queue. Consume the queued
+    // virtual press even when the action is currently disallowed, so blocked
+    // presses are discarded rather than leaking into a later context.
+    // This matches keyboard semantics: a press while blocked is lost.
+    if (virtualJustPressedQueue.has(action)) {
       virtualJustPressedQueue.delete(action);
+      if (!actionAllowed(action)) return false;
       return true;
     }
     return false;

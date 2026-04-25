@@ -93,7 +93,7 @@
 
     /* Left cluster (D-pad) and right cluster (action buttons) */
     .vpad-cluster {
-      pointer-events: auto;
+      pointer-events: none;
     }
 
     /* D-pad laid out as a cross */
@@ -134,6 +134,7 @@
       font-size: 20px;
       line-height: 1;
       cursor: pointer;
+      pointer-events: auto;
       touch-action: none;
       -webkit-tap-highlight-color: transparent;
       transition: background 80ms ease;
