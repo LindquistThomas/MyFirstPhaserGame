@@ -49,7 +49,7 @@ describe('Coffee', () => {
     expect((coffee as unknown as { steam?: unknown }).steam).toBeDefined();
   });
 
-  it('skips steam and halo tween when steam texture is missing', () => {
+  it('skips steam-specific tween when steam texture is missing', () => {
     const { scene, coffee } = makeCoffee(false);
     const addTween = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
 
@@ -80,8 +80,11 @@ describe('Coffee', () => {
     expect((coffee.body as { enable: boolean }).enable).toBe(false);
     expect(scene.tweens.killTweensOf).toHaveBeenCalledWith(coffee);
     expect(addTween.mock.calls.length).toBe(countBefore + 2);
-    const mugTween = addTween.mock.results[addTween.mock.results.length - 1]!.value as { onComplete?: () => void };
-    mugTween.onComplete?.();
+    expect(addTween.mock.results.length).toBeGreaterThan(0);
+    const lastResult = addTween.mock.results[addTween.mock.results.length - 1];
+    const mugTween = lastResult?.value as { onComplete?: () => void } | undefined;
+    expect(mugTween).toBeDefined();
+    mugTween?.onComplete?.();
     expect(destroy).toHaveBeenCalledTimes(1);
   });
 

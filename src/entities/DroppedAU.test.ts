@@ -88,8 +88,11 @@ describe('DroppedAU', () => {
     expect((dropped.body as { enable: boolean }).enable).toBe(false);
     expect(recovered).toHaveBeenCalledTimes(1);
     const addTween = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
-    const tween = addTween.mock.results[addTween.mock.results.length - 1]!.value as { onComplete?: () => void };
-    tween.onComplete?.();
+    expect(addTween.mock.results.length).toBeGreaterThan(0);
+    const lastResult = addTween.mock.results[addTween.mock.results.length - 1];
+    const tween = lastResult?.value as { onComplete?: () => void } | undefined;
+    expect(tween).toBeDefined();
+    tween?.onComplete?.();
     expect(destroy).toHaveBeenCalledTimes(1);
   });
 
