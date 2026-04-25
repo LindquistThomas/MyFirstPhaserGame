@@ -3,7 +3,7 @@
 <!-- SYNC NOTICE: This file and CLAUDE.md (repo root) share the same
      project instructions. When you edit one, update the other to match. -->
 
-A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Units) to unlock floors of a building, each representing a domain team.
+A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Utility) to unlock floors of a building, each representing a domain team.
 
 ## Repository structure
 
