@@ -14,17 +14,23 @@ Only these tracks are loaded before the menu renders:
 
 ## Lazy-loaded tracks
 
-All other tracks in `STATIC_MUSIC_ASSETS` are lazy-loaded on first entry to the scene that needs them. `MusicPlugin` detects a cache miss and queues the file via `scene.load`, then emits `music:play` once loading completes. Subsequent visits use the Phaser audio cache and play instantly.
+All other tracks in `STATIC_MUSIC_ASSETS` are lazy-loaded on demand. There are two code paths:
 
-| Asset key | File | Used by |
-| --- | --- | --- |
-| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` (via `SCENE_MUSIC`) |
-| `music_elevator_ride` | `8bit-chiptune/bgm_action_3.mp3` | `ElevatorController` — emitted imperatively with `music:play` during an active ride. |
-| `music_floor1` | `8bit-chiptune/bgm_action_1.mp3` | `ArchitectureTeamScene` (via `SCENE_MUSIC`) |
-| `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, and the Product sub-scenes (via `SCENE_MUSIC`) |
-| `music_platform` | `retro-synth/shadow_operations-loop1.ogg` | `PlatformTeamScene` (via `SCENE_MUSIC`) |
-| `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` — emits `music:push` while a quiz is active, then pops back to scene music. |
-| `music_executive` | `boss/bossroom-battle-431358.mp3` | `ExecutiveSuiteScene` (via `SCENE_MUSIC`) |
+### Via SCENE_MUSIC (automatic)
+`MusicPlugin` intercepts the scene `create` lifecycle event, looks up the scene key in `SCENE_MUSIC`, and calls `playOrLoad()`. If the audio isn't cached yet, it queues a load on the scene's loader and emits `music:play` once the `filecomplete` event fires. Subsequent scene entries use the Phaser cache and play instantly.
+
+### Via music:request / music:request-push (imperative call sites)
+Any code that needs to play or push a non-eager track imperatively must emit `music:request` (instead of `music:play`) or `music:request-push` (instead of `music:push`). `MusicPlugin` subscribes to these while the scene is active and performs the same load-then-play / load-then-push sequence.
+
+| Asset key | File | Used by | Load path |
+| --- | --- | --- | --- |
+| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` (via `SCENE_MUSIC`); `ElevatorController` on elevator stop (`music:request`) | Automatic + imperative |
+| `music_elevator_ride` | `8bit-chiptune/bgm_action_3.mp3` | `ElevatorController` on elevator start (`music:request`) | Imperative |
+| `music_floor1` | `8bit-chiptune/bgm_action_1.mp3` | `ArchitectureTeamScene` (via `SCENE_MUSIC`) | Automatic |
+| `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, and the Product sub-scenes (via `SCENE_MUSIC`) | Automatic |
+| `music_platform` | `retro-synth/shadow_operations-loop1.ogg` | `PlatformTeamScene` (via `SCENE_MUSIC`) | Automatic |
+| `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` on open (`music:request-push`); `QuizDialog` on close (`music:pop`) | Imperative |
+| `music_executive` | `boss/bossroom-battle-431358.mp3` | `ExecutiveSuiteScene` (via `SCENE_MUSIC`); also pre-loaded in its `preload()` to avoid any silence gap on first entry | Automatic + optional preload |
 
 ## Unused tracks present on disk
 
@@ -40,8 +46,9 @@ The following files are part of the library but are not currently referenced by 
 ## Swapping in or adding a track
 
 1. Drop the file into an appropriate subdirectory under `public/music/` (current packs: `8bit-chiptune/`, `elevator-jazz/`, `retro-synth/`, `boss/` — or create a new pack directory).
-2. Add an entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with a `music_<name>` key, the path relative to `public/`, and `eager: true` only if it must be available before the menu renders (otherwise omit or set `eager: false` and it will be lazy-loaded).
-3. Point one or more scenes at the new key in `SCENE_MUSIC` (same file). `MusicPlugin` picks it up automatically on the next scene transition, lazy-loading the file on first play.
+2. Add an entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with a `music_<name>` key, the path relative to `public/`, and `eager: true` only if it must be available before the menu renders (otherwise omit — it will be lazy-loaded).
+3. Point one or more scenes at the new key in `SCENE_MUSIC` (same file). `MusicPlugin` picks it up automatically on the next scene transition and lazy-loads the file on first play.
+4. For code that emits music events imperatively (outside SCENE_MUSIC), use `music:request` instead of `music:play`, or `music:request-push` instead of `music:push`. `MusicPlugin` intercepts these, loads the asset if needed, then forwards to AudioManager.
 
 ## Encoding
 

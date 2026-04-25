@@ -202,6 +202,135 @@ describe('MusicPlugin', () => {
     });
   });
 
+  describe('loadAndEmitPush() — push-stack lazy loading', () => {
+    it('emits music:push immediately when key is cached', () => {
+      const { plugin } = mountPlugin('PlatformTeamScene', ['music_quiz']);
+      const spy = vi.fn();
+      eventBus.on('music:push', spy);
+
+      plugin.loadAndEmitPush('music_quiz');
+
+      expect(spy).toHaveBeenCalledWith('music_quiz');
+    });
+
+    it('defers music:push until file is loaded when not cached', () => {
+      const { plugin, fakeScene } = mountPlugin('PlatformTeamScene');
+      const spy = vi.fn();
+      eventBus.on('music:push', spy);
+
+      plugin.loadAndEmitPush('music_quiz');
+
+      expect(spy).not.toHaveBeenCalled();
+      fakeScene.load.triggerComplete('music_quiz');
+      expect(spy).toHaveBeenCalledWith('music_quiz');
+    });
+
+    it('queues load for the correct path', () => {
+      const { plugin, fakeScene } = mountPlugin('PlatformTeamScene');
+      plugin.loadAndEmitPush('music_quiz');
+      expect(fakeScene.load.audio).toHaveBeenCalledWith(
+        'music_quiz',
+        expect.stringContaining('hostile_territory-loop1.ogg'),
+      );
+    });
+  });
+
+  describe('music:request event — scene-lifecycle subscription', () => {
+    it('handles music:request while scene is active (not cached → deferred play)', () => {
+      const { fakeScene } = mountPlugin('ElevatorScene');
+      const spy = vi.fn();
+      eventBus.on('music:play', spy);
+
+      eventBus.emit('music:request', 'music_elevator_ride');
+
+      expect(fakeScene.load.audio).toHaveBeenCalledWith(
+        'music_elevator_ride',
+        expect.stringContaining('bgm_action_3.mp3'),
+      );
+      expect(spy).not.toHaveBeenCalled();
+
+      fakeScene.load.triggerComplete('music_elevator_ride');
+      expect(spy).toHaveBeenCalledWith('music_elevator_ride');
+    });
+
+    it('handles music:request when key is already cached (immediate play)', () => {
+      const { fakeScene } = mountPlugin('ElevatorScene', ['music_elevator_jazz']);
+      const spy = vi.fn();
+      eventBus.on('music:play', spy);
+
+      eventBus.emit('music:request', 'music_elevator_jazz');
+
+      expect(spy).toHaveBeenCalledWith('music_elevator_jazz');
+      expect(fakeScene.load.start).not.toHaveBeenCalled();
+    });
+
+    it('unsubscribes from music:request on scene shutdown', () => {
+      const { fakeScene } = mountPlugin('ElevatorScene');
+      const spy = vi.fn();
+      eventBus.on('music:play', spy);
+
+      fakeScene.sys.events.emit('shutdown');
+
+      // After shutdown, music:request should be ignored
+      eventBus.emit('music:request', 'music_elevator_ride');
+      expect(fakeScene.load.audio).not.toHaveBeenCalled();
+    });
+
+    it('re-subscribes to music:request after scene restart', () => {
+      const { fakeScene } = mountPlugin('ElevatorScene');
+
+      // First lifecycle
+      fakeScene.sys.events.emit('shutdown');
+
+      // Restart
+      fakeScene.sys.events.emit('start');
+
+      const spy = vi.fn();
+      eventBus.on('music:play', spy);
+
+      // Cache the key so it plays immediately
+      (fakeScene.cache.audio.exists as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      eventBus.emit('music:request', 'music_elevator_jazz');
+      expect(spy).toHaveBeenCalledWith('music_elevator_jazz');
+    });
+  });
+
+  describe('music:request-push event', () => {
+    it('handles music:request-push while scene is active (not cached → deferred push)', () => {
+      const { fakeScene } = mountPlugin('PlatformTeamScene');
+      const spy = vi.fn();
+      eventBus.on('music:push', spy);
+
+      eventBus.emit('music:request-push', 'music_quiz');
+
+      expect(spy).not.toHaveBeenCalled();
+      fakeScene.load.triggerComplete('music_quiz');
+      expect(spy).toHaveBeenCalledWith('music_quiz');
+    });
+
+    it('emits music:push immediately for a cached key', () => {
+      const { fakeScene } = mountPlugin('PlatformTeamScene', ['music_quiz']);
+      const spy = vi.fn();
+      eventBus.on('music:push', spy);
+
+      eventBus.emit('music:request-push', 'music_quiz');
+
+      expect(spy).toHaveBeenCalledWith('music_quiz');
+      expect(fakeScene.load.start).not.toHaveBeenCalled();
+    });
+
+    it('unsubscribes from music:request-push on scene shutdown', () => {
+      const { fakeScene } = mountPlugin('PlatformTeamScene');
+      const spy = vi.fn();
+      eventBus.on('music:push', spy);
+
+      fakeScene.sys.events.emit('shutdown');
+
+      eventBus.emit('music:request-push', 'music_quiz');
+      expect(fakeScene.load.audio).not.toHaveBeenCalled();
+    });
+  });
+
   describe('scene create integration', () => {
     it('lazy-loads a non-eager track when scene has SCENE_MUSIC entry', () => {
       // ElevatorScene → 'music_elevator_jazz' (not eager)

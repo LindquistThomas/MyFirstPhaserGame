@@ -15,6 +15,20 @@ export interface GameEvents {
   'music:push': [key: string];
   /** Restore the music that was playing before the most recent `music:push`. */
   'music:pop': [];
+  /**
+   * Request that a track be lazy-loaded (if not already cached) and then
+   * played via `music:play`. Use instead of `music:play` for any track that
+   * may not be in Phaser's audio cache at the call site. `MusicPlugin`
+   * intercepts this event, loads the asset if needed, then emits `music:play`
+   * once the asset is ready (or immediately on a cache hit).
+   */
+  'music:request': [key: string];
+  /**
+   * Same as `music:request` but with push-stack semantics: the current track
+   * is suspended and restored with `music:pop`. Use instead of `music:push`
+   * for non-eager tracks.
+   */
+  'music:request-push': [key: string];
   /** Toggle global audio mute (affects both music and SFX). */
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */

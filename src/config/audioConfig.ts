@@ -39,9 +39,12 @@ export interface MusicAsset {
  * Full music asset catalog.
  *
  * `eager: true` entries are loaded by `BootScene.preload()` so they are
- * instantly available when the menu renders. Everything else is loaded
- * on-demand by `MusicPlugin` the first time that key is needed; the
- * second play uses the Phaser cache and is free.
+ * instantly available when the menu renders. Non-eager entries are loaded
+ * on-demand: tracks referenced in `SCENE_MUSIC` are lazy-loaded by
+ * `MusicPlugin` on scene `create`; other call sites must use
+ * `music:request` / `music:request-push` (instead of `music:play` /
+ * `music:push`) so that `MusicPlugin` can ensure the asset is cached
+ * before `AudioManager` attempts playback.
  *
  * Replaces the former separate `STATIC_MUSIC_ASSETS` / `DEFERRED_MUSIC_ASSETS`
  * split — `BootScene` now filters by `eager === true`.

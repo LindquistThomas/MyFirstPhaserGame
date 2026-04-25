@@ -17,12 +17,25 @@ const MUSIC_PATH: Readonly<Record<string, string>> = Object.fromEntries(
  *   - lazy-loads the file first (via the scene's own Loader) and emits
  *     `music:play` once loading completes.
  *
- * Scenes themselves never touch audio code.
+ * Also handles `music:request` / `music:request-push` while the scene is
+ * active, so that any call site (ElevatorController, QuizDialog, etc.) can
+ * request a non-eager track without worrying about the cache state.
+ *
+ * Scenes themselves never touch audio code directly.
  *
  * Uses the standard Phaser start/shutdown re-registration pattern so
  * the `create` listener is reliably re-attached on every scene restart.
  */
 export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
+  // Arrow-function fields so the same reference is used for on/off.
+  private readonly onMusicRequest = (key: string): void => {
+    this.playOrLoad(key);
+  };
+
+  private readonly onMusicRequestPush = (key: string): void => {
+    this.loadAndEmitPush(key);
+  };
+
   boot(): void {
     const events = this.systems!.events;
     events.on('start', this.onSceneStart, this);
@@ -33,6 +46,10 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
     const events = this.systems!.events;
     events.on('create', this.onSceneCreate, this);
     events.once('shutdown', this.onSceneShutdown, this);
+    // Subscribe to music:request / music:request-push while this scene is active.
+    // Unsubscribed in onSceneShutdown so only the live scene's plugin handles them.
+    eventBus.on('music:request', this.onMusicRequest);
+    eventBus.on('music:request-push', this.onMusicRequestPush);
   }
 
   private onSceneCreate(): void {
@@ -65,8 +82,8 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
     }
 
     // Queue the audio file for loading on this scene's loader, then start.
-    // The 'filecomplete-audio-<key>' event fires even if another load is in
-    // progress — using 'once' prevents double-firing on scene restarts.
+    // Using 'once' on filecomplete so each plugin instance fires at most once
+    // per load — AudioManager's same-key guard handles any duplicate emits.
     scene.load.audio(musicKey, path);
     scene.load.once(`filecomplete-audio-${musicKey}`, () => {
       eventBus.emit('music:play', musicKey);
@@ -74,8 +91,35 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
     scene.load.start();
   }
 
+  /**
+   * Like `playOrLoad` but emits `music:push` instead of `music:play`,
+   * preserving the AudioManager's push-stack semantics (pair with `music:pop`).
+   */
+  loadAndEmitPush(musicKey: string): void {
+    const scene = this.scene!;
+
+    if (scene.cache.audio.exists(musicKey)) {
+      eventBus.emit('music:push', musicKey);
+      return;
+    }
+
+    const path = MUSIC_PATH[musicKey];
+    if (!path) {
+      eventBus.emit('music:push', musicKey);
+      return;
+    }
+
+    scene.load.audio(musicKey, path);
+    scene.load.once(`filecomplete-audio-${musicKey}`, () => {
+      eventBus.emit('music:push', musicKey);
+    });
+    scene.load.start();
+  }
+
   private onSceneShutdown(): void {
     this.systems?.events.off('create', this.onSceneCreate, this);
+    eventBus.off('music:request', this.onMusicRequest);
+    eventBus.off('music:request-push', this.onMusicRequestPush);
   }
 
   private onSceneDestroy(): void {

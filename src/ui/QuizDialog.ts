@@ -47,7 +47,7 @@ export class QuizDialog extends ModalBase {
     this.registerKeyboardBindings();
     this.showQuestion();
     this.fadeIn();
-    eventBus.emit('music:push', 'music_quiz');
+    eventBus.emit('music:request-push', 'music_quiz');
   }
 
   /** Pick a difficulty-balanced set of questions per QUIZ_DIFFICULTY_MIX. */
