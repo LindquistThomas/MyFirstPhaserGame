@@ -46,13 +46,17 @@ export class NameScene extends Phaser.Scene {
 
 ## Integration
 
-1. Register the scene in `src/main.ts`:
+1. Register the scene in `src/scenes/sceneRegistry.ts` (the single source of truth — `main.ts` is no longer the touchpoint):
     ```ts
-    import { NameScene } from './scenes/core/NameScene';
+    import { NameScene } from './core/NameScene';
     // …
-    scene: [BootScene, MenuScene, ElevatorScene, /* …, */ NameScene],
+    export const SCENE_REGISTRY: SceneRegistryEntry[] = [
+      // …existing entries…
+      { key: 'NameScene', cls: NameScene },
+    ];
     ```
-   Floor scenes import from `./features/floors/<floor>/...`; product content scenes import from `./features/products/rooms/...`.
+   Floor scenes import from `'../features/floors/<floor>/...'`; product content scenes import from `'../features/products/rooms/...'`.
+   `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys are not found in the registry.
 2. If the scene has background music, add it to `SCENE_MUSIC` in `src/config/audioConfig.ts`:
    ```ts
    NameScene: 'music_floor2',
@@ -68,9 +72,9 @@ Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts`, extend `Leve
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { FLOORS } from '../../../config/gameConfig';
 
-export class MyFloorScene extends LevelScene {
+export class MyFloorTeamScene extends LevelScene {
   constructor() {
-    super('MyFloorScene', FLOORS.MY_FLOOR);
+    super('MyFloorTeamScene', FLOORS.MY_FLOOR);
   }
 
   protected override getLevelConfig(): LevelConfig {
@@ -89,7 +93,7 @@ export class MyFloorScene extends LevelScene {
 }
 ```
 
-Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and register the scene in `main.ts`.
+Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and add a `{ key: 'MyFloorTeamScene', cls: MyFloorTeamScene }` entry to `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts`.
 
 ## Conventions checklist
 

@@ -7,6 +7,8 @@
  * are type-checked automatically.
  */
 
+import type { FloorId } from '../config/gameConfig';
+
 /** Event name → payload tuple. Each event's handler arguments are derived from this map. */
 export interface GameEvents {
   'music:play': [key: string];
@@ -86,6 +88,20 @@ export interface GameEvents {
    * Payload: storage key that failed, and the human-readable error message.
    */
   'persistence:error': [storageKey: string, message: string];
+
+  /**
+  /**
+   * A new floor was unlocked via AU progression. Payload is the floor ID.
+   * Emitted by ProgressionSystem after `checkUnlocks()` detects a new entry.
+   */
+  'progression:floor_unlocked': [floorId: FloorId];
+
+  /**
+   * The player's total AU has crossed a multiple-of-50 milestone.
+   * Payload is the current total AU count.
+   * Useful for screen-reader announcements and HUD celebrations.
+   */
+  'progression:au_milestone': [total: number];
 
   /**
    * SaveManager failed to read or write a save slot.

@@ -8,6 +8,7 @@ import { InputService } from './input';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
 import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';
+import { initAriaLive } from './ui/ariaLive';
 import { initVirtualGamepad } from './ui/VirtualGamepad';
 import { eventBus } from './systems/EventBus';
 
@@ -93,6 +94,24 @@ if (sceneRegistryErrors.length > 0) {
 }
 
 const game = new Phaser.Game(config);
+
+// Wire up the ARIA live region so screen readers receive game announcements.
+initAriaLive();
+
+// Give the Phaser canvas keyboard focus support so screen-reader users can
+// interact with the game without needing to click first. Phaser creates the
+// canvas inside #game-container during Game construction, so it is available
+// synchronously by this point.
+game.events.once(Phaser.Core.Events.READY, () => {
+  const canvas = game.canvas;
+  // Only set tabIndex when Phaser hasn't already assigned a non-negative
+  // value (which would indicate it was intentionally configured elsewhere).
+  // tabIndex=0 makes the canvas part of the natural tab order so keyboard
+  // users can reach it without a pointer click.
+  if (canvas && canvas.tabIndex < 0) {
+    canvas.tabIndex = 0;
+  }
+});
 
 // Expose the game instance on `window.__game` so E2E tests (Playwright)
 // can drive scene transitions and capture screenshots. Kept enabled in

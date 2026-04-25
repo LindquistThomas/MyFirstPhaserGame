@@ -3,6 +3,7 @@ import { eventBus } from '../../systems/EventBus';
 import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { clampRiderToCab } from './elevatorCabGeometry';
+import { isReducedMotion } from '../../systems/MotionPreference';
 
 // Cab half-width (80) minus the walkway-overlap strip (WALK_OVERLAP = 4
 // in ElevatorSceneLayout), so the latch only engages when the player is
@@ -122,7 +123,7 @@ export class ElevatorController {
       // Arrival: short low-amplitude shake to sell the cab weight without
       // nausea. Only shake when the player is actually riding — otherwise
       // a parked cab sliding to rest between idle presses would shake too.
-      if (this.playerOnElevator) {
+      if (this.playerOnElevator && !isReducedMotion()) {
         this.scene.cameras.main.shake(90, 0.003);
       }
     }

@@ -21,6 +21,7 @@ import { createLevelDialogs } from './LevelDialogBindings';
 import { drawSceneBackdrop, type FloorPatternId } from './sceneBackdrop';
 import { drawFloorAccents } from './floorAccents';
 import { theme } from '../../../style/theme';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 /**
@@ -304,8 +305,8 @@ export class LevelScene extends Phaser.Scene {
     gradeOverlay.fillStyle(this.floorData.theme.tokenColor, 0.05);
     gradeOverlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    // 2. Ambient motes — slow-drifting tinted particles.
-    if (this.textures.exists('particle')) {
+    // 2. Ambient motes — slow-drifting tinted particles (skipped under reduced motion).
+    if (!isReducedMotion() && this.textures.exists('particle')) {
       const motes = this.add.particles(0, 0, 'particle', {
         x: { min: 0, max: GAME_WIDTH },
         y: { min: 0, max: GAME_HEIGHT - 64 },

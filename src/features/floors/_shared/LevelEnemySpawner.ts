@@ -10,6 +10,7 @@ import { DroppedAU } from '../../../entities/DroppedAU';
 import { Player } from '../../../entities/Player';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { eventBus } from '../../../systems/EventBus';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import type { LevelConfig } from './LevelScene';
 
 export interface EnemySpawnerDeps {
@@ -97,7 +98,7 @@ export class LevelEnemySpawner {
     if (enemy.canBeStomped && comingFromAbove && falling) {
       enemy.onStomp();
       this.deps.player.sprite.setVelocityY(-420);
-      this.deps.camera.shake(80, 0.004);
+      if (!isReducedMotion()) this.deps.camera.shake(80, 0.004);
       eventBus.emit('sfx:stomp');
       return;
     }
@@ -124,7 +125,7 @@ export class LevelEnemySpawner {
 
     const dir = this.deps.player.sprite.x < enemy.x ? -1 : 1;
     this.deps.player.takeHit(enemy.knockbackX * dir, enemy.knockbackY);
-    this.deps.camera.shake(120, 0.006);
+    if (!isReducedMotion()) this.deps.camera.shake(120, 0.006);
     eventBus.emit('sfx:hit');
   }
 }

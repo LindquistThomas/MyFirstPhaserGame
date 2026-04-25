@@ -5,6 +5,10 @@ import * as DefaultSaveManager from './SaveManager';
 import { CURRENT_SAVE_VERSION } from './SaveManager';
 import { resetAllQuizzes } from './QuizManager';
 import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
+import { eventBus } from './EventBus';
+
+/** Milestone interval for `progression:au_milestone` events. */
+const AU_MILESTONE_STEP = 50;
 
 /** Pluggable persistence adapter; defaults to the SaveManager module. */
 export interface SaveAdapter {
@@ -20,6 +24,7 @@ export interface ProgressionState {
   unlockedFloors: Set<FloorId>;
   currentFloor: FloorId;
   collectedTokens: Record<FloorId, Set<number>>;
+  onboardingComplete: boolean;
   /** Floors the player has physically entered at least once. */
   visitedFloors: Set<FloorId>;
 }
@@ -44,6 +49,7 @@ export class ProgressionSystem {
       unlockedFloors: new Set(allFloors),
       currentFloor: FLOORS.LOBBY,
       collectedTokens: Object.fromEntries(allFloors.map(id => [id, new Set<number>()])) as Record<FloorId, Set<number>>,
+      onboardingComplete: false,
       visitedFloors: new Set<FloorId>(),
     };
   }
@@ -61,10 +67,25 @@ export class ProgressionSystem {
   }
 
   addAU(floorId: FloorId, amount: number): void {
+    const prevTotal = this.state.totalAU;
     this.state.totalAU += amount;
     this.state.floorAU[floorId] += amount;
     this.checkUnlocks();
     this.persist();
+
+    // We emit each crossed milestone boundary (e.g. 50, 100, 150) rather than
+    // the actual total so the announced message is round and unambiguous ("50
+    // Architecture Units collected" even if the player jumped from 45 to 60).
+    // Looping ensures every boundary is announced when a single addAU call
+    // crosses multiple steps (e.g. 0 → 120 emits both 50 and 100).
+    const newTotal = this.state.totalAU;
+    const prevMilestone = Math.floor(prevTotal / AU_MILESTONE_STEP);
+    const newMilestone = Math.floor(newTotal / AU_MILESTONE_STEP);
+    if (newTotal > 0 && newMilestone > prevMilestone) {
+      for (let m = prevMilestone + 1; m <= newMilestone; m += 1) {
+        eventBus.emit('progression:au_milestone', m * AU_MILESTONE_STEP);
+      }
+    }
   }
 
   /**
@@ -115,6 +136,7 @@ export class ProgressionSystem {
       if (!this.state.unlockedFloors.has(floorData.id) &&
           this.state.totalAU >= floorData.auRequired) {
         this.state.unlockedFloors.add(floorData.id);
+        eventBus.emit('progression:floor_unlocked', floorData.id);
       }
     }
   }
@@ -149,6 +171,21 @@ export class ProgressionSystem {
     return Math.max(0, required - this.state.totalAU);
   }
 
+  isOnboardingComplete(): boolean {
+    return this.state.onboardingComplete;
+  }
+
+  completeOnboarding(): void {
+    if (this.state.onboardingComplete) return;
+    this.state.onboardingComplete = true;
+    this.persist();
+  }
+
+  resetOnboarding(): void {
+    this.state.onboardingComplete = false;
+    this.persist();
+  }
+
   reset(): void {
     this.state = this.defaultState();
     this.saveAdapter.clear();
@@ -173,6 +210,7 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
       ) as Record<FloorId, Set<number>>,
+      onboardingComplete: data.onboardingComplete ?? false,
       visitedFloors: new Set<FloorId>((data.visitedFloors ?? []) as FloorId[]),
     };
     this.checkUnlocks();
@@ -189,6 +227,7 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(this.state.collectedTokens).map(([k, v]) => [Number(k), Array.from(v)]),
       ),
+      onboardingComplete: this.state.onboardingComplete,
       visitedFloors: Array.from(this.state.visitedFloors),
     });
   }

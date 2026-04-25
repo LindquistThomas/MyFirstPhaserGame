@@ -3,6 +3,7 @@ import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
 import { activeContext } from '../input';
 import { CaffeineBuff } from '../systems/CaffeineBuff';
+import { isReducedMotion } from '../systems/MotionPreference';
 
 // Air speed is NOT buffed — see AIR_HORIZONTAL_SPEED shaft-width invariant below.
 export const CAFFEINE_DURATION_MS = 6000;
@@ -174,6 +175,7 @@ export class Player {
   }
 
   private createDustEmitter(): void {
+    if (isReducedMotion()) return;
     if (this.scene.textures.exists('particle')) {
       this.dustEmitter = this.scene.add.particles(0, 0, 'particle', {
         speed: { min: 10, max: 40 },
@@ -390,12 +392,14 @@ export class Player {
     this.playerState = 'landing';
     this.currentAnim = 'land';
     this.sprite.anims.play('player_land', true);
-    this.scene.tweens.add({
-      targets: this.sprite,
-      scaleY: { from: 0.92, to: 1 },
-      duration: 120,
-      ease: 'Quad.easeOut',
-    });
+    if (!isReducedMotion()) {
+      this.scene.tweens.add({
+        targets: this.sprite,
+        scaleY: { from: 0.92, to: 1 },
+        duration: 120,
+        ease: 'Quad.easeOut',
+      });
+    }
     this.scene.time.delayedCall(120, () => {
       this.playerState = 'grounded';
       this.sprite.setScale(1, 1);
@@ -463,6 +467,7 @@ export class Player {
   }
 
   private createCaffeineEmitter(): void {
+    if (isReducedMotion()) return;
     if (!this.scene.textures.exists('particle')) return;
     this.caffeineSteam = this.scene.add.particles(0, 0, 'particle', {
       speed: { min: 20, max: 60 },
@@ -541,14 +546,16 @@ export class Player {
 
     this.hitFlashTween?.stop();
     this.sprite.setAlpha(1);
-    this.hitFlashTween = this.scene.tweens.add({
-      targets: this.sprite,
-      alpha: { from: 1, to: 0.3 },
-      duration: 90,
-      yoyo: true,
-      repeat: Math.floor(durationMs / 180),
-      onComplete: () => this.sprite.setAlpha(1),
-    });
+    if (!isReducedMotion()) {
+      this.hitFlashTween = this.scene.tweens.add({
+        targets: this.sprite,
+        alpha: { from: 1, to: 0.3 },
+        duration: 90,
+        yoyo: true,
+        repeat: Math.floor(durationMs / 180),
+        onComplete: () => this.sprite.setAlpha(1),
+      });
+    }
   }
 
   /** True if horizontal input is currently suppressed by a recent hit. */

@@ -2,7 +2,7 @@
 
 Background music for the game lives in this directory as MP3 / OGG files organized by pack. Files are declared in `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` (the full catalog). `BootScene.preload()` loads only entries tagged `eager: true` (currently just the menu track); everything else is **lazy-loaded** the first time `MusicPlugin` needs to play it. Scene-to-track mapping is defined by `SCENE_MUSIC` in the same config file and applied automatically by `src/plugins/MusicPlugin.ts`.
 
-SFX (jump, land, token collect, quiz feedback, info-card / link clicks, elevator cues, etc.) are **not** loaded from this directory — they are procedurally generated at runtime by `src/systems/SoundGenerator.ts`. `src/systems/MusicGenerator.ts` produces a procedural lullaby used in the lobby sofa scene, and is otherwise retained as an unused fallback.
+SFX (jump, land, token collect, quiz feedback, info-card / link clicks, elevator cues, etc.) are **not** loaded from this directory — they are procedurally generated at runtime by `src/systems/SoundGenerator.ts`, which also generates the procedural lullaby track (no separate MusicGenerator module).
 
 ## Eager tracks (loaded at boot)
 
