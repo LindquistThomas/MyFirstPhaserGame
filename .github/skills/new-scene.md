@@ -78,6 +78,8 @@ export class MyFloorScene extends LevelScene {
       platforms: [/* … */],
       tokens:    [/* … */],
       enemies:   [{ type: 'slime', x: 400, y: 700, minX: 300, maxX: 600, speed: 60 }],
+                  // type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost'
+                  // minX/maxX default to x ± 160 when omitted
       infoPoints:[{ id: 'my-info-card', x: 800, y: 700 /*, zoneRadius?: number */ }],
     });
   }
