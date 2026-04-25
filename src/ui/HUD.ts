@@ -6,12 +6,23 @@ import { eventBus } from '../systems/EventBus';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 import { theme } from '../style/theme';
 import type { AudioManager } from '../systems/AudioManager';
+import { Toast } from './Toast';
+import { AchievementsDialog } from './AchievementsDialog';
 
 const HUD_HEIGHT = 44;
 const COIN_X = 26;
 const COIN_Y = 22;
 const PROGRESS_STRIP_WIDTH = 140;
 const PROGRESS_STRIP_HEIGHT = 6;
+
+function persistenceMessage(reason: 'quota' | 'unavailable' | 'parse' | 'unknown'): string {
+  switch (reason) {
+    case 'quota':       return 'Storage full — close other tabs or clear site data to save progress.';
+    case 'unavailable': return 'Browser storage is unavailable. Progress will not be saved (try disabling Private Browsing).';
+    case 'parse':       return "Existing save couldn't be read. Starting a new save.";
+    default:            return 'Save failed — your progress may not be stored.';
+  }
+}
 
 export class HUD {
   private scene: Phaser.Scene;
@@ -37,11 +48,15 @@ export class HUD {
   private progressTween?: Phaser.Tweens.Tween;
   private onMuteChanged = (muted: boolean): void => this.renderMuteIcon(muted);
 
+  private trophyIcon!: Phaser.GameObjects.Graphics;
+  private trophyHit!: Phaser.GameObjects.Zone;
+
   private caffeineIcon!: Phaser.GameObjects.Graphics;
   private caffeineRing!: Phaser.GameObjects.Graphics;
   /** 0 when inactive. */
   private caffeineEndAt = 0;
   private caffeineDuration = 0;
+  private toast!: Toast;
   private onCaffeineStart = (durationMs: number): void => {
     this.caffeineDuration = durationMs;
     this.caffeineEndAt = this.scene.time.now + durationMs;
@@ -136,6 +151,26 @@ export class HUD {
     lifecycle.bindEventBus('audio:mute-changed', this.onMuteChanged);
     lifecycle.bindEventBus('buff:caffeine_start', this.onCaffeineStart);
     lifecycle.bindEventBus('buff:caffeine_end', this.onCaffeineEnd);
+
+    this.toast = new Toast(this.scene);
+    lifecycle.bindEventBus('persistence:failed', (payload) => {
+      this.toast.show(persistenceMessage(payload.reason));
+    });
+    lifecycle.bindEventBus('achievement:unlocked', (_id, label) => {
+      this.toast.show(`\u{1F3C6} Achievement unlocked: ${label}`);
+    });
+
+    // Trophy button — opens AchievementsDialog.
+    const TROPHY_X = GAME_WIDTH - 128;
+    const TROPHY_Y = 22;
+    this.trophyIcon = this.scene.add.graphics().setPosition(TROPHY_X, TROPHY_Y);
+    this.container.add(this.trophyIcon);
+    this.renderTrophyIcon(false);
+    this.trophyHit = this.scene.add.zone(TROPHY_X, TROPHY_Y, 32, 32).setInteractive({ useHandCursor: true });
+    this.trophyHit.on('pointerdown', () => new AchievementsDialog(this.scene));
+    this.trophyHit.on('pointerover', () => this.renderTrophyIcon(true));
+    this.trophyHit.on('pointerout', () => this.renderTrophyIcon(false));
+    this.container.add(this.trophyHit);
 
     // "FLOOR" micro-label above the floor name, anchored inside the floor pill.
     this.floorLabel = this.scene.add.text(GAME_WIDTH - 210, 9, 'FLOOR', {
@@ -316,6 +351,28 @@ export class HUD {
     // Kick off the first sweep after a short delay, then repeat.
     this.scene.time.delayedCall(3000, fire);
     this.scene.time.addEvent({ delay: 6000, loop: true, callback: fire });
+  }
+
+  /** Draw a minimal trophy icon. */
+  private renderTrophyIcon(hovered: boolean): void {
+    const g = this.trophyIcon;
+    g.clear();
+    const color = hovered ? theme.color.ui.hover : 0xffcc44;
+    // Cup body
+    g.fillStyle(color, 1);
+    g.fillRect(-7, -10, 14, 10);
+    // Stem
+    g.fillRect(-3, 0, 6, 3);
+    // Base
+    g.fillRect(-6, 3, 12, 3);
+    // Handles
+    g.lineStyle(2, color, 1);
+    g.beginPath();
+    g.arc(-9, -5, 3, Math.PI / 2, (3 * Math.PI) / 2);
+    g.strokePath();
+    g.beginPath();
+    g.arc(9, -5, 3, -Math.PI / 2, Math.PI / 2);
+    g.strokePath();
   }
 
   /** Scale-punch + tint pulse on mute icon press. */

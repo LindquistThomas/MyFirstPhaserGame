@@ -5,6 +5,7 @@ import { Player } from '../../../entities/Player';
 import { Token } from '../../../entities/Token';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import { GameStateManager } from '../../../systems/GameStateManager';
 import type { LevelConfig } from './LevelScene';
 
 export interface TokenManagerDeps {
@@ -15,6 +16,7 @@ export interface TokenManagerDeps {
   player: Player;
   platformGroup: Phaser.Physics.Arcade.StaticGroup;
   camera: Phaser.Cameras.Scene2D.Camera;
+  gameState: GameStateManager;
 }
 
 /**
@@ -36,9 +38,9 @@ export class LevelTokenManager {
   spawn(config: LevelConfig): void {
     const tokenKey = this.tokenKey();
     for (let i = 0; i < config.tokens.length; i++) {
-      const idx = config.tokens[i].index ?? i;
+      const idx = config.tokens[i]!.index ?? i;
       if (this.deps.progression.isTokenCollected(this.deps.floorId, idx)) continue;
-      const token = new Token(this.deps.scene, config.tokens[i].x, config.tokens[i].y, tokenKey);
+      const token = new Token(this.deps.scene, config.tokens[i]!.x, config.tokens[i]!.y, tokenKey);
       token.setData('tokenIndex', idx);
       this.tokenGroup.add(token);
     }
@@ -78,6 +80,7 @@ export class LevelTokenManager {
     this.deps.progression.collectAU(this.deps.floorId, tokenIndex);
     this.auCollected++;
     this.deps.camera.flash(100, 255, 215, 0, false, undefined, this);
+    this.deps.gameState.checkAchievements();
   };
 
   private onRecoverDropped = (
@@ -88,6 +91,7 @@ export class LevelTokenManager {
     if (!drop.ready || drop.collected) return;
     drop.recover();
     this.deps.progression.addAU(this.deps.floorId, 1);
+    this.deps.gameState.checkAchievements();
   };
 
   private emitSparkle(x: number, y: number): void {

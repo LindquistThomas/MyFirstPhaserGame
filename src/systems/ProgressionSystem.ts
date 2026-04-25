@@ -1,8 +1,17 @@
 import { FLOORS, FloorId } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
-import * as SaveManager from './SaveManager';
+import type { SaveData } from './SaveManager';
+import * as DefaultSaveManager from './SaveManager';
+import { CURRENT_SAVE_VERSION } from './SaveManager';
 import { resetAllQuizzes } from './QuizManager';
 import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
+
+/** Pluggable persistence adapter; defaults to the SaveManager module. */
+export interface SaveAdapter {
+  load(): SaveData | null;
+  save(data: SaveData): void;
+  clear(): void;
+}
 
 /** AU = Architecture Utility — the game's single currency / progression points. */
 export interface ProgressionState {
@@ -11,43 +20,31 @@ export interface ProgressionState {
   unlockedFloors: Set<FloorId>;
   currentFloor: FloorId;
   collectedTokens: Record<FloorId, Set<number>>;
+  /** Floors the player has physically entered at least once. */
+  visitedFloors: Set<FloorId>;
 }
 
 export class ProgressionSystem {
   private state: ProgressionState;
+  private readonly saveAdapter: SaveAdapter;
 
-  constructor() {
+  constructor(saveAdapter?: SaveAdapter) {
+    this.saveAdapter = saveAdapter ?? DefaultSaveManager;
     this.state = this.defaultState();
   }
 
   private defaultState(): ProgressionState {
+    const allFloors = Object.values(FLOORS);
     return {
       totalAU: 0,
-      floorAU: {
-        [FLOORS.LOBBY]: 0,
-        [FLOORS.PLATFORM_TEAM]: 0,
-        [FLOORS.BUSINESS]: 0,
-        [FLOORS.EXECUTIVE]: 0,
-        [FLOORS.PRODUCTS]: 0,
-      },
+      floorAU: Object.fromEntries(allFloors.map(id => [id, 0])) as Record<FloorId, number>,
       // TODO(progression): re-enable floor-unlock gating once the full
       // AU economy is tuned. For now every floor is unlocked from the
       // start so players can explore the building freely.
-      unlockedFloors: new Set([
-        FLOORS.LOBBY,
-        FLOORS.PLATFORM_TEAM,
-        FLOORS.BUSINESS,
-        FLOORS.EXECUTIVE,
-        FLOORS.PRODUCTS,
-      ]),
+      unlockedFloors: new Set(allFloors),
       currentFloor: FLOORS.LOBBY,
-      collectedTokens: {
-        [FLOORS.LOBBY]: new Set(),
-        [FLOORS.PLATFORM_TEAM]: new Set(),
-        [FLOORS.BUSINESS]: new Set(),
-        [FLOORS.EXECUTIVE]: new Set(),
-        [FLOORS.PRODUCTS]: new Set(),
-      },
+      collectedTokens: Object.fromEntries(allFloors.map(id => [id, new Set<number>()])) as Record<FloorId, Set<number>>,
+      visitedFloors: new Set<FloorId>(),
     };
   }
 
@@ -95,6 +92,24 @@ export class ProgressionSystem {
     return this.tokensFor(floorId).has(tokenIndex);
   }
 
+  /** Mark a floor as having been physically entered by the player. */
+  markFloorVisited(floorId: FloorId): void {
+    if (this.state.visitedFloors.has(floorId)) return;
+    this.state.visitedFloors.add(floorId);
+    this.persist();
+  }
+
+  /** Number of distinct floors the player has visited. */
+  getVisitedFloorCount(): number {
+    return this.state.visitedFloors.size;
+  }
+
+  /** Total number of tokens collected across all floors. */
+  getTotalCollectedTokens(): number {
+    return Object.values(this.state.collectedTokens)
+      .reduce((sum, s) => sum + s.size, 0);
+  }
+
   private checkUnlocks(): void {
     for (const [, floorData] of Object.entries(LEVEL_DATA)) {
       if (!this.state.unlockedFloors.has(floorData.id) &&
@@ -136,13 +151,13 @@ export class ProgressionSystem {
 
   reset(): void {
     this.state = this.defaultState();
-    SaveManager.clear();
+    this.saveAdapter.clear();
     resetAllQuizzes();
     resetAllInfoDialogs();
   }
 
   loadFromSave(): boolean {
-    const data = SaveManager.load();
+    const data = this.saveAdapter.load();
     if (!data) return false;
     this.state = {
       totalAU: data.totalAU,
@@ -158,13 +173,15 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
       ) as Record<FloorId, Set<number>>,
+      visitedFloors: new Set<FloorId>((data.visitedFloors ?? []) as FloorId[]),
     };
     this.checkUnlocks();
     return true;
   }
 
   private persist(): void {
-    SaveManager.save({
+    this.saveAdapter.save({
+      version: CURRENT_SAVE_VERSION,
       totalAU: this.state.totalAU,
       floorAU: this.state.floorAU,
       unlockedFloors: Array.from(this.state.unlockedFloors),
@@ -172,6 +189,7 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(this.state.collectedTokens).map(([k, v]) => [Number(k), Array.from(v)]),
       ),
+      visitedFloors: Array.from(this.state.visitedFloors),
     });
   }
 }

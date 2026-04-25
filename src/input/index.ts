@@ -9,6 +9,7 @@ export { DEFAULT_BINDINGS } from './bindings';
 export {
   InputService,
   activeContext, pushContext, popContext,
+  setVirtualButton,
   type ContextToken,
 } from './InputService';
 export { keyLabel, primaryKeyLabel, allKeyLabels } from './keyLabels';

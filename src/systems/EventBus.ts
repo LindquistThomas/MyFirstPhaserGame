@@ -15,10 +15,34 @@ export interface GameEvents {
   'music:push': [key: string];
   /** Restore the music that was playing before the most recent `music:push`. */
   'music:pop': [];
+  /**
+   * Request that a track be lazy-loaded (if not already cached) and then
+   * played via `music:play`. Use instead of `music:play` for any track that
+   * may not be in Phaser's audio cache at the call site. `MusicPlugin`
+   * intercepts this event, loads the asset if needed, then emits `music:play`
+   * once the asset is ready (or immediately on a cache hit).
+   */
+  'music:request': [key: string];
+  /**
+   * Same as `music:request` but with push-stack semantics: the current track
+   * is suspended and restored with `music:pop`. Use instead of `music:push`
+   * for non-eager tracks.
+   */
+  'music:request-push': [key: string];
   /** Toggle global audio mute (affects both music and SFX). */
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
+  /**
+   * Emitted by SettingsStore whenever any volume-related setting changes
+   * (masterVolume, musicVolume, sfxVolume, muteAll). AudioManager listens
+   * and re-applies the new levels to all active channels.
+   */
+  'audio:volume-changed': [];
+  /** Pause the currently-playing music track (e.g. when game is paused). */
+  'music:pause': [];
+  /** Resume a music track that was paused via `music:pause`. */
+  'music:resume': [];
 
   /** Start looping an ambience bed on the dedicated ambience channel. */
   'ambience:play': [key: string];
@@ -48,11 +72,36 @@ export interface GameEvents {
   'sfx:recover_au': [];
   /** Coffee pickup — a short slurp. */
   'sfx:coffee_sip': [];
+  /** Energy drink fridge opened — mechanical click + cold air whoosh. */
+  'sfx:fridge_open': [];
 
   /** Caffeine buff activated; payload is the total duration in ms. */
   'buff:caffeine_start': [durationMs: number];
   /** Caffeine buff expired. */
   'buff:caffeine_end': [];
+
+  /**
+   * A persisted-store write failed (quota exceeded, storage unavailable,
+   * or serialisation error). HUD can surface a toast to the player.
+   * Payload: storage key that failed, and the human-readable error message.
+   */
+  'persistence:error': [storageKey: string, message: string];
+
+  /**
+   * SaveManager failed to read or write a save slot.
+   * `reason` discriminates the failure mode so HUD can show a tailored message.
+   * Emitted at most once per `unavailable` session (noop storage detection),
+   * on every quota error, on every JSON parse failure, and on other unknown
+   * storage errors.
+   */
+  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string }];
+
+  /**
+   * An achievement was just unlocked for the first time.
+   * `id` is the achievement's unique key; `label` is its human-readable name.
+   * Emitted by `GameStateManager.checkAchievements()`.
+   */
+  'achievement:unlocked': [id: string, label: string];
 }
 
 export type GameEventName = keyof GameEvents;
@@ -60,6 +109,8 @@ export type GameEventHandler<K extends GameEventName> = (...args: GameEvents[K])
 
 class EventBus {
   private listeners = new Map<GameEventName, Set<GameEventHandler<GameEventName>>>();
+  /** Maps original handler → once-wrapper handler so off(event, fn) can cancel a once() subscription. */
+  private onceWrappers = new Map<GameEventHandler<GameEventName>, GameEventHandler<GameEventName>>();
 
   /** Subscribe to an event. */
   on<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
@@ -68,15 +119,49 @@ class EventBus {
     return this;
   }
 
-  /** Unsubscribe from an event. */
+  /**
+   * Subscribe to an event for exactly one invocation, then auto-unsubscribe.
+   * Calling `off(event, fn)` with the original function cancels the subscription
+   * before it fires.
+   */
+  once<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
+    const typed = fn as GameEventHandler<GameEventName>;
+    const wrapper = (...args: GameEvents[K]): void => {
+      this.off(event, fn);
+      fn(...args);
+    };
+    this.onceWrappers.set(typed, wrapper as GameEventHandler<GameEventName>);
+    return this.on(event, wrapper as GameEventHandler<K>);
+  }
+
+  /** Unsubscribe from an event. Also cancels a pending `once()` subscription. */
   off<K extends GameEventName>(event: K, fn: GameEventHandler<K>): this {
-    this.listeners.get(event)?.delete(fn as GameEventHandler<GameEventName>);
+    const typed = fn as GameEventHandler<GameEventName>;
+    const wrapper = this.onceWrappers.get(typed);
+    if (wrapper) {
+      this.onceWrappers.delete(typed);
+      this.listeners.get(event)?.delete(wrapper);
+    } else {
+      this.listeners.get(event)?.delete(typed);
+    }
     return this;
   }
 
   /** Emit an event to all subscribers. */
   emit<K extends GameEventName>(event: K, ...args: GameEvents[K]): this {
     this.listeners.get(event)?.forEach(fn => (fn as GameEventHandler<K>)(...args));
+    return this;
+  }
+
+  /**
+   * Remove every listener — primarily a test seam so suites can isolate
+   * each case without reaching into private state. Safe at runtime too
+   * (e.g. on a hard scene-graph reset), but production code should prefer
+   * paired `on`/`off` with scene shutdown for narrower cleanup.
+   */
+  removeAllListeners(): this {
+    this.listeners.clear();
+    this.onceWrappers.clear();
     return this;
   }
 }

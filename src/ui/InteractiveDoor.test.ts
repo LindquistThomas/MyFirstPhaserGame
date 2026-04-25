@@ -21,7 +21,6 @@ describe('InteractiveDoor', () => {
   it('creates an image with the closed texture', () => {
     const { scene, image } = fakeScene();
     new InteractiveDoor(scene, 100, 200, 'door_unlocked', 'door_open');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((scene.add.image as any)).toHaveBeenCalledWith(100, 200, 'door_unlocked');
     expect(image.setDepth).toHaveBeenCalledWith(3);
   });
@@ -57,7 +56,6 @@ describe('InteractiveDoor', () => {
     const handler = vi.fn();
     door.onPointerDown(handler);
     expect(image.setInteractive).toHaveBeenCalledWith({ useHandCursor: true });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onCall = (image.on as any).mock.calls[0];
     expect(onCall[0]).toBe('pointerdown');
     onCall[1]();

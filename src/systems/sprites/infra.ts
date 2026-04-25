@@ -13,7 +13,7 @@ export function generateInfraSprites(scene: Phaser.Scene): void {
     for (let i = 0; i < bladeColors.length; i++) {
       const by = 8 + i * 16;
       g.fillStyle(0x333333); g.fillRect(6, by, w - 12, 14);
-      g.fillStyle(bladeColors[i]); g.fillRect(8, by + 2, w - 16, 10);
+      g.fillStyle(bladeColors[i]!); g.fillRect(8, by + 2, w - 16, 10);
       g.fillStyle(0x00ff00); g.fillCircle(12, by + 7, 2);
       g.fillStyle(0xff4400); g.fillCircle(20, by + 7, 1);
     }
@@ -97,7 +97,7 @@ export function generateInfraSprites(scene: Phaser.Scene): void {
     const w = 12, h = 80;
     const colors = [0x0088ff, 0xff4400, 0x00cc44, theme.color.status.warning];
     for (let i = 0; i < colors.length; i++) {
-      g.fillStyle(colors[i], 0.7);
+      g.fillStyle(colors[i]!, 0.7);
       g.fillRect(2 + i * 2, 0, 2, h);
     }
     g.generateTexture('cables', w, h);

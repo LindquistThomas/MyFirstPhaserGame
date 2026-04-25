@@ -5,6 +5,70 @@ import {
 } from './actions';
 import { ALL_BOUND_KEYS, DEFAULT_BINDINGS, actionsForKey, type KeyCode } from './bindings';
 
+/* ---------- Virtual (on-screen) button state ---------- */
+
+/**
+ * Hold state for virtual buttons. `isDown()` checks this in addition to
+ * physical keyboard keys so the on-screen D-pad integrates transparently.
+ */
+const virtualButtonsDown = new Map<GameAction, boolean>();
+
+/**
+ * One-shot queue consumed by `justPressed()`. Set on virtual press so that
+ * tap-style actions (Jump, Interact, Confirm) fire correctly even when the
+ * caller polls `justPressed()` rather than subscribing via `on()`.
+ */
+const virtualJustPressedQueue = new Set<GameAction>();
+
+/**
+ * All currently active (started) InputService instances. Populated in
+ * `onSceneStart`, cleared in `onShutdown`. Used to dispatch virtual presses
+ * to event-handler subscribers across all running scenes.
+ */
+const liveInputServices = new Set<InputService>();
+
+/**
+ * Set or release a virtual button for `action`.
+ *
+ * Call with `pressed = true` on touch-start; call with `pressed = false`
+ * on touch-end / touch-cancel. The hold state drives `isDown()` (polling)
+ * and the press edge drives `justPressed()` and event subscribers, exactly
+ * like a physical key press.
+ *
+ * Press events are edge-detected: calling with `pressed = true` while the
+ * button is already held is a no-op, preventing spurious re-fires from
+ * multi-touch quirks or repeated touchstart events.
+ *
+ * All actions are still filtered by the active `InputContext`, so virtual
+ * `Jump` is suppressed while a modal is open, etc.
+ */
+export function setVirtualButton(action: GameAction, pressed: boolean): void {
+  const wasPressed = virtualButtonsDown.get(action) === true;
+
+  if (!pressed) {
+    virtualButtonsDown.delete(action);
+    return;
+  }
+
+  if (wasPressed) {
+    // Already held — ignore repeated touchstart to avoid double-fires.
+    return;
+  }
+
+  virtualButtonsDown.set(action, true);
+  virtualJustPressedQueue.add(action);
+  for (const svc of liveInputServices) {
+    svc._dispatchAction(action);
+  }
+}
+
+/** @internal Reset all virtual-button state. For unit tests only. */
+export function _resetVirtualButtons(): void {
+  virtualButtonsDown.clear();
+  virtualJustPressedQueue.clear();
+  liveInputServices.clear();
+}
+
 /* ---------- Global context stack ---------- */
 
 /**
@@ -16,7 +80,7 @@ const contextStack: InputContext[] = [];
 
 /** The currently active context (top of stack, or 'gameplay' by default). */
 export function activeContext(): InputContext {
-  return contextStack.length > 0 ? contextStack[contextStack.length - 1] : 'gameplay';
+  return contextStack.length > 0 ? contextStack[contextStack.length - 1]! : 'gameplay';
 }
 
 /** Push a context. Returns a token that must be passed back to `popContext`. */
@@ -31,26 +95,31 @@ export interface ContextToken {
 }
 
 /**
- * Pop a previously-pushed context. Robust against out-of-order pops —
- * if the exact token is no longer on top, we remove it by identity so
- * a misbehaving consumer cannot permanently strand the stack.
+ * Pop a previously-pushed context.
+ *
+ * The token MUST be the one currently at the top of the stack. Out-of-order
+ * pops are rejected: in development a `console.warn` is emitted and the
+ * stack is left unchanged so callers can diagnose the mismatch.
  */
 export function popContext(token: ContextToken): void {
   const top = contextStack.length - 1;
   if (top < 0) return;
-  // Fast path: token is on top.
   if (top === token.idx && contextStack[top] === token.ctx) {
     contextStack.pop();
     return;
   }
-  // Slow path: remove any later occurrence. We splice by value/position
-  // since tokens hold the index at push-time which may shift.
-  for (let i = contextStack.length - 1; i >= 0; i--) {
-    if (contextStack[i] === token.ctx) {
-      contextStack.splice(i, 1);
-      return;
-    }
+  if (import.meta.env.DEV) {
+    console.warn(
+      `[InputService] popContext: token mismatch — ` +
+      `expected top "${contextStack[top]}" (idx ${top}), ` +
+      `got "${token.ctx}" (idx ${token.idx}). Pop refused.`,
+    );
   }
+}
+
+/** @internal Reset the context stack to empty. For unit tests only. */
+export function _resetContextStack(): void {
+  contextStack.length = 0;
 }
 
 /** True if an action may dispatch given the active context. */
@@ -105,6 +174,10 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
     this.keyDownListener = (ev: KeyboardEvent) => this.dispatchKeyDown(ev.keyCode);
     kb.on('keydown', this.keyDownListener);
 
+    // Register as a live instance so setVirtualButton can dispatch to
+    // our event handlers while this scene is running.
+    liveInputServices.add(this);
+
     this.systems!.events.once('shutdown', this.onShutdown, this);
   }
 
@@ -112,14 +185,28 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
     const actions = actionsForKey(keyCode);
     if (actions.length === 0) return;
     for (const action of actions) {
-      if (!actionAllowed(action)) continue;
-      this.justPressedFlags.set(action, true);
-      const set = this.handlers.get(action);
-      if (!set) continue;
-      // Copy to tolerate handlers that unsubscribe during dispatch.
-      for (const handler of Array.from(set)) {
-        handler(action);
-      }
+      this._dispatchAction(action);
+    }
+  }
+
+  /**
+   * Dispatch a single action press to this service instance — sets the
+   * `justPressedFlags` entry and fires any registered event handlers.
+   *
+   * Used internally by `dispatchKeyDown` and by the module-level
+   * `setVirtualButton` so that virtual presses are indistinguishable
+   * from physical key presses.
+   *
+   * @internal Do not call from outside `src/input/`.
+   */
+  _dispatchAction(action: GameAction): void {
+    if (!actionAllowed(action)) return;
+    this.justPressedFlags.set(action, true);
+    const set = this.handlers.get(action);
+    if (!set) return;
+    // Copy to tolerate handlers that unsubscribe during dispatch.
+    for (const handler of Array.from(set)) {
+      handler(action);
     }
   }
 
@@ -128,6 +215,7 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   /** True while any key bound to `action` is held AND its context is active. */
   isDown(action: GameAction): boolean {
     if (!actionAllowed(action)) return false;
+    if (virtualButtonsDown.get(action)) return true;
     const codes = DEFAULT_BINDINGS[action];
     for (const code of codes) {
       if (this.keys.get(code)?.isDown) return true;
@@ -136,12 +224,24 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   }
 
   /**
-   * True exactly once per key press of `action`. Consumes the flag
-   * — a subsequent call in the same press returns false.
+   * True exactly once per action press (keyboard or virtual). Consumes the
+   * flag — a subsequent call in the same press returns false.
    */
   justPressed(action: GameAction): boolean {
     if (this.justPressedFlags.get(action)) {
       this.justPressedFlags.set(action, false);
+      // Remove from the virtual queue too so a second service instance
+      // can't get a spurious fire from the same virtual press.
+      virtualJustPressedQueue.delete(action);
+      return true;
+    }
+    // Fallback: check the module-level virtual queue. Consume the queued
+    // virtual press even when the action is currently disallowed, so blocked
+    // presses are discarded rather than leaking into a later context.
+    // This matches keyboard semantics: a press while blocked is lost.
+    if (virtualJustPressedQueue.has(action)) {
+      virtualJustPressedQueue.delete(action);
+      if (!actionAllowed(action)) return false;
       return true;
     }
     return false;
@@ -187,6 +287,7 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
   /* ---- lifecycle ---- */
 
   private onShutdown(): void {
+    liveInputServices.delete(this);
     const kb = this.scene?.input.keyboard;
     if (kb && this.keyDownListener) kb.off('keydown', this.keyDownListener);
     this.keyDownListener = undefined;

@@ -1,43 +1,39 @@
 import type { KVStorage } from './SaveManager';
+import { createPersistedStore } from './PersistedStore';
 
 const STORAGE_KEY = 'architect_info_seen_v1';
 
-let storage: KVStorage | null = null;
+const store = createPersistedStore<string[]>({
+  key: STORAGE_KEY,
+  defaultValue: () => [],
+  parse: (raw) => (Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []),
+});
 
-export function setStorage(s: KVStorage): void { storage = s; }
-
-function getStorage(): KVStorage {
-  if (storage) return storage;
-  try { storage = globalThis.localStorage; return storage; }
-  catch { return { getItem: () => null, setItem: () => {}, removeItem: () => {} }; }
-}
-
-function loadSeen(): Set<string> {
-  try {
-    const raw = getStorage().getItem(STORAGE_KEY);
-    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-  } catch { return new Set(); }
-}
-
-function persist(seen: Set<string>): void {
-  try { getStorage().setItem(STORAGE_KEY, JSON.stringify([...seen])); } catch { /* */ }
-}
+export function setStorage(s: KVStorage): void { store.setStorage(s); }
 
 export function hasBeenSeen(id: string): boolean {
-  return loadSeen().has(id);
+  return store.read().includes(id);
 }
 
 /** True once the player has opened at least one info dialog. */
 export function hasSeenAny(): boolean {
-  return loadSeen().size > 0;
+  return store.read().length > 0;
+}
+
+/** Number of distinct info dialogs the player has opened. */
+export function getSeenCount(): number {
+  return store.read().length;
+}
+
+/** All ids that have been seen. */
+export function getAllSeen(): string[] {
+  return store.read();
 }
 
 export function markSeen(id: string): void {
-  const seen = loadSeen();
-  seen.add(id);
-  persist(seen);
+  store.update((prev) => (prev.includes(id) ? prev : [...prev, id]));
 }
 
 export function resetAll(): void {
-  try { getStorage().removeItem(STORAGE_KEY); } catch { /* */ }
+  store.clear();
 }

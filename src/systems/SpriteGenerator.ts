@@ -16,15 +16,18 @@ import { generateGeirSprite } from './sprites/npcGeir';
 import { generateReceptionistSprite } from './sprites/receptionist';
 import { generateCoffeeSprites } from './sprites/coffee';
 import { generateRubberDuckSprite } from './sprites/npcRubberDuck';
+import { generateEnergyDrinkFridgeSprites } from './sprites/energyDrinkFridge';
 
 /**
  * Composition root for runtime sprite generation.
  *
  * Every graphic asset is built procedurally so the game ships with zero
  * image files. Individual generators live under `./sprites/`; this file
- * just wires them up for BootScene.
+ * just wires them up for BootScene. Guarded by a cache check so
+ * re-entering BootScene does not pay the generation cost again.
  */
 export function generateSprites(scene: Phaser.Scene): void {
+  if (scene.textures.exists('player')) return;
   generatePlayerSprites(scene);
   generateTileSprites(scene);
   generateAUTokenSprites(scene);
@@ -42,4 +45,5 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateReceptionistSprite(scene);
   generateCoffeeSprites(scene);
   generateRubberDuckSprite(scene);
+  generateEnergyDrinkFridgeSprites(scene);
 }

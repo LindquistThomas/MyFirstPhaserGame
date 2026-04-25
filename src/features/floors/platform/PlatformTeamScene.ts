@@ -1,5 +1,9 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import {
+  TIER_Y_T1, TIER_Y_T2, TIER_Y_T3, TIER_Y_T4,
+  CATWALK_THICKNESS_PLATFORM,
+} from '../../../config/levelGeometry';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { theme } from '../../../style/theme';
 import { eventBus } from '../../../systems/EventBus';
@@ -37,17 +41,6 @@ import { enemiesForGroundY } from './enemies';
  * rack-buzz / fan-hum / disk-seek ambience underneath the music.
  */
 export class PlatformTeamScene extends LevelScene {
-  /** Tier walking-surface Ys. Kept in sync with enemies.ts.
-   *  Pitch = 140 px; catwalk thickness = 16 → ~124 px clear headroom
-   *  under a catwalk body (140 - 16), which fits the 116 px player
-   *  hitbox with a small safety margin everywhere one tier stacks
-   *  above another. */
-  private static readonly T1_Y = 692; // low ledges (WAF right)
-  private static readonly T2_Y = 552; // mid catwalks spanning the room
-  private static readonly T3_Y = 412; // upper station catwalks (scaling / ops)
-  private static readonly T4_Y = 272; // top central island (split around lift B)
-  private static readonly CATWALK_THICKNESS = 16;
-
   constructor() {
     super('PlatformTeamScene', FLOORS.PLATFORM_TEAM);
   }
@@ -64,8 +57,8 @@ export class PlatformTeamScene extends LevelScene {
 
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
-    const T3 = PlatformTeamScene.T3_Y;
-    const T4 = PlatformTeamScene.T4_Y;
+    const T3 = TIER_Y_T3;
+    const T4 = TIER_Y_T4;
 
     // --- Floor zone carpets (thin tinted stripes at the walking surface). ---
     // Drawn BEFORE props so props sit on top. Ranges stay clear of the
@@ -103,12 +96,12 @@ export class PlatformTeamScene extends LevelScene {
     this.createMonitoringWall(940, T3);
 
     // --- Edge Security WAF panel on the T1 right ledge (x=1140..1280). ---
-    this.createWafDiagram(1200, PlatformTeamScene.T1_Y);
+    this.createWafDiagram(1200, TIER_Y_T1);
 
     // --- Overhead station nameplates. ---
     this.addStationNameplate(340,  T3 - 180, '[ SCALING LAB ]',   '#b8e6ff');
     this.addStationNameplate(940,  T3 - 180, '[ OBSERVABILITY ]', '#b8e6ff');
-    this.addStationNameplate(1200, PlatformTeamScene.T1_Y - 220, '[ EDGE SECURITY ]', '#ff8fa8');
+    this.addStationNameplate(1200, TIER_Y_T1 - 220, '[ EDGE SECURITY ]', '#ff8fa8');
 
     // --- Central lift hint — above the T4 island so the player notices
     //     that lift B goes all the way to the top.
@@ -341,7 +334,7 @@ export class PlatformTeamScene extends LevelScene {
       live.beginPath();
       for (let i = 0; i < spark.length; i++) {
         const px = lineRect.x + 2 + (i * (lineRect.w - 4)) / (SPARK_POINTS - 1);
-        const py = lineRect.y + lineRect.h - 2 - spark[i] * (lineRect.h - 4);
+        const py = lineRect.y + lineRect.h - 2 - spark[i]! * (lineRect.h - 4);
         if (i === 0) live.moveTo(px, py);
         else live.lineTo(px, py);
       }
@@ -352,15 +345,15 @@ export class PlatformTeamScene extends LevelScene {
       live.lineBetween(lineRect.x + 2, thresholdY, lineRect.x + lineRect.w - 2, thresholdY);
 
       for (let i = 0; i < bars.length; i++) {
-        bars[i] = Phaser.Math.Linear(bars[i], barTargets[i], 0.15);
-        if (Math.abs(bars[i] - barTargets[i]) < 0.02) {
+        bars[i] = Phaser.Math.Linear(bars[i]!, barTargets[i]!, 0.15);
+        if (Math.abs(bars[i]! - barTargets[i]!) < 0.02) {
           barTargets[i] = 0.25 + Math.random() * 0.7;
         }
         const slotW = (barRect.w - 4) / bars.length;
         const bx = barRect.x + 2 + i * slotW;
-        const bh = bars[i] * (barRect.h - 6);
+        const bh = bars[i]! * (barRect.h - 6);
         const by = barRect.y + barRect.h - 3 - bh;
-        const col = bars[i] > 0.8 ? 0xff5577 : bars[i] > 0.6 ? theme.color.status.warning : 0x4caf50;
+        const col = bars[i]! > 0.8 ? 0xff5577 : bars[i]! > 0.6 ? theme.color.status.warning : 0x4caf50;
         live.fillStyle(col, 1);
         live.fillRect(bx + 1, by, slotW - 3, bh);
       }
@@ -507,7 +500,7 @@ export class PlatformTeamScene extends LevelScene {
       // Retire packets that have exited off the left (allowed) or have
       // been stopped long enough to fade.
       for (let i = packets.length - 1; i >= 0; i--) {
-        const p = packets[i];
+        const p = packets[i]!;
         if (!p.stopped && p.pos < trackLeft) {
           if (p.kind === 'safe') allowed++;
           packets.splice(i, 1);
@@ -530,11 +523,11 @@ export class PlatformTeamScene extends LevelScene {
 
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
-    const T1 = PlatformTeamScene.T1_Y;
-    const T2 = PlatformTeamScene.T2_Y;
-    const T3 = PlatformTeamScene.T3_Y;
-    const T4 = PlatformTeamScene.T4_Y;
-    const T = PlatformTeamScene.CATWALK_THICKNESS;
+    const T1 = TIER_Y_T1;
+    const T2 = TIER_Y_T2;
+    const T3 = TIER_Y_T3;
+    const T4 = TIER_Y_T4;
+    const T = CATWALK_THICKNESS_PLATFORM;
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
@@ -598,6 +591,10 @@ export class PlatformTeamScene extends LevelScene {
 
       coffees: [
         { x: 720, y: T4 - 40 },
+      ],
+
+      fridges: [
+        { x: 870, y: T3 },  // T3 Observability station — beside the monitoring desk
       ],
 
       infoPoints: [

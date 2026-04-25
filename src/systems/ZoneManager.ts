@@ -1,4 +1,16 @@
+import type * as Phaser from 'phaser';
 import { eventBus } from './EventBus';
+
+type ZoneEntry = { check: () => boolean; active: boolean; priority: number };
+
+/** Options for {@link ZoneManager.register}. */
+export interface ZoneOptions {
+  /**
+   * Higher values win when multiple zones are simultaneously active and
+   * {@link ZoneManager.getActiveZone} is called. Defaults to `0`.
+   */
+  priority?: number;
+}
 
 /**
  * Tracks named content zones and broadcasts transitions via the EventBus.
@@ -15,8 +27,12 @@ import { eventBus } from './EventBus';
  * so subscribers are not hammered with per-frame calls.
  *
  * Usage:
+ *   // Bind to scene lifecycle (auto-clears on shutdown):
+ *   zoneManager.bindScene(scene); // call once, e.g. in create()
+ *
  *   // Register (e.g. in scene create):
  *   zoneManager.register('my-zone', () => someCondition);
+ *   zoneManager.register('overlay', () => otherCondition, { priority: 1 });
  *
  *   // Subscribe (e.g. in scene create, unsubscribe on shutdown):
  *   eventBus.on('zone:enter', (id) => { if (id === 'my-zone') show(); });
@@ -26,14 +42,26 @@ import { eventBus } from './EventBus';
  *   zoneManager.update();
  *
  *   // Keyboard input — synchronous query, no event needed:
- *   const active = zoneManager.getActiveZone(); // string | null
+ *   const active = zoneManager.getActiveZone(); // string | null (highest priority)
  */
 export class ZoneManager {
-  private zones = new Map<string, { check: () => boolean; active: boolean }>();
+  private zones = new Map<string, ZoneEntry>();
 
-  /** Register a zone. Starts inactive; update() drives transitions. */
-  register(zoneId: string, check: () => boolean): void {
-    this.zones.set(zoneId, { check, active: false });
+  /**
+   * Stable bound handler reference so `bindScene` can remove it before
+   * re-adding when called multiple times.
+   */
+  private readonly handleShutdown = (): void => { this.clear(); };
+
+  /**
+   * Register a zone. Starts inactive; update() drives transitions.
+   *
+   * @param zoneId  Unique zone identifier.
+   * @param check   Predicate evaluated every frame.
+   * @param opts    Optional configuration (e.g. `priority`).
+   */
+  register(zoneId: string, check: () => boolean, opts?: ZoneOptions): void {
+    this.zones.set(zoneId, { check, active: false, priority: opts?.priority ?? 0 });
   }
 
   /**
@@ -51,20 +79,38 @@ export class ZoneManager {
   }
 
   /**
-   * Synchronous query: returns the ID of the first currently-active zone,
-   * or null. Use this for keyboard/input handlers in the update loop where
-   * you need the value immediately rather than reactively.
+   * Synchronous query: returns the ID of the highest-priority currently-active
+   * zone, or null. When multiple zones are active simultaneously the one with
+   * the largest `priority` value wins. Use this for keyboard/input handlers in
+   * the update loop where you need the value immediately rather than reactively.
    */
   getActiveZone(): string | null {
+    let bestId: string | null = null;
+    let bestPriority = -Infinity;
     for (const [zoneId, zone] of this.zones) {
-      if (zone.active) return zoneId;
+      if (zone.active && zone.priority > bestPriority) {
+        bestId = zoneId;
+        bestPriority = zone.priority;
+      }
     }
-    return null;
+    return bestId;
   }
 
   /**
-   * Reset all zones to inactive without emitting events.
-   * Call in scene init() before create() re-registers zones.
+   * Bind this ZoneManager to a Phaser scene so that zones are automatically
+   * cleared whenever the scene shuts down. Call once — typically in `create()`.
+   *
+   * Safe to call multiple times on the same scene (duplicate listeners are
+   * removed before a new one is added, so exactly one handler is active).
+   */
+  bindScene(scene: Phaser.Scene): void {
+    scene.events.off('shutdown', this.handleShutdown);
+    scene.events.on('shutdown', this.handleShutdown);
+  }
+
+  /**
+   * Reset all zones without emitting events.
+   * Called automatically on scene shutdown when {@link bindScene} has been used.
    */
   clear(): void {
     this.zones.clear();

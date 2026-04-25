@@ -31,40 +31,59 @@ export const SCENE_MUSIC: Record<string, string> = {
 export interface MusicAsset {
   key: string;
   path: string;
+  /** When true, BootScene preloads this track before the menu renders. */
+  eager?: boolean;
 }
 
-/** Static music assets loaded by BootScene from /public/music. */
+/**
+ * Full music asset catalog.
+ *
+ * `eager: true` entries are loaded by `BootScene.preload()` so they are
+ * instantly available when the menu renders. Non-eager entries are loaded
+ * on-demand: tracks referenced in `SCENE_MUSIC` are lazy-loaded by
+ * `MusicPlugin` on scene `create`; other call sites must use
+ * `music:request` / `music:request-push` (instead of `music:play` /
+ * `music:push`) so that `MusicPlugin` can ensure the asset is cached
+ * before `AudioManager` attempts playback.
+ *
+ * Replaces the former separate `STATIC_MUSIC_ASSETS` / `DEFERRED_MUSIC_ASSETS`
+ * split — `BootScene` now filters by `eager === true`.
+ */
 export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
-  { key: 'music_menu', path: 'music/8bit-chiptune/bgm_menu.mp3' },
+  { key: 'music_menu',          path: 'music/8bit-chiptune/bgm_menu.mp3',                   eager: true },
   { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.mp3' },
   { key: 'music_elevator_ride', path: 'music/8bit-chiptune/bgm_action_3.mp3' },
-  { key: 'music_floor1', path: 'music/8bit-chiptune/bgm_action_1.mp3' },
-  { key: 'music_floor2', path: 'music/8bit-chiptune/bgm_action_2.mp3' },
-  { key: 'music_platform', path: 'music/retro-synth/shadow_operations-loop1.ogg' },
-  { key: 'music_quiz', path: 'music/retro-synth/hostile_territory-loop1.ogg' },
+  { key: 'music_floor1',        path: 'music/8bit-chiptune/bgm_action_1.mp3' },
+  { key: 'music_floor2',        path: 'music/8bit-chiptune/bgm_action_2.mp3' },
+  { key: 'music_platform',      path: 'music/retro-synth/shadow_operations-loop1.ogg' },
+  { key: 'music_quiz',          path: 'music/retro-synth/hostile_territory-loop1.ogg' },
+  { key: 'music_executive',     path: 'music/boss/bossroom-battle-431358.mp3' },
 ];
 
 /**
- * Large or scene-specific music assets loaded on demand by the owning
- * scene's `preload()` rather than at BootScene startup. Keeps initial
- * load lean when a track is only needed by a single floor. Use the
- * `loadDeferredMusic()` helper from scene preload to pull one in.
+ * Backward-compat view: assets that are NOT eager (formerly DEFERRED_MUSIC_ASSETS).
+ * Prefer reading `STATIC_MUSIC_ASSETS` and filtering by `!eager` in new code.
  */
-export const DEFERRED_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
-  { key: 'music_executive', path: 'music/boss/bossroom-battle-431358.mp3' },
-];
+export const DEFERRED_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = STATIC_MUSIC_ASSETS.filter(
+  (a) => !a.eager,
+);
 
 /**
- * Queue a deferred music asset for load on a scene's loader. Safe to
- * call from `preload()` on every scene entry — Phaser skips audio keys
- * that are already cached, so subsequent visits don't re-download.
+ * @deprecated Use the automatic lazy-loading in `MusicPlugin` instead.
+ *
+ * Queue a music asset for load on a scene's loader. Safe to call from
+ * `preload()` on every scene entry — Phaser skips audio keys that are
+ * already cached, so subsequent visits don't re-download.
+ *
+ * This helper is no longer needed now that `MusicPlugin` lazy-loads on
+ * first play, but is kept so existing call-sites don't break.
  */
 export function loadDeferredMusic(
   scene: { load: { audio: (key: string, url: string) => unknown }; cache: { audio: { exists: (key: string) => boolean } } },
   key: string,
 ): void {
   if (scene.cache.audio.exists(key)) return;
-  const asset = DEFERRED_MUSIC_ASSETS.find((a) => a.key === key);
+  const asset = STATIC_MUSIC_ASSETS.find((a) => a.key === key);
   if (!asset) return;
   scene.load.audio(asset.key, asset.path);
 }
@@ -103,6 +122,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:drop_au':      'drop_au',
   'sfx:recover_au':   'recover_au',
   'sfx:coffee_sip':   'coffee_sip',
+  'sfx:fridge_open':  'fridge_open',
 };
 
 /** Default volume for background music (0–1). */

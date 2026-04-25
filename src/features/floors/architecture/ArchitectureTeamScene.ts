@@ -1,5 +1,9 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import {
+  TIER_Y_T1 as TIER_T1, TIER_Y_T2 as TIER_T2,
+  CATWALK_THICKNESS,
+} from '../../../config/levelGeometry';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { theme } from '../../../style/theme';
 
@@ -20,16 +24,6 @@ import { theme } from '../../../style/theme';
 export class ArchitectureTeamScene extends LevelScene {
   /** First token index used in this room — must not overlap PlatformTeamScene. */
   private static readonly TOKEN_INDEX_OFFSET = 7;
-
-  /**
-   * Catwalk tiers match PlatformTeamScene so the jump physics carry
-   * across rooms on the same floor. Single jump from ground (G=832,
-   * gravity=900, jump=-520) clears ~150 px, and each tier sits 140 px
-   * above the one below.
-   */
-  private static readonly MID_Y = 692;
-  private static readonly UP_Y = 552;
-  private static readonly CAT_T = 20;
 
   constructor() {
     super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);
@@ -177,7 +171,7 @@ export class ArchitectureTeamScene extends LevelScene {
     const sliceRects: Phaser.GameObjects.Rectangle[] = [];
     for (let i = 0; i < slices.length; i++) {
       const sy = top + i * (sliceH + 2);
-      const r = this.add.rectangle(sliceX, sy, sliceW, sliceH, slices[i].col, 0.9)
+      const r = this.add.rectangle(sliceX, sy, sliceW, sliceH, slices[i]!.col, 0.9)
         .setOrigin(0, 0).setDepth(4).setStrokeStyle(1, 0xffffff, 0.25);
       sliceRects.push(r);
       // left tab — HTTP | logic | data bands
@@ -187,7 +181,7 @@ export class ArchitectureTeamScene extends LevelScene {
       g2.fillRect(sliceX + 14, sy + 4, 6, sliceH - 8);
       g2.fillRect(sliceX + 24, sy + 4, 6, sliceH - 8);
 
-      this.add.text(sliceX + 38, sy + sliceH / 2, slices[i].name, {
+      this.add.text(sliceX + 38, sy + sliceH / 2, slices[i]!.name, {
         fontFamily: 'monospace', fontSize: '10px', color: '#0b1322', fontStyle: 'bold',
       }).setOrigin(0, 0.5).setDepth(5);
     }
@@ -211,7 +205,7 @@ export class ArchitectureTeamScene extends LevelScene {
         ease: 'Sine.easeInOut',
       });
       // subtle flash on the active slice
-      const r = sliceRects[active];
+      const r = sliceRects[active]!;
       this.tweens.add({
         targets: r, alpha: 1, duration: 120, yoyo: true, onComplete: () => r.setAlpha(0.9),
       });
@@ -272,7 +266,7 @@ export class ArchitectureTeamScene extends LevelScene {
     const LINE_H = 11;
     const textObjs: Phaser.GameObjects.Text[] = [];
     for (let i = 0; i < ADRS.length; i++) {
-      const t = this.add.text(sx + 6, 0, ADRS[i], {
+      const t = this.add.text(sx + 6, 0, ADRS[i]!, {
         fontFamily: 'monospace', fontSize: '9px', color: '#f5c36a',
       });
       textLayer.add(t);
@@ -293,7 +287,7 @@ export class ArchitectureTeamScene extends LevelScene {
         const baseTY = sy + 6 + i * LINE_H - scroll;
         let ty = baseTY;
         if (ty < sy - LINE_H) ty += total;
-        textObjs[i].setY(ty);
+        textObjs[i]!.setY(ty);
       }
       live.clear();
       cursorState.on = !cursorState.on;
@@ -312,9 +306,9 @@ export class ArchitectureTeamScene extends LevelScene {
   protected getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
     const K = ArchitectureTeamScene.TOKEN_INDEX_OFFSET;
-    const MID = ArchitectureTeamScene.MID_Y;
-    const UP = ArchitectureTeamScene.UP_Y;
-    const T = ArchitectureTeamScene.CAT_T;
+    const MID = TIER_T1;
+    const UP = TIER_T2;
+    const T = CATWALK_THICKNESS;
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,

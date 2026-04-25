@@ -6,10 +6,19 @@ import { FLOORS, GAME_WIDTH } from '../config/gameConfig';
 import { setPlayerSlot, setStorage, type KVStorage } from '../systems/SaveManager';
 
 vi.mock('phaser', () => {
+  const keyCodes = new Proxy({}, { get: () => 0 });
+  class ScenePlugin {
+    constructor(_scene: unknown, _pluginManager: unknown) {}
+    boot(): void {}
+  }
   const Phaser = {
     Math: {
       Clamp: (value: number, min: number, max: number) => Math.min(max, Math.max(min, value)),
     },
+    Input: {
+      Keyboard: { KeyCodes: keyCodes },
+    },
+    Plugins: { ScenePlugin },
   };
   return { ...Phaser, default: Phaser };
 });
@@ -105,6 +114,9 @@ function makeScene(muted = false) {
         add: vi.fn(),
         setDepth: vi.fn().mockReturnThis(),
         setScrollFactor: vi.fn().mockReturnThis(),
+        setAlpha: vi.fn().mockReturnThis(),
+        setVisible: vi.fn().mockReturnThis(),
+        alpha: 1,
       })),
       graphics: vi.fn(() => {
         const g = makeGraphics();

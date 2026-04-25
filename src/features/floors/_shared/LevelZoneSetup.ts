@@ -39,6 +39,7 @@ export class LevelZoneSetup {
     if (!config.infoPoints?.length) return;
 
     const lifecycle = createSceneLifecycle(this.deps.scene);
+    lifecycle.add(() => this.zoneManager.clear());
     lifecycle.bindEventBus('zone:enter', (zoneId) => {
       this.iconsByContentId.get(zoneId)?.setVisible(true);
     });
