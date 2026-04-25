@@ -176,7 +176,7 @@ function makeScene(muted = false) {
 describe('HUD', () => {
   let progression: ProgressionSystem;
   let scene: ReturnType<typeof makeScene> | undefined;
-  let toggleSpy: ReturnType<typeof vi.fn> | undefined;
+  let toggleSpy: ReturnType<typeof vi.fn<() => void>> | undefined;
 
   beforeEach(() => {
     setPlayerSlot('hud-test');
@@ -222,7 +222,7 @@ describe('HUD', () => {
     scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);
 
-    toggleSpy = vi.fn();
+    toggleSpy = vi.fn<() => void>();
     eventBus.on('audio:toggle-mute', toggleSpy);
 
     scene.zoneHandlers.get('pointerup')?.();

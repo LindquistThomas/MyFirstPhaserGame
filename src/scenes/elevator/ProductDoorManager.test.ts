@@ -50,7 +50,7 @@ describe('ProductDoorManager proximity + open-on-approach', () => {
     setOrigin?: ReturnType<typeof vi.fn>;
     visible: boolean;
   };
-  let onEnter: ReturnType<typeof vi.fn>;
+  let onEnter: ReturnType<typeof vi.fn<(door: ProductDoor) => void>>;
   let playerX: number;
   let playerBottom: number;
   let onElevator: boolean;
@@ -59,7 +59,7 @@ describe('ProductDoorManager proximity + open-on-approach', () => {
 
   beforeEach(() => {
     stubs = [];
-    onEnter = vi.fn();
+    onEnter = vi.fn<(door: ProductDoor) => void>();
     playerX = 0;
     playerBottom = WALK_Y;
     onElevator = false;
