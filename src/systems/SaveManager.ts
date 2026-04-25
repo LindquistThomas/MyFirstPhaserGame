@@ -15,6 +15,10 @@ export interface SaveData {
   unlockedFloors: number[];
   currentFloor: number;
   collectedTokens: Record<number, number[]>;
+  /** Set once the player has completed (or explicitly skipped) the onboarding flow. */
+  onboardingComplete?: boolean;
+  /** Floors the player has entered at least once. Optional for backward-compat. */
+  visitedFloors?: number[];
 }
 
 

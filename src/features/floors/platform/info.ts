@@ -232,6 +232,47 @@ export const INFO_PLATFORM: Record<string, InfoPointDef> = {
     },
   },
 
+  'rubber-duck-debugging': {
+    floorId: FLOORS.PLATFORM_TEAM,
+    content: {
+      id: 'rubber-duck-debugging',
+      title: 'The Rubber Duck',
+      body:
+        'Quack.\n\n' +
+        'Rubber-duck debugging is the practice of explaining your code, line ' +
+        'by line, to an inanimate object — classically, a small yellow rubber ' +
+        'duck. It sounds absurd. It works surprisingly often.\n\n' +
+        'THE SCIENCE-ISH\n' +
+        'When you write code you are in execution mode: you know what the ' +
+        'code is supposed to do, so your brain helpfully fills in the gaps ' +
+        'and skips over inconsistencies. When you explain the code aloud ' +
+        'you are forced into narration mode — you must construct a linear ' +
+        'description of what each line actually does, not what you intended ' +
+        'it to do. That switch in register is often enough to surface the ' +
+        'bug yourself, before the duck can say a word.\n\n' +
+        'THE PROTOCOL\n' +
+        '  1. Pick up the duck (or other silent observer).\n' +
+        '  2. Say "I have a problem with my code." The duck listens.\n' +
+        '  3. Explain, out loud, what the code is supposed to do.\n' +
+        '  4. Explain, out loud, what it actually does, line by line.\n' +
+        '  5. Notice where step 3 and step 4 diverge.\n' +
+        '  6. Thank the duck. It will not respond. It is a duck.\n\n' +
+        'ARCHITECTURAL RUBBER DUCKING\n' +
+        'The technique scales beyond debugging. Architects use it to ' +
+        'pressure-test designs: explain the system to the duck. If you ' +
+        'struggle to articulate why a particular boundary exists, or why ' +
+        'service A calls service B instead of the other way around, the ' +
+        'design probably needs work — and you found that out before the ' +
+        'review, not during it.\n\n' +
+        'KEY INSIGHT\n' +
+        'The duck does not have to be a duck. It can be a rubber chicken, ' +
+        'a houseplant, a carefully chosen commit message, or a well-structured ' +
+        'question typed into a chat window you never send. The medium is ' +
+        'irrelevant; the articulation is the mechanism. But the duck is ' +
+        'funnier, and fun matters.',
+    },
+  },
+
   'web-application-firewall': {
     floorId: FLOORS.PLATFORM_TEAM,
     content: {

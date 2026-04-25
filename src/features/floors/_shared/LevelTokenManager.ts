@@ -5,6 +5,7 @@ import { Player } from '../../../entities/Player';
 import { Token } from '../../../entities/Token';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import { GameStateManager } from '../../../systems/GameStateManager';
 import type { LevelConfig } from './LevelScene';
 
 export interface TokenManagerDeps {
@@ -15,6 +16,7 @@ export interface TokenManagerDeps {
   player: Player;
   platformGroup: Phaser.Physics.Arcade.StaticGroup;
   camera: Phaser.Cameras.Scene2D.Camera;
+  gameState: GameStateManager;
 }
 
 /**
@@ -78,6 +80,7 @@ export class LevelTokenManager {
     this.deps.progression.collectAU(this.deps.floorId, tokenIndex);
     this.auCollected++;
     this.deps.camera.flash(100, 255, 215, 0, false, undefined, this);
+    this.deps.gameState.checkAchievements();
   };
 
   private onRecoverDropped = (
@@ -88,6 +91,7 @@ export class LevelTokenManager {
     if (!drop.ready || drop.collected) return;
     drop.recover();
     this.deps.progression.addAU(this.deps.floorId, 1);
+    this.deps.gameState.checkAchievements();
   };
 
   private emitSparkle(x: number, y: number): void {

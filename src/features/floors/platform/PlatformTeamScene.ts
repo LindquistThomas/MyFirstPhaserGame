@@ -85,6 +85,10 @@ export class PlatformTeamScene extends LevelScene {
     this.add.image(740, G - 50, 'server_rack').setDepth(3);
     this.add.image(740, G - 10, 'cables').setDepth(1);
 
+    // --- Rubber duck on the ground to the right of the server rack,
+    //     between the rack and lift C. Approach it to read its wisdom. ---
+    this.add.image(870, G, 'npc_rubber_duck').setOrigin(0.5, 1).setDepth(3);
+
     // --- Mezzanine content panels, anchored to their T3 catwalk tops. ---
     //     Left T3 catwalk:  x=160..520  → Scaling Lab centred at x=340.
     //     Right T3 catwalk: x=760..1120 → Observability centred at x=940.
@@ -617,6 +621,12 @@ export class PlatformTeamScene extends LevelScene {
         {
           x: 1200, y: T1, contentId: 'web-application-firewall',
           zone: { shape: 'rect', width: 200, height: 140, offsetY: -78 },
+        },
+        // Ground rubber duck — debugging mascot between the server rack
+        // and lift C. Circle zone; player walks up to the duck to interact.
+        {
+          x: 870, y: G, contentId: 'rubber-duck-debugging',
+          zone: { shape: 'circle', radius: 120 },
         },
       ],
 

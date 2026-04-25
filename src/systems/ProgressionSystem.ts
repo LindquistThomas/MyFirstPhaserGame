@@ -24,6 +24,9 @@ export interface ProgressionState {
   unlockedFloors: Set<FloorId>;
   currentFloor: FloorId;
   collectedTokens: Record<FloorId, Set<number>>;
+  onboardingComplete: boolean;
+  /** Floors the player has physically entered at least once. */
+  visitedFloors: Set<FloorId>;
 }
 
 export class ProgressionSystem {
@@ -46,6 +49,8 @@ export class ProgressionSystem {
       unlockedFloors: new Set(allFloors),
       currentFloor: FLOORS.LOBBY,
       collectedTokens: Object.fromEntries(allFloors.map(id => [id, new Set<number>()])) as Record<FloorId, Set<number>>,
+      onboardingComplete: false,
+      visitedFloors: new Set<FloorId>(),
     };
   }
 
@@ -108,6 +113,24 @@ export class ProgressionSystem {
     return this.tokensFor(floorId).has(tokenIndex);
   }
 
+  /** Mark a floor as having been physically entered by the player. */
+  markFloorVisited(floorId: FloorId): void {
+    if (this.state.visitedFloors.has(floorId)) return;
+    this.state.visitedFloors.add(floorId);
+    this.persist();
+  }
+
+  /** Number of distinct floors the player has visited. */
+  getVisitedFloorCount(): number {
+    return this.state.visitedFloors.size;
+  }
+
+  /** Total number of tokens collected across all floors. */
+  getTotalCollectedTokens(): number {
+    return Object.values(this.state.collectedTokens)
+      .reduce((sum, s) => sum + s.size, 0);
+  }
+
   private checkUnlocks(): void {
     for (const [, floorData] of Object.entries(LEVEL_DATA)) {
       if (!this.state.unlockedFloors.has(floorData.id) &&
@@ -148,6 +171,21 @@ export class ProgressionSystem {
     return Math.max(0, required - this.state.totalAU);
   }
 
+  isOnboardingComplete(): boolean {
+    return this.state.onboardingComplete;
+  }
+
+  completeOnboarding(): void {
+    if (this.state.onboardingComplete) return;
+    this.state.onboardingComplete = true;
+    this.persist();
+  }
+
+  resetOnboarding(): void {
+    this.state.onboardingComplete = false;
+    this.persist();
+  }
+
   reset(): void {
     this.state = this.defaultState();
     this.saveAdapter.clear();
@@ -172,6 +210,8 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
       ) as Record<FloorId, Set<number>>,
+      onboardingComplete: data.onboardingComplete ?? false,
+      visitedFloors: new Set<FloorId>((data.visitedFloors ?? []) as FloorId[]),
     };
     this.checkUnlocks();
     return true;
@@ -187,6 +227,8 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(this.state.collectedTokens).map(([k, v]) => [Number(k), Array.from(v)]),
       ),
+      onboardingComplete: this.state.onboardingComplete,
+      visitedFloors: Array.from(this.state.visitedFloors),
     });
   }
 }

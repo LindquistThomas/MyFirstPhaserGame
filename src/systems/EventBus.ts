@@ -90,6 +90,7 @@ export interface GameEvents {
   'persistence:error': [storageKey: string, message: string];
 
   /**
+  /**
    * A new floor was unlocked via AU progression. Payload is the floor ID.
    * Emitted by ProgressionSystem after `checkUnlocks()` detects a new entry.
    */
@@ -110,6 +111,13 @@ export interface GameEvents {
    * storage errors.
    */
   'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string }];
+
+  /**
+   * An achievement was just unlocked for the first time.
+   * `id` is the achievement's unique key; `label` is its human-readable name.
+   * Emitted by `GameStateManager.checkAchievements()`.
+   */
+  'achievement:unlocked': [id: string, label: string];
 }
 
 export type GameEventName = keyof GameEvents;

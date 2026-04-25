@@ -5,6 +5,8 @@ import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { HUD } from '../../ui/HUD';
 import { ElevatorButtons } from '../../ui/ElevatorButtons';
+import { WelcomeModal } from '../../ui/WelcomeModal';
+import { ControlHintsOverlay } from '../../ui/ControlHintsOverlay';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { DialogController } from '../../ui/DialogController';
@@ -61,6 +63,11 @@ export class ElevatorScene extends Phaser.Scene {
 
   private zoneManager = new ZoneManager();
   private shaftExtent!: ShaftExtent;
+
+  /** Control hints overlay — shown on first visit, dismissed per action or after 30 s. */
+  private controlHints?: ControlHintsOverlay;
+  /** Whether the welcome modal is currently open (blocks control hints). */
+  private welcomeModalOpen = false;
 
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
@@ -153,7 +160,10 @@ export class ElevatorScene extends Phaser.Scene {
         if (id === WELCOME_BOARD_ID) return this.zones.lobbyBoardIcon;
         return this.zones.elevatorInfoIcon;
       },
-      onOpen: (id) => this.gameState.markSeen(id),
+      onOpen: (id) => {
+        this.gameState.markSeen(id);
+        this.gameState.checkAchievements();
+      },
       onClose: (id) => {
         if (id === ELEVATOR_INFO_ID) {
           this.zones.elevatorInfoIcon?.markAsSeen();
@@ -162,6 +172,7 @@ export class ElevatorScene extends Phaser.Scene {
         } else if (id === GEIR_F4_ID) {
           this.zones.geirInfoIcon?.markAsSeen();
         }
+        this.gameState.checkAchievements();
       },
     });
 
@@ -187,6 +198,26 @@ export class ElevatorScene extends Phaser.Scene {
     // Cable + LEDs need an initial tick so they render before update() runs.
     this.layout.updateShaftCable(this.elevatorCtrl);
     this.layout.updateFloorLEDs(this.elevatorCtrl);
+
+    // First-time onboarding: show welcome modal on a fresh save.
+    this.maybeShowOnboarding();
+
+    // Mark the lobby as visited and check for first-time achievements.
+    this.progression.markFloorVisited(FLOORS.LOBBY);
+    this.gameState.checkAchievements();
+  }
+
+  /** Show the welcome modal + control hints overlay on the player's first visit. */
+  private maybeShowOnboarding(): void {
+    if (this.gameState.isOnboardingComplete()) return;
+
+    this.welcomeModalOpen = true;
+    new WelcomeModal(this, () => {
+      this.welcomeModalOpen = false;
+      this.gameState.completeOnboarding();
+      // Control hints appear once the welcome card is dismissed.
+      this.controlHints = new ControlHintsOverlay(this);
+    });
   }
 
   /* ---- player ---- */
@@ -365,6 +396,9 @@ export class ElevatorScene extends Phaser.Scene {
 
     this.player.update(delta);
     this.hud.update();
+
+    // Tick control hints overlay while gameplay is running (not modal-blocked).
+    if (!this.welcomeModalOpen) this.controlHints?.update();
 
     // The elevator cab zone overlaps MoveUp (ArrowUp is bound to both
     // MoveUp and ToggleInfo). If we let ToggleInfo open the cab info

@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { GameStateManager } from './GameStateManager';
 import { setPlayerSlot, KVStorage } from './SaveManager';
 import { FLOORS } from '../config/gameConfig';
 import { QUIZ_PASS_THRESHOLD } from '../config/quiz';
 import { saveQuizResult } from './QuizManager';
+import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
   const store = new Map<string, string>();
@@ -104,5 +105,86 @@ describe('GameStateManager', () => {
 
     state.clearSave();
     expect(state.hasSave()).toBe(false);
+  });
+
+  it('wires AchievementManager storage alongside other stores', () => {
+    const storage = memoryStorage();
+    const state = new GameStateManager(storage);
+
+    // Trigger the au-5 achievement by adding AU.
+    state.progression.addAU(FLOORS.LOBBY, 5);
+    state.checkAchievements();
+
+    expect(storage.store.has('architect_achievements_v1')).toBe(true);
+    expect(state.isAchievementUnlocked('au-5')).toBe(true);
+  });
+});
+
+describe('GameStateManager.checkAchievements', () => {
+  let storage: KVStorage & { store: Map<string, string> };
+  let state: GameStateManager;
+
+  beforeEach(() => {
+    setPlayerSlot('ach-test');
+    storage = memoryStorage();
+    state = new GameStateManager(storage);
+    eventBus.removeAllListeners();
+  });
+
+  afterEach(() => {
+    eventBus.removeAllListeners();
+  });
+
+  it('emits achievement:unlocked when AU threshold is crossed', () => {
+    const unlocked: string[] = [];
+    eventBus.on('achievement:unlocked', (id) => unlocked.push(id));
+
+    state.progression.addAU(FLOORS.LOBBY, 5);
+    state.checkAchievements();
+
+    expect(unlocked).toContain('au-5');
+    expect(state.isAchievementUnlocked('au-5')).toBe(true);
+  });
+
+  it('does not emit achievement:unlocked on repeated checks (idempotent)', () => {
+    state.progression.addAU(FLOORS.LOBBY, 5);
+    state.checkAchievements();
+
+    const spy = vi.fn();
+    eventBus.on('achievement:unlocked', spy);
+    state.checkAchievements();
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('unlocks floor-exploration achievements when floors are visited', () => {
+    const allFloors = [FLOORS.LOBBY, FLOORS.PLATFORM_TEAM, FLOORS.BUSINESS];
+    for (const f of allFloors) state.progression.markFloorVisited(f);
+    state.checkAchievements();
+
+    expect(state.isAchievementUnlocked('floors-3')).toBe(true);
+    expect(state.isAchievementUnlocked('floors-all')).toBe(false);
+  });
+
+  it('unlocks info achievements when info panels are seen', () => {
+    state.markSeen('info-a');
+    state.checkAchievements();
+
+    expect(state.isAchievementUnlocked('info-1')).toBe(true);
+    expect(state.isAchievementUnlocked('info-5')).toBe(false);
+  });
+
+  it('unlocks quiz achievements when quizzes are passed', () => {
+    saveQuizResult('q1', QUIZ_PASS_THRESHOLD);
+    state.checkAchievements();
+
+    expect(state.isAchievementUnlocked('quiz-1')).toBe(true);
+  });
+
+  it('getUnlockedAchievementCount returns correct count', () => {
+    expect(state.getUnlockedAchievementCount()).toBe(0);
+    state.progression.addAU(FLOORS.LOBBY, 5);
+    state.checkAchievements();
+    expect(state.getUnlockedAchievementCount()).toBe(1);
   });
 });

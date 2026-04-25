@@ -20,6 +20,16 @@ export function hasSeenAny(): boolean {
   return store.read().length > 0;
 }
 
+/** Number of distinct info dialogs the player has opened. */
+export function getSeenCount(): number {
+  return store.read().length;
+}
+
+/** All ids that have been seen. */
+export function getAllSeen(): string[] {
+  return store.read();
+}
+
 export function markSeen(id: string): void {
   store.update((prev) => (prev.includes(id) ? prev : [...prev, id]));
 }
