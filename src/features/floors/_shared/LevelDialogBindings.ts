@@ -21,14 +21,15 @@ export function createLevelDialogs(
     getIconForContent: opts.getIcon,
     onOpen: (id) => {
       opts.gameState.markSeen(id);
-      // Info panel read — may unlock Curious Mind / Knowledge Seeker / Fully Informed.
+      // Info panel read — may unlock info-1 / info-5 / info-all achievements.
       opts.gameState.checkAchievements();
     },
     onClose: (id) => {
       // Dialog was just read — switch the icon (if still visible in its
       // zone) from the eye-catching "unseen" animation to the subtle pulse.
       opts.getIcon(id)?.markAsSeen();
-      // Quiz may have been completed during this dialog session.
+      // Quiz may have been completed during this dialog session — check
+      // quiz-1 / quiz-5 / quiz-all achievements.
       opts.gameState.checkAchievements();
     },
   });

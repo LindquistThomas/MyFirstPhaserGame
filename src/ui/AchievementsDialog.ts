@@ -130,9 +130,7 @@ export class AchievementsDialog extends ModalBase {
         iconGfx.arc(iconX, iconCY - 5, 5, Math.PI, 0);
         iconGfx.strokePath();
       } else {
-        // grey question mark for secret
-        iconGfx.fillStyle(0x334455, 1);
-        iconGfx.fillRect(iconX - 5, iconCY - 2, 10, 9);
+        // dimmed block icon for secret
         iconGfx.fillStyle(0x334455, 1);
         iconGfx.fillRect(iconX - 5, iconCY - 2, 10, 9);
       }
@@ -151,7 +149,7 @@ export class AchievementsDialog extends ModalBase {
 
       // description
       const descColor = isUnlocked ? theme.color.css.textSecondary : '#33445566';
-      const desc = this.scene.add.text(labelX, cy + 27, isSecret ? 'Unlock all other achievements to reveal.' : ach.description, {
+      const desc = this.scene.add.text(labelX, cy + 27, isSecret ? 'Complete all other achievements to reveal.' : ach.description, {
         fontFamily: 'monospace', fontSize: '11px',
         color: isSecret ? '#445566' : descColor,
       }).setOrigin(0, 0);
