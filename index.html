@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>So You Want to Be an Architect</title>
   <style>
     * {
@@ -15,6 +15,10 @@
       height: 100%;
       overflow: hidden;
       background-color: #1a1a2e;
+      /* Prevent the page from scrolling/zooming when players swipe the
+         on-screen controls. The Phaser canvas and the virtual-pad buttons
+         each set touch-action individually. */
+      touch-action: none;
     }
     /*
      * Pillarbox backdrop: the Phaser canvas is fixed 4:3 and FIT-scaled,
@@ -70,6 +74,103 @@
       clip: rect(0, 0, 0, 0);
       white-space: nowrap;
       border: 0;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Virtual gamepad — rendered by src/ui/VirtualGamepad.ts on touch     */
+    /* devices. Hidden by default; JS makes it visible when isTouchPrimary */
+    /* returns true.                                                        */
+    /* ------------------------------------------------------------------ */
+    #virtual-pad {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      /* Pad sits above the game canvas but clicks pass through the
+         transparent wrapper to reach the canvas underneath. */
+      z-index: 10;
+      pointer-events: none;
+      /* Respect notch / home-indicator safe areas. */
+      padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+      padding-left: max(env(safe-area-inset-left, 0px), 12px);
+      padding-right: max(env(safe-area-inset-right, 0px), 12px);
+
+      /* Hidden by default; VirtualGamepad.initVirtualGamepad() adds .active */
+      display: none;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    #virtual-pad.active {
+      display: flex;
+    }
+
+    /* Left cluster (D-pad) and right cluster (action buttons) */
+    .vpad-cluster {
+      pointer-events: none;
+    }
+
+    /* D-pad laid out as a cross */
+    .vpad-dpad {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .vpad-dpad-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 4px;
+    }
+    .vpad-dpad-center {
+      width: 52px;
+      height: 52px;
+    }
+
+    /* Action buttons stacked vertically */
+    .vpad-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      padding-bottom: 4px;
+    }
+
+    /* Shared button style */
+    .vpad-btn {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.18);
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      pointer-events: auto;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 80ms ease;
+      /* Ensure tap/hold state visually responds */
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .vpad-btn:active,
+    .vpad-btn.pressed {
+      background: rgba(255, 255, 255, 0.42);
+      border-color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Action buttons (A/B) are slightly larger */
+    .vpad-btn--action {
+      width: 60px;
+      height: 60px;
+      font-size: 18px;
+      font-weight: bold;
     }
   </style>
 </head>

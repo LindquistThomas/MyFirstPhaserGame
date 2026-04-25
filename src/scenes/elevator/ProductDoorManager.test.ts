@@ -134,7 +134,7 @@ describe('ProductDoorManager proximity + open-on-approach', () => {
   });
 
   it('opens only the door the player is standing next to', () => {
-    const target = ProductDoorManager.doors[2]; // ISY Road
+    const target = ProductDoorManager.doors[2]!; // ISY Road
     playerX = target.x + 5;
     manager.update(false);
 
@@ -152,7 +152,7 @@ describe('ProductDoorManager proximity + open-on-approach', () => {
   });
 
   it('closes all doors when the player is riding the elevator', () => {
-    const target = ProductDoorManager.doors[0];
+    const target = ProductDoorManager.doors[0]!;
     playerX = target.x;
     onElevator = true;
     manager.update(false);
@@ -161,7 +161,7 @@ describe('ProductDoorManager proximity + open-on-approach', () => {
   });
 
   it('closes all doors when the player is off the PRODUCTS walk surface', () => {
-    const target = ProductDoorManager.doors[3];
+    const target = ProductDoorManager.doors[3]!;
     playerX = target.x;
     playerBottom = WALK_Y - 200; // in the air, nowhere near the floor
     manager.update(false);
@@ -169,7 +169,7 @@ describe('ProductDoorManager proximity + open-on-approach', () => {
   });
 
   it('fires onEnter when Interact is pressed near a door', () => {
-    const target = ProductDoorManager.doors[1]; // ISY Beskrivelse
+    const target = ProductDoorManager.doors[1]!; // ISY Beskrivelse
     playerX = target.x - 10;
     manager.update(true);
     expect(onEnter).toHaveBeenCalledWith(target);

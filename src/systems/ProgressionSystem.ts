@@ -2,6 +2,7 @@ import { FLOORS, FloorId } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
 import type { SaveData } from './SaveManager';
 import * as DefaultSaveManager from './SaveManager';
+import { CURRENT_SAVE_VERSION } from './SaveManager';
 import { resetAllQuizzes } from './QuizManager';
 import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
 import { eventBus } from './EventBus';
@@ -178,6 +179,7 @@ export class ProgressionSystem {
 
   private persist(): void {
     this.saveAdapter.save({
+      version: CURRENT_SAVE_VERSION,
       totalAU: this.state.totalAU,
       floorAU: this.state.floorAU,
       unlockedFloors: Array.from(this.state.unlockedFloors),

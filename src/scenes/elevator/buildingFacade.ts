@@ -252,7 +252,7 @@ export function drawBuildingFacade(
     objects.push(gfx);
 
     for (let i = 0; i < bands.length; i++) {
-      const band = bands[i];
+      const band = bands[i]!;
       const bandH = band.yBottom - band.yTop;
       if (bandH <= 0) continue;
 

@@ -17,10 +17,34 @@ export interface GameEvents {
   'music:push': [key: string];
   /** Restore the music that was playing before the most recent `music:push`. */
   'music:pop': [];
+  /**
+   * Request that a track be lazy-loaded (if not already cached) and then
+   * played via `music:play`. Use instead of `music:play` for any track that
+   * may not be in Phaser's audio cache at the call site. `MusicPlugin`
+   * intercepts this event, loads the asset if needed, then emits `music:play`
+   * once the asset is ready (or immediately on a cache hit).
+   */
+  'music:request': [key: string];
+  /**
+   * Same as `music:request` but with push-stack semantics: the current track
+   * is suspended and restored with `music:pop`. Use instead of `music:push`
+   * for non-eager tracks.
+   */
+  'music:request-push': [key: string];
   /** Toggle global audio mute (affects both music and SFX). */
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
+  /**
+   * Emitted by SettingsStore whenever any volume-related setting changes
+   * (masterVolume, musicVolume, sfxVolume, muteAll). AudioManager listens
+   * and re-applies the new levels to all active channels.
+   */
+  'audio:volume-changed': [];
+  /** Pause the currently-playing music track (e.g. when game is paused). */
+  'music:pause': [];
+  /** Resume a music track that was paused via `music:pause`. */
+  'music:resume': [];
 
   /** Start looping an ambience bed on the dedicated ambience channel. */
   'ambience:play': [key: string];
@@ -77,6 +101,15 @@ export interface GameEvents {
    * Useful for screen-reader announcements and HUD celebrations.
    */
   'progression:au_milestone': [total: number];
+
+  /**
+   * SaveManager failed to read or write a save slot.
+   * `reason` discriminates the failure mode so HUD can show a tailored message.
+   * Emitted at most once per `unavailable` session (noop storage detection),
+   * on every quota error, on every JSON parse failure, and on other unknown
+   * storage errors.
+   */
+  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string }];
 }
 
 export type GameEventName = keyof GameEvents;

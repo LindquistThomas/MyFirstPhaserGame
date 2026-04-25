@@ -117,9 +117,9 @@ export class ElevatorController {
 
     const moving = this.elevator.getIsMoving();
     if (moving && !this.wasElevatorMoving) {
-      eventBus.emit('music:play', 'music_elevator_ride');
+      eventBus.emit('music:request', 'music_elevator_ride');
     } else if (!moving && this.wasElevatorMoving) {
-      eventBus.emit('music:play', 'music_elevator_jazz');
+      eventBus.emit('music:request', 'music_elevator_jazz');
       // Arrival: short low-amplitude shake to sell the cab weight without
       // nausea. Only shake when the player is actually riding — otherwise
       // a parked cab sliding to rest between idle presses would shake too.

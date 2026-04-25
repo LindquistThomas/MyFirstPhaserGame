@@ -57,7 +57,7 @@ export function encodeWAV(samples: Float32Array, sampleRate: number): ArrayBuffe
   view.setUint32(40, dataSize, true);
 
   for (let i = 0; i < samples.length; i++) {
-    const clamped = Math.max(-1, Math.min(1, samples[i]));
+    const clamped = Math.max(-1, Math.min(1, samples[i]!));
     const pcmSample = Math.round(clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff);
     view.setInt16(headerSize + i * 2, pcmSample, true);
   }

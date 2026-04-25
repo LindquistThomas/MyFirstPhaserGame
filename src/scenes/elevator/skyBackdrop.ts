@@ -173,7 +173,7 @@ export function drawSkyBackdrop(
   // 4. Twinkling stars — deterministic positions distinct from the static field.
   const twinkleSpecs = generateStars(twinkleCount, width, height, (starSeed ?? 0) ^ 0x9e3779b1);
   for (let i = 0; i < twinkleSpecs.length; i++) {
-    const s = twinkleSpecs[i];
+    const s = twinkleSpecs[i]!;
     const rect = scene.add
       .rectangle(s.x, s.y, 2, 2, theme.color.sky.starBright, 0.9)
       .setDepth(-17)
