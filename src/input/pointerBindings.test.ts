@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { GameAction } from './actions';
+import type { GameAction } from './actions';
 import type { InputService } from './InputService';
 import { bindPointerAction } from './pointerBindings';
 
@@ -14,13 +14,14 @@ describe('bindPointerAction', () => {
       }),
     };
     const inputs = { emit: vi.fn() } as unknown as InputService;
+    const action: GameAction = 'Confirm';
 
-    const result = bindPointerAction(obj, GameAction.Confirm, inputs);
+    const result = bindPointerAction(obj as never, action, inputs);
     handlers.get('pointerdown')?.();
 
     expect(result).toBe(obj);
     expect(obj.setInteractive).toHaveBeenCalledWith({ useHandCursor: true });
     expect(obj.on).toHaveBeenCalledWith('pointerdown', expect.any(Function));
-    expect(inputs.emit).toHaveBeenCalledWith(GameAction.Confirm);
+    expect(inputs.emit).toHaveBeenCalledWith(action);
   });
 });
