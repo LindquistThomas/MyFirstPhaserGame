@@ -11,6 +11,8 @@ export interface ProgressionState {
   unlockedFloors: Set<FloorId>;
   currentFloor: FloorId;
   collectedTokens: Record<FloorId, Set<number>>;
+  /** Floor IDs the player has set foot on at least once. */
+  visitedFloors: Set<FloorId>;
 }
 
 export class ProgressionSystem {
@@ -48,6 +50,7 @@ export class ProgressionSystem {
         [FLOORS.EXECUTIVE]: new Set(),
         [FLOORS.PRODUCTS]: new Set(),
       },
+      visitedFloors: new Set([FLOORS.LOBBY]),
     };
   }
 
@@ -122,7 +125,16 @@ export class ProgressionSystem {
 
   setCurrentFloor(floorId: FloorId): void {
     this.state.currentFloor = floorId;
+    this.state.visitedFloors.add(floorId);
     this.persist();
+  }
+
+  getVisitedFloors(): FloorId[] {
+    return Array.from(this.state.visitedFloors);
+  }
+
+  getCollectedTokens(): Record<FloorId, Set<number>> {
+    return this.state.collectedTokens;
   }
 
   getUnlockedFloors(): FloorId[] {
@@ -158,6 +170,10 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
       ) as Record<FloorId, Set<number>>,
+      visitedFloors: new Set<FloorId>([
+        FLOORS.LOBBY,
+        ...((data.visitedFloors ?? []) as FloorId[]),
+      ]),
     };
     this.checkUnlocks();
     return true;
@@ -172,6 +188,7 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(
         Object.entries(this.state.collectedTokens).map(([k, v]) => [Number(k), Array.from(v)]),
       ),
+      visitedFloors: Array.from(this.state.visitedFloors),
     });
   }
 }

@@ -6,12 +6,15 @@ import { eventBus } from '../systems/EventBus';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 import { theme } from '../style/theme';
 import type { AudioManager } from '../systems/AudioManager';
+import { getAllDefs } from '../systems/AchievementManager';
 
 const HUD_HEIGHT = 44;
 const COIN_X = 26;
 const COIN_Y = 22;
 const PROGRESS_STRIP_WIDTH = 140;
 const PROGRESS_STRIP_HEIGHT = 6;
+const TROPHY_X = GAME_WIDTH - 272;
+const TROPHY_Y = 22;
 
 export class HUD {
   private scene: Phaser.Scene;
@@ -42,6 +45,14 @@ export class HUD {
   /** 0 when inactive. */
   private caffeineEndAt = 0;
   private caffeineDuration = 0;
+
+  private trophyIcon!: Phaser.GameObjects.Text;
+  private trophyHovered = false;
+  private dialogOpen = false;
+
+  private onAchievementUnlocked = (achievementId: string): void => {
+    this.showAchievementToast(achievementId);
+  };
   private onCaffeineStart = (durationMs: number): void => {
     this.caffeineDuration = durationMs;
     this.caffeineEndAt = this.scene.time.now + durationMs;
@@ -136,6 +147,22 @@ export class HUD {
     lifecycle.bindEventBus('audio:mute-changed', this.onMuteChanged);
     lifecycle.bindEventBus('buff:caffeine_start', this.onCaffeineStart);
     lifecycle.bindEventBus('buff:caffeine_end', this.onCaffeineEnd);
+    lifecycle.bindEventBus('achievement:unlocked', this.onAchievementUnlocked);
+
+    // Trophy / achievements button — shows unlocked count, opens the dialog.
+    this.trophyIcon = this.scene.add.text(TROPHY_X, TROPHY_Y, '🏆', {
+      fontFamily: 'monospace', fontSize: '18px',
+    }).setOrigin(0.5, 0.5).setAlpha(0.7).setInteractive({ useHandCursor: true });
+    this.trophyIcon.on('pointerover', () => {
+      this.trophyHovered = true;
+      this.trophyIcon.setAlpha(1);
+    });
+    this.trophyIcon.on('pointerout', () => {
+      this.trophyHovered = false;
+      this.trophyIcon.setAlpha(0.7);
+    });
+    this.trophyIcon.on('pointerdown', () => this.openAchievementsDialog());
+    this.container.add(this.trophyIcon);
 
     // "FLOOR" micro-label above the floor name, anchored inside the floor pill.
     this.floorLabel = this.scene.add.text(GAME_WIDTH - 210, 9, 'FLOOR', {
@@ -417,6 +444,53 @@ export class HUD {
       g.lineTo(14, 14);
       g.strokePath();
     }
+  }
+
+  private openAchievementsDialog(): void {
+    if (this.dialogOpen) return;
+    this.dialogOpen = true;
+    import('./AchievementsDialog').then(({ AchievementsDialog }) => {
+      new AchievementsDialog(this.scene, () => {
+        this.dialogOpen = false;
+      });
+    });
+  }
+
+  /**
+   * Show a brief toast notification when a new achievement is unlocked.
+   * Floats up from the bottom of the HUD bar and fades out.
+   */
+  private showAchievementToast(achievementId: string): void {
+    const def = getAllDefs().find((d) => d.id === achievementId);
+    if (!def) return;
+    const label = `${def.icon} Achievement unlocked: ${def.title}`;
+
+    const toast = this.scene.add.text(GAME_WIDTH / 2, HUD_HEIGHT + 8, label, {
+      fontFamily: 'monospace', fontSize: '14px',
+      color: theme.color.css.textWarn, fontStyle: 'bold',
+      backgroundColor: '#0a0f1a',
+      padding: { x: 10, y: 6 },
+    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(300).setAlpha(0);
+
+    this.scene.tweens.add({
+      targets: toast,
+      alpha: { from: 0, to: 1 },
+      y: { from: HUD_HEIGHT + 8, to: HUD_HEIGHT + 14 },
+      duration: 300,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.scene.time.delayedCall(2200, () => {
+          this.scene.tweens.add({
+            targets: toast,
+            alpha: 0,
+            y: toast.y - 12,
+            duration: 400,
+            ease: 'Quad.easeIn',
+            onComplete: () => toast.destroy(),
+          });
+        });
+      },
+    });
   }
 
   update(): void {

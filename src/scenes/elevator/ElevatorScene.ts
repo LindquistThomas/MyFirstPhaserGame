@@ -406,6 +406,7 @@ export class ElevatorScene extends Phaser.Scene {
     const elevFloor = this.elevatorCtrl.elevator.getCurrentFloor() as FloorId;
     if (elevFloor !== this.progression.getCurrentFloor()) {
       this.progression.setCurrentFloor(elevFloor);
+      this.gameState.checkAchievements();
     }
 
     this.transitions.clearSkipWhenBackOnElevator();

@@ -68,6 +68,8 @@ function makeText(text: string) {
     return t;
   });
   t.setAlpha = vi.fn().mockReturnValue(t);
+  t.setInteractive = vi.fn().mockReturnValue(t);
+  t.on = vi.fn().mockReturnValue(t);
   t.destroy = vi.fn();
   return t as unknown as {
     text: string;
@@ -79,6 +81,8 @@ function makeText(text: string) {
     setDepth: ReturnType<typeof vi.fn>;
     setY: ReturnType<typeof vi.fn>;
     setAlpha: ReturnType<typeof vi.fn>;
+    setInteractive: ReturnType<typeof vi.fn>;
+    on: ReturnType<typeof vi.fn>;
     destroy: ReturnType<typeof vi.fn>;
   };
 }

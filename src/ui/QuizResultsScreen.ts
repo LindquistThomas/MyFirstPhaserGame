@@ -5,6 +5,7 @@ import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { saveQuizResult } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
+import type { GameStateManager } from '../systems/GameStateManager';
 
 export interface QuizResultsScreenOptions {
   scene: Phaser.Scene;
@@ -36,6 +37,8 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   const perfect = score === total;
 
   saveQuizResult(infoId, score);
+  // Notify achievement system — registry access avoids a deep callback chain.
+  (scene.registry.get('gameState') as GameStateManager | undefined)?.checkAchievements();
 
   let auAwarded = 0;
   if (passed && !alreadyPassed) {

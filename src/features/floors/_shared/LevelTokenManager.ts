@@ -15,6 +15,8 @@ export interface TokenManagerDeps {
   player: Player;
   platformGroup: Phaser.Physics.Arcade.StaticGroup;
   camera: Phaser.Cameras.Scene2D.Camera;
+  /** Called after any AU change so achievement checks can run. */
+  onAUChange?: () => void;
 }
 
 /**
@@ -78,6 +80,7 @@ export class LevelTokenManager {
     this.deps.progression.collectAU(this.deps.floorId, tokenIndex);
     this.auCollected++;
     this.deps.camera.flash(100, 255, 215, 0, false, undefined, this);
+    this.deps.onAUChange?.();
   };
 
   private onRecoverDropped = (
@@ -88,6 +91,7 @@ export class LevelTokenManager {
     if (!drop.ready || drop.collected) return;
     drop.recover();
     this.deps.progression.addAU(this.deps.floorId, 1);
+    this.deps.onAUChange?.();
   };
 
   private emitSparkle(x: number, y: number): void {

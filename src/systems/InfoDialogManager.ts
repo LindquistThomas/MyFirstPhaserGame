@@ -20,6 +20,11 @@ export function hasSeenAny(): boolean {
   return store.read().length > 0;
 }
 
+/** Returns all IDs that have been marked as seen. */
+export function getSeenIds(): string[] {
+  return store.read();
+}
+
 export function markSeen(id: string): void {
   store.update((prev) => (prev.includes(id) ? prev : [...prev, id]));
 }

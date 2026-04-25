@@ -249,6 +249,7 @@ export class LevelScene extends Phaser.Scene {
       player: this.player,
       platformGroup: this.platformGroup,
       camera: this.cameras.main,
+      onAUChange: () => this.gameState.checkAchievements(),
     });
     this.enemySpawner = new LevelEnemySpawner({
       scene: this,

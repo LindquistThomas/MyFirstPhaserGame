@@ -62,6 +62,9 @@ export interface GameEvents {
    * Payload: storage key that failed, and the human-readable error message.
    */
   'persistence:error': [storageKey: string, message: string];
+
+  /** Fired when a new achievement is unlocked. Payload: the achievement id. */
+  'achievement:unlocked': [achievementId: string];
 }
 
 export type GameEventName = keyof GameEvents;

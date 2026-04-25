@@ -12,6 +12,8 @@ export interface SaveData {
   unlockedFloors: number[];
   currentFloor: number;
   collectedTokens: Record<number, number[]>;
+  /** Floor IDs the player has visited at least once. */
+  visitedFloors?: number[];
 }
 
 const noopStorage: KVStorage = {
