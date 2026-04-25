@@ -93,7 +93,7 @@ describe('drawFloorAccents', () => {
     expect(scene.tweens.add.mock.calls.length).toBe(1);
     // That tween repeats forever (no scene shutdown -> no cleanup needed
     // because Phaser kills tweens with the scene).
-    const cfg = scene.tweens.add.mock.calls[0][0] as { repeat: number; yoyo: boolean };
+    const cfg = scene.tweens.add.mock.calls[0]![0] as { repeat: number; yoyo: boolean };
     expect(cfg.repeat).toBe(-1);
     expect(cfg.yoyo).toBe(true);
   });

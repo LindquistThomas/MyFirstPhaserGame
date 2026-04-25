@@ -52,7 +52,7 @@ export function generateQuizSuccessSound(): ArrayBuffer {
   for (let i = 0; i < numSamples; i++) {
     const noteIdx = Math.min(Math.floor(i / noteLen), notes.length - 1);
     const noteProgress = (i - noteIdx * noteLen) / noteLen;
-    const freq = notes[noteIdx];
+    const freq = notes[noteIdx]!;
 
     phase += (2 * Math.PI * freq) / SAMPLE_RATE;
     const square = Math.sign(Math.sin(phase));
@@ -86,7 +86,7 @@ export function generateQuizFailSound(): ArrayBuffer {
   for (let i = 0; i < numSamples; i++) {
     const noteIdx = Math.min(Math.floor(i / noteLen), notes.length - 1);
     const noteProgress = (i - noteIdx * noteLen) / noteLen;
-    const freq = notes[noteIdx];
+    const freq = notes[noteIdx]!;
 
     phase += (2 * Math.PI * freq) / SAMPLE_RATE;
     const wave = Math.sign(Math.sin(phase));
