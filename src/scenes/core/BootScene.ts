@@ -7,6 +7,7 @@ import { eventBus } from '../../systems/EventBus';
 import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { COLORS } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
+import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -68,6 +69,12 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Migrate legacy 'default' slot → slot1 on first launch.
+    // Must happen before GameStateManager is constructed (it may call hasSave()).
+    migrateDefaultSlot();
+    // Default active slot for the session (SaveSlotScene will override this).
+    setPlayerSlot('slot1');
+
     // Generate all sprites programmatically
     generateSprites(this);
 

@@ -1,11 +1,9 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
 import { SOUNDTRACK_PLAYLIST } from '../../config/audioConfig';
-import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
-import type { NavigationContext } from '../NavigationContext';
 
 /**
  * Title screen.
@@ -17,7 +15,6 @@ import type { NavigationContext } from '../NavigationContext';
  * column on the left; the cityscape fills the right two-thirds.
  */
 export class MenuScene extends Phaser.Scene {
-  private static readonly SOUNDTRACK_BUTTON_Y_WITH_SAVE_OFFSET = 160;
   private static readonly SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET = 100;
 
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
@@ -336,24 +333,14 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
     }).setOrigin(0.5).setDepth(TEXT_DEPTH);
 
-    // Start button
-    const startAction = () => this.startGame();
-    const btn = this.makeButton(cx, cy + 40, '[ START GAME ]', 26, startAction);
+    // Start button — always leads to the slot picker
+    const startAction = () => this.openSlotPicker();
+    const btn = this.makeButton(cx, cy + 40, '[ SELECT SAVE SLOT ]', 24, startAction);
     btn.setDepth(TEXT_DEPTH);
     this.menuButtons.push({ btn, action: startAction });
 
-    const gameState = this.registry.get('gameState') as GameStateManager;
-    if (gameState?.hasSave()) {
-      const continueAction = () => this.continueGame();
-      const contBtn = this.makeButton(cx, cy + 100, '[ CONTINUE ]', 22, continueAction);
-      contBtn.setDepth(TEXT_DEPTH);
-      this.menuButtons.push({ btn: contBtn, action: continueAction });
-    }
-
     if (SOUNDTRACK_PLAYLIST.length > 0) {
-      const soundtrackYOffset = gameState?.hasSave()
-        ? MenuScene.SOUNDTRACK_BUTTON_Y_WITH_SAVE_OFFSET
-        : MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET;
+      const soundtrackYOffset = MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET;
       const soundtrackY = cy + soundtrackYOffset;
       const soundtrackAction = () => this.playNextSoundtrack();
       const soundtrackBtn = this.makeButton(cx, soundtrackY, '[ SOUNDTRACK MODE ]', 20, soundtrackAction);
@@ -362,7 +349,7 @@ export class MenuScene extends Phaser.Scene {
       this.soundtrackButton = soundtrackBtn;
     }
 
-    const settingsYOffset = gameState?.hasSave() ? 220 : 160;
+    const settingsYOffset = 160;
     const settingsAction = () => this.openSettings();
     const settingsBtn = this.makeButton(cx, cy + settingsYOffset, '[ SETTINGS ]', 20, settingsAction);
     settingsBtn.setDepth(TEXT_DEPTH);
@@ -403,16 +390,9 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(10);
   }
 
-  private startGame(): void {
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    const ctx: NavigationContext = { loadSave: false };
-    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
-  }
-
-  private continueGame(): void {
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    const ctx: NavigationContext = { loadSave: true };
-    this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
+  private openSlotPicker(): void {
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.time.delayedCall(300, () => this.scene.start('SaveSlotScene'));
   }
 
   private openSettings(): void {

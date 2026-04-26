@@ -19,6 +19,21 @@ export interface SaveData {
   onboardingComplete?: boolean;
   /** Floors the player has entered at least once. Optional for backward-compat. */
   visitedFloors?: number[];
+  /** Unix ms timestamp of the last time this save was written. */
+  lastPlayedAt?: number;
+}
+
+/** The three canonical slot IDs shown in the slot picker. */
+export const SAVE_SLOTS = ['slot1', 'slot2', 'slot3'] as const;
+export type SaveSlotId = typeof SAVE_SLOTS[number];
+
+/** Minimal summary used by the slot-picker UI (no slot-switching side-effects). */
+export interface SlotInfo {
+  slotId: SaveSlotId;
+  exists: boolean;
+  totalAU?: number;
+  currentFloor?: number;
+  lastPlayedAt?: number;
 }
 
 
@@ -137,6 +152,64 @@ export function load(): SaveData | null {
 export function clear(): void {
   checkUnavailable();
   try { getStorage().removeItem(key()); } catch (err) {
+    emitFailed('unknown', err);
+  }
+}
+
+/**
+ * Read summary information for a specific slot without changing the active
+ * slot. Safe to call during the slot-picker UI before the player has chosen.
+ */
+export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
+  const slotKey = `architect_${slotId}_v1`;
+  let raw: string | null = null;
+  try { raw = getStorage().getItem(slotKey); } catch { /* ignore */ }
+  if (!raw) return { slotId, exists: false };
+  try {
+    const data = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      slotId,
+      exists: true,
+      totalAU: typeof data['totalAU'] === 'number' ? data['totalAU'] : undefined,
+      currentFloor: typeof data['currentFloor'] === 'number' ? data['currentFloor'] : undefined,
+      lastPlayedAt: typeof data['lastPlayedAt'] === 'number' ? data['lastPlayedAt'] : undefined,
+    };
+  } catch {
+    return { slotId, exists: true };
+  }
+}
+
+/**
+ * One-time migration: if `architect_default_v1` exists and `architect_slot1_v1`
+ * does not, copy the default save into slot1 and remove the old key.
+ * Returns `true` if a migration was performed.
+ */
+export function migrateDefaultSlot(): boolean {
+  const defaultKey = 'architect_default_v1';
+  const slot1Key = 'architect_slot1_v1';
+  let existing: string | null = null;
+  try { existing = getStorage().getItem(defaultKey); } catch { return false; }
+  if (!existing) return false;
+  let slot1: string | null = null;
+  try { slot1 = getStorage().getItem(slot1Key); } catch { return false; }
+  if (slot1 !== null) {
+    // slot1 already has data — don't overwrite; just clean up the old key
+    try { getStorage().removeItem(defaultKey); } catch { /* ignore */ }
+    return false;
+  }
+  try {
+    getStorage().setItem(slot1Key, existing);
+    getStorage().removeItem(defaultKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Delete a specific slot by id without changing the currently active slot. */
+export function clearSlot(slotId: SaveSlotId): void {
+  const slotKey = `architect_${slotId}_v1`;
+  try { getStorage().removeItem(slotKey); } catch (err) {
     emitFailed('unknown', err);
   }
 }

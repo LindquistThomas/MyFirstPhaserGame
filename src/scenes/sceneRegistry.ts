@@ -16,6 +16,7 @@ import { BootScene } from './core/BootScene';
 import { MenuScene } from './core/MenuScene';
 import { SettingsScene } from './core/SettingsScene';
 import { PauseScene } from './core/PauseScene';
+import { SaveSlotScene } from './core/SaveSlotScene';
 import { ElevatorScene } from './elevator/ElevatorScene';
 import {
   PlatformTeamScene,
@@ -45,6 +46,7 @@ export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
   { key: 'MenuScene', cls: MenuScene },
   { key: 'SettingsScene', cls: SettingsScene },
   { key: 'PauseScene', cls: PauseScene },
+  { key: 'SaveSlotScene', cls: SaveSlotScene },
   { key: 'ElevatorScene', cls: ElevatorScene },
   { key: 'PlatformTeamScene', cls: PlatformTeamScene },
   { key: 'ArchitectureTeamScene', cls: ArchitectureTeamScene },
