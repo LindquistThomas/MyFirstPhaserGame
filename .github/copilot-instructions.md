@@ -36,7 +36,10 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── style/                # theme.ts — colour + spacing token catalogue
 │   ├── systems/              # ProgressionSystem, GameStateManager, EventBus, ZoneManager,
 │   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
-│   │                         # PersistedStore, sceneLifecycle, SpriteGenerator, SoundGenerator
+│   │                         # PersistedStore, SettingsStore, AchievementManager,
+│   │                         # MotionPreference, CaffeineBuff, sceneLifecycle,
+│   │                         # SpriteGenerator (+ sprites/ per-asset families),
+│   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
 │                               InfoIcon, HUD, DialogController, …
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
