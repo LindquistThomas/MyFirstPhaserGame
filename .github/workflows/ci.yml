@@ -21,7 +21,7 @@ jobs:
       # Detect whether this push/PR touches anything outside docs/**.
       # If only docs/** changed, downstream jobs are skipped — skipped jobs
       # satisfy required status checks, so doc-only PRs can still merge.
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
