@@ -18,7 +18,7 @@ Playwright specs live in `tests/*.spec.ts`; shared helpers live in `tests/helper
 
 ## Test-hook globals
 
-`src/main.ts` attaches `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Tests use both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle (see README "Build flags").
+`src/main.ts` attaches `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz, eventBus }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Tests use both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle (see README "Build flags").
 
 ## Debug screenshot
 

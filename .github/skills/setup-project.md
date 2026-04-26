@@ -68,7 +68,7 @@ From `package.json`:
 - **TypeScript strict, ES modules.** Do not add `.js` source files.
 - **No `public/assets/` directory.** Sprites and SFX are generated procedurally at runtime by `SpriteGenerator` and `SoundGenerator`. Static files: `public/music/` (MP3/OGG tracks) and `public/brand/` (the Norconsult Digital wordmark SVG, loaded as `lobby_logo` at boot).
 - **Filenames.** Scenes, entities, UI components, and systems use PascalCase filenames matching the exported class. Config / tooling files are lowercase.
-- **Test-hook globals.** `src/main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle (see README "Build flags").
+- **Test-hook globals.** `src/main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz, eventBus }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle (see README "Build flags").
 
 ## Adding new scenes / floors / content
 
