@@ -161,6 +161,7 @@ export function clear(): void {
  * slot. Safe to call during the slot-picker UI before the player has chosen.
  */
 export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
+  checkUnavailable();
   const slotKey = `architect_${slotId}_v1`;
   let raw: string | null = null;
   try { raw = getStorage().getItem(slotKey); } catch { /* ignore */ }
@@ -175,7 +176,9 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
       lastPlayedAt: typeof data['lastPlayedAt'] === 'number' ? data['lastPlayedAt'] : undefined,
     };
   } catch {
-    return { slotId, exists: true };
+    // Corrupt data — treat as absent so the slot picker shows "EMPTY" and
+    // SaveSlotScene won't pass loadSave:true to a slot that can't be loaded.
+    return { slotId, exists: false };
   }
 }
 
@@ -185,6 +188,7 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
  * Returns `true` if a migration was performed.
  */
 export function migrateDefaultSlot(): boolean {
+  checkUnavailable();
   const defaultKey = 'architect_default_v1';
   const slot1Key = 'architect_slot1_v1';
   let existing: string | null = null;
@@ -193,8 +197,8 @@ export function migrateDefaultSlot(): boolean {
   let slot1: string | null = null;
   try { slot1 = getStorage().getItem(slot1Key); } catch { return false; }
   if (slot1 !== null) {
-    // slot1 already has data — don't overwrite; just clean up the old key
-    try { getStorage().removeItem(defaultKey); } catch { /* ignore */ }
+    // slot1 already has data — preserve it; leave the legacy key in place
+    // so the player's old save is not silently discarded.
     return false;
   }
   try {
@@ -208,8 +212,11 @@ export function migrateDefaultSlot(): boolean {
 
 /** Delete a specific slot by id without changing the currently active slot. */
 export function clearSlot(slotId: SaveSlotId): void {
+  checkUnavailable();
   const slotKey = `architect_${slotId}_v1`;
   try { getStorage().removeItem(slotKey); } catch (err) {
-    emitFailed('unknown', err);
+    const detail = err instanceof Error ? err.message : (err != null ? String(err) : undefined);
+    console.warn('[SaveManager] Failed to clear save slot', { slotId, slotKey, detail });
+    eventBus.emit('persistence:failed', { reason: 'unknown' as const, detail });
   }
 }

@@ -181,7 +181,9 @@ export class SaveSlotScene extends Phaser.Scene {
     // X key → delete selected slot (direct keyboard listener, no InputService action)
     const xKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.X);
     if (xKey) {
-      xKey.on('down', () => { if (!this.inConfirm) this.tryDelete(); });
+      const onXDown = () => { if (!this.inConfirm) this.tryDelete(); };
+      xKey.on('down', onXDown);
+      lc.add(() => xKey.off('down', onXDown));
     }
   }
 
@@ -259,31 +261,45 @@ export class SaveSlotScene extends Phaser.Scene {
     const ox = (GAME_WIDTH - ow) / 2;
     const oy = (GAME_HEIGHT - oh) / 2;
 
-    const overlay = this.add.container(ox, oy).setDepth(50);
+    // Full-screen dimming blocker — prevents pointer events reaching slot cards behind the overlay
+    const overlay = this.add.container(0, 0).setDepth(50);
+    const blocker = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x000000,
+      0.45,
+    ).setInteractive({ useHandCursor: false });
+    blocker.on('pointerdown', (_ptr: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); });
+    blocker.on('pointerup',   (_ptr: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); });
+    blocker.on('pointermove', (_ptr: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); });
+    overlay.add(blocker);
+
     const bg = this.add.graphics();
     bg.fillStyle(0x0a0d1c, 0.95);
-    bg.fillRect(0, 0, ow, oh);
+    bg.fillRect(ox, oy, ow, oh);
     bg.lineStyle(2, 0xff4466, 1);
-    bg.strokeRect(0, 0, ow, oh);
+    bg.strokeRect(ox, oy, ow, oh);
     overlay.add(bg);
 
     const slotNum = this.selectedIndex + 1;
-    overlay.add(this.add.text(ow / 2, 22, `Delete Slot ${slotNum}?`, {
+    overlay.add(this.add.text(ox + ow / 2, oy + 22, `Delete Slot ${slotNum}?`, {
       fontFamily: 'monospace', fontSize: '18px', color: '#ff4466', fontStyle: 'bold',
     }).setOrigin(0.5));
 
-    overlay.add(this.add.text(ow / 2, 52, 'This cannot be undone.', {
+    overlay.add(this.add.text(ox + ow / 2, oy + 52, 'This cannot be undone.', {
       fontFamily: 'monospace', fontSize: '13px', color: '#9fb1c8',
     }).setOrigin(0.5));
 
-    this.confirmYes = this.add.text(ow / 2 - 60, 90, '[ YES ]', {
+    this.confirmYes = this.add.text(ox + ow / 2 - 60, oy + 90, '[ YES ]', {
       fontFamily: 'monospace', fontSize: '16px', color: '#ff4466',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.confirmYes.on('pointerdown', () => this.executeDelete());
     this.confirmYes.on('pointerover', () => { this.confirmIndex = 0; this.refreshConfirmHighlight(); });
     overlay.add(this.confirmYes);
 
-    this.confirmNo = this.add.text(ow / 2 + 60, 90, '[ NO ]', {
+    this.confirmNo = this.add.text(ox + ow / 2 + 60, oy + 90, '[ NO ]', {
       fontFamily: 'monospace', fontSize: '16px', color: '#9fb1c8',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     this.confirmNo.on('pointerdown', () => this.closeConfirm());

@@ -456,7 +456,7 @@ describe('SaveManager — multi-slot UI helpers', () => {
     expect(info.slotId).toBe('slot1');
   });
 
-  it('loadSlotInfo returns exists:true with correct fields after saving', () => {
+  it('loadSlotInfo returns exists:false with correct fields after saving', () => {
     setPlayerSlot('slot2');
     save({ ...sample, totalAU: 42, currentFloor: 3, lastPlayedAt: 1234567890 });
 
@@ -465,6 +465,16 @@ describe('SaveManager — multi-slot UI helpers', () => {
     expect(info.totalAU).toBe(42);
     expect(info.currentFloor).toBe(3);
     expect(info.lastPlayedAt).toBe(1234567890);
+  });
+
+  it('loadSlotInfo returns exists:false when the slot data is corrupt JSON', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot3_v1', '{not-valid-json');
+    setStorage(store);
+
+    const info = loadSlotInfo('slot3');
+    expect(info.exists).toBe(false);
+    expect(info.slotId).toBe('slot3');
   });
 
   it('loadSlotInfo does not change the active player slot', () => {
@@ -528,7 +538,7 @@ describe('SaveManager — migrateDefaultSlot', () => {
     expect(loadSlotInfo('slot1').totalAU).toBe(55);
   });
 
-  it('does not overwrite slot1 if it already has data', () => {
+  it('does not overwrite slot1 if it already has data, and preserves the legacy key', () => {
     setPlayerSlot('slot1');
     save({ ...sample, totalAU: 10 });
 
@@ -541,6 +551,11 @@ describe('SaveManager — migrateDefaultSlot', () => {
 
     // slot1 must still have the original data
     expect(loadSlotInfo('slot1').totalAU).toBe(10);
+
+    // The legacy default key must NOT have been deleted
+    setPlayerSlot('default');
+    expect(hasSave()).toBe(true);
+    expect(load()?.totalAU).toBe(99);
   });
 
   it('returns false and does nothing when no default save exists', () => {
