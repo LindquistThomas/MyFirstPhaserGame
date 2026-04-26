@@ -179,7 +179,7 @@ Short list of recurring mistakes. Check here first when something breaks inexpli
 
 ## Git branching — MANDATORY worktree-first workflow
 
-**Rule (no exceptions unless the user overrides):** Before making ANY file edit that would land on a branch other than `main`, create a sibling git worktree on a new `fix/…` | `feat/…` | `chore/…` | `docs/…` branch. Sibling path: `<primary-checkout-name>-<slug>` (Windows convention: `C:\code\SoYouWantToBeAnArchitect-<slug>`; macOS/Linux convention: `../architect-elevator-game-<slug>`). The primary checkout stays on `main` and is **read-only for edits** during a session. **Full OS-specific commands live in `.github/skills/git-worktree.md` — defer to it.**
+**Rule (no exceptions unless the user overrides):** Before making ANY file edit that would land on a branch other than `main`, create a sibling git worktree on a new `fix/…` | `feat/…` | `chore/…` | `docs/…` branch. Sibling path: `<primary-checkout-name>-<slug>` (Windows convention: `C:\code\architect-elevator-game-<slug>`; macOS/Linux convention: `../architect-elevator-game-<slug>`). The primary checkout stays on `main` and is **read-only for edits** during a session. **Full OS-specific commands live in `.github/skills/git-worktree.md` — defer to it.**
 
 This applies to **every** task, including:
 - Documentation-only changes (yes, even a one-line README tweak).

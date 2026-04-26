@@ -10,8 +10,8 @@ ships with zero image assets and only a handful of music files.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/LindquistThomas/SoYouWantToBeAnArchitect.git
-   cd SoYouWantToBeAnArchitect
+   git clone https://github.com/norconsult-digital/architect-elevator-game.git
+   cd architect-elevator-game
    ```
 
 2. Install dependencies and start the dev server:
