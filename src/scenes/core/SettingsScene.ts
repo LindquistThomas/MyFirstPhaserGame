@@ -5,6 +5,7 @@ import { settingsStore } from '../../systems/SettingsStore';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { clampSlider } from '../../systems/sliderUtils';
 
 /**
  * Settings scene — keyboard-navigable UI for audio and accessibility settings.
@@ -256,7 +257,8 @@ export class SettingsScene extends Phaser.Scene {
     if (!item) return;
 
     if (item.kind === 'slider') {
-      item.set(item.get() + delta * item.step);
+      const next = clampSlider(item.get() + delta * item.step);
+      item.set(next);
     } else if (item.kind === 'toggle') {
       item.set(!item.get());
     }
