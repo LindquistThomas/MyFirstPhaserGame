@@ -18,7 +18,7 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
  * "Reset to defaults" clears all overrides.
  *
  * Navigation:
- *   Up / Down — move between rows (wraps; scrolls the visible window)
+ *   Up / Down — move between rows (clamps at first/last; scrolls the visible window)
  *   PageUp / PageDown — jump a page at a time
  *   Enter / Confirm — activate / enter capture mode
  *   Escape — back to SettingsScene
@@ -54,7 +54,7 @@ const ACTION_LABELS: Record<GameAction, string> = {
   ToggleDebug: 'Toggle Debug',
 };
 
-/** Key codes that are not allowed as new bindings (modifiers, function keys). */
+/** Key codes that are not allowed as new bindings (modifiers, lock keys, function keys). */
 const RESERVED_KEYS = new Set<number>([
   // Modifiers
   16, // Shift
@@ -65,6 +65,12 @@ const RESERVED_KEYS = new Set<number>([
   20, // Caps Lock
   144, // Num Lock
   145, // Scroll Lock
+  // Function keys F1–F12
+  112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123,
+  // Special / navigation-only keys
+  19,  // Pause/Break
+  44,  // Print Screen
+  45,  // Insert
 ]);
 
 /** Special item indices appended after the action list. */
@@ -92,6 +98,7 @@ export class ControlsScene extends Phaser.Scene {
   private keyTexts: Phaser.GameObjects.Text[] = [];
   private highlightBar!: Phaser.GameObjects.Graphics;
   private captureText!: Phaser.GameObjects.Text;
+  private hintText!: Phaser.GameObjects.Text;
 
   /** Index into ALL_ACTIONS where each action row starts (0..ALL_ACTIONS.length-1).
    *  Indices ALL_ACTIONS.length and ALL_ACTIONS.length+1 are the special actions. */
@@ -147,7 +154,7 @@ export class ControlsScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(10);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - (VISIBLE_ROWS * ROW_H) / 2 - 20, 'Enter: rebind  •  Esc: cancel / back', {
+    this.hintText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - (VISIBLE_ROWS * ROW_H) / 2 - 20, '', {
       fontFamily: 'monospace',
       fontSize: '13px',
       color: theme.color.css.textMuted,
@@ -203,6 +210,11 @@ export class ControlsScene extends Phaser.Scene {
     const effective = buildEffectiveBindings(overrides);
     const startY = this.rowStartY();
     const panelX = (GAME_WIDTH - 700) / 2;
+
+    // Derive hint text from effective bindings so it stays correct after rebinding.
+    const confirmKey = keyLabel(effective.Confirm?.[0] ?? 13);
+    const cancelKey = keyLabel(effective.Cancel?.[0] ?? 27);
+    this.hintText.setText(`${confirmKey}: rebind  •  ${cancelKey}: cancel / back`);
 
     this.highlightBar.clear();
 

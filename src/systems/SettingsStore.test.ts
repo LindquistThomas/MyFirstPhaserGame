@@ -299,6 +299,27 @@ describe('SettingsStore', () => {
       expect(settingsStore.read().controlBindings).toEqual({});
     });
 
+    it('ignores unknown action keys on parse', () => {
+      localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify({ controlBindings: { NotARealAction: [65], MoveLeft: [72] } }),
+      );
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().controlBindings).toEqual({ MoveLeft: [72] });
+    });
+
+    it('rejects proto-poison keys on parse', () => {
+      localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify({ controlBindings: { __proto__: [65], constructor: [66], MoveLeft: [72] } }),
+      );
+      settingsStore._store.setStorage(globalThis.localStorage);
+      const bindings = settingsStore.read().controlBindings;
+      expect(bindings).not.toHaveProperty('__proto__');
+      expect(bindings).not.toHaveProperty('constructor');
+      expect(bindings).toEqual({ MoveLeft: [72] });
+    });
+
     it('does not emit audio:volume-changed when updating controlBindings', () => {
       const listener = vi.fn();
       eventBus.on('audio:volume-changed', listener);

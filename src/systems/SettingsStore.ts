@@ -14,6 +14,7 @@
 import { createPersistedStore } from './PersistedStore';
 import { eventBus } from './EventBus';
 import type { GameAction } from '../input/actions';
+import { ALL_ACTIONS } from '../input/actions';
 
 export type MusicStyle = '8bit-chiptune' | 'retro-synth' | 'elevator-jazz';
 
@@ -70,11 +71,16 @@ export function defaultSettings(): SettingsData {
   };
 }
 
+/** Set of valid GameAction strings, used to whitelist keys during parse. */
+const VALID_ACTIONS: ReadonlySet<string> = new Set(ALL_ACTIONS);
+
 function parseControlBindings(raw: unknown): ControlBindings {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const r = raw as Record<string, unknown>;
   const result: ControlBindings = {};
   for (const [key, val] of Object.entries(r)) {
+    // Reject proto-poison keys and any string that isn't a real GameAction.
+    if (!VALID_ACTIONS.has(key)) continue;
     if (
       Array.isArray(val) &&
       val.length > 0 &&
