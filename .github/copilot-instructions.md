@@ -161,6 +161,8 @@ Playwright helpers in `tests/helpers/playwright.ts`:
 
 - `waitForGame(page)` — waits for `window.__game`, then focuses the canvas so keyboard input reaches Phaser.
 - `waitForScene(page, 'SceneKey')` — waits for the scene to be active and settle.
+- `waitForDialogOpen(page, 'SceneKey')` — waits until the scene's `DialogController.isOpen` is `true` (replaces fixed `waitForTimeout` after triggering a dialog).
+- `waitForDialogClosed(page, 'SceneKey')` — inverse of the above.
 - `seedFullProgressSave(page, { totalAU?, floorAU? })` — pre-populates the save slot and marks the elevator info dialog as seen so it doesn't swallow input.
 - `clearStorage(page)` — wipes localStorage before boot.
 - `attachErrorWatchers(page).assertClean()` — fails the test if any uncaught `pageerror`/console error leaked.
