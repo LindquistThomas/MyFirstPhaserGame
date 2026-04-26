@@ -88,7 +88,7 @@ export class ElevatorPanel {
   private get panelWidth(): number { return 200; }
 
   private get panelHeight(): number {
-    const rows = Object.keys(LEVEL_DATA).length;
+    const rows = this.sortedFloors.length;
     return 45 + rows * (BTN_H + BTN_GAP) + 10;
   }
 

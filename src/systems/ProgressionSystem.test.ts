@@ -115,21 +115,45 @@ describe('ProgressionSystem', () => {
     expect(q.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
   });
 
-  it('backwards-compat: old saves with all floors unlocked keep their unlocks', () => {
-    // Simulate a save from before gating was re-enabled where all floors
-    // were persisted as unlocked. loadFromSave() must honour that list rather
-    // than reverting to the new minimal default.
-    const p = new ProgressionSystem();
-    // Manually persist a save with all floors unlocked (legacy behaviour).
-    p.addAU(FLOORS.PLATFORM_TEAM, 15); // enough to unlock BUSINESS + EXECUTIVE
-    // Patch the save to also include floors that totalAU doesn't cover yet.
-    // We do this via a second system's public API.
-    expect(p.isFloorUnlocked(FLOORS.EXECUTIVE)).toBe(true);
+  it('backwards-compat: old saves with extra floor unlocks keep those unlocks on reload', () => {
+    // Simulate a legacy save where all floors were persisted as unlocked (before
+    // gating was enabled) even though totalAU doesn't reach every threshold.
+    // Inject a hand-crafted save via a custom SaveAdapter.
+    const legacySave = {
+      version: 1,
+      totalAU: 5, // only 5 AU — not enough for BUSINESS (10), EXECUTIVE (15), or PRODUCTS (8)
+      floorAU: {
+        [FLOORS.LOBBY]: 2,
+        [FLOORS.PLATFORM_TEAM]: 3,
+        [FLOORS.BUSINESS]: 0,
+        [FLOORS.EXECUTIVE]: 0,
+        [FLOORS.PRODUCTS]: 0,
+      },
+      unlockedFloors: [
+        FLOORS.LOBBY,
+        FLOORS.PLATFORM_TEAM,
+        FLOORS.BUSINESS,  // persisted unlocked in old save without meeting threshold
+        FLOORS.EXECUTIVE, // persisted unlocked in old save without meeting threshold
+        FLOORS.PRODUCTS,  // persisted unlocked in old save without meeting threshold
+      ],
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+      onboardingComplete: false,
+    };
 
-    const q = new ProgressionSystem();
+    const adapter = {
+      load: () => legacySave,
+      save: (_d: unknown) => {},
+      clear: () => {},
+    };
+    const q = new ProgressionSystem(adapter as import('./ProgressionSystem').SaveAdapter);
     expect(q.loadFromSave()).toBe(true);
-    // The saved unlocks (earned by reaching thresholds) must survive reload.
+    // All five floors must survive — old unlocks are preserved verbatim.
+    expect(q.isFloorUnlocked(FLOORS.BUSINESS)).toBe(true);
     expect(q.isFloorUnlocked(FLOORS.EXECUTIVE)).toBe(true);
+    expect(q.isFloorUnlocked(FLOORS.PRODUCTS)).toBe(true);
+    // AU total must also be correct.
+    expect(q.getTotalAU()).toBe(5);
   });
 
   it('reset() clears all state and the persisted save', () => {
