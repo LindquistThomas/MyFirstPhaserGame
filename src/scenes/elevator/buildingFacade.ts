@@ -17,6 +17,7 @@
  *   - occupant   — tiny dark silhouette briefly crosses a lit window.
  *   - monitor    — fast subtle alpha jitter on cool/green monitor windows.
  *   - blinds     — stripe overlay slowly scales open/closed (rare).
+ *   - ride drift — selected visible windows wrap vertically while the cab moves.
  *
  * Everything is painted (no cutouts) — windows don't reveal the actual
  * sky/skyline behind them. Rationale: the player is *inside* this
@@ -65,6 +66,10 @@ export interface BuildingFacadeOptions {
   monitorBudget?: number;
   /** Max blinds windows where the stripe overlay slowly scales open/closed. */
   blindsAnimBudget?: number;
+  /** Max visible windows that drift as an arcade ride-motion layer. */
+  motionBudget?: number;
+  /** Multiplier applied to elevator velocity for ride-time window drift. */
+  motionSpeedMultiplier?: number;
   /**
    * Vertical parallax factor applied to every façade element so the outer
    * wall reads as "behind" the shaft. 1 = scrolls with the shaft (no depth);
@@ -78,10 +83,20 @@ export interface BuildingFacadeHandle {
   objects: Phaser.GameObjects.GameObject[];
   tweens: Phaser.Tweens.Tween[];
   timers: Phaser.Time.TimerEvent[];
+  updateMotion(deltaMs: number, elevatorVelocityY: number): void;
 }
 
 export type FacadeWindowTint = 'warm' | 'cool' | 'green';
 export type FacadeWindowKind = 'plain' | 'blinds' | 'monitor';
+
+export interface FacadeWindowMotionSpec {
+  /** Per-window speed multiplier applied to the global ride-motion speed. */
+  speedMultiplier: number;
+  /** Overlay alpha used for the moving copy of the window. */
+  alpha: number;
+  /** Stable phase slot reserved for future small idle offsets / testability. */
+  phase: number;
+}
 
 const WINDOW_WIDTH = 8;
 const WINDOW_HEIGHT = 11;
@@ -96,6 +111,17 @@ const SWITCH_DELAY_MIN_MS = 1500;
 const SWITCH_DELAY_SPREAD_MS = 4500;
 const OCCUPANT_DELAY_MIN_MS = 3000;
 const OCCUPANT_DELAY_SPREAD_MS = 6000;
+const MOTION_IDLE_VELOCITY_EPSILON = 8;
+const MOTION_DEPTH = 0.49;
+
+interface FacadeMotionWindow {
+  rect: Phaser.GameObjects.Rectangle;
+  y: number;
+  yTop: number;
+  yBottom: number;
+  height: number;
+  speedMultiplier: number;
+}
 
 export interface FacadeWindowSpec {
   /** Local x, relative to the side's xLeft + band's yTop. */
@@ -112,6 +138,26 @@ export interface FacadeWindowSpec {
   twinkle: boolean;
   /** Flickerers get their own GameObject + timer chain. */
   flicker: boolean;
+  /** Moving overlay metadata. Present only for bounded ride-motion windows. */
+  motion?: FacadeWindowMotionSpec;
+}
+
+export function wrapFacadeMotionY(
+  centerY: number,
+  yTop: number,
+  yBottom: number,
+  windowHeight: number,
+): number {
+  const halfH = windowHeight / 2;
+  const minY = yTop + halfH;
+  const maxY = yBottom - halfH;
+  if (maxY <= minY) return (yTop + yBottom) / 2;
+  if (centerY >= minY && centerY <= maxY) return centerY;
+
+  const span = maxY - minY;
+  let wrapped = (centerY - minY) % span;
+  if (wrapped < 0) wrapped += span;
+  return minY + wrapped;
 }
 
 function rng(seed: number): () => number {
@@ -153,10 +199,10 @@ export function generateFacadeWindows(
   width: number,
   height: number,
   seed: number,
-  opts: { twinkles?: number; flickers?: number } = {},
+  opts: { twinkles?: number; flickers?: number; movers?: number } = {},
 ): FacadeWindowSpec[] {
   const rand = rng(seed);
-  const { twinkles = 1, flickers = 0 } = opts;
+  const { twinkles = 1, flickers = 0, movers = 0 } = opts;
 
   const cols = Math.max(
     0,
@@ -170,6 +216,7 @@ export function generateFacadeWindows(
   const windows: FacadeWindowSpec[] = [];
   let twinklesPlaced = 0;
   let flickersPlaced = 0;
+  let moversPlaced = 0;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -200,7 +247,13 @@ export function generateFacadeWindows(
       // layered alpha animations fighting over the same rectangle.
       const canFlicker =
         !canTwinkle && state === 'lit' && flickersPlaced < flickers && rand() < 0.08;
-      windows.push({
+      const canMove =
+        !canTwinkle
+        && !canFlicker
+        && state !== 'dark'
+        && moversPlaced < movers
+        && rand() < 0.24;
+      const spec: FacadeWindowSpec = {
         x: WINDOW_MARGIN_X + c * (WINDOW_WIDTH + WINDOW_GUTTER_X),
         y: WINDOW_MARGIN_Y + r * (WINDOW_HEIGHT + WINDOW_GUTTER_Y),
         width: WINDOW_WIDTH,
@@ -210,9 +263,18 @@ export function generateFacadeWindows(
         kind,
         twinkle: canTwinkle,
         flicker: canFlicker,
-      });
+      };
+      if (canMove) {
+        spec.motion = {
+          speedMultiplier: 0.85 + rand() * 0.9,
+          alpha: state === 'lit' ? 0.70 + rand() * 0.22 : 0.34 + rand() * 0.18,
+          phase: rand(),
+        };
+      }
+      windows.push(spec);
       if (canTwinkle) twinklesPlaced++;
       if (canFlicker) flickersPlaced++;
+      if (canMove) moversPlaced++;
     }
   }
 
@@ -233,12 +295,15 @@ export function drawBuildingFacade(
     occupantBudget = 12,
     monitorBudget = 18,
     blindsAnimBudget = 10,
+    motionBudget = 90,
+    motionSpeedMultiplier = 2.8,
     scrollFactorY = 0.72,
   } = opts;
 
   const objects: Phaser.GameObjects.GameObject[] = [];
   const tweens: Phaser.Tweens.Tween[] = [];
   const timers: Phaser.Time.TimerEvent[] = [];
+  const motionWindows: FacadeMotionWindow[] = [];
 
   let twinklesRemaining = twinkleBudget;
   let flickersRemaining = flickerBudget;
@@ -246,6 +311,7 @@ export function drawBuildingFacade(
   let occupantsRemaining = occupantBudget;
   let monitorsRemaining = monitorBudget;
   let blindsAnimsRemaining = blindsAnimBudget;
+  let motionsRemaining = motionBudget;
 
   // Seeded per-façade RNG for effect selection so which lit windows get
   // which effect is stable per build. Tween/timer *timing* uses
@@ -293,6 +359,7 @@ export function drawBuildingFacade(
       const windows = generateFacadeWindows(sideW, bandH, band.seed ^ (side.xLeft | 0), {
         twinkles: Math.max(0, twinklesRemaining),
         flickers: Math.max(0, flickersRemaining),
+        movers: Math.max(0, motionsRemaining),
       });
 
       // Static paint pass (everything except twinkle/flicker, which own
@@ -429,6 +496,30 @@ export function drawBuildingFacade(
         // exists as a debug-friendly handle on the latest timer.
         void pending;
         flickersRemaining--;
+      }
+
+      // Moving overlays. These are intentionally separate from the baked
+      // graphics layer so ride-time motion can be exaggerated without
+      // redrawing the whole façade each frame.
+      for (const w of windows) {
+        if (!w.motion || motionsRemaining <= 0) continue;
+        const cx = side.xLeft + w.x + w.width / 2;
+        const cy = band.yTop + w.y + w.height / 2;
+        const color = w.state === 'lit' ? tintColor(w.tint) : theme.color.sky.windowDim;
+        const rect = scene.add
+          .rectangle(cx, cy, w.width, w.height, color, w.motion.alpha)
+          .setDepth(MOTION_DEPTH)
+          .setScrollFactor(1, scrollFactorY);
+        objects.push(rect);
+        motionWindows.push({
+          rect,
+          y: cy,
+          yTop: band.yTop,
+          yBottom: band.yBottom,
+          height: w.height,
+          speedMultiplier: w.motion.speedMultiplier,
+        });
+        motionsRemaining--;
       }
 
       // Extra dynamic layers — switch / monitor / blinds-anim / occupant.
@@ -576,5 +667,24 @@ export function drawBuildingFacade(
     }
   }
 
-  return { objects, tweens, timers };
+  const updateMotion = (deltaMs: number, elevatorVelocityY: number): void => {
+    if (motionWindows.length === 0 || Math.abs(elevatorVelocityY) < MOTION_IDLE_VELOCITY_EPSILON) {
+      return;
+    }
+    const dt = Math.min(Math.max(deltaMs, 0), 64) / 1000;
+    if (dt === 0) return;
+
+    const travel = -elevatorVelocityY * motionSpeedMultiplier * dt;
+    for (const w of motionWindows) {
+      w.y = wrapFacadeMotionY(
+        w.y + travel * w.speedMultiplier,
+        w.yTop,
+        w.yBottom,
+        w.height,
+      );
+      w.rect.setY(w.y);
+    }
+  };
+
+  return { objects, tweens, timers, updateMotion };
 }

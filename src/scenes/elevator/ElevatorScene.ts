@@ -410,6 +410,7 @@ export class ElevatorScene extends Phaser.Scene {
       for (const door of this.layout.shaftDoors) door.update(cabY, delta);
       this.layout.updateShaftCable(this.elevatorCtrl);
       this.layout.updateFloorLEDs(this.elevatorCtrl);
+      this.layout.updateFacadeMotion(this.elevatorCtrl, delta);
       return;
     }
 
@@ -450,6 +451,7 @@ export class ElevatorScene extends Phaser.Scene {
     for (const door of this.layout.shaftDoors) door.update(cabY, delta);
     this.layout.updateShaftCable(this.elevatorCtrl);
     this.layout.updateFloorLEDs(this.elevatorCtrl);
+    this.layout.updateFacadeMotion(this.elevatorCtrl, delta);
 
     // Keep progression.currentFloor aligned with the docked cab so the HUD
     // floor label tracks the player as they ride between floors.

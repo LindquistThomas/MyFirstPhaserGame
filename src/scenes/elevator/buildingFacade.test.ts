@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateFacadeWindows } from './buildingFacade';
+import { generateFacadeWindows, wrapFacadeMotionY } from './buildingFacade';
 
 describe('generateFacadeWindows', () => {
   it('returns an empty grid if the rectangle is too small for any window', () => {
@@ -96,5 +96,57 @@ describe('generateFacadeWindows', () => {
   it('defaults to zero flickers when no opts passed', () => {
     const windows = generateFacadeWindows(600, 480, 13);
     expect(windows.filter((w) => w.flicker).length).toBe(0);
+  });
+
+  it('respects the motion budget and only moves visible non-effect windows', () => {
+    const windows = generateFacadeWindows(600, 480, 27, {
+      twinkles: 4,
+      flickers: 4,
+      movers: 8,
+    });
+    const movers = windows.filter((w) => w.motion);
+    expect(movers.length).toBeLessThanOrEqual(8);
+    for (const w of movers) {
+      expect(w.state).not.toBe('dark');
+      expect(w.twinkle).toBe(false);
+      expect(w.flicker).toBe(false);
+    }
+  });
+
+  it('emits bounded ride-motion metadata', () => {
+    const windows = generateFacadeWindows(600, 480, 33, { movers: 20 });
+    const movers = windows.filter((w) => w.motion);
+    expect(movers.length).toBeGreaterThan(0);
+    for (const w of movers) {
+      expect(w.motion?.speedMultiplier).toBeGreaterThanOrEqual(0.85);
+      expect(w.motion?.speedMultiplier).toBeLessThanOrEqual(1.75);
+      expect(w.motion?.alpha).toBeGreaterThanOrEqual(0.34);
+      expect(w.motion?.alpha).toBeLessThanOrEqual(0.92);
+      expect(w.motion?.phase).toBeGreaterThanOrEqual(0);
+      expect(w.motion?.phase).toBeLessThan(1);
+    }
+  });
+
+  it('defaults to zero moving windows when no opts passed', () => {
+    const windows = generateFacadeWindows(600, 480, 13);
+    expect(windows.filter((w) => w.motion).length).toBe(0);
+  });
+});
+
+describe('wrapFacadeMotionY', () => {
+  it('leaves in-bounds center coordinates unchanged', () => {
+    expect(wrapFacadeMotionY(50, 0, 100, 10)).toBe(50);
+  });
+
+  it('wraps above and below the band into valid center bounds', () => {
+    for (const y of [-120, -5, 105, 240]) {
+      const wrapped = wrapFacadeMotionY(y, 0, 100, 10);
+      expect(wrapped).toBeGreaterThanOrEqual(5);
+      expect(wrapped).toBeLessThanOrEqual(95);
+    }
+  });
+
+  it('collapses to band center when the band is too short for motion', () => {
+    expect(wrapFacadeMotionY(20, 10, 14, 10)).toBe(12);
   });
 });

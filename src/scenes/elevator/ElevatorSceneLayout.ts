@@ -7,7 +7,7 @@ import { ElevatorShaftDoors } from './ElevatorShaftDoors';
 import { ElevatorController } from './ElevatorController';
 import { drawSkyBackdrop } from './skyBackdrop';
 import { drawDistantSkyline } from './distantSkyline';
-import { drawBuildingFacade, type FacadeBand } from './buildingFacade';
+import { drawBuildingFacade, type BuildingFacadeHandle, type FacadeBand } from './buildingFacade';
 import { drawFloorBackdrops, type FloorBackdropBand, type BlockedRange } from './floorBackdrops';
 import { ProductDoorManager } from './ProductDoorManager';
 
@@ -39,6 +39,8 @@ export class ElevatorSceneLayout {
   readonly platforms: Phaser.Physics.Arcade.StaticGroup;
   readonly shaftDoors: ElevatorShaftDoors[] = [];
   private shaftCable?: Phaser.GameObjects.TileSprite;
+  private facade?: BuildingFacadeHandle;
+  private facadeLastCabY?: number;
   /**
    * Y coordinate at which the cable anchors (bottom tangent of the pulley
    * wheel inside the machine room). Initialised in `createMachineRoom()`
@@ -249,7 +251,12 @@ export class ElevatorSceneLayout {
       });
     }
 
-    drawBuildingFacade(this.deps.scene, { sides, bands });
+    this.facade = drawBuildingFacade(this.deps.scene, {
+      sides,
+      bands,
+      motionBudget: 110,
+      motionSpeedMultiplier: 3.2,
+    });
 
     this.createFloorBackdrops(sides, sorted, top, bottom);
   }
@@ -319,6 +326,18 @@ export class ElevatorSceneLayout {
     const cabTop = controller.elevator.getY() - 172;
     const h = Math.max(0, cabTop - this.pulleyAnchorY);
     this.shaftCable.setSize(4, h);
+  }
+
+  updateFacadeMotion(controller: ElevatorController | undefined, delta: number): void {
+    if (!this.facade || !controller) return;
+    const cabY = controller.elevator.getY();
+    const dt = delta / 1000;
+    const velocityY =
+      this.facadeLastCabY === undefined || dt <= 0
+        ? 0
+        : (cabY - this.facadeLastCabY) / dt;
+    this.facadeLastCabY = cabY;
+    this.facade.updateMotion(delta, controller.isMoving ? velocityY : 0);
   }
 
   /** Y coordinate at which the shaft cable and twin cab cables anchor. */
