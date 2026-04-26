@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS } from './SaveManager';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
@@ -436,5 +436,141 @@ describe('SaveManager — persistence:failed events', () => {
     const result = hasSave();
     expect(result).toBe(false);
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'unknown' }));
+  });
+});
+
+
+describe('SaveManager — multi-slot UI helpers', () => {
+  beforeEach(() => {
+    setStorage(memoryStorage());
+    setPlayerSlot('test');
+  });
+
+  it('SAVE_SLOTS contains exactly slot1, slot2, slot3', () => {
+    expect(SAVE_SLOTS).toEqual(['slot1', 'slot2', 'slot3']);
+  });
+
+  it('loadSlotInfo returns exists:false for an empty slot', () => {
+    const info = loadSlotInfo('slot1');
+    expect(info.exists).toBe(false);
+    expect(info.slotId).toBe('slot1');
+  });
+
+  it('loadSlotInfo returns exists:false with correct fields after saving', () => {
+    setPlayerSlot('slot2');
+    save({ ...sample, totalAU: 42, currentFloor: 3, lastPlayedAt: 1234567890 });
+
+    const info = loadSlotInfo('slot2');
+    expect(info.exists).toBe(true);
+    expect(info.totalAU).toBe(42);
+    expect(info.currentFloor).toBe(3);
+    expect(info.lastPlayedAt).toBe(1234567890);
+  });
+
+  it('loadSlotInfo returns exists:false when the slot data is corrupt JSON', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot3_v1', '{not-valid-json');
+    setStorage(store);
+
+    const info = loadSlotInfo('slot3');
+    expect(info.exists).toBe(false);
+    expect(info.slotId).toBe('slot3');
+  });
+
+  it('loadSlotInfo does not change the active player slot', () => {
+    setPlayerSlot('slot1');
+    save({ ...sample, totalAU: 99 });
+
+    setPlayerSlot('slot3');
+    loadSlotInfo('slot1'); // read a different slot
+
+    // Active slot must still be slot3
+    expect(load()).toBeNull(); // slot3 has no save
+  });
+
+  it('clearSlot removes only the targeted slot', () => {
+    setPlayerSlot('slot1');
+    save({ ...sample, totalAU: 1 });
+
+    setPlayerSlot('slot2');
+    save({ ...sample, totalAU: 2 });
+
+    clearSlot('slot1');
+
+    expect(loadSlotInfo('slot1').exists).toBe(false);
+    expect(loadSlotInfo('slot2').exists).toBe(true);
+    expect(loadSlotInfo('slot2').totalAU).toBe(2);
+  });
+
+  it('clearSlot does not affect the currently active slot if they differ', () => {
+    setPlayerSlot('slot2');
+    save({ ...sample, totalAU: 7 });
+
+    clearSlot('slot1'); // slot1 was empty anyway, slot2 untouched
+
+    setPlayerSlot('slot2');
+    expect(hasSave()).toBe(true);
+    expect(load()?.totalAU).toBe(7);
+  });
+});
+
+
+describe('SaveManager — migrateDefaultSlot', () => {
+  beforeEach(() => {
+    setStorage(memoryStorage());
+    setPlayerSlot('test');
+  });
+
+  it('migrates architect_default_v1 into architect_slot1_v1 when slot1 is empty', () => {
+    // Simulate an existing legacy save under the 'default' slot
+    setPlayerSlot('default');
+    save({ ...sample, totalAU: 55 });
+
+    const migrated = migrateDefaultSlot();
+    expect(migrated).toBe(true);
+
+    // The old default key should be gone
+    setPlayerSlot('default');
+    expect(hasSave()).toBe(false);
+
+    // slot1 should now carry the data
+    expect(loadSlotInfo('slot1').exists).toBe(true);
+    expect(loadSlotInfo('slot1').totalAU).toBe(55);
+  });
+
+  it('does not overwrite slot1 if it already has data, and preserves the legacy key', () => {
+    setPlayerSlot('slot1');
+    save({ ...sample, totalAU: 10 });
+
+    setPlayerSlot('default');
+    save({ ...sample, totalAU: 99 });
+
+    const migrated = migrateDefaultSlot();
+    // Should not migrate because slot1 already has a save
+    expect(migrated).toBe(false);
+
+    // slot1 must still have the original data
+    expect(loadSlotInfo('slot1').totalAU).toBe(10);
+
+    // The legacy default key must NOT have been deleted
+    setPlayerSlot('default');
+    expect(hasSave()).toBe(true);
+    expect(load()?.totalAU).toBe(99);
+  });
+
+  it('returns false and does nothing when no default save exists', () => {
+    const migrated = migrateDefaultSlot();
+    expect(migrated).toBe(false);
+    expect(loadSlotInfo('slot1').exists).toBe(false);
+  });
+
+  it('is idempotent: running twice has no harmful effect', () => {
+    setPlayerSlot('default');
+    save({ ...sample, totalAU: 20 });
+
+    migrateDefaultSlot();
+    const second = migrateDefaultSlot(); // slot1 now exists → skips
+    expect(second).toBe(false);
+    expect(loadSlotInfo('slot1').totalAU).toBe(20);
   });
 });

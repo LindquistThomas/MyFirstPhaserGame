@@ -20,6 +20,8 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 | Space | Jump |
 | Enter / Click / Tap | Interact (enter doors, show info cards) |
 | I | Show info card for nearby zone |
+| Esc / P | Pause (during gameplay) |
+| 0–4 | Call elevator to floor (inside the cab) |
 
 ### Floors
 

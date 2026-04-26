@@ -229,6 +229,7 @@ export class ProgressionSystem {
       ),
       onboardingComplete: this.state.onboardingComplete,
       visitedFloors: Array.from(this.state.visitedFloors),
+      lastPlayedAt: Date.now(),
     });
   }
 }

@@ -36,7 +36,10 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── style/                # theme.ts — colour + spacing token catalogue
 │   ├── systems/              # ProgressionSystem, GameStateManager, EventBus, ZoneManager,
 │   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
-│   │                         # PersistedStore, sceneLifecycle, SpriteGenerator, SoundGenerator
+│   │                         # PersistedStore, SettingsStore, AchievementManager,
+│   │                         # MotionPreference, CaffeineBuff, sceneLifecycle,
+│   │                         # SpriteGenerator (+ sprites/ per-asset families),
+│   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
 │                               InfoIcon, HUD, DialogController, …
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
@@ -83,11 +86,13 @@ Short index of where things live. Reach for these instead of re-implementing.
 - **`SaveManager`** — infrastructure. Scenes must not import it; use `ProgressionSystem`. The one exception is `SaveManager.hasSave()` for UI checks (e.g. a "Continue" button).
 - **`EventBus`** (`src/systems/EventBus.ts`) — typed pub/sub singleton. The `GameEvents` map is the single source of truth for event names and payloads; add new events there and all call sites become type-checked. No Phaser dependency.
 - **`ZoneManager`** (`src/systems/ZoneManager.ts`) — registers named zones with arbitrary `check: () => boolean` predicates, emits `zone:enter` / `zone:exit` on state change only. UI reacts to events; `getActiveZone()` is a synchronous query for keyboard handlers. Default pattern for anything that should appear only in a specific area of a scene.
-- **`AudioManager`** + **`MusicPlugin`** — fully reactive. Scenes don't play audio directly; entities emit `sfx:*` / `music:*` events. Scene music is auto-driven by `SCENE_MUSIC` in `src/config/audioConfig.ts` via `MusicPlugin`. Mute state persists under localStorage key `architect_audio_muted_v1`.
+- **`AudioManager`** + **`MusicPlugin`** — fully reactive. Scenes don't play audio directly; entities emit `sfx:*` / `music:*` events. Scene music is auto-driven by `SCENE_MUSIC` in `src/config/audioConfig.ts` via `MusicPlugin`. Player settings (mute, volumes, music style, reduced motion) persist under localStorage key `architect_settings_v1` via `SettingsStore` (`src/systems/SettingsStore.ts`). The legacy `architect_audio_muted_v1` key is migrated on first load and then deleted.
 - **`SoundGenerator`** — procedural SFX generated at runtime and registered as Phaser audio keys. Music is loaded from `public/music/` in `BootScene.preload()` (MP3/OGG). The procedural lullaby track is also generated here (no separate MusicGenerator module).
 - **`SpriteGenerator`** — procedural pixel-art textures for player, enemies, tokens, platforms, elevator cab, etc.
 - **`QuizManager`** (localStorage key `architect_quiz_v1`) — quiz completion + cooldowns. Data under `src/config/quiz/` (barrel `index.ts`).
 - **`InfoDialogManager`** (localStorage key `architect_info_seen_v1`) — tracks which info dialogs the player has opened. Content under `src/config/info/` (barrel `index.ts`).
+- **`AchievementManager`** (localStorage key `architect_achievements_v1`) — tracks unlocked achievement IDs. `checkAchievements()` in `GameStateManager` is the single check-point, called from `LevelScene`, `LevelTokenManager`, `LevelDialogBindings`, and `ElevatorScene`.
+- **`TouchHintStore`** (localStorage key `architect_touch_hint_seen_v1`) — records whether the first-run virtual-gamepad hint has been shown. `clearSeen()` is called in `GameStateManager.resetAll()`.
 - **`LevelScene`** (`src/features/floors/_shared/LevelScene.ts`) — shared base for floor scenes. Sibling helpers (`LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, `LevelCoffeeManager`, `LevelFridgeManager`, `LevelRoomElevators`) compose the shared concerns. Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a complete `LevelConfig` (see the type definition for required fields such as `floorId`, `playerStart`, `exitPosition`, and `roomElevators`, plus authored collections like `platforms`, `tokens`, `enemies`, and `infoPoints`). Enemy entries use `type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost'`. Enemies are scene-local, no persistence; they respawn on re-entry.
 - **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
 
@@ -113,7 +118,7 @@ Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropr
 Create `src/features/floors/<floor>/<Name>TeamScene.ts` subclassing `LevelScene` (import from `../_shared/LevelScene`) and provide a `LevelConfig` with the required fields `floorId`, `playerStart`, `exitPosition`, `platforms`, and `roomElevators`, plus any scene content arrays you need such as `catwalks`, `movingPlatforms`, `tokens`, `enemies`, `infoPoints`, `coffees`, and `fridges`. See `src/features/floors/_shared/LevelScene.ts` for the authoritative full interface. Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and add a `{ key: 'NameScene', cls: NameScene }` entry to `SCENE_REGISTRY` in `src/scenes/sceneRegistry.ts`. `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys do not match registered scene keys.
 
 ### Add an enemy
-Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost', x, y, minX?, maxX?, speed? }`. `minX`/`maxX` default to `x ± 160` when omitted (per `LevelEnemySpawner.spawn`). Implementations live in `src/entities/enemies/`. To add a new enemy *type*, create the class there and handle it in `Enemy.ts`.
+Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost', x, y, minX?, maxX?, speed? }`. `minX`/`maxX` default to `x ± 160` when omitted (per `LevelEnemySpawner.spawn`). Implementations live in `src/entities/enemies/`. To add a new enemy *type*: (1) create the subclass under `src/entities/enemies/<Name>.ts` extending `Enemy`; (2) add the literal to the `type` union in `LevelConfig.enemies` (`src/features/floors/_shared/LevelScene.ts`); (3) add a `case` to the `switch` in `LevelEnemySpawner.spawn()` (`src/features/floors/_shared/LevelEnemySpawner.ts`) that constructs the new subclass.
 
 ### Add a sound effect
 1. Generate the waveform in `SoundGenerator.generateSounds()` and register the audio key.
@@ -122,8 +127,9 @@ Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' 
 4. Emit from the relevant entity: `eventBus.emit('sfx:myevent')`.
 
 ### Add music for a scene
-1. Put the file in `public/music/` and load it in `BootScene.preload()` with key `music_<name>`.
-2. Add a `SceneKey → music_<name>` entry in `SCENE_MUSIC`. `MusicPlugin` handles playback — no scene code needed.
+1. Put the file in `public/music/<style>/`.
+2. Add a `MusicAsset` entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with `key: 'music_<name>'` and `path: 'music/<file>'` (path relative to `public/`). Set `eager: true` only if the track must be available before the menu renders (e.g. `music_menu`); otherwise `MusicPlugin` lazy-loads it on first scene entry.
+3. Add a `SceneKey → music_<name>` entry in `SCENE_MUSIC`. `MusicPlugin` handles playback — no scene code needed.
 
 ### Add an info card
 Add the entry under `src/config/info/` (re-exported from `index.ts`). Place an info point in the relevant scene's `LevelConfig.infoPoints` with matching `contentId`. Zone IDs default to the content ID, so the same string identifies both the zone and the dialog.
@@ -158,6 +164,8 @@ Playwright helpers in `tests/helpers/playwright.ts`:
 
 - `waitForGame(page)` — waits for `window.__game`, then focuses the canvas so keyboard input reaches Phaser.
 - `waitForScene(page, 'SceneKey')` — waits for the scene to be active and settle.
+- `waitForDialogOpen(page, 'SceneKey')` — waits until the scene's `DialogController.isOpen` is `true` (replaces fixed `waitForTimeout` after triggering a dialog).
+- `waitForDialogClosed(page, 'SceneKey')` — inverse of the above.
 - `seedFullProgressSave(page, { totalAU?, floorAU? })` — pre-populates the save slot and marks the elevator info dialog as seen so it doesn't swallow input.
 - `clearStorage(page)` — wipes localStorage before boot.
 - `attachErrorWatchers(page).assertClean()` — fails the test if any uncaught `pageerror`/console error leaked.

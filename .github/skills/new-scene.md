@@ -50,7 +50,7 @@ export class NameScene extends Phaser.Scene {
     ```ts
     import { NameScene } from './core/NameScene';
     // …
-    export const SCENE_REGISTRY: SceneRegistryEntry[] = [
+    export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
       // …existing entries…
       { key: 'NameScene', cls: NameScene },
     ];
