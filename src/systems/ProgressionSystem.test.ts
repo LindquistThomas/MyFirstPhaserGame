@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ProgressionSystem } from './ProgressionSystem';
-import { setStorage, setPlayerSlot, KVStorage } from './SaveManager';
+import { setStorage, setPlayerSlot, KVStorage, CURRENT_SAVE_VERSION } from './SaveManager';
 import { FLOORS } from '../config/gameConfig';
 import { eventBus } from './EventBus';
 
@@ -252,5 +252,56 @@ describe('ProgressionSystem', () => {
       p.addAU(FLOORS.PLATFORM_TEAM, 49);
       expect(fn).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('ProgressionSystem — loadFromSave optional-field fallbacks', () => {
+  function seededStorage(payload: Record<string, unknown>): KVStorage {
+    const store = new Map<string, string>([
+      ['architect_progression-test_v1', JSON.stringify(payload)],
+    ]);
+    return {
+      getItem: (k) => store.get(k) ?? null,
+      setItem: (k, v) => { store.set(k, v); },
+      removeItem: (k) => { store.delete(k); },
+    };
+  }
+
+  beforeEach(() => {
+    setPlayerSlot('progression-test');
+  });
+
+  it('defaults visitedFloors to empty when absent in legacy save', () => {
+    // Older saves written before visitedFloors was added must not blow up.
+    setStorage(seededStorage({
+      version: CURRENT_SAVE_VERSION,
+      totalAU: 3,
+      floorAU: { [FLOORS.LOBBY]: 3 },
+      unlockedFloors: [FLOORS.LOBBY],
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+      // visitedFloors deliberately absent
+    }));
+
+    const p = new ProgressionSystem();
+    expect(p.loadFromSave()).toBe(true);
+    expect(p.getVisitedFloorCount()).toBe(0);
+  });
+
+  it('defaults onboardingComplete to false when absent in legacy save', () => {
+    // Saves predating the onboarding feature must not show the tutorial flag as true.
+    setStorage(seededStorage({
+      version: CURRENT_SAVE_VERSION,
+      totalAU: 0,
+      floorAU: {},
+      unlockedFloors: [FLOORS.LOBBY],
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+      // onboardingComplete deliberately absent
+    }));
+
+    const p = new ProgressionSystem();
+    expect(p.loadFromSave()).toBe(true);
+    expect(p.isOnboardingComplete()).toBe(false);
   });
 });

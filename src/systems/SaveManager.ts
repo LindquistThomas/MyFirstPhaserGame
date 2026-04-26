@@ -32,6 +32,13 @@ export const CURRENT_SAVE_VERSION = 1;
  *
  * v0 → v1: first versioned release; shape is unchanged — just stamps the
  * `version` field that was previously absent.
+ *
+ * To add a new save version:
+ *   1. Bump CURRENT_SAVE_VERSION.
+ *   2. Add an entry to MIGRATIONS keyed by the OLD version:
+ *        N: (data) => ({ ...data, newField: defaultValue }),
+ *   3. Update the SaveData type.
+ *   4. Add a unit test for the migration in SaveManager.test.ts.
  */
 const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
   0: (d) => d,
