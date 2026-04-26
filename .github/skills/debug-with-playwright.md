@@ -89,6 +89,24 @@ errors.assertClean();                // fails if any uncaught pageerror / consol
 
 Known-benign patterns (Vite HMR close, ResizeObserver) are already suppressed in the helper.
 
+## Wait for dialog state
+
+Use the deterministic helpers instead of `page.waitForTimeout` when a dialog opens or closes:
+
+```ts
+import { waitForDialogOpen, waitForDialogClosed } from './helpers/playwright';
+
+// After triggering an action that opens a dialog:
+await page.keyboard.press('Enter');
+await waitForDialogOpen(page, 'PlatformTeamScene');
+
+// After dismissing the dialog:
+await page.keyboard.press('Escape');
+await waitForDialogClosed(page, 'PlatformTeamScene');
+```
+
+Both helpers poll `DialogController.isOpen` on the named scene (via the `dialogs` property) and time out after 15 seconds. They replace the fixed 200–500 ms sleeps that were common before these helpers existed.
+
 ## Input gotcha
 
 `Space` is bound **exclusively** to Jump. To start the game from `MenuScene`, confirm a quiz, or interact with the elevator, press **`Enter`** — it's bound to `Confirm` / `Interact` / `ToggleInfo`. See `src/input/bindings.ts`.
