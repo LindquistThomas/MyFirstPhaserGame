@@ -128,6 +128,9 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
 /** Default volume for background music (0–1). */
 export const MUSIC_VOLUME = 0.35;
 
+/** Crossfade duration (ms) when switching music tracks. */
+export const MUSIC_FADE_MS = 300;
+
 /**
  * Default volume for looping ambience beds (0–1). Kept well below
  * MUSIC_VOLUME so the ambience reads as background texture underneath

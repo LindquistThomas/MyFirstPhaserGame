@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type * as Phaser from 'phaser';
 import { AudioManager } from './AudioManager';
 import { eventBus } from './EventBus';
 import { MUSIC_VOLUME, SFX_EVENTS } from '../config/audioConfig';
@@ -186,6 +187,103 @@ describe('AudioManager', () => {
       eventBus.emit('music:resume');
       expect(inst.pause).toHaveBeenCalledTimes(1);
       expect(inst.resume).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Crossfade', () => {
+    /** Explicit fade duration used in crossfade tests (matches MUSIC_FADE_MS default). */
+    const TEST_FADE_MS = 300;
+
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    it('destroy() is NOT called before fade-out completes when fadeDurationMs > 0', () => {
+      vi.useFakeTimers();
+      const sound = makeFakeSoundManager();
+      eventBus.removeAllListeners();
+      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      mgr.registerEventListeners();
+
+      eventBus.emit('music:play', 'track_a');
+      const first = sound._instances[0]!;
+
+      eventBus.emit('music:play', 'track_b');
+      // Still alive — destroy waits for the fade to complete.
+      expect(first.destroy).not.toHaveBeenCalled();
+      expect(first.stop).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(TEST_FADE_MS);
+      expect(first.stop).toHaveBeenCalledTimes(1);
+      expect(first.destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it('incoming track starts at volume 0 and reaches target volume after fade', () => {
+      vi.useFakeTimers();
+      const sound = makeFakeSoundManager();
+      // Use a fresh event bus registration so only this manager handles events.
+      eventBus.removeAllListeners();
+      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      mgr.registerEventListeners();
+
+      eventBus.emit('music:play', 'track_a');
+      const inst = sound._instances[0]!;
+
+      // Track was added with volume 0 (fade-in start).
+      const addCall = sound.add.mock.calls[0] as [string, { volume: number }];
+      expect(addCall[1].volume).toBe(0);
+
+      // After the full fade duration the volume should be at the effective target level.
+      const expectedVol = 0.35 * (70 / 100); // MUSIC_VOLUME * default musicVolume
+      vi.advanceTimersByTime(TEST_FADE_MS);
+      const calls = inst.setVolume.mock.calls;
+      const lastSetVolumeArg: number = (calls[calls.length - 1] as [number])[0];
+      expect(lastSetVolumeArg).toBeCloseTo(expectedVol, 2);
+    });
+
+    it('rapid track change cancels previous fade-out and destroys old track immediately', () => {
+      vi.useFakeTimers();
+      const sound = makeFakeSoundManager();
+      eventBus.removeAllListeners();
+      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      mgr.registerEventListeners();
+
+      eventBus.emit('music:play', 'track_a');
+      const first = sound._instances[0]!;
+
+      eventBus.emit('music:play', 'track_b');
+      // track_a is fading out — not yet destroyed.
+      expect(first.destroy).not.toHaveBeenCalled();
+
+      // Before the fade completes, switch again.
+      vi.advanceTimersByTime(100);
+      eventBus.emit('music:play', 'track_c');
+
+      // track_a should have been destroyed immediately on the second switch.
+      expect(first.stop).toHaveBeenCalledTimes(1);
+      expect(first.destroy).toHaveBeenCalledTimes(1);
+
+      // Flush remaining timers (track_b fade-out + track_c fade-in) so they
+      // don't leak into the next test via the afterEach timer reset.
+      vi.advanceTimersByTime(TEST_FADE_MS);
+    });
+
+    it('mute toggle during fade-in snaps music to correct muted state instantly', () => {
+      vi.useFakeTimers();
+      const sound = makeFakeSoundManager();
+      // Use a fresh event bus registration so only this manager handles events.
+      eventBus.removeAllListeners();
+      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      mgr.registerEventListeners();
+
+      eventBus.emit('music:play', 'track_a');
+      // Partway through the fade-in, mute.
+      vi.advanceTimersByTime(TEST_FADE_MS / 2);
+      eventBus.emit('audio:toggle-mute');
+
+      // The sound manager should be muted immediately.
+      expect(mgr.isMuted()).toBe(true);
     });
   });
 
