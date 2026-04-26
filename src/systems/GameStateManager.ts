@@ -2,6 +2,7 @@ import * as SaveManager from './SaveManager';
 import * as QuizManager from './QuizManager';
 import * as InfoDialogManager from './InfoDialogManager';
 import * as AchievementManager from './AchievementManager';
+import * as TouchHintStore from './TouchHintStore';
 import { ProgressionSystem } from './ProgressionSystem';
 import type { KVStorage } from './SaveManager';
 import { eventBus } from './EventBus';
@@ -30,6 +31,7 @@ export class GameStateManager {
       QuizManager.setStorage(storage);
       InfoDialogManager.setStorage(storage);
       AchievementManager.setStorage(storage);
+      TouchHintStore.setStorage(storage);
     }
     this.progression = new ProgressionSystem();
   }
@@ -122,9 +124,10 @@ export class GameStateManager {
     }
   }
 
-  /** Reset ALL persistent state including achievements. */
+  /** Reset ALL persistent state including achievements and touch hint. */
   resetAll(): void {
     this.progression.reset();
     AchievementManager.resetAll();
+    TouchHintStore.clearSeen();
   }
 }

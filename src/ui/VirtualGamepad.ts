@@ -1,5 +1,6 @@
 import { setVirtualButton } from '../input';
 import type { GameAction } from '../input';
+import { showTouchHintIfNeeded } from './TouchHintOverlay';
 
 /**
  * Returns `true` when the current device is touch-primary (i.e. a phone or
@@ -103,4 +104,7 @@ export function initVirtualGamepad(): void {
     btn.addEventListener('touchend', onTouchEnd as EventListener, { passive: false });
     btn.addEventListener('touchcancel', onTouchEnd as EventListener, { passive: false });
   });
+
+  // Show the first-run hint overlay on the initial touch-primary session.
+  showTouchHintIfNeeded(pad);
 }
