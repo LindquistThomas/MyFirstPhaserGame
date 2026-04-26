@@ -38,7 +38,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.19.0
+          node-version: 20.20.2
           cache: npm
 
       - run: npm ci
@@ -79,7 +79,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.19.0
+          node-version: 20.20.2
           cache: npm
 
       - run: npm ci
