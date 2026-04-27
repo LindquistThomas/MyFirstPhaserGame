@@ -66,4 +66,18 @@ export const INFO_EXEC: Record<string, InfoPointDef> = {
         '  \u2022 Revenue through Norconsult: 20% (2025: 10%)',
     },
   },
+  'executive-hostage-rescued': {
+    floorId: FLOORS.EXECUTIVE,
+    content: {
+      id: 'executive-hostage-rescued',
+      title: 'Leadership Freed',
+      body:
+        'You made it. The C-suite is safe.\n\n' +
+        'Collect the pistol, secure the keycard, crack the bomb code, ' +
+        'disarm the device, and take down the threat — the full stack of ' +
+        'executive-floor problem-solving in one afternoon.\n\n' +
+        '"Architecture is not just about systems," the CEO says quietly. ' +
+        '"It\'s about protecting the people inside them."',
+    },
+  },
 };

@@ -117,4 +117,20 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
       tokenColor: 0xffd700,
     },
   },
+  [FLOORS.BOSS]: {
+    id: FLOORS.BOSS,
+    floorNumber: 5,
+    name: 'Boardroom',
+    description: 'The CEO awaits. Prove your architectural worth.',
+    sceneKey: 'BossArenaScene',
+    auRequired: 25,
+    auLabel: 'Boss AU',
+    totalAU: 0,
+    theme: {
+      platformColor: 0x2a1a0a,
+      backgroundColor: 0x0a0a0a,
+      wallColor: 0x3a2a1a,
+      tokenColor: 0xffd700,
+    },
+  },
 };

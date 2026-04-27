@@ -6,6 +6,7 @@ import { BureaucracyBot } from '../../../entities/enemies/BureaucracyBot';
 import { ScopeCreep } from '../../../entities/enemies/ScopeCreep';
 import { ArchitectureAstronaut } from '../../../entities/enemies/ArchitectureAstronaut';
 import { TechDebtGhost } from '../../../entities/enemies/TechDebtGhost';
+import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { Player } from '../../../entities/Player';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
@@ -55,6 +56,9 @@ export class LevelEnemySpawner {
           break;
         case 'tech-debt-ghost':
           enemy = new TechDebtGhost(this.deps.scene, e.x, e.y, opts);
+          break;
+        case 'terrorist':
+          enemy = new TerroristCommander(this.deps.scene, e.x, e.y, opts);
           break;
       }
       this.enemies.push(enemy);

@@ -50,6 +50,8 @@ const ACTION_LABELS: Record<GameAction, string> = {
   ElevatorCallFloor2: 'Elevator: Floor 2',
   ElevatorCallFloor3: 'Elevator: Floor 3',
   ElevatorCallFloor4: 'Elevator: Floor 4',
+  ElevatorCallFloor5: 'Elevator: Boardroom',
+  Attack: 'Attack (Throw/Fire)',
   Pause: 'Pause',
   ToggleDebug: 'Toggle Debug',
 };

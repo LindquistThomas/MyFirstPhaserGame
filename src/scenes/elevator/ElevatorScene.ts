@@ -317,6 +317,7 @@ export class ElevatorScene extends Phaser.Scene {
       [FLOORS.PRODUCTS]: 1462,
       [FLOORS.BUSINESS]: 988,
       [FLOORS.EXECUTIVE]: 514,
+      [FLOORS.BOSS]: 40,
     };
   }
 
@@ -546,7 +547,7 @@ export class ElevatorScene extends Phaser.Scene {
     const inputs = this.inputs;
     const actions: readonly GameAction[] = [
       'ElevatorCallFloor0', 'ElevatorCallFloor1', 'ElevatorCallFloor2',
-      'ElevatorCallFloor3', 'ElevatorCallFloor4',
+      'ElevatorCallFloor3', 'ElevatorCallFloor4', 'ElevatorCallFloor5',
     ];
     for (let i = 0; i < visualOrder.length && i < actions.length; i++) {
       if (inputs.justPressed(actions[i]!)) {

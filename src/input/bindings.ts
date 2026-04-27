@@ -57,7 +57,7 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
 
   // --- Elevator floor call buttons ---
   // Digit keys map to the visual floor order shown on the cab panel
-  // (F0 = lobby at the bottom, F4 = executive at the top). The same
+  // (F0 = lobby at the bottom, F5 = boss boardroom at the top). The same
   // physical keys are also bound to QuickAnswer1..4 above; the active
   // input context (gameplay vs modal) keeps the two from colliding.
   ElevatorCallFloor0: [K.ZERO],
@@ -65,6 +65,11 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
   ElevatorCallFloor2: [K.TWO],
   ElevatorCallFloor3: [K.THREE],
   ElevatorCallFloor4: [K.FOUR],
+  ElevatorCallFloor5: [K.FIVE],
+
+  // --- Attack (throw/fire) ---
+  // X throws the held weapon (mug in boss arena, pistol in exec suite rescue).
+  Attack: [K.X],
 
   // --- Pause / resume ---
   // Esc pauses gameplay only (not modals/menus — Cancel covers those).

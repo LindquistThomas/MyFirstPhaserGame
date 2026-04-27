@@ -31,6 +31,7 @@ import { ProductIsyProjectControlsScene } from '../features/products/rooms/Produ
 import { ProductIsyBeskrivelseScene } from '../features/products/rooms/ProductIsyBeskrivelseScene';
 import { ProductIsyRoadScene } from '../features/products/rooms/ProductIsyRoadScene';
 import { ProductAdminLisensScene } from '../features/products/rooms/ProductAdminLisensScene';
+import { BossArenaScene } from '../features/floors/boss/BossArenaScene';
 import { LEVEL_DATA } from '../config/levelData';
 import { SCENE_MUSIC } from '../config/audioConfig';
 
@@ -60,6 +61,7 @@ export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
   { key: 'ProductIsyBeskrivelseScene', cls: ProductIsyBeskrivelseScene },
   { key: 'ProductIsyRoadScene', cls: ProductIsyRoadScene },
   { key: 'ProductAdminLisensScene', cls: ProductAdminLisensScene },
+  { key: 'BossArenaScene', cls: BossArenaScene },
 ];
 
 /**

@@ -1,11 +1,14 @@
 import * as Phaser from 'phaser';
-import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
 import { FinanceTeamScene } from '../finance/FinanceTeamScene';
 import { InteractiveDoor } from '../../../ui/InteractiveDoor';
 import { loadDeferredMusic } from '../../../config/audioConfig';
+import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
+import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
+import { eventBus } from '../../../systems/EventBus';
 
 /**
  * Floor 4 — Executive Suite (penthouse).
@@ -33,6 +36,21 @@ export class ExecutiveSuiteScene extends LevelScene {
 
   /** Set when arriving from a suite room — used to spawn next to that door. */
   private spawnNearDoor?: string;
+
+  // ---- Hostage rescue state (scene-local, resets on re-entry) ----
+  private rescueState = {
+    collected: new Set<MissionItemId>(),
+    bombDisarmed: false,
+    commanderDefeated: false,
+    leadershipFreed: false,
+  };
+  private missionItems: MissionItem[] = [];
+  private commander?: TerroristCommander;
+  private sanctumDoor?: Phaser.GameObjects.Image;
+  private bombSprite?: Phaser.GameObjects.Image;
+  private missionHUD?: Phaser.GameObjects.Container;
+  private missionIconSlots: Phaser.GameObjects.Text[] = [];
+  private bombIndicator?: Phaser.GameObjects.Text;
 
   constructor() {
     super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
@@ -68,6 +86,145 @@ export class ExecutiveSuiteScene extends LevelScene {
         repeat: -1,
         delay: i * 150,
       });
+    });
+
+    this.setupRescue();
+  }
+
+  private setupRescue(): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const T1 = G - 240;
+
+    // ---- Mission items ----
+    const spawnItem = (x: number, y: number, id: MissionItemId): void => {
+      const item = new MissionItem(this, x, y, id, (collected) => this.onItemCollected(collected));
+      this.missionItems.push(item);
+      this.physics.add.overlap(this.player.sprite, item, () => item.collect());
+    };
+    spawnItem(620, T1 - 30, 'pistol');        // on mezzanine
+    spawnItem(940, G - 30, 'keycard');        // near patrol zone (risky)
+    spawnItem(160, G - 30, 'bomb_code');      // behind exit side
+
+    // ---- Terrorist Commander patrol ----
+    this.commander = new TerroristCommander(this, 750, G - 56, {
+      minX: 600, maxX: 1100, speed: 90,
+    });
+    this.physics.add.collider(this.commander, this.platformGroup);
+    // Override stomp: use pistol defeat instead
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.commander,
+      () => this.onCommanderOverlap(),
+    );
+
+    // ---- Bomb device (right side, gated by bomb_code) ----
+    this.bombSprite = this.add.image(1100, G - 40, 'bomb_device').setDepth(4);
+    this.tweens.add({
+      targets: this.bombSprite,
+      alpha: 0.5,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // ---- Sanctum door (blocks far-right area) ----
+    this.sanctumDoor = this.add.image(1200, G - 48, 'door_sanctum_locked')
+      .setDepth(4)
+      .setVisible(true);
+
+    // ---- Mission HUD overlay (top-right) ----
+    this.buildMissionHUD();
+
+    // ---- Shutdown cleanup ----
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      // rescueState resets on next create() — nothing to persist
+    });
+  }
+
+  private buildMissionHUD(): void {
+    const icons: Phaser.GameObjects.Text[] = [];
+    const labels = ['🔫', '🪪', '💣'];
+    for (let i = 0; i < 3; i++) {
+      const icon = this.add.text(GAME_WIDTH - 110 + i * 36, 16, labels[i]!, {
+        fontFamily: 'monospace', fontSize: '20px', color: '#333344',
+      }).setScrollFactor(0).setDepth(60);
+      icons.push(icon);
+    }
+    this.missionIconSlots = icons;
+    this.bombIndicator = this.add.text(GAME_WIDTH - 110, 42, '💥 ARMED', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#cc2222',
+    }).setScrollFactor(0).setDepth(60);
+  }
+
+  private onItemCollected(id: MissionItemId): void {
+    this.rescueState.collected.add(id);
+    const idx = ['pistol', 'keycard', 'bomb_code'].indexOf(id);
+    if (idx >= 0 && this.missionIconSlots[idx]) {
+      this.missionIconSlots[idx]!.setColor('#ffd700');
+    }
+  }
+
+  private onCommanderOverlap(): void {
+    if (!this.commander || this.commander.defeated) return;
+    if (!this.rescueState.collected.has('pistol')) {
+      // No pistol — take damage normally (handled by LevelEnemySpawner for listed enemies,
+      // but this commander is spawned outside the spawner config, so handle here)
+      if (!this.player.isInvulnerable()) {
+        this.player.takeHit(this.commander.knockbackX, this.commander.knockbackY);
+        eventBus.emit('sfx:hit');
+      }
+      return;
+    }
+    // Pistol in hand — defeat the commander
+    this.commander.defeat();
+    this.rescueState.commanderDefeated = true;
+    this.checkSanctumUnlock();
+  }
+
+  private checkBombDisarm(): void {
+    if (this.rescueState.bombDisarmed) return;
+    if (!this.rescueState.collected.has('bomb_code')) return;
+    const px = this.player.sprite.x;
+    const G = GAME_HEIGHT - TILE_SIZE;
+    if (Math.abs(px - 1100) < 80 && this.player.sprite.y > G - 200) {
+      this.rescueState.bombDisarmed = true;
+      this.bombSprite?.destroy();
+      eventBus.emit('sfx:bomb_disarm');
+      if (this.bombIndicator) {
+        this.bombIndicator.setText('✓ DEFUSED').setColor('#44ff88');
+      }
+      this.checkSanctumUnlock();
+    }
+  }
+
+  private checkSanctumUnlock(): void {
+    if (this.rescueState.leadershipFreed) return;
+    const { collected, bombDisarmed, commanderDefeated } = this.rescueState;
+    if (
+      collected.has('pistol') &&
+      collected.has('keycard') &&
+      collected.has('bomb_code') &&
+      bombDisarmed &&
+      commanderDefeated
+    ) {
+      this.openSanctum();
+    }
+  }
+
+  private openSanctum(): void {
+    this.rescueState.leadershipFreed = true;
+    this.sanctumDoor?.setTexture('door_sanctum_open');
+    eventBus.emit('sfx:hostage_freed');
+    this.cameras.main.shake(150, 0.006);
+
+    // Grant bonus AU
+    this.progression.addAU(FLOORS.EXECUTIVE, 5);
+    this.gameState.unlockHostageRescue();
+    this.gameState.checkAchievements();
+
+    // Open the rescue info dialog
+    this.time.delayedCall(600, () => {
+      if (this.dialogs) this.dialogs.open('executive-hostage-rescued');
     });
   }
 
@@ -218,6 +375,14 @@ export class ExecutiveSuiteScene extends LevelScene {
    */
   protected override checkExitProximity(): void {
     super.checkExitProximity();
+
+    // Check bomb disarm each frame (proximity-gated)
+    this.checkBombDisarm();
+
+    // Commander update (not in LevelEnemySpawner — managed directly here)
+    if (this.commander && !this.commander.defeated) {
+      this.commander.update();
+    }
 
     if (this.isTransitioning) return;
 

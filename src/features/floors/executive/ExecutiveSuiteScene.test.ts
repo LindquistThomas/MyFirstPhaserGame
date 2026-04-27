@@ -53,6 +53,34 @@ vi.mock('../../../config/audioConfig', async (importOriginal) => {
   return { ...original, loadDeferredMusic: vi.fn() };
 });
 
+// MissionItem uses Phaser.Physics.Arcade.Sprite — stub the whole module.
+vi.mock('../../../entities/MissionItem', () => ({
+  MissionItem: class MissionItem {
+    itemId: string;
+    constructor(_s: unknown, _x: unknown, _y: unknown, id: string, _cb: unknown) {
+      this.itemId = id;
+    }
+    collect() {}
+  },
+}));
+
+// TerroristCommander uses Phaser Physics — stub it.
+vi.mock('../../../entities/enemies/TerroristCommander', () => ({
+  TerroristCommander: class TerroristCommander {
+    defeated = false;
+    knockbackX = 300;
+    knockbackY = -280;
+    constructor() {}
+    update() {}
+    defeat() {}
+  },
+}));
+
+// eventBus is a singleton — stub the emit to avoid side effects in config tests.
+vi.mock('../../../systems/EventBus', () => ({
+  eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn(), once: vi.fn() },
+}));
+
 import { ExecutiveSuiteScene } from './ExecutiveSuiteScene';
 
 class TestableExecutiveSuiteScene extends ExecutiveSuiteScene {
