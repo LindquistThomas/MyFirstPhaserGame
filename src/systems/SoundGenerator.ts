@@ -16,6 +16,12 @@ import {
 } from './sounds/movement';
 import { generateDatacenterAmbience } from './sounds/ambience';
 import { generateCoffeeSipSound, generateFridgeOpenSound } from './sounds/items';
+import {
+  generateItemPickupSound,
+  generateBombDisarmSound,
+  generateBossDefeatedSound,
+  generateHostageFreedSound,
+} from './sounds/mission';
 import { generateLullaby } from './sounds/lullaby';
 
 /**
@@ -47,6 +53,10 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'coffee_sip', generateCoffeeSipSound());
   loadWav(scene, 'fridge_open', generateFridgeOpenSound());
   loadWav(scene, 'music_lullaby', generateLullaby());
+  loadWav(scene, 'item_pickup', generateItemPickupSound());
+  loadWav(scene, 'bomb_disarm', generateBombDisarmSound());
+  loadWav(scene, 'boss_defeated', generateBossDefeatedSound());
+  loadWav(scene, 'hostage_freed', generateHostageFreedSound());
 }
 
 export { loadWav, encodeWAV } from './sounds/wav';

@@ -123,6 +123,10 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:recover_au':   'recover_au',
   'sfx:coffee_sip':   'coffee_sip',
   'sfx:fridge_open':  'fridge_open',
+  'sfx:item_pickup':  'item_pickup',
+  'sfx:bomb_disarm':  'bomb_disarm',
+  'sfx:boss_defeated': 'boss_defeated',
+  'sfx:hostage_freed': 'hostage_freed',
 };
 
 /** Default volume for background music (0–1). */

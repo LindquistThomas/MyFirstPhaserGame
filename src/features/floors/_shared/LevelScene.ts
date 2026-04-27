@@ -103,7 +103,7 @@ export interface LevelConfig {
    * `minX` / `maxX` default to ±radius around `x`.
    */
   enemies?: Array<{
-    type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost';
+    type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist';
     x: number;
     y: number;
     minX?: number;

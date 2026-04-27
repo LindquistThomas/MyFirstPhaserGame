@@ -13,6 +13,7 @@ export function generateEnemySprites(scene: Phaser.Scene): void {
   generateScopeCreepSprite(scene);
   generateArchitectureAstronautSprite(scene);
   generateTechDebtGhostSprite(scene);
+  generateTerroristCommanderSprite(scene);
 }
 
 /** Green blob slime — 48×32. Simple Goomba analog. */
@@ -286,5 +287,73 @@ function generateTechDebtGhostSprite(scene: Phaser.Scene): void {
   g.fillRect(W / 2 + 4, 5, 2, 2);
 
   g.generateTexture('enemy_tech_debt_ghost', W, H);
+  g.destroy();
+}
+
+/**
+ * Terrorist Commander — armored hostile with balaclava and weapon.
+ * 44×58. Non-stompable boss enemy for the Executive Suite hostage rescue.
+ */
+function generateTerroristCommanderSprite(scene: Phaser.Scene): void {
+  const W = 44;
+  const H = 58;
+  const g = scene.make.graphics({ x: 0, y: 0 }, false);
+
+  // Legs (dark tactical trousers)
+  g.fillStyle(0x1a1a22, 1);
+  g.fillRect(10, H - 16, 8, 16);
+  g.fillRect(W - 18, H - 16, 8, 16);
+
+  // Combat boots
+  g.fillStyle(0x0a0a0a, 1);
+  g.fillRect(8, H - 4, 12, 4);
+  g.fillRect(W - 20, H - 4, 12, 4);
+
+  // Torso (dark tactical vest)
+  g.fillStyle(0x2a2a2a, 1);
+  g.fillRect(8, 20, W - 16, H - 36);
+  // Vest plate
+  g.fillStyle(0x333344, 1);
+  g.fillRect(12, 22, W - 24, 10);
+  // Vest pouches
+  g.fillStyle(0x222233, 1);
+  g.fillRect(12, 34, 6, 4);
+  g.fillRect(W - 18, 34, 6, 4);
+
+  // Arms
+  g.fillStyle(0x2a2a2a, 1);
+  g.fillRect(4, 22, 6, 14);
+  g.fillRect(W - 10, 22, 6, 14);
+  // Gloves
+  g.fillStyle(0x111111, 1);
+  g.fillRect(4, 36, 6, 3);
+  g.fillRect(W - 10, 36, 6, 3);
+
+  // Head (balaclava)
+  g.fillStyle(0x1a1a1a, 1);
+  g.fillCircle(W / 2, 14, 12);
+
+  // Eye slit
+  g.fillStyle(0x333333, 1);
+  g.fillRect(W / 2 - 8, 12, 16, 4);
+  // Eyes (menacing)
+  g.fillStyle(0xff3333, 0.8);
+  g.fillCircle(W / 2 - 4, 13, 2);
+  g.fillCircle(W / 2 + 4, 13, 2);
+  g.fillStyle(0xffffff, 1);
+  g.fillCircle(W / 2 - 4, 12.5, 0.8);
+  g.fillCircle(W / 2 + 4, 12.5, 0.8);
+
+  // Weapon in right hand (held at hip level)
+  g.fillStyle(0x3a3a3a, 1);
+  g.fillRect(W - 8, 30, 10, 4);
+  g.fillStyle(0x2a2a2a, 1);
+  g.fillRect(W - 4, 34, 4, 6);
+
+  // Red armband (identifying mark)
+  g.fillStyle(0xcc2222, 1);
+  g.fillRect(4, 24, 6, 3);
+
+  g.generateTexture('enemy_terrorist', W, H);
   g.destroy();
 }
