@@ -70,7 +70,7 @@ next: <action | "done">
 - User asks for a plan, design doc, or review rationale — normal prose reads better.
 - Onboarding / teaching scenarios where grammar actually aids comprehension.
 - Commit messages, PR descriptions, release notes — follow repo conventions instead.
-- Any user-facing strings inside the game (`infoContent.ts`, quiz text, dialogs).
+- Any user-facing strings inside the game (`features/floors/<floor>/info.ts`, quiz text, dialogs).
 
 ## Activation
 
