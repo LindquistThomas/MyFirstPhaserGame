@@ -1,6 +1,6 @@
 ## Audio — Music & Sound Effects (Phase 3)
 
-> **Archived: shipped — see `docs/architecture.md` for current state.** This file is preserved as historical design context. Do not treat the checklist as active TODOs. Scene music is driven by `SCENE_MUSIC` in `src/config/audioConfig.ts`; procedural SFX come from `src/systems/SoundGenerator.ts`; playback and mute are handled by `src/systems/AudioManager.ts` + `src/plugins/MusicPlugin.ts`; mute persists under localStorage key `architect_audio_muted_v1`.
+> **Archived: shipped — see `docs/architecture.md` for current state.** This file is preserved as historical design context. Do not treat the checklist as active TODOs. Scene music is driven by `SCENE_MUSIC` in `src/config/audioConfig.ts`; procedural SFX come from `src/systems/SoundGenerator.ts`; playback and mute are handled by `src/systems/AudioManager.ts` + `src/plugins/MusicPlugin.ts`; player audio settings (mute, volumes, music style) persist under localStorage key `architect_settings_v1` via `src/systems/SettingsStore.ts`. The legacy `architect_audio_muted_v1` key is migrated and removed on first load.
 
 Add background music and sound effects to enhance game feel.
 
