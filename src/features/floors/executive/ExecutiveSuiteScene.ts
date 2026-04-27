@@ -9,8 +9,6 @@ import { loadDeferredMusic } from '../../../config/audioConfig';
 import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
 import { eventBus } from '../../../systems/EventBus';
-import * as AchievementManager from '../../../systems/AchievementManager';
-import { ACHIEVEMENT_MAP } from '../../../config/achievements';
 
 /** Scene-local state for the hostage rescue scenario. Reset on every create(). */
 interface RescueState {
@@ -64,6 +62,11 @@ export class ExecutiveSuiteScene extends LevelScene {
   private static readonly BOMB_X = 1000;
   /** Position of the terrorist commander's patrol center. */
   private static readonly COMMANDER_X = 900;
+  /**
+   * Delay before the debrief info dialog appears after the celebration banner.
+   * Must exceed banner fade: 3000 ms delay + 500 ms fade = 3500 ms total.
+   */
+  private static readonly DEBRIEF_DIALOG_DELAY_MS = 3600;
 
   constructor() {
     super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
@@ -338,7 +341,7 @@ export class ExecutiveSuiteScene extends LevelScene {
     const G = GAME_HEIGHT - TILE_SIZE;
     const sx = ExecutiveSuiteScene.SANCTUM_X;
 
-    this.sanctumDoor = new InteractiveDoor(this, sx, G - 56, 'door_unlocked', 'door_open');
+    this.sanctumDoor = new InteractiveDoor(this, sx, G - 56, 'door_locked', 'door_open');
 
     this.add.text(sx, G - 110, '\uD83D\uDD12 SANCTUM', {
       fontFamily: 'monospace', fontSize: '12px', color: '#ff6666',
@@ -499,12 +502,10 @@ export class ExecutiveSuiteScene extends LevelScene {
     this.sanctumPrompt?.setVisible(false);
 
     this.progression.addAU(this.floorId, 5);
+    this.gameState.checkAchievements();
 
     // Unlock the secret Die Hard achievement.
-    if (AchievementManager.unlock('hostage-rescue')) {
-      const def = ACHIEVEMENT_MAP.get('hostage-rescue');
-      if (def) eventBus.emit('achievement:unlocked', 'hostage-rescue', def.label);
-    }
+    this.gameState.unlockAchievement('hostage-rescue');
 
     const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100,
       '\uD83C\uDFC6 LEADERSHIP FREED!', {
@@ -519,6 +520,11 @@ export class ExecutiveSuiteScene extends LevelScene {
     this.tweens.add({
       targets: [banner, sub], alpha: 0, duration: 500, delay: 3000,
       onComplete: () => { banner.destroy(); sub.destroy(); },
+    });
+
+    // Open the mission-debrief info card after the celebration banner fades.
+    this.time.delayedCall(ExecutiveSuiteScene.DEBRIEF_DIALOG_DELAY_MS, () => {
+      this.dialogs.open('executive-hostage-rescued');
     });
   }
 

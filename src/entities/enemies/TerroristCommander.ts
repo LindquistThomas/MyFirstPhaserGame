@@ -49,6 +49,15 @@ export class TerroristCommander extends Enemy {
     this.setVelocityX(this.speed);
   }
 
+  /**
+   * Stomp routes to `defeatByWeapon()` so the surrender animation plays
+   * instead of the base squash. Only reachable once `canBeStomped` is set
+   * to `true` (i.e. after the player collects the Pistol).
+   */
+  override onStomp(): void {
+    this.defeatByWeapon();
+  }
+
   override update(): void {
     if (this.defeated) return;
     const body = this.body as Phaser.Physics.Arcade.Body;

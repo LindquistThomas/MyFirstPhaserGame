@@ -117,4 +117,13 @@ describe('TerroristCommander', () => {
     cmd.defeatByWeapon();
     expect((cmd.body as { enable: boolean }).enable).toBe(false);
   });
+
+  it('onStomp() delegates to defeatByWeapon() — sets defeated=true', () => {
+    const scene = createFakeScene();
+    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600 });
+
+    expect(cmd.defeated).toBe(false);
+    cmd.onStomp();
+    expect(cmd.defeated).toBe(true);
+  });
 });

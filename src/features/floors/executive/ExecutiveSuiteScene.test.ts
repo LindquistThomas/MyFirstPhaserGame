@@ -70,18 +70,6 @@ vi.mock('../../../systems/EventBus', () => ({
   eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
 }));
 
-// AchievementManager — namespace import with named exports.
-vi.mock('../../../systems/AchievementManager', () => ({
-  unlock: vi.fn(() => true),
-  isUnlocked: vi.fn(() => false),
-}));
-
-// ACHIEVEMENT_MAP used for achievement label lookups.
-vi.mock('../../../config/achievements', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../config/achievements')>();
-  return { ...original };
-});
-
 // loadDeferredMusic is called in preload(), not getLevelConfig().
 // Stub it so the import resolves without side effects.
 vi.mock('../../../config/audioConfig', async (importOriginal) => {
