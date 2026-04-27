@@ -79,7 +79,7 @@ export class BootScene extends Phaser.Scene {
     generateSprites(this);
 
     // Initialize audio manager and wire it to the EventBus
-    const audio = new AudioManager(this.sound);
+    const audio = new AudioManager(this.sound, this);
     audio.registerEventListeners();
     this.registry.set('audio', audio);
 

@@ -49,6 +49,65 @@ function makeFakeSoundManager(): FakeSoundManager {
   return mgr;
 }
 
+// ── Fake tween helpers ────────────────────────────────────────────────────────
+
+interface FakeTweenConfig {
+  from: number;
+  to: number;
+  duration?: number;
+  onUpdate?: (tw: FakeTween) => void;
+  onComplete?: () => void;
+}
+
+interface FakeTween {
+  stop: ReturnType<typeof vi.fn>;
+  getValue: () => number;
+  _currentValue: number;
+  _stopped: boolean;
+  /**
+   * Simulate the tween completing: advances to `to`, fires `onUpdate` then
+   * `onComplete`. No-op if `stop()` has already been called.
+   */
+  _complete: () => void;
+}
+
+interface FakeTweenManager {
+  addCounter: ReturnType<typeof vi.fn>;
+  _tweens: FakeTween[];
+}
+
+function makeFakeTweenManager(): FakeTweenManager {
+  const tweens: FakeTween[] = [];
+  return {
+    _tweens: tweens,
+    addCounter: vi.fn((config: FakeTweenConfig) => {
+      const tw: FakeTween = {
+        stop: vi.fn(),
+        _stopped: false,
+        _currentValue: config.from,
+        getValue() { return this._currentValue; },
+        _complete() {
+          if (this._stopped) return;
+          this._currentValue = config.to;
+          config.onUpdate?.(this);
+          config.onComplete?.();
+        },
+      };
+      tw.stop.mockImplementation(() => { tw._stopped = true; });
+      tweens.push(tw);
+      return tw;
+    }),
+  };
+}
+
+interface FakeScene {
+  tweens: FakeTweenManager;
+}
+
+function makeFakeScene(): FakeScene {
+  return { tweens: makeFakeTweenManager() };
+}
+
 describe('AudioManager', () => {
   let fakeSound: FakeSoundManager;
   let manager: AudioManager;
@@ -194,37 +253,42 @@ describe('AudioManager', () => {
     /** Explicit fade duration used in crossfade tests (matches MUSIC_FADE_MS default). */
     const TEST_FADE_MS = 300;
 
-    afterEach(() => {
-      vi.clearAllTimers();
-      vi.useRealTimers();
-    });
-
     it('destroy() is NOT called before fade-out completes when fadeDurationMs > 0', () => {
-      vi.useFakeTimers();
+      const fakeScene = makeFakeScene();
       const sound = makeFakeSoundManager();
       eventBus.removeAllListeners();
-      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      const mgr = new AudioManager(
+        sound as unknown as Phaser.Sound.BaseSoundManager,
+        fakeScene as unknown as Phaser.Scene,
+        TEST_FADE_MS,
+      );
       mgr.registerEventListeners();
 
       eventBus.emit('music:play', 'track_a');
       const first = sound._instances[0]!;
 
       eventBus.emit('music:play', 'track_b');
+      // _tweens[1] = fade-out for track_a; _tweens[2] = fade-in for track_b
+
       // Still alive — destroy waits for the fade to complete.
       expect(first.destroy).not.toHaveBeenCalled();
       expect(first.stop).not.toHaveBeenCalled();
 
-      vi.advanceTimersByTime(TEST_FADE_MS);
+      // Simulate the fade-out completing.
+      fakeScene.tweens._tweens[1]!._complete();
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
     });
 
     it('incoming track starts at volume 0 and reaches target volume after fade', () => {
-      vi.useFakeTimers();
+      const fakeScene = makeFakeScene();
       const sound = makeFakeSoundManager();
-      // Use a fresh event bus registration so only this manager handles events.
       eventBus.removeAllListeners();
-      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      const mgr = new AudioManager(
+        sound as unknown as Phaser.Sound.BaseSoundManager,
+        fakeScene as unknown as Phaser.Scene,
+        TEST_FADE_MS,
+      );
       mgr.registerEventListeners();
 
       eventBus.emit('music:play', 'track_a');
@@ -234,56 +298,86 @@ describe('AudioManager', () => {
       const addCall = sound.add.mock.calls[0] as [string, { volume: number }];
       expect(addCall[1].volume).toBe(0);
 
-      // After the full fade duration the volume should be at the effective target level.
+      // After the full fade the volume should be at the effective target level.
       const expectedVol = 0.35 * (70 / 100); // MUSIC_VOLUME * default musicVolume
-      vi.advanceTimersByTime(TEST_FADE_MS);
+      fakeScene.tweens._tweens[0]!._complete();
       const calls = inst.setVolume.mock.calls;
       const lastSetVolumeArg: number = (calls[calls.length - 1] as [number])[0];
       expect(lastSetVolumeArg).toBeCloseTo(expectedVol, 2);
     });
 
     it('rapid track change cancels previous fade-out and destroys old track immediately', () => {
-      vi.useFakeTimers();
+      const fakeScene = makeFakeScene();
       const sound = makeFakeSoundManager();
       eventBus.removeAllListeners();
-      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      const mgr = new AudioManager(
+        sound as unknown as Phaser.Sound.BaseSoundManager,
+        fakeScene as unknown as Phaser.Scene,
+        TEST_FADE_MS,
+      );
       mgr.registerEventListeners();
 
       eventBus.emit('music:play', 'track_a');
+      // _tweens[0] = fade-in for track_a (stopped by cancelFadeIn in stopMusic)
       const first = sound._instances[0]!;
 
       eventBus.emit('music:play', 'track_b');
+      // _tweens[1] = fade-out for track_a; _tweens[2] = fade-in for track_b
+
       // track_a is fading out — not yet destroyed.
       expect(first.destroy).not.toHaveBeenCalled();
 
-      // Before the fade completes, switch again.
-      vi.advanceTimersByTime(100);
+      // Switch again — mid-fade.
       eventBus.emit('music:play', 'track_c');
+      // cancelFadeOut fires: _tweens[1].stop() called, then dyingMusic.stop() + destroy()
 
       // track_a should have been destroyed immediately on the second switch.
       expect(first.stop).toHaveBeenCalledTimes(1);
       expect(first.destroy).toHaveBeenCalledTimes(1);
-
-      // Flush remaining timers (track_b fade-out + track_c fade-in) so they
-      // don't leak into the next test via the afterEach timer reset.
-      vi.advanceTimersByTime(TEST_FADE_MS);
     });
 
     it('mute toggle during fade-in snaps music to correct muted state instantly', () => {
-      vi.useFakeTimers();
+      const fakeScene = makeFakeScene();
       const sound = makeFakeSoundManager();
-      // Use a fresh event bus registration so only this manager handles events.
       eventBus.removeAllListeners();
-      const mgr = new AudioManager(sound as unknown as Phaser.Sound.BaseSoundManager, TEST_FADE_MS);
+      const mgr = new AudioManager(
+        sound as unknown as Phaser.Sound.BaseSoundManager,
+        fakeScene as unknown as Phaser.Scene,
+        TEST_FADE_MS,
+      );
       mgr.registerEventListeners();
 
       eventBus.emit('music:play', 'track_a');
-      // Partway through the fade-in, mute.
-      vi.advanceTimersByTime(TEST_FADE_MS / 2);
+      // _tweens[0] = fade-in for track_a; tween is in-flight (fake tweens don't auto-advance).
+
+      // Toggle mute — applyVolumeSettings cancels the fade-in immediately.
       eventBus.emit('audio:toggle-mute');
 
-      // The sound manager should be muted immediately.
+      // The sound manager should be muted.
       expect(mgr.isMuted()).toBe(true);
+      // The fade-in tween should have been stopped.
+      expect(fakeScene.tweens._tweens[0]!.stop).toHaveBeenCalledTimes(1);
+    });
+
+    it('starting a second playMusic mid-fade-in cancels the first fade-in tween', () => {
+      const fakeScene = makeFakeScene();
+      const sound = makeFakeSoundManager();
+      eventBus.removeAllListeners();
+      const mgr = new AudioManager(
+        sound as unknown as Phaser.Sound.BaseSoundManager,
+        fakeScene as unknown as Phaser.Scene,
+        TEST_FADE_MS,
+      );
+      mgr.registerEventListeners();
+
+      eventBus.emit('music:play', 'track_a');
+      const firstFadeIn = fakeScene.tweens._tweens[0]!;
+      expect(firstFadeIn.stop).not.toHaveBeenCalled();
+
+      // Start a second track before the first fade-in completes.
+      eventBus.emit('music:play', 'track_b');
+      // cancelFadeIn() inside stopMusic() must have stopped the first fade-in.
+      expect(firstFadeIn.stop).toHaveBeenCalledTimes(1);
     });
   });
 

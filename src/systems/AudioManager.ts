@@ -25,12 +25,11 @@ import { settingsStore } from './SettingsStore';
 /** Helper type for concrete sound instances that expose a volume property. */
 type SoundWithVolume = Phaser.Sound.BaseSound & { setVolume: (v: number) => void };
 
-/** Number of discrete volume steps used for fade-in/out intervals. */
-const FADE_STEPS = 20;
-
 export class AudioManager {
   private sound: Phaser.Sound.BaseSoundManager;
-  /** Crossfade duration used for this instance (0 = instant, no timers). */
+  /** Phaser tween manager used to drive crossfades (null when no scene provided). */
+  private tweens: Phaser.Tweens.TweenManager | null;
+  /** Crossfade duration used for this instance (0 = instant, no tweens). */
   private readonly fadeDurationMs: number;
 
   private currentMusic: Phaser.Sound.BaseSound | null = null;
@@ -39,21 +38,17 @@ export class AudioManager {
   private musicStack: string[] = [];
 
   /**
-   * Actual current volume of `currentMusic` — updated on every setVolume call
+   * Actual current volume of `currentMusic` — updated on every tween tick
    * during a fade so that `stopMusic()` always fades out from the real level.
    */
   private currentMusicVolume = 0;
 
   /** Track fading out — kept alive until fade completes, then destroyed. */
   private dyingMusic: Phaser.Sound.BaseSound | null = null;
-  /** setInterval handle for the outgoing fade. */
-  private fadeOutTimer: ReturnType<typeof setInterval> | null = null;
-  /** Incremented on every cancelFadeOut; callbacks compare against this to bail out. */
-  private fadeOutEpoch = 0;
-  /** setInterval handle for the incoming fade. */
-  private fadeInTimer: ReturnType<typeof setInterval> | null = null;
-  /** Incremented on every cancelFadeIn; callbacks compare against this to bail out. */
-  private fadeInEpoch = 0;
+  /** Active tween driving the outgoing fade (null when not fading). */
+  private fadeOutTween: Phaser.Tweens.Tween | null = null;
+  /** Active tween driving the incoming fade (null when not fading). */
+  private fadeInTween: Phaser.Tweens.Tween | null = null;
 
   /** Independent looping ambience slot — layered under music. */
   private currentAmbience: Phaser.Sound.BaseSound | null = null;
@@ -61,13 +56,20 @@ export class AudioManager {
 
   /**
    * @param sound           Phaser sound manager.
+   * @param scene           The owning Phaser scene — its tween manager drives
+   *                        crossfades so they pause/resume with the scene loop.
+   *                        Omit (or pass `undefined`) when `fadeDurationMs` is
+   *                        `0` (instant cuts, no tweens needed).  If `scene` is
+   *                        omitted while `fadeDurationMs > 0`, fades fall back
+   *                        to instant cuts silently.
    * @param fadeDurationMs  Override the crossfade duration.  Pass `0` for
    *                        instant cuts (used in tests).  Defaults to
    *                        `MUSIC_FADE_MS` in production and `0` in the Vitest
    *                        environment so existing specs need no changes.
    */
-  constructor(sound: Phaser.Sound.BaseSoundManager, fadeDurationMs?: number) {
+  constructor(sound: Phaser.Sound.BaseSoundManager, scene?: Phaser.Scene, fadeDurationMs?: number) {
     this.sound = sound;
+    this.tweens = scene?.tweens ?? null;
     this.fadeDurationMs =
       fadeDurationMs ?? (import.meta.env.MODE === 'test' ? 0 : MUSIC_FADE_MS);
     this.applyVolumeSettings();
@@ -116,27 +118,24 @@ export class AudioManager {
     this.currentMusic.play();
     this.currentMusicKey = key;
 
-    if (this.fadeDurationMs <= 0) return;
+    if (this.fadeDurationMs <= 0 || !this.tweens) return;
 
-    const stepMs = this.fadeDurationMs / FADE_STEPS;
-    let step = 0;
     const music = this.currentMusic;
-    const epoch = ++this.fadeInEpoch;
-    // Capture the timer handle locally so callbacks never touch a stale this.fadeInTimer.
-    const timerId: ReturnType<typeof setInterval> = setInterval(() => {
-      if (this.fadeInEpoch !== epoch) return; // cancelled — do not mutate volume
-      step++;
-      const vol = targetVol * (step / FADE_STEPS);
-      this.currentMusicVolume = vol;
-      (music as SoundWithVolume).setVolume(vol);
-      if (step >= FADE_STEPS) {
-        clearInterval(timerId);
-        this.fadeInTimer = null;
+    this.fadeInTween = this.tweens.addCounter({
+      from: 0,
+      to: targetVol,
+      duration: this.fadeDurationMs,
+      onUpdate: (tw: Phaser.Tweens.Tween) => {
+        const v = tw.getValue() ?? 0;
+        this.currentMusicVolume = v;
+        (music as SoundWithVolume).setVolume(v);
+      },
+      onComplete: () => {
         this.currentMusicVolume = targetVol;
         (music as SoundWithVolume).setVolume(targetVol);
-      }
-    }, stepMs);
-    this.fadeInTimer = timerId;
+        this.fadeInTween = null;
+      },
+    });
   }
 
   /** Suspend the current track and start a new one. Restore with popMusic. */
@@ -184,40 +183,33 @@ export class AudioManager {
     this.currentMusicKey = null;
     this.currentMusicVolume = 0;
 
-    if (this.fadeDurationMs <= 0) {
+    if (this.fadeDurationMs <= 0 || !this.tweens) {
       dying.stop();
       dying.destroy();
       return;
     }
 
     this.dyingMusic = dying;
-    const stepMs = this.fadeDurationMs / FADE_STEPS;
-    let step = 0;
-    const epoch = ++this.fadeOutEpoch;
-    // Capture the timer handle locally so callbacks never touch a stale this.fadeOutTimer.
-    const timerId: ReturnType<typeof setInterval> = setInterval(() => {
-      if (this.fadeOutEpoch !== epoch) return; // cancelled — do not act on destroyed track
-      step++;
-      const vol = Math.max(0, startVol * (1 - step / FADE_STEPS));
-      (dying as SoundWithVolume).setVolume(vol);
-      if (step >= FADE_STEPS) {
-        clearInterval(timerId);
-        this.fadeOutTimer = null;
+    this.fadeOutTween = this.tweens.addCounter({
+      from: startVol,
+      to: 0,
+      duration: this.fadeDurationMs,
+      onUpdate: (tw: Phaser.Tweens.Tween) => {
+        (dying as SoundWithVolume).setVolume(tw.getValue() ?? 0);
+      },
+      onComplete: () => {
         dying.stop();
         dying.destroy();
         this.dyingMusic = null;
-      }
-    }, stepMs);
-    this.fadeOutTimer = timerId;
+        this.fadeOutTween = null;
+      },
+    });
   }
 
   /** Cancel any in-flight fade-out and immediately destroy the dying track. */
   private cancelFadeOut(): void {
-    this.fadeOutEpoch++; // invalidates any already-queued callback
-    if (this.fadeOutTimer !== null) {
-      clearInterval(this.fadeOutTimer);
-      this.fadeOutTimer = null;
-    }
+    this.fadeOutTween?.stop();
+    this.fadeOutTween = null;
     if (this.dyingMusic) {
       this.dyingMusic.stop();
       this.dyingMusic.destroy();
@@ -227,11 +219,8 @@ export class AudioManager {
 
   /** Cancel any in-flight fade-in (leaves the track playing at its current volume). */
   private cancelFadeIn(): void {
-    this.fadeInEpoch++; // invalidates any already-queued callback
-    if (this.fadeInTimer !== null) {
-      clearInterval(this.fadeInTimer);
-      this.fadeInTimer = null;
-    }
+    this.fadeInTween?.stop();
+    this.fadeInTween = null;
   }
 
   /**
