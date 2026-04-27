@@ -458,6 +458,14 @@ export class ElevatorScene extends Phaser.Scene {
     this.transitions.clearSkipWhenBackOnElevator();
     this.transitions.checkFloorEntry();
     this.doors.update(interactPressed);
+
+    // Fade the elevator panel when the player stands behind it.
+    if (this.elevatorPanel) {
+      const cam = this.cameras.main;
+      const px = this.player.sprite.x - cam.scrollX;
+      const py = this.player.sprite.y - cam.scrollY;
+      this.elevatorPanel.update(px, py);
+    }
   }
 
   private enterProductDoor(door: ProductDoor): void {

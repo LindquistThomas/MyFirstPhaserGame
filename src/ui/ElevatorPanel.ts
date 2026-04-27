@@ -9,12 +9,22 @@ const BTN_H = 55;
 /** Vertical gap between rows (px). */
 const BTN_GAP = 6;
 
+/** Fully-opaque alpha when no overlap. */
+const ALPHA_NORMAL = 1.0;
+/** Reduced alpha when the player is behind the panel. */
+const ALPHA_DIM = 0.25;
+/** Duration of the fade tween (ms). */
+const FADE_DURATION = 150;
+
 export class ElevatorPanel {
   private scene: Phaser.Scene;
   private progression: ProgressionSystem;
   private container!: Phaser.GameObjects.Container;
   private isVisible = false;
   private onSelectCallback: (floorId: FloorId) => void;
+  /** True while the panel is faded due to player overlap. */
+  private isFaded = false;
+  private fadeTween?: Phaser.Tweens.Tween;
 
   constructor(
     scene: Phaser.Scene,
@@ -48,11 +58,64 @@ export class ElevatorPanel {
   hide(): void {
     this.isVisible = false;
     this.container.setVisible(false);
+    // Reset fade state so next show() starts fully opaque.
+    this.fadeTween?.stop();
+    this.fadeTween = undefined;
+    this.isFaded = false;
+    this.container.setAlpha(ALPHA_NORMAL);
   }
 
   toggle(): void {
     if (this.isVisible) this.hide();
     else this.show();
+  }
+
+  /**
+   * Call each frame while the panel is visible.
+   * Fades the panel to {@link ALPHA_DIM} when the player's screen-space
+   * position overlaps the panel bounds, and restores full opacity when they
+   * move clear. Uses a short tween so the transition isn't jarring.
+   *
+   * @param playerScreenX  Player x in screen (viewport) coordinates.
+   * @param playerScreenY  Player y in screen (viewport) coordinates.
+   */
+  update(playerScreenX: number, playerScreenY: number): void {
+    if (!this.isVisible) return;
+
+    const px = this.container.x;
+    const py = this.container.y;
+    const pw = this.panelWidth;
+    const ph = this.panelHeight;
+
+    // Add padding so the panel fades smoothly as the player approaches.
+    // Horizontal: equal padding on both sides.
+    // Vertical: pad the top edge only — padding below the panel would trigger
+    // the fade when the player walks on the lobby floor beneath it.
+    const PAD_H = 16;
+    const PAD_TOP = 16;
+    const overlaps =
+      playerScreenX >= px - PAD_H && playerScreenX <= px + pw + PAD_H &&
+      playerScreenY >= py - PAD_TOP && playerScreenY <= py + ph;
+
+    if (overlaps && !this.isFaded) {
+      this.isFaded = true;
+      this.fadeTween?.stop();
+      this.fadeTween = this.scene.tweens.add({
+        targets: this.container,
+        alpha: ALPHA_DIM,
+        duration: FADE_DURATION,
+        ease: 'Sine.easeOut',
+      });
+    } else if (!overlaps && this.isFaded) {
+      this.isFaded = false;
+      this.fadeTween?.stop();
+      this.fadeTween = this.scene.tweens.add({
+        targets: this.container,
+        alpha: ALPHA_NORMAL,
+        duration: FADE_DURATION,
+        ease: 'Sine.easeOut',
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
