@@ -93,15 +93,17 @@ export class BootScene extends Phaser.Scene {
     // keyboard focus or what input context is active.
     // Mute state is persisted via SettingsStore (architect_settings_v1).
     // The Settings screen mentions this hotkey so players can discover it.
-    window.addEventListener('keydown', (ev) => {
+    const onMuteHotkey = (ev: KeyboardEvent): void => {
       if (ev.repeat) return;
-      if (ev.key === 'm' || ev.key === 'M') {
-        const target = ev.target as HTMLElement | null;
-        const tag = target?.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
-        eventBus.emit('audio:toggle-mute');
-      }
-    });
+      if (ev.key !== 'm' && ev.key !== 'M') return;
+      const target = ev.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      eventBus.emit('audio:toggle-mute');
+    };
+    window.addEventListener('keydown', onMuteHotkey);
+    this.events.once('shutdown', () => window.removeEventListener('keydown', onMuteHotkey));
+    this.events.once('destroy', () => window.removeEventListener('keydown', onMuteHotkey));
 
     this.scene.start('MenuScene');
   }
