@@ -433,12 +433,7 @@ export class ElevatorScene extends Phaser.Scene {
       return;
     }
 
-    const btnState = this.elevatorButtons?.getState();
-    this.elevatorCtrl.update(
-      { up: inputs.isDown('MoveUp'), down: inputs.isDown('MoveDown') },
-      btnState ? { up: btnState.up, down: btnState.down } : undefined,
-      delta,
-    );
+    this.elevatorCtrl.update(delta);
 
     // Keyboard floor-call: digit keys 0..4 map to the visual floor order
     // (F0 = lobby at the bottom, F4 = executive at the top). Only honoured
