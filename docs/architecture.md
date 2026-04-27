@@ -123,14 +123,24 @@ src/
 ├── ui/                       Modal + HUD widgets built on Phaser containers.
 │   ├── ModalBase.ts          Overlay + fade + Esc-key scaffolding for dialogs.
 │   ├── ModalKeyboardNavigator.ts  Shared keyboard nav for InfoDialog + QuizDialog.
+│   ├── AchievementsDialog.ts Modal listing all achievements with lock/unlock status.
+│   ├── WelcomeModal.ts       First-launch onboarding modal (extends ModalBase).
 │   ├── InfoDialog.ts         Info content modal (extends ModalBase).
 │   ├── QuizDialog.ts         Quiz flow modal (extends ModalBase).
 │   ├── QuizResultsScreen.ts  Extracted results screen used by QuizDialog.
 │   ├── DialogController.ts   Orchestrates info → quiz → badge-refresh flow.
 │   ├── InfoIcon.ts           Floating "i" icon with quiz badge.
+│   ├── Toast.ts              Corner-of-screen transient notification (fade in/out).
+│   ├── ControlHintsOverlay.ts  Transient key-hint chips shown on first lobby entry.
+│   ├── InteractiveDoor.ts    Door sprite toggling open texture on interaction range.
 │   ├── HUD.ts                AU counter, floor label.
 │   ├── ElevatorButtons.ts    Touch controls for the elevator cab.
-│   └── ElevatorPanel.ts      Floor-select panel inside the cab.
+│   ├── ElevatorPanel.ts      Floor-select panel inside the cab.
+│   ├── TouchHintOverlay.ts   First-run virtual-gamepad hint (gated by TouchHintStore).
+│   ├── VirtualGamepad.ts     On-screen touch gamepad for touch-primary devices.
+│   ├── pillarboxBackdrop.ts  Live-canvas pillarbox blur for non-4:3 viewports.
+│   ├── ariaLive.ts           ARIA live region for screen-reader announcements.
+│   └── touchPrimary.ts       Detects touch-primary devices (pointer:fine media query).
 └── plugins/                  Phaser plugins.
     ├── DebugPlugin.ts        Toggleable debug overlay.
     ├── MusicPlugin.ts        Scene-level music lifecycle helper.
