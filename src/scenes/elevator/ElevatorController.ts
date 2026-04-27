@@ -31,8 +31,6 @@ export class ElevatorController {
 
   private playerOnElevator = false;
   private wasElevatorMoving = false;
-  /** Tracks the previous frame's on-elevator state to detect the boarding transition. */
-  private prevPlayerOnElevator = false;
 
   constructor(scene: Phaser.Scene, player: Player, elevator: Elevator) {
     this.scene = scene;
@@ -65,11 +63,14 @@ export class ElevatorController {
 
   /**
    * Per-frame update: refresh the sticky mount/dismount state, drive the
-   * elevator automatically (rises while the player is on it, descends when
-   * they step off), pin the player to the cab while riding, and emit music
-   * cues on ride-start / ride-stop.
+   * elevator with input, pin the player to the cab while riding, and emit
+   * music cues on ride-start / ride-stop.
    */
-  update(delta: number = 16.67): void {
+  update(
+    input: { up: boolean; down: boolean },
+    buttonState: { up: boolean; down: boolean } | undefined,
+    delta: number = 16.67,
+  ): void {
     // Sticky state: latch on when the player steps onto the cab; release only
     // at a docked floor when they walk outside the cab bounds.
     if (!this.playerOnElevator) {
@@ -88,18 +89,22 @@ export class ElevatorController {
     this.player.setFlipEnabled(!this.playerOnElevator);
 
     if (this.playerOnElevator) {
-      // On the boarding frame: zero walk momentum and snap X to the cab
-      // so residual walk speed can't carry the player past the unmount
-      // threshold before the cab leaves the floor.
-      if (!this.prevPlayerOnElevator) {
+      const up = input.up || (buttonState?.up ?? false);
+      const down = input.down || (buttonState?.down ?? false);
+
+      // When the rider requests to move the cab, commit them to the ride:
+      // kill residual walk momentum and clamp them onto the cab. Without
+      // this, walking onto the cab at PLAYER_SPEED carries the player
+      // past the docked-floor unmount threshold (dx > PLAT_HW + 10)
+      // before the cab leaves the floor, so Up/Down appear to do nothing.
+      if (up || down) {
         const body = this.player.sprite.body as Phaser.Physics.Arcade.Body;
         body.setVelocityX(0);
         const { x } = clampRiderToCab(this.player.sprite.x, this.elevator.platform.x);
         this.player.sprite.setX(x);
       }
 
-      // Auto-rise: cab moves up while the player is on board.
-      this.elevator.ride(true, false, delta);
+      this.elevator.ride(up, down, delta);
       this.constrainPlayerToCab();
       // Match velocity so the physics integration step keeps the player
       // and platform in sync within this frame; precise Y alignment is
@@ -107,8 +112,7 @@ export class ElevatorController {
       const playerBody = this.player.sprite.body as Phaser.Physics.Arcade.Body;
       playerBody.setVelocityY((this.elevator.platform.body as Phaser.Physics.Arcade.Body).velocity.y);
     } else {
-      // Auto-descend: cab returns to the bottom when no rider is aboard.
-      this.elevator.ride(false, true, delta);
+      this.elevator.ride(false, false, delta);
     }
 
     const moving = this.elevator.getIsMoving();
@@ -124,7 +128,6 @@ export class ElevatorController {
       }
     }
     this.wasElevatorMoving = moving;
-    this.prevPlayerOnElevator = this.playerOnElevator;
 
     this.elevator.updateVisuals();
   }
