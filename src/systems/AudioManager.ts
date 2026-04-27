@@ -27,8 +27,12 @@ type SoundWithVolume = Phaser.Sound.BaseSound & { setVolume: (v: number) => void
 
 export class AudioManager {
   private sound: Phaser.Sound.BaseSoundManager;
-  /** Phaser tween manager used to drive crossfades (null when no scene provided). */
-  private tweens: Phaser.Tweens.TweenManager | null;
+  /**
+   * Phaser game reference — used to lazily resolve the active scene's tween
+   * manager at fade time so fades always run on a live scene regardless of
+   * which scene created the AudioManager.
+   */
+  private game: Phaser.Game | null;
   /** Crossfade duration used for this instance (0 = instant, no tweens). */
   private readonly fadeDurationMs: number;
 
@@ -56,23 +60,35 @@ export class AudioManager {
 
   /**
    * @param sound           Phaser sound manager.
-   * @param scene           The owning Phaser scene — its tween manager drives
-   *                        crossfades so they pause/resume with the scene loop.
-   *                        Omit (or pass `undefined`) when `fadeDurationMs` is
-   *                        `0` (instant cuts, no tweens needed).  If `scene` is
-   *                        omitted while `fadeDurationMs > 0`, fades fall back
-   *                        to instant cuts silently.
+   * @param game            The Phaser game instance.  `AudioManager` resolves
+   *                        the tween manager from the first active scene at the
+   *                        time each fade starts, so fades remain live even
+   *                        after the constructing scene has shut down.
+   *                        Omit (or pass `undefined`) to disable tween-driven
+   *                        fades; tracks will start/stop at full volume
+   *                        regardless of `fadeDurationMs`.
    * @param fadeDurationMs  Override the crossfade duration.  Pass `0` for
    *                        instant cuts (used in tests).  Defaults to
    *                        `MUSIC_FADE_MS` in production and `0` in the Vitest
    *                        environment so existing specs need no changes.
    */
-  constructor(sound: Phaser.Sound.BaseSoundManager, scene?: Phaser.Scene, fadeDurationMs?: number) {
+  constructor(sound: Phaser.Sound.BaseSoundManager, game?: Phaser.Game, fadeDurationMs?: number) {
     this.sound = sound;
-    this.tweens = scene?.tweens ?? null;
+    this.game = game ?? null;
     this.fadeDurationMs =
       fadeDurationMs ?? (import.meta.env.MODE === 'test' ? 0 : MUSIC_FADE_MS);
     this.applyVolumeSettings();
+  }
+
+  /**
+   * Resolve the tween manager of the first currently-active Phaser scene.
+   * Called at the start of each fade so the tween always runs on a live scene.
+   * Returns null when no game reference was provided or no scene is active.
+   */
+  private getActiveTweens(): Phaser.Tweens.TweenManager | null {
+    if (!this.game) return null;
+    const scenes = this.game.scene.getScenes(true);
+    return scenes[0]?.tweens ?? null;
   }
 
   /**
@@ -112,16 +128,19 @@ export class AudioManager {
     if (this.currentMusicKey === key && this.currentMusic) return;
     this.stopMusic();
     const targetVol = this.effectiveMusicVolume();
-    const startVol = this.fadeDurationMs > 0 ? 0 : targetVol;
+    // Resolve tweens before deciding startVol: if no active tween manager is
+    // available the track must start at full volume so it is never silent.
+    const tweens = this.fadeDurationMs > 0 ? this.getActiveTweens() : null;
+    const startVol = tweens ? 0 : targetVol;
     this.currentMusicVolume = startVol;
     this.currentMusic = this.sound.add(key, { loop: true, volume: startVol });
     this.currentMusic.play();
     this.currentMusicKey = key;
 
-    if (this.fadeDurationMs <= 0 || !this.tweens) return;
+    if (!tweens) return;
 
     const music = this.currentMusic;
-    this.fadeInTween = this.tweens.addCounter({
+    this.fadeInTween = tweens.addCounter({
       from: 0,
       to: targetVol,
       duration: this.fadeDurationMs,
@@ -183,14 +202,18 @@ export class AudioManager {
     this.currentMusicKey = null;
     this.currentMusicVolume = 0;
 
-    if (this.fadeDurationMs <= 0 || !this.tweens) {
+    // Skip the fade-out when the track is already silent (e.g. stopped before
+    // the first fade-in tick) or when no tween manager is available — just
+    // stop and destroy immediately to avoid a no-op tween.
+    const tweens = this.fadeDurationMs > 0 && startVol > 0 ? this.getActiveTweens() : null;
+    if (!tweens) {
       dying.stop();
       dying.destroy();
       return;
     }
 
     this.dyingMusic = dying;
-    this.fadeOutTween = this.tweens.addCounter({
+    this.fadeOutTween = tweens.addCounter({
       from: startVol,
       to: 0,
       duration: this.fadeDurationMs,
