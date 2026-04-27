@@ -159,11 +159,14 @@ describe('CallElevatorButton', () => {
     const cb = vi.fn();
     new CallElevatorButton(scene as unknown as Phaser.Scene, cb);
 
+    const gfx = scene._graphics[0]!;
+    const clearBefore = (gfx.clear as ReturnType<typeof vi.fn>).mock.calls.length;
+
     scene._rectangles[0]!._fire('pointerupoutside');
 
     expect(cb).not.toHaveBeenCalled();
-    const gfx = scene._graphics[0]!;
-    expect((gfx.clear as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+    const clearAfter = (gfx.clear as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(clearAfter).toBeGreaterThan(clearBefore);
   });
 
   it('setVisible() delegates to the container', () => {

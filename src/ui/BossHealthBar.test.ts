@@ -160,6 +160,16 @@ describe('BossHealthBar', () => {
     expect(goldCall).toBeTruthy();
   });
 
+  it('draw() uses orange fill when HP is in the mid-range (30% < HP ≤ 70%)', () => {
+    const scene = makeScene();
+    const bar = new BossHealthBar(scene as unknown as Phaser.Scene, 'Boss', 10);
+    bar.update(5); // 50% → orange (0xff8c00)
+    const gfx = scene._graphics[0]!;
+    const fillStyleCalls = (gfx.fillStyle as ReturnType<typeof vi.fn>).mock.calls as unknown[][];
+    const orangeCall = fillStyleCalls.find((args) => args[0] === 0xff8c00);
+    expect(orangeCall).toBeTruthy();
+  });
+
   it('draw() uses red fill when HP ≤ 30%', () => {
     const scene = makeScene();
     const bar = new BossHealthBar(scene as unknown as Phaser.Scene, 'Boss', 10);
