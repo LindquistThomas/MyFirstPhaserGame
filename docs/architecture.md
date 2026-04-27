@@ -288,9 +288,9 @@ adding an event there type-checks every call site automatically.
 - **Type safety** (`npm run build`) runs `tsc` strict before Vite
   bundles.
 - **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
-  `src/input/**` at 60%. `src/scenes/**`, `src/features/floors/**`,
-  `src/ui/**`, and `src/entities/**` are excluded pending a wider
-  rollout after `GameStateManager` adoption.
+  `src/input/**` at 80%; `src/ui/**` and `src/entities/**` at 60%.
+  `src/scenes/**`, `src/features/floors/**`, `src/plugins/**`, and the
+  procedural-generator modules remain excluded.
 
 ## Key design choices
 

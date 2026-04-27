@@ -13,7 +13,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── package.json              # Scripts, deps (phaser ^3.90)
 ├── tsconfig.json             # TypeScript strict
 ├── vite.config.ts            # Bundler config
-├── vitest.config.ts          # Unit tests (jsdom, 60% floor on src/systems & src/input)
+├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 60% on src/ui & src/entities)
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
@@ -69,7 +69,7 @@ Scripts from `package.json`:
 | `npm run lint` | ESLint across the repo. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:unit` | Vitest (pure logic; jsdom). |
-| `npm run test:unit:coverage` | Vitest with coverage; 60% floor on `src/systems/**` and `src/input/**`. |
+| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 60% floor on `src/ui/**` and `src/entities/**`. |
 | `npm run test:e2e` | Playwright integration specs. |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:visual:update` | Refresh visual snapshot PNGs. |
