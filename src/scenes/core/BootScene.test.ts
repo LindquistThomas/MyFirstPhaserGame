@@ -69,8 +69,8 @@ describe('BootScene M-key mute hotkey', () => {
   });
 
   afterEach(() => {
-    // Trigger shutdown so the window listener registered by this test's scene is removed.
-    (scene.events as unknown as { emit: (ev: string) => void }).emit('shutdown');
+    // Trigger destroy so the window listener registered by this test's scene is removed.
+    (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
     eventBus.off('audio:toggle-mute', spy);
   });
 
@@ -79,13 +79,14 @@ describe('BootScene M-key mute hotkey', () => {
     expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT emit audio:toggle-mute after shutdown', () => {
-    // Simulate Phaser firing the shutdown lifecycle event.
+  it('still emits audio:toggle-mute after shutdown (listener survives Boot→Menu transition)', () => {
+    // In real Phaser, this.scene.start('MenuScene') fires BootScene shutdown immediately.
+    // The hotkey must remain active after that transition.
     (scene.events as unknown as { emit: (ev: string) => void }).emit('shutdown');
 
     spy.mockClear();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', bubbles: true }));
-    expect(spy).not.toHaveBeenCalled();
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('does NOT emit audio:toggle-mute after destroy', () => {
@@ -94,6 +95,15 @@ describe('BootScene M-key mute hotkey', () => {
     spy.mockClear();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'M', bubbles: true }));
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('does not double-register if create() is called a second time', () => {
+    // Re-enter BootScene (simulate hot-reload or explicit re-entry).
+    scene.create();
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', bubbles: true }));
+    // Should still fire exactly once, not twice.
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('ignores repeated keydown events', () => {

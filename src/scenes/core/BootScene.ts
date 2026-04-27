@@ -10,6 +10,11 @@ import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 
 export class BootScene extends Phaser.Scene {
+  // Guard: window listener is installed once per instance and removed only
+  // when the Phaser.Game is fully destroyed (not on scene shutdown, which
+  // fires immediately when this.scene.start() hands off to MenuScene).
+  private _muteHotkeyInstalled = false;
+
   constructor() {
     super({ key: 'BootScene' });
   }
@@ -93,17 +98,27 @@ export class BootScene extends Phaser.Scene {
     // keyboard focus or what input context is active.
     // Mute state is persisted via SettingsStore (architect_settings_v1).
     // The Settings screen mentions this hotkey so players can discover it.
-    const onMuteHotkey = (ev: KeyboardEvent): void => {
-      if (ev.repeat) return;
-      if (ev.key !== 'm' && ev.key !== 'M') return;
-      const target = ev.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
-      eventBus.emit('audio:toggle-mute');
-    };
-    window.addEventListener('keydown', onMuteHotkey);
-    this.events.once('shutdown', () => window.removeEventListener('keydown', onMuteHotkey));
-    this.events.once('destroy', () => window.removeEventListener('keydown', onMuteHotkey));
+    //
+    // Note: this.scene.start('MenuScene') below fires BootScene's `shutdown`
+    // event immediately, so we must NOT remove the listener on `shutdown` —
+    // only on `destroy` (full game teardown). The guard prevents a second
+    // call to create() (e.g. on BootScene re-entry) from double-registering.
+    if (!this._muteHotkeyInstalled) {
+      this._muteHotkeyInstalled = true;
+      const onMuteHotkey = (ev: KeyboardEvent): void => {
+        if (ev.repeat) return;
+        if (ev.key !== 'm' && ev.key !== 'M') return;
+        const target = ev.target as HTMLElement | null;
+        const tag = target?.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+        eventBus.emit('audio:toggle-mute');
+      };
+      window.addEventListener('keydown', onMuteHotkey);
+      this.events.once('destroy', () => {
+        window.removeEventListener('keydown', onMuteHotkey);
+        this._muteHotkeyInstalled = false;
+      });
+    }
 
     this.scene.start('MenuScene');
   }
