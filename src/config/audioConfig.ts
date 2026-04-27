@@ -51,10 +51,10 @@ export interface MusicAsset {
  */
 export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_menu',          path: 'music/8bit-chiptune/bgm_menu.mp3',                   eager: true },
-  { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.mp3' },
+  { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.mp3',       eager: true },
   { key: 'music_elevator_ride', path: 'music/8bit-chiptune/bgm_action_3.mp3' },
   { key: 'music_floor1',        path: 'music/8bit-chiptune/bgm_action_1.mp3' },
-  { key: 'music_floor2',        path: 'music/8bit-chiptune/bgm_action_2.mp3' },
+  { key: 'music_floor2',        path: 'music/8bit-chiptune/bgm_action_2.mp3',        eager: true },
   { key: 'music_platform',      path: 'music/retro-synth/shadow_operations-loop1.ogg' },
   { key: 'music_quiz',          path: 'music/retro-synth/hostile_territory-loop1.ogg' },
   { key: 'music_executive',     path: 'music/boss/bossroom-battle-431358.mp3' },
