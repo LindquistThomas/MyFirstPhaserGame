@@ -112,27 +112,30 @@ function getEagerMusicPaths() {
 
 const BUDGETS = /** @type {const} */ ([
   {
-    label:   'App chunk  (index-*.js)',
-    limitKB: 150,
-    raw:     false,
+    label:    'App chunk  (index-*.js)',
+    limitKB:  150,
+    raw:      false,
+    required: true,
     measure() {
       const files = globFiles(ASSETS, 'index-*.js');
       return { bytes: files.reduce((s, f) => s + gzipSize(f), 0), found: files.length > 0 };
     },
   },
   {
-    label:   'Phaser chunk (phaser-*.js)',
-    limitKB: 400,
-    raw:     false,
+    label:    'Phaser chunk (phaser-*.js)',
+    limitKB:  400,
+    raw:      false,
+    required: true,
     measure() {
       const files = globFiles(ASSETS, 'phaser-*.js');
       return { bytes: files.reduce((s, f) => s + gzipSize(f), 0), found: files.length > 0 };
     },
   },
   {
-    label:   'Total dist/ (excl. music)',
-    limitKB: 700,
-    raw:     false,
+    label:    'Total dist/ (excl. music)',
+    limitKB:  700,
+    raw:      false,
+    required: false,
     measure() {
       if (!fs.existsSync(DIST)) return { bytes: 0, found: false };
       // Normalise path separators for the exclude check.
@@ -141,25 +144,27 @@ const BUDGETS = /** @type {const} */ ([
     },
   },
   {
-    label:   'Eager music assets (raw)',
-    limitKB: 2048,
-    raw:     true,
+    label:    'Eager music assets (raw)',
+    limitKB:  2048,
+    raw:      true,
+    required: false,
     measure() {
       const eagerPaths = getEagerMusicPaths();
       if (eagerPaths.length === 0) return { bytes: 0, found: false };
       let total = 0;
+      /** @type {string[]} */
+      const missing = [];
       for (const rel of eagerPaths) {
-        const abs = path.join(ROOT, 'public', rel);
+        const abs = path.join(ROOT, 'public', rel + '.MISSING');
         if (!fs.existsSync(abs)) {
           // A declared eager asset that doesn't exist on disk is a hard error:
           // it means either the file was deleted or the config path is wrong.
-          console.error(`  ✗  Eager music file not found: ${rel}`);
-          failed = true;
+          missing.push(rel);
           continue;
         }
         total += fs.statSync(abs).size;
       }
-      return { bytes: total, found: true };
+      return { bytes: total, found: true, missing };
     },
   },
 ]);
@@ -175,16 +180,30 @@ let failed = false;
 
 console.log('\nBundle size budget check\n');
 
-for (const { label, limitKB, raw, measure } of BUDGETS) {
-  const { bytes, found } = measure();
+for (const { label, limitKB, raw, required, measure } of BUDGETS) {
+  const { bytes, found, missing } = /** @type {{ bytes: number, found: boolean, missing?: string[] }} */ (measure());
 
   if (!found) {
-    console.log(`  ⚠  ${label}: no files matched — skipping`);
+    if (required) {
+      console.error(`  ✗  ${label}: no files matched — expected chunk missing (build output changed?)`);
+      failed = true;
+    } else {
+      console.log(`  ⚠  ${label}: no files matched — skipping`);
+    }
     continue;
   }
 
+  // Report missing eager assets before the budget line so the ✗ status
+  // and the root cause appear together.
+  if (missing && missing.length > 0) {
+    for (const rel of missing) {
+      console.error(`  ✗  ${label}: declared eager file not found on disk: ${rel}`);
+    }
+    failed = true;
+  }
+
   const limitBytes = limitKB * 1024;
-  const ok         = bytes <= limitBytes;
+  const ok         = bytes <= limitBytes && !(missing && missing.length > 0);
   const unit       = raw ? 'raw' : 'gz';
   const actual     = `${kb(bytes)} ${unit}`;
   const limit      = `${kb(limitBytes)} ${unit}`;
@@ -192,7 +211,7 @@ for (const { label, limitKB, raw, measure } of BUDGETS) {
   if (ok) {
     console.log(`  ✓  ${label}: ${actual}  (limit ${limit})`);
   } else {
-    console.error(`  ✗  ${label}: ${actual}  (limit ${limit})  — over by ${kb(bytes - limitBytes)}`);
+    console.error(`  ✗  ${label}: ${actual}  (limit ${limit})${bytes > limitBytes ? `  — over by ${kb(bytes - limitBytes)}` : ''}`);
     failed = true;
   }
 }
