@@ -23,7 +23,9 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── main.ts               # Phaser.Game bootstrap; spreads SCENE_CLASSES from sceneRegistry
 │   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry; info/ and quiz/ barrels
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator,
-│   │                         # MovingPlatform, Coffee, EnergyDrinkFridge
+│   │                         # MovingPlatform, Coffee, EnergyDrinkFridge, CEOBoss,
+│   │                         # CoffeeMugProjectile, BriefcaseProjectile, PistolProjectile,
+│   │                         # MissionItem
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, floorAccents/Patterns,
 │   │   │                       sceneBackdrop), one dir per floor (lobby/, platform/, architecture/,
