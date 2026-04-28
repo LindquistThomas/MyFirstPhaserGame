@@ -401,8 +401,12 @@ function _drawFloorDecorations(
     })
     .setOrigin(0.5)
     .setDepth(4);
-  scene.events.on('update', () => {
+  const syncGeirLabelPosition = () => {
     label.x = geir.x;
+  };
+  scene.events.on('update', syncGeirLabelPosition);
+  scene.events.once('shutdown', () => {
+    scene.events.off('update', syncGeirLabelPosition);
   });
   const pad = 50;
   const geirBounds = {

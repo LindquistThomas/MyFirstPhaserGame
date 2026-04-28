@@ -24,11 +24,11 @@ describe('generateDustMoteSpecs', () => {
   it('places every mote within the vertical shaft bounds', () => {
     const top = 200;
     const shaftH = 800;
-    // Motes are placed in [top+40, top+shaftH-40) per the generator logic.
+    // Motes are placed in [top+40, top+shaftH-40]; Math.round can hit the upper edge.
     const specs = generateDustMoteSpecs(40, 0, 300, top, shaftH);
     for (const s of specs) {
       expect(s.y).toBeGreaterThanOrEqual(top + 40);
-      expect(s.y).toBeLessThan(top + shaftH - 40);
+      expect(s.y).toBeLessThanOrEqual(top + shaftH - 40);
     }
   });
 
