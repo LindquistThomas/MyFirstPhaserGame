@@ -40,7 +40,8 @@ src/
 │       ├── finance/          Finance — door inside the Executive Suite (FLOORS.EXECUTIVE).
 │       ├── product/          Product Leadership — Business floor, left room.
 │       ├── customer/         Customer Success — Business floor, right room.
-│       └── executive/        ExecutiveSuiteScene.ts (penthouse).
+│       ├── executive/        ExecutiveSuiteScene.ts (penthouse).
+│       └── boss/             BossArenaScene — final encounter (floor 5 "Boardroom").
 │   └── products/
 │       └── rooms/            Individual product rooms reached from the Products floor doors.
 │           ├── ProductRoomScene.ts            Shared base for product rooms below.
@@ -56,13 +57,19 @@ src/
 │   ├── MovingPlatform.ts     Horizontally/vertically patrolling platform.
 │   ├── Coffee.ts             Coffee powerup — grants a short speed boost.
 │   ├── EnergyDrinkFridge.ts  Energy-drink fridge — grants caffeine buff.
+│   ├── BriefcaseProjectile.ts  Briefcase projectile thrown by enemies.
+│   ├── CEOBoss.ts              CEO boss entity (boss arena).
+│   ├── CoffeeMugProjectile.ts  Mug projectile thrown by player (boss arena).
+│   ├── MissionItem.ts          Mission item pickup (e.g. pistol in executive rescue).
+│   ├── PistolProjectile.ts     Pistol projectile (executive rescue).
 │   ├── Enemy.ts              Shared enemy base (physics, damage, death cues).
 │   └── enemies/              Per-enemy config & behaviour.
 │       ├── Slime.ts
 │       ├── BureaucracyBot.ts
 │       ├── ScopeCreep.ts
 │       ├── ArchitectureAstronaut.ts
-│       └── TechDebtGhost.ts
+│       ├── TechDebtGhost.ts
+│       └── TerroristCommander.ts
 ├── input/                    Semantic-action input layer.
 │   ├── index.ts              Facade — the only import surface the rest of the game uses.
 │   ├── InputService.ts       Keyboard/touch → semantic actions; context stack.
@@ -122,6 +129,8 @@ src/
 │   │   └── wav.ts
 │   └── sprites/              One file per asset family (player, tiles, token, …).
 ├── ui/                       Modal + HUD widgets built on Phaser containers.
+│   ├── BossHealthBar.ts        Boss HP bar (boss arena).
+│   ├── CallElevatorButton.ts   Call-elevator action button.
 │   ├── ModalBase.ts          Overlay + fade + Esc-key scaffolding for dialogs.
 │   ├── ModalKeyboardNavigator.ts  Shared keyboard nav for InfoDialog + QuizDialog.
 │   ├── AchievementsDialog.ts Modal listing all achievements with lock/unlock status.
@@ -162,6 +171,7 @@ Use this to find the right file to edit for a given feature.
 | Customer Success                    | `features/floors/customer/{CustomerSuccessScene,info,quiz}.ts`                         |
 | Products floor + product rooms      | `scenes/elevator/ProductDoorManager.ts` (doors on the Products floor), `features/products/rooms/Product*Scene.ts` |
 | Executive Suite                     | `features/floors/executive/{ExecutiveSuiteScene,info,quiz}.ts`                         |
+| Boss arena                          | `features/floors/boss/BossArenaScene.ts`, `entities/CEOBoss.ts`, `entities/CoffeeMugProjectile.ts`, `entities/BriefcaseProjectile.ts`, `ui/BossHealthBar.ts` |
 | Shared floor base / managers        | `features/floors/_shared/*.ts`                                                         |
 | Elevator shaft + transitions        | `scenes/elevator/*.ts`                                                                 |
 | Scene hand-off (spawn / load hints) | `scenes/NavigationContext.ts`                                                          |
@@ -184,7 +194,7 @@ Use this to find the right file to edit for a given feature.
 ### Scene graph
 
 ```
-BootScene  →  MenuScene  →  ElevatorScene  ↔  Floor scenes (features/floors/*)
+BootScene  →  MenuScene  →  ElevatorScene  ↔  Floor scenes (features/floors/*, incl. BossArenaScene)
                                             ↘  product rooms (features/products/rooms/*)
 ```
 
