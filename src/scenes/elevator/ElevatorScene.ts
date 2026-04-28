@@ -20,7 +20,7 @@ import { ElevatorFloorTransitionManager } from './ElevatorFloorTransitionManager
 import type { NavigationContext } from '../NavigationContext';
 import type { GameAction } from '../../input/actions';
 import { eventBus } from '../../systems/EventBus';
-import { LAZY_SCENE_LOADERS } from '../sceneRegistry';
+import { LAZY_SCENE_LOADERS } from '../lazySceneLoaders';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.

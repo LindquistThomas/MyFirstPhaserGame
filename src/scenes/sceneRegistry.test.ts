@@ -47,9 +47,10 @@ vi.mock('./elevator/ElevatorScene', () => ({ ElevatorScene: class ElevatorScene 
 import {
   SCENE_REGISTRY,
   SCENE_CLASSES,
-  LAZY_SCENE_LOADERS,
   validateSceneRegistry,
 } from './sceneRegistry';
+import type { EagerSceneRegistration } from './sceneRegistry';
+import { LAZY_SCENE_LOADERS } from './lazySceneLoaders';
 
 const EXPECTED_EAGER_KEYS = [
   'BootScene',
@@ -97,16 +98,27 @@ describe('SCENE_REGISTRY structure', () => {
 });
 
 describe('SCENE_CLASSES (eager-only)', () => {
-  it('contains exactly the eager scenes', () => {
-    expect(SCENE_CLASSES).toHaveLength(EXPECTED_EAGER_KEYS.length);
+  it('matches exactly the cls entries in SCENE_REGISTRY', () => {
+    // Derive expected set directly from registry entries that carry a class
+    // constructor — this catches any accidental eager→lazy reclassification.
+    const registryEagerClasses = SCENE_REGISTRY
+      .filter((r): r is EagerSceneRegistration => 'cls' in r)
+      .map((r) => r.cls);
+    expect(SCENE_CLASSES).toHaveLength(registryEagerClasses.length);
+    expect(new Set(SCENE_CLASSES)).toEqual(new Set(registryEagerClasses));
   });
 
   it('does not include any lazy scene class', () => {
     // Lazy scenes have no statically imported class; SCENE_CLASSES must not
     // grow to include them (they are registered at runtime via scene.add()).
-    for (const key of EXPECTED_LAZY_KEYS) {
-      const hasIt = SCENE_CLASSES.some((cls) => cls.name === key);
-      expect(hasIt, `lazy scene "${key}" must NOT be in SCENE_CLASSES`).toBe(false);
+    const lazyKeys = new Set(
+      SCENE_REGISTRY.filter((r) => 'loader' in r).map((r) => r.key),
+    );
+    for (const cls of SCENE_CLASSES) {
+      expect(
+        lazyKeys.has(cls.name),
+        `lazy scene "${cls.name}" must NOT be in SCENE_CLASSES`,
+      ).toBe(false);
     }
   });
 
