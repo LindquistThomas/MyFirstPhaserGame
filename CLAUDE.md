@@ -158,7 +158,7 @@ zoneManager.update();
 
 Two suites, different purposes:
 
-- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Has a 60% coverage floor on `src/systems/**` and `src/input/**`. Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
+- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 60% on `src/ui/**` and `src/entities/**`. Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
 - **Playwright (`tests/*.spec.ts`)** — drives the actual dev server via `window.__game`. Use for end-to-end user flows, scene transitions, and visual snapshots.
 
 Playwright helpers in `tests/helpers/playwright.ts`:
