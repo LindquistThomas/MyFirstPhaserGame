@@ -12,6 +12,7 @@ import type { LevelConfig } from './LevelScene';
  * descent) and keeps the per-frame overshoot inside the clamp tolerance.
  */
 const ROOM_LIFT_SPEED = 400;
+const ROOM_LIFT_RETURN_EPSILON = 1;
 
 /** Extra px added above `minY` so the platform sprite (12 px tall, centre-
  *  origin) stays fully inside the shaft graphic when parked at the top. */
@@ -178,7 +179,7 @@ export class LevelRoomElevators {
     if (!onLift) {
       this.activeIndex = -1;
       for (const lift of this.lifts) {
-        lift.platform.setVelocityY(0);
+        this.returnIdleLiftToBase(lift);
       }
       return;
     }
@@ -217,5 +218,15 @@ export class LevelRoomElevators {
     body.setVelocityY(
       (lift.platform.body as Phaser.Physics.Arcade.Body).velocity.y,
     );
+  }
+
+  private returnIdleLiftToBase(lift: RoomLift): void {
+    if (lift.platform.y >= lift.maxY - ROOM_LIFT_RETURN_EPSILON) {
+      lift.platform.y = lift.maxY;
+      lift.platform.setVelocityY(0);
+      return;
+    }
+
+    lift.platform.setVelocityY(ROOM_LIFT_SPEED);
   }
 }
