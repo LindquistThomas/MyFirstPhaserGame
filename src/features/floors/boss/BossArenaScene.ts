@@ -59,6 +59,7 @@ const DIALOGUES = [
 ];
 
 const MUG_PICKUP_PLATFORM_OFFSET_Y = 16;
+const MUG_PLATFORM_HEIGHT_ABOVE_GROUND = 300;
 
 /**
  * Boss arena scene — CEO Showdown.
@@ -156,13 +157,25 @@ export class BossArenaScene extends Phaser.Scene {
     this.addPlatformTile(GAME_WIDTH / 2 - 64, G - 200, 128, 16, 0x3a2a1a);
 
     // Left + right mug platforms
-    this.addPlatformTile(160, G - 300, 96, 14, 0x2a1a0a);
-    this.addPlatformTile(GAME_WIDTH - 256, G - 300, 96, 14, 0x2a1a0a);
+    this.addPlatformTile(160, G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND, 96, 14, 0x2a1a0a);
+    this.addPlatformTile(GAME_WIDTH - 256, G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND, 96, 14, 0x2a1a0a);
 
     // Mug spawn points (linked to pickup platforms)
     this.mugPlatforms = [
-      { x: 208, y: G - 300 - MUG_PICKUP_PLATFORM_OFFSET_Y, count: 0, respawnMs: 10000, elapsed: 0 },
-      { x: GAME_WIDTH - 208, y: G - 300 - MUG_PICKUP_PLATFORM_OFFSET_Y, count: 0, respawnMs: 10000, elapsed: 0 },
+      {
+        x: 208,
+        y: G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND - MUG_PICKUP_PLATFORM_OFFSET_Y,
+        count: 0,
+        respawnMs: 10000,
+        elapsed: 0,
+      },
+      {
+        x: GAME_WIDTH - 208,
+        y: G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND - MUG_PICKUP_PLATFORM_OFFSET_Y,
+        count: 0,
+        respawnMs: 10000,
+        elapsed: 0,
+      },
     ];
 
     // Ambient backdrop — strategy war-room feel
