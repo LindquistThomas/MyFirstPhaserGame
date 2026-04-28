@@ -21,7 +21,8 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 | Enter / Click / Tap | Interact (enter doors, show info cards) |
 | I | Show info card for nearby zone |
 | Esc / P | Pause (during gameplay) |
-| 0–4 | Call elevator to floor (inside the cab) |
+| 0–5 | Call elevator to floor (inside the cab) |
+| X | Attack — throw mug (boss arena) / fire pistol (executive rescue) |
 
 ### Floors
 
@@ -31,9 +32,10 @@ Defined in `src/config/gameConfig.ts` (`FLOORS`) and `src/config/levelData.ts` (
 |-------|-----------|-------|
 | 0 | Lobby | Ground floor — elevator shaft, no gameplay tokens. |
 | 1 | Platform Team / Architecture Team | Split floor: Platform on the left, Architecture on the right. Green — Infrastructure AU. |
+| 2 | Products | Rendered directly by `ElevatorScene` / `ProductDoorManager` — one door per ISY product, no standalone scene. |
 | 3 | Business | Split floor: Product Leadership on the left, Customer Success on the right. Amber — Business AU. |
 | 4 | Executive Suite | Penthouse — Strategy AU. |
-| 5 | Products | Rendered directly by `ElevatorScene` / `ProductDoorManager` — one door per ISY product, no standalone scene. |
+| 5 | Boardroom | Boss arena — final encounter, `BossArenaScene`. |
 
 ## Bundle size budget
 
