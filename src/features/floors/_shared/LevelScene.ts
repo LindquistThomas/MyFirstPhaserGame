@@ -343,10 +343,10 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
-   * Wire the Pause action and the browser visibility-change handler.
+   * Wire the Pause action and the browser focus/visibility handlers.
    * Pressing Esc or P during gameplay launches `PauseScene` as a sibling
    * overlay; the same keys resume from `PauseScene`.
-   * Auto-pauses when the browser tab becomes hidden.
+   * Auto-pauses when the browser tab becomes hidden or the window loses focus.
    */
   private setupPause(): void {
     const lc = createSceneLifecycle(this);
@@ -357,20 +357,31 @@ export class LevelScene extends Phaser.Scene {
       }
     });
 
+    // Shared guard: only launch PauseScene if the level is currently running
+    // (not already paused and not in a transition).
+    const launchPauseIfRunning = (): void => {
+      if (!this.isTransitioning && !this.dialogs.isOpen
+          && !this.scene.isActive('PauseScene')
+          && this.scene.isActive()) {
+        this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
+      }
+    };
+
     // Auto-pause on tab switch.  Switching back leaves the game paused so
     // the player can press Resume intentionally.
     const onVisibilityChange = (): void => {
       if (document.visibilityState === 'hidden') {
-        // Only launch PauseScene if the level is currently running (not
-        // already paused and not in a transition).
-        if (!this.isTransitioning && !this.dialogs.isOpen
-            && !this.scene.isActive('PauseScene')) {
-          this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
-        }
+        launchPauseIfRunning();
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
     lc.add(() => document.removeEventListener('visibilitychange', onVisibilityChange));
+
+    // Auto-pause when the window loses focus (e.g. alt-tab, clicking another
+    // window, opening DevTools).  The existing PauseScene guard prevents a
+    // double-launch if both blur and visibilitychange fire together.
+    window.addEventListener('blur', launchPauseIfRunning);
+    lc.add(() => window.removeEventListener('blur', launchPauseIfRunning));
   }
 
   private updateAtmosphericFx(): void {
