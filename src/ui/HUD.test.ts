@@ -223,8 +223,8 @@ describe('HUD', () => {
     const hud = new HUD(scene as unknown as Phaser.Scene, progression);
     const spy = vi.spyOn(hud as unknown as { findNextUnlockFloor(): unknown }, 'findNextUnlockFloor');
 
-    // First update: AU=0, floor unchanged — triggers the initial floorChanged path,
-    // so findNextUnlockFloor should be called once.
+    // First update after construction: HUD.lastFloor starts at -1, so the initial
+    // sync treats the floor as changed and should call findNextUnlockFloor().
     hud.update();
     const callsAfterFirst = spy.mock.calls.length;
     expect(callsAfterFirst).toBeGreaterThan(0);
