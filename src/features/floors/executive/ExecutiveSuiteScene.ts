@@ -10,6 +10,7 @@ import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
 import { PistolProjectile } from '../../../entities/PistolProjectile';
 import { eventBus } from '../../../systems/EventBus';
+import { BombDisarmDialog } from '../../../ui/BombDisarmDialog';
 
 /**
  * Floor 4 — Executive Suite (penthouse).
@@ -56,13 +57,21 @@ export class ExecutiveSuiteScene extends LevelScene {
   // ---- Pistol projectile group ----
   private pistolGroup?: Phaser.Physics.Arcade.Group;
 
-  // ---- Bomb mini-game state ----
-  private bombMinigameActive = false;
-  private bombCursorX = 0;
-  private bombCursorSpeed = 0.4;
-  private bombSuccessAccum = 0;
-  private bombBar?: Phaser.GameObjects.Container;
+  // ---- Bomb mini-game state (modal-based) ----
+  /** True while the BombDisarmDialog modal is open. */
+  private bombDialogOpen = false;
+  /** Cooldown in ms remaining before the player can retry the mini-game. */
+  private bombCooldownMs = 0;
+  /** Prompt shown near the bomb when the player is in range. */
   private bombPromptText?: Phaser.GameObjects.Text;
+  /** Cooldown label shown after a failed attempt. */
+  private bombCooldownText?: Phaser.GameObjects.Text;
+
+  /**
+   * When `true`, the bomb is disarmed instantly on zone entry without opening
+   * the modal.  Set by tests that need to skip the mini-game.
+   */
+  static instantDisarm = false;
 
   constructor() {
     super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
@@ -251,124 +260,77 @@ export class ExecutiveSuiteScene extends LevelScene {
     const nearBomb = Math.abs(px - 1100) < 80 && this.player.sprite.y > G - 200;
 
     if (!nearBomb) {
-      // Player left zone — hide UI and reset
-      if (this.bombMinigameActive || this.bombPromptText?.visible) {
-        this.bombMinigameActive = false;
-        this.bombCursorX = 0;
-        this.bombSuccessAccum = 0;
-        this.bombBar?.destroy();
-        this.bombBar = undefined;
-        this.bombPromptText?.setVisible(false);
-      }
+      this.bombPromptText?.setVisible(false);
+      this.bombCooldownText?.setVisible(false);
       return;
     }
 
-    // Near bomb — show prompt if not active
+    // Tick down the cooldown.
+    if (this.bombCooldownMs > 0) {
+      this.bombCooldownMs = Math.max(0, this.bombCooldownMs - delta);
+      if (!this.bombCooldownText) {
+        this.bombCooldownText = this.add.text(
+          GAME_WIDTH / 2, GAME_HEIGHT - 148,
+          '',
+          { fontFamily: 'monospace', fontSize: '12px', color: '#ff6644' },
+        ).setOrigin(0.5).setScrollFactor(0).setDepth(65);
+      }
+      this.bombCooldownText
+        .setText(`Wait ${Math.ceil(this.bombCooldownMs / 1000)}s before retry…`)
+        .setVisible(true);
+      this.bombPromptText?.setVisible(false);
+      return;
+    }
+
+    this.bombCooldownText?.setVisible(false);
+
+    // Instant-disarm fallback (for tests).
+    if (ExecutiveSuiteScene.instantDisarm) {
+      this.onBombDisarmSuccess();
+      return;
+    }
+
+    // Show prompt; open dialog on Interact press.
     if (!this.bombPromptText) {
       this.bombPromptText = this.add.text(
         GAME_WIDTH / 2, GAME_HEIGHT - 148,
-        'Hold [Interact] to disarm',
+        `Press ${allKeyLabels('Interact')} to disarm bomb`,
         { fontFamily: 'monospace', fontSize: '12px', color: '#ffd700' },
       ).setOrigin(0.5).setScrollFactor(0).setDepth(65).setVisible(false);
     }
 
-    const holding = this.inputs.isDown('Interact');
-
-    if (!holding) {
-      // Not holding — show prompt, hide/reset bar
+    if (!this.bombDialogOpen) {
       this.bombPromptText.setVisible(true);
-      if (this.bombMinigameActive) {
-        this.bombMinigameActive = false;
-        // Only penalize if player released well outside the green zone and
-        // hadn't made significant progress (< 0.3s accumulated in zone).
-        const outsideZone = this.bombCursorX < 0.35 || this.bombCursorX > 0.65;
-        if (outsideZone && this.bombSuccessAccum < 0.3) {
-          this.player.takeHit(40, -100);
-        }
-        this.bombSuccessAccum = 0;
-        this.bombBar?.destroy();
-        this.bombBar = undefined;
-        this.bombCursorX = 0;
+      if (this.inputs.justPressed('Interact')) {
+        this.bombDialogOpen = true;
+        this.bombPromptText.setVisible(false);
+        new BombDisarmDialog(this, {
+          onSuccess: () => {
+            this.bombDialogOpen = false;
+            this.onBombDisarmSuccess();
+          },
+          onFailure: () => {
+            this.bombDialogOpen = false;
+            this.bombCooldownMs = 4000;
+          },
+        });
       }
-      return;
-    }
-
-    // Holding Interact — run mini-game
-    this.bombPromptText.setVisible(false);
-    if (!this.bombMinigameActive) {
-      this.bombMinigameActive = true;
-      this.bombCursorX = 0;
-      this.bombSuccessAccum = 0;
-    }
-
-    const dt = delta / 1000;
-    this.bombCursorX = (this.bombCursorX + this.bombCursorSpeed * dt) % 1;
-    const inGreen = this.bombCursorX >= 0.35 && this.bombCursorX <= 0.65;
-    if (inGreen) {
-      this.bombSuccessAccum += dt;
-    } else {
-      this.bombSuccessAccum = Math.max(0, this.bombSuccessAccum - dt * 0.5);
-    }
-
-    // Build/update bar UI
-    if (!this.bombBar) {
-      this.bombBar = this.buildBombBar();
-    }
-    this.updateBombBar(this.bombCursorX);
-
-    if (this.bombSuccessAccum >= 0.8) {
-      // Success!
-      this.bombMinigameActive = false;
-      this.rescueState.bombDisarmed = true;
-      this.bombBar.destroy();
-      this.bombBar = undefined;
-      this.bombPromptText?.destroy();
-      this.bombPromptText = undefined;
-      this.bombSprite?.destroy();
-      eventBus.emit('sfx:bomb_disarm');
-      if (this.bombIndicator) {
-        this.bombIndicator.setText('✓ DEFUSED').setColor('#44ff88');
-      }
-      this.checkSanctumUnlock();
     }
   }
 
-  private buildBombBar(): Phaser.GameObjects.Container {
-    const BAR_W = 300;
-    const BAR_H = 18;
-    const cx = GAME_WIDTH / 2;
-    const cy = GAME_HEIGHT - 120;
-
-    const bg = this.add.graphics()
-      .fillStyle(0x333333, 1)
-      .fillRect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H)
-      .lineStyle(1, 0xffd700, 1)
-      .strokeRect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H);
-
-    const greenZone = this.add.graphics()
-      .fillStyle(0x00aa44, 0.6)
-      .fillRect(-BAR_W / 2 + BAR_W * 0.35, -BAR_H / 2, BAR_W * 0.3, BAR_H);
-
-    const cursor = this.add.graphics()
-      .fillStyle(0xffffff, 1)
-      .fillRect(-2, -BAR_H / 2, 4, BAR_H);
-    cursor.setName('cursor');
-
-    const container = this.add.container(cx, cy, [bg, greenZone, cursor])
-      .setDepth(65).setScrollFactor(0);
-    return container;
-  }
-
-  private updateBombBar(cursorX: number): void {
-    if (!this.bombBar) return;
-    const BAR_W = 300;
-    const BAR_H = 18;
-    const cursor = this.bombBar.getByName('cursor') as Phaser.GameObjects.Graphics;
-    if (!cursor) return;
-    cursor.clear();
-    cursor.fillStyle(0xffffff, 1);
-    const cx = -BAR_W / 2 + BAR_W * cursorX;
-    cursor.fillRect(cx - 2, -BAR_H / 2, 4, BAR_H);
+  private onBombDisarmSuccess(): void {
+    this.rescueState.bombDisarmed = true;
+    this.bombSprite?.destroy();
+    this.bombSprite = undefined;
+    this.bombPromptText?.destroy();
+    this.bombPromptText = undefined;
+    this.bombCooldownText?.destroy();
+    this.bombCooldownText = undefined;
+    eventBus.emit('sfx:bomb_disarm');
+    if (this.bombIndicator) {
+      this.bombIndicator.setText('✓ DEFUSED').setColor('#44ff88');
+    }
+    this.checkSanctumUnlock();
   }
 
   private checkSanctumUnlock(): void {

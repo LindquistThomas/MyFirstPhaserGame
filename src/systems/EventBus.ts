@@ -116,7 +116,6 @@ export interface GameEvents {
   'persistence:error': [storageKey: string, message: string];
 
   /**
-  /**
    * A new floor was unlocked via AU progression. Payload is the floor ID.
    * Emitted by ProgressionSystem after `checkUnlocks()` detects a new entry.
    */
@@ -144,15 +143,6 @@ export interface GameEvents {
    * Emitted by `GameStateManager.checkAchievements()`.
    */
   'achievement:unlocked': [id: string, label: string];
-
-  /** Mission item (pistol/keycard/bomb_code) collected during hostage rescue. */
-  'sfx:item_pickup': [];
-  /** Bomb successfully disarmed during hostage rescue. */
-  'sfx:bomb_disarm': [];
-  /** Terrorist commander defeated during hostage rescue. */
-  'sfx:boss_defeated': [];
-  /** C-suite leadership freed — hostage rescue complete. */
-  'sfx:hostage_freed': [];
 }
 
 export type GameEventName = keyof GameEvents;
