@@ -11,8 +11,12 @@ permissions:
   id-token: write
 
 concurrency:
+  # Cancel any in-progress Pages deploy when a new one starts so the latest
+  # commit on main always wins. Trade-off: an interrupted upload-pages-artifact
+  # / deploy-pages run may leave the previous deployment live until the newer
+  # run completes; acceptable since we redeploy on every main push.
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
