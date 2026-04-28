@@ -14,7 +14,7 @@
  *   the player transitions to that scene. The elevator fade (500 ms) acts as
  *   the loading screen.
  *   Adding a new lazy scene requires:
- *     1. Adding one entry to `LAZY_REGISTRY` in `lazySceneLoaders.ts`.
+ *     1. Adding one entry to `LOADERS` in `lazySceneLoaders.ts`.
  *     2. (Optional) Adding a SCENE_MUSIC entry in `src/config/audioConfig.ts`.
  *     3. (Floors only) Adding a LEVEL_DATA entry in `src/config/levelData.ts`.
  *
