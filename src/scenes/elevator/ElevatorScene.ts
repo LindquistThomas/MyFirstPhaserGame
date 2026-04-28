@@ -89,6 +89,7 @@ export class ElevatorScene extends Phaser.Scene {
   private static readonly CALL_BUTTON_RADIUS = 54;
   private static readonly CALL_BUTTON_RADIUS_SQ =
     ElevatorScene.CALL_BUTTON_RADIUS * ElevatorScene.CALL_BUTTON_RADIUS;
+  private static readonly VALID_FLOOR_IDS = new Set<number>(Object.values(FLOORS));
 
   constructor() {
     super({ key: 'ElevatorScene' });
@@ -381,7 +382,7 @@ export class ElevatorScene extends Phaser.Scene {
   }
 
   private static isFloorId(value: number): value is FloorId {
-    return (Object.values(FLOORS) as number[]).includes(value);
+    return ElevatorScene.VALID_FLOOR_IDS.has(value);
   }
 
   /* ---- helpers ---- */
