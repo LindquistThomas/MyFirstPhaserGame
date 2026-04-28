@@ -86,6 +86,10 @@ export class ExecutiveSuiteScene extends LevelScene {
     // entry). MusicPlugin's lazy-loading is the fallback for scenes without
     // an explicit preload step.
     loadDeferredMusic(this, 'music_executive');
+    // Pre-load rescue music variants so the crossfade is instant.
+    // If either file is missing the fallback (music_executive) keeps playing.
+    loadDeferredMusic(this, 'music_executive_tension');
+    loadDeferredMusic(this, 'music_executive_victory');
   }
 
   override init(data?: { fromDoor?: string }): void {
@@ -114,6 +118,16 @@ export class ExecutiveSuiteScene extends LevelScene {
 
     this.setupRescue();
     this.showMissionBrief();
+
+    // Request the rescue-tension music track after MusicPlugin has processed
+    // SCENE_MUSIC ('music_executive'). Hooking the scene 'create' event here
+    // ensures our handler fires immediately after MusicPlugin's own 'create'
+    // handler (registered earlier, so it fires first).
+    // Falls back gracefully: if boss_tension.wav fails to load, the
+    // filecomplete event never fires, so music_executive keeps playing.
+    this.events.once(Phaser.Scenes.Events.CREATE, () => {
+      eventBus.emit('music:request', 'music_executive_tension');
+    });
   }
 
   private showMissionBrief(): void {
@@ -355,6 +369,10 @@ export class ExecutiveSuiteScene extends LevelScene {
     this.sanctumDoor?.setTexture('door_sanctum_open');
     eventBus.emit('sfx:hostage_freed');
     this.cameras.main.shake(150, 0.006);
+
+    // Switch to the victory music cue. Falls back gracefully: if
+    // boss_victory.wav fails to load, the tension track keeps playing.
+    eventBus.emit('music:request', 'music_executive_victory');
 
     // Grant bonus AU
     this.progression.addAU(FLOORS.EXECUTIVE, 5);

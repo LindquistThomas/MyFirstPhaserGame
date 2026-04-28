@@ -59,6 +59,15 @@ export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_platform',      path: 'music/retro-synth/shadow_operations-loop1.ogg' },
   { key: 'music_quiz',          path: 'music/retro-synth/hostile_territory-loop1.ogg' },
   { key: 'music_executive',     path: 'music/boss/bossroom-battle-431358.mp3' },
+  /**
+   * Executive Suite rescue variants — triggered via `music:request` from
+   * `RescueState` transitions in `ExecutiveSuiteScene`, not via `SCENE_MUSIC`.
+   * Falls back gracefully: if either file fails to load, the previously
+   * playing track keeps going (MusicPlugin never emits `music:play` on error).
+   * Replace the placeholder WAVs with production audio before shipping.
+   */
+  { key: 'music_executive_tension',    path: 'music/boss/boss_tension.wav' },
+  { key: 'music_executive_victory',    path: 'music/boss/boss_victory.wav' },
 ];
 
 /**
@@ -104,6 +113,8 @@ export const SOUNDTRACK_PLAYLIST: ReadonlyArray<SoundtrackTrack> = [
   { key: 'music_platform', label: 'PLATFORM' },
   { key: 'music_quiz', label: 'QUIZ' },
   { key: 'music_executive', label: 'EXECUTIVE' },
+  { key: 'music_executive_tension', label: 'EXECUTIVE (TENSION)' },
+  { key: 'music_executive_victory', label: 'EXECUTIVE (VICTORY)' },
   { key: 'music_lullaby', label: 'LULLABY' },
 ];
 
