@@ -2,6 +2,12 @@ import { FLOORS, FloorId } from './gameConfig';
 
 export interface FloorData {
   id: FloorId;
+  /**
+   * Sequential floor number used for display (0 = ground/lobby, increasing
+   * upward). Decoupled from `id` so IDs can be allocated freely without
+   * creating gaps in the displayed label sequence (e.g. "F2", "F3", …).
+   */
+  floorNumber: number;
   name: string;
   description: string;
   sceneKey: string;
@@ -28,6 +34,7 @@ export interface FloorData {
 export const LEVEL_DATA: Record<FloorId, FloorData> = {
   [FLOORS.LOBBY]: {
     id: FLOORS.LOBBY,
+    floorNumber: 0,
     name: 'Lobby',
     description: 'The ground floor. Your journey begins here.',
     sceneKey: 'ElevatorScene',
@@ -43,6 +50,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   },
   [FLOORS.PLATFORM_TEAM]: {
     id: FLOORS.PLATFORM_TEAM,
+    floorNumber: 1,
     name: 'Platform Team',
     description: 'Infrastructure & platform engineering. Collect AU!',
     sceneKey: 'PlatformTeamScene',
@@ -59,6 +67,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   },
   [FLOORS.BUSINESS]: {
     id: FLOORS.BUSINESS,
+    floorNumber: 3,
     name: 'Business',
     description: 'Product Leadership on the left, Customer Success on the right.',
     sceneKey: 'ProductLeadershipScene',
@@ -75,6 +84,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   },
   [FLOORS.EXECUTIVE]: {
     id: FLOORS.EXECUTIVE,
+    floorNumber: 4,
     name: 'Executive Suite',
     description: 'The penthouse. Strategy, vision, and the C-suite.',
     sceneKey: 'ExecutiveSuiteScene',
@@ -90,6 +100,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
   },
   [FLOORS.PRODUCTS]: {
     id: FLOORS.PRODUCTS,
+    floorNumber: 2,
     name: 'Products',
     description: 'The PRODUCTS floor of the elevator shaft — one door per ISY product.',
     // Rendered by ElevatorScene/ProductDoorManager directly, not a standalone
@@ -103,6 +114,22 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
       platformColor: 0x3a3a55,
       backgroundColor: 0x101a2a,
       wallColor: 0x445577,
+      tokenColor: 0xffd700,
+    },
+  },
+  [FLOORS.BOSS]: {
+    id: FLOORS.BOSS,
+    floorNumber: 5,
+    name: 'Boardroom',
+    description: 'The CEO awaits. Prove your architectural worth.',
+    sceneKey: 'BossArenaScene',
+    auRequired: 25,
+    auLabel: 'Boss AU',
+    totalAU: 0,
+    theme: {
+      platformColor: 0x2a1a0a,
+      backgroundColor: 0x0a0a0a,
+      wallColor: 0x3a2a1a,
       tokenColor: 0xffd700,
     },
   },

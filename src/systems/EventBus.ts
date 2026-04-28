@@ -77,6 +77,32 @@ export interface GameEvents {
   /** Energy drink fridge opened — mechanical click + cold air whoosh. */
   'sfx:fridge_open': [];
 
+  // ---- Boss fight SFX ----
+  /** Short percussive thud when CEO is hit. */
+  'sfx:boss_hit': [];
+  /** Descending multi-note fanfare on CEO defeat. */
+  'sfx:boss_defeated': [];
+  /** Ceramic whoosh when player throws a mug. */
+  'sfx:mug_throw': [];
+  /** Tense low sting on CEO phase transition. */
+  'sfx:boss_phase': [];
+  /** Paper-shuffle impact when boss throws a briefcase. */
+  'sfx:briefcase_throw': [];
+
+  // ---- Hostage rescue SFX ----
+  /** Bright chime on mission item pickup. */
+  'sfx:item_pickup': [];
+  /** Descending beep sequence on bomb disarm. */
+  'sfx:bomb_disarm': [];
+  /** Triumphant brass hit when leadership is freed. */
+  'sfx:hostage_freed': [];
+  /** Short sharp crack — pistol shot. */
+  'sfx:pistol_shot': [];
+
+  // ---- Boss lifecycle events ----
+  /** CEO boss has been defeated — carry the victory state to the scene. */
+  'boss:defeated': [];
+
   /** Caffeine buff activated; payload is the total duration in ms. */
   'buff:caffeine_start': [durationMs: number];
   /** Caffeine buff expired. */

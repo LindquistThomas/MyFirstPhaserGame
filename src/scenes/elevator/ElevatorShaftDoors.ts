@@ -1,4 +1,4 @@
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { GAME_WIDTH } from '../../config/gameConfig';
 
 /**

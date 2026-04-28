@@ -23,6 +23,7 @@ import { drawFloorAccents } from './floorAccents';
 import { theme } from '../../../style/theme';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
+import { CallElevatorButton } from '../../../ui/CallElevatorButton';
 
 /**
  * Decorative background pattern assignment per floor. Each motif echoes
@@ -154,6 +155,9 @@ export class LevelScene extends Phaser.Scene {
 
   /** In-room elevator manager (shafts, platforms, input, rider-pin). */
   private roomElevators!: LevelRoomElevators;
+
+  /** On-screen "CALL LIFT" button — touch/pointer shortcut for returnToElevator(). */
+  private callElevatorButton!: CallElevatorButton;
 
   /** Info + quiz dialog orchestration. */
   protected dialogs!: DialogController;
@@ -339,10 +343,10 @@ export class LevelScene extends Phaser.Scene {
   }
 
   /**
-   * Wire the Pause action and the browser visibility-change handler.
+   * Wire the Pause action and the browser focus/visibility handlers.
    * Pressing Esc or P during gameplay launches `PauseScene` as a sibling
    * overlay; the same keys resume from `PauseScene`.
-   * Auto-pauses when the browser tab becomes hidden.
+   * Auto-pauses when the browser tab becomes hidden or the window loses focus.
    */
   private setupPause(): void {
     const lc = createSceneLifecycle(this);
@@ -353,20 +357,31 @@ export class LevelScene extends Phaser.Scene {
       }
     });
 
+    // Shared guard: only launch PauseScene if the level is currently running
+    // (not already paused and not in a transition).
+    const launchPauseIfRunning = (): void => {
+      if (!this.isTransitioning && !this.dialogs.isOpen
+          && !this.scene.isActive('PauseScene')
+          && this.scene.isActive(this.sys.settings.key)) {
+        this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
+      }
+    };
+
     // Auto-pause on tab switch.  Switching back leaves the game paused so
     // the player can press Resume intentionally.
     const onVisibilityChange = (): void => {
       if (document.visibilityState === 'hidden') {
-        // Only launch PauseScene if the level is currently running (not
-        // already paused and not in a transition).
-        if (!this.isTransitioning && !this.dialogs.isOpen
-            && !this.scene.isActive('PauseScene')) {
-          this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
-        }
+        launchPauseIfRunning();
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
     lc.add(() => document.removeEventListener('visibilitychange', onVisibilityChange));
+
+    // Auto-pause when the window loses focus (e.g. alt-tab, clicking another
+    // window, opening DevTools).  The existing PauseScene guard prevents a
+    // double-launch if both blur and visibilitychange fire together.
+    window.addEventListener('blur', launchPauseIfRunning);
+    lc.add(() => window.removeEventListener('blur', launchPauseIfRunning));
   }
 
   private updateAtmosphericFx(): void {
@@ -630,6 +645,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- UI ---- */
   protected createUI(): void {
     this.hud = new HUD(this, this.progression);
+    this.callElevatorButton = new CallElevatorButton(this, () => this.returnToElevator());
   }
 
   /* ---- banner ---- */
@@ -747,6 +763,7 @@ export class LevelScene extends Phaser.Scene {
   protected returnToElevator(): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
+    this.callElevatorButton.setVisible(false);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = {
       fromFloor: this.floorId,

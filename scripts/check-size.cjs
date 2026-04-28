@@ -155,7 +155,7 @@ const BUDGETS = /** @type {const} */ ([
       /** @type {string[]} */
       const missing = [];
       for (const rel of eagerPaths) {
-        const abs = path.join(ROOT, 'public', rel + '.MISSING');
+        const abs = path.join(ROOT, 'public', rel);
         if (!fs.existsSync(abs)) {
           // A declared eager asset that doesn't exist on disk is a hard error:
           // it means either the file was deleted or the config path is wrong.

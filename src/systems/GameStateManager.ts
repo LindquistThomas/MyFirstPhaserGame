@@ -140,10 +140,50 @@ export class GameStateManager {
     }
   }
 
+  /**
+   * Allow `applyInitialLoad` to run again on the next call.
+   * Must be called whenever the player makes a new slot selection in
+   * `SaveSlotScene` so that the correct save (or fresh state) is applied
+   * when `ElevatorScene.init` fires.
+   */
+  resetLoadState(): void {
+    this.initialLoadApplied = false;
+  }
+
   /** Reset ALL persistent state including achievements and touch hint. */
   resetAll(): void {
     this.progression.reset();
     AchievementManager.resetAll();
     TouchHintStore.clearSeen();
+    this.resetLoadState();
+  }
+
+  /**
+   * Called from BossArenaScene after the CEO fight ends.
+   * Unlocks boss-specific achievements that depend on transient in-scene flags.
+   */
+  checkBossAchievements(defeated: boolean, noDamage: boolean): void {
+    const newlyUnlocked: string[] = [];
+    if (defeated && AchievementManager.unlock('boss-defeated' as Parameters<typeof AchievementManager.unlock>[0])) {
+      newlyUnlocked.push('boss-defeated');
+    }
+    if (defeated && noDamage && AchievementManager.unlock('boss-no-damage' as Parameters<typeof AchievementManager.unlock>[0])) {
+      newlyUnlocked.push('boss-no-damage');
+    }
+    for (const id of newlyUnlocked) {
+      const def = ACHIEVEMENT_MAP.get(id as Parameters<typeof ACHIEVEMENT_MAP.get>[0]);
+      if (def) eventBus.emit('achievement:unlocked', id, def.label);
+    }
+  }
+
+  /**
+   * Called from ExecutiveSuiteScene when leadership is freed.
+   * Unlocks the hostage-rescue achievement.
+   */
+  unlockHostageRescue(): void {
+    if (AchievementManager.unlock('hostage-rescue' as Parameters<typeof AchievementManager.unlock>[0])) {
+      const def = ACHIEVEMENT_MAP.get('hostage-rescue' as Parameters<typeof ACHIEVEMENT_MAP.get>[0]);
+      if (def) eventBus.emit('achievement:unlocked', 'hostage-rescue', def.label);
+    }
   }
 }

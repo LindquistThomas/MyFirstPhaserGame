@@ -25,6 +25,7 @@ export default defineConfig({
         'src/ui/{ElevatorButtons,ElevatorPanel,InfoDialog,InfoIcon,ModalBase,ModalKeyboardNavigator,QuizDialog,QuizResultsScreen}.ts',
         // New UI files added without unit tests yet — excluded until tests are written.
         'src/ui/{AchievementsDialog,ControlHintsOverlay,VirtualGamepad,WelcomeModal,touchPrimary}.ts',
+
         'src/input/phaser-augment.d.ts',
       ],
       thresholds: {

@@ -108,6 +108,51 @@ test.describe('Pause / Resume', () => {
     errors.assertClean();
   });
 
+  test('window blur auto-pauses the level scene', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await navigateToElevator(page);
+
+    // Enter Floor 1 programmatically.
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      if (!scene) throw new Error('ElevatorScene not active');
+      (scene['enterFloor'] as (id: number) => void)(1);
+    });
+    await waitForScene(page, 'PlatformTeamScene');
+
+    // Simulate the window losing focus (alt-tab / click another window).
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+
+    // PauseScene should launch.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        return g.scene.isActive('PauseScene');
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
+
+    // The level scene should be paused.
+    const levelPaused = await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene.getScenes(true).find((s) => s.sys.settings.key === 'PlatformTeamScene');
+      return !!scene && (scene.sys.settings.status === 6 || scene.sys.settings.status === 7);
+    });
+    expect(levelPaused).toBe(true);
+
+    errors.assertClean();
+  });
+
   test('Quit to Menu returns to MenuScene with progression intact', async ({ page }) => {
     const errors = attachErrorWatchers(page);
 

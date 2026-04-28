@@ -1,17 +1,28 @@
 /**
  * Single source of truth for the Phaser scene list.
  *
- * Adding a new scene requires:
- *   1. Importing the class here.
- *   2. Adding one entry to `SCENE_REGISTRY` below.
- *   3. (Optional) Adding a SCENE_MUSIC entry in `src/config/audioConfig.ts`.
- *   4. (Floors only) Adding a LEVEL_DATA entry in `src/config/levelData.ts`.
+ * Scenes are split into two groups:
+ *
+ * **Eager** — bundled in the main app chunk, registered with Phaser at startup.
+ *   These are scenes a player may encounter immediately (boot, menu, elevator).
+ *   Adding a new eager scene requires:
+ *     1. Importing the class here.
+ *     2. Adding one entry to `EAGER_REGISTRY` below.
+ *     3. (Optional) Adding a SCENE_MUSIC entry in `src/config/audioConfig.ts`.
+ *
+ * **Lazy** — each lives in its own JS chunk fetched on demand the first time
+ *   the player transitions to that scene. The elevator fade (500 ms) acts as
+ *   the loading screen.
+ *   Adding a new lazy scene requires:
+ *     1. Adding one entry to `LOADERS` in `lazySceneLoaders.ts`.
+ *     2. (Optional) Adding a SCENE_MUSIC entry in `src/config/audioConfig.ts`.
+ *     3. (Floors only) Adding a LEVEL_DATA entry in `src/config/levelData.ts`.
  *
  * `validateSceneRegistry()` runs at boot and fails loudly if LEVEL_DATA or
  * SCENE_MUSIC reference a scene key that was never registered.
  */
 
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { BootScene } from './core/BootScene';
 import { MenuScene } from './core/MenuScene';
 import { SettingsScene } from './core/SettingsScene';
@@ -19,30 +30,37 @@ import { ControlsScene } from './core/ControlsScene';
 import { PauseScene } from './core/PauseScene';
 import { SaveSlotScene } from './core/SaveSlotScene';
 import { ElevatorScene } from './elevator/ElevatorScene';
-import {
-  PlatformTeamScene,
-  ArchitectureTeamScene,
-  FinanceTeamScene,
-  ProductLeadershipScene,
-  CustomerSuccessScene,
-  ExecutiveSuiteScene,
-} from '../features/floors';
-import { ProductIsyProjectControlsScene } from '../features/products/rooms/ProductIsyProjectControlsScene';
-import { ProductIsyBeskrivelseScene } from '../features/products/rooms/ProductIsyBeskrivelseScene';
-import { ProductIsyRoadScene } from '../features/products/rooms/ProductIsyRoadScene';
-import { ProductAdminLisensScene } from '../features/products/rooms/ProductAdminLisensScene';
+import { LAZY_SCENE_LOADERS } from './lazySceneLoaders';
+import type { LazySceneLoader } from './lazySceneLoaders';
 import { LEVEL_DATA } from '../config/levelData';
 import { SCENE_MUSIC } from '../config/audioConfig';
 
 type SceneClass = new (...args: never[]) => Phaser.Scene;
 
-export interface SceneRegistration {
+/** An eagerly loaded scene — class is bundled in the main app chunk. */
+export interface EagerSceneRegistration {
   /** Phaser scene key — must match the `key` passed to `super(...)` in the class. */
   key: string;
   cls: SceneClass;
 }
 
-export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
+/**
+ * A lazily loaded scene — module is split into a separate Vite chunk and
+ * fetched on demand the first time the player transitions to that scene.
+ */
+export interface LazySceneRegistration {
+  /** Phaser scene key — must match the `key` passed to `super(...)` in the class. */
+  key: string;
+  loader: LazySceneLoader;
+}
+
+export type SceneRegistration = EagerSceneRegistration | LazySceneRegistration;
+
+/**
+ * Eager scenes — bundled in the main app chunk and registered with Phaser at
+ * startup. These are the scenes a player may encounter immediately on load.
+ */
+const EAGER_REGISTRY: ReadonlyArray<EagerSceneRegistration> = [
   { key: 'BootScene', cls: BootScene },
   { key: 'MenuScene', cls: MenuScene },
   { key: 'SettingsScene', cls: SettingsScene },
@@ -50,17 +68,20 @@ export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
   { key: 'PauseScene', cls: PauseScene },
   { key: 'SaveSlotScene', cls: SaveSlotScene },
   { key: 'ElevatorScene', cls: ElevatorScene },
-  { key: 'PlatformTeamScene', cls: PlatformTeamScene },
-  { key: 'ArchitectureTeamScene', cls: ArchitectureTeamScene },
-  { key: 'FinanceTeamScene', cls: FinanceTeamScene },
-  { key: 'ProductLeadershipScene', cls: ProductLeadershipScene },
-  { key: 'CustomerSuccessScene', cls: CustomerSuccessScene },
-  { key: 'ExecutiveSuiteScene', cls: ExecutiveSuiteScene },
-  { key: 'ProductIsyProjectControlsScene', cls: ProductIsyProjectControlsScene },
-  { key: 'ProductIsyBeskrivelseScene', cls: ProductIsyBeskrivelseScene },
-  { key: 'ProductIsyRoadScene', cls: ProductIsyRoadScene },
-  { key: 'ProductAdminLisensScene', cls: ProductAdminLisensScene },
 ];
+
+/**
+ * Lazy scenes — each is split into its own JS chunk by Vite; loader thunks
+ * and the `LAZY_SCENE_LOADERS` map live in `lazySceneLoaders.ts` so that
+ * file has no static scene-class imports and cannot create a module cycle.
+ */
+const LAZY_REGISTRY: ReadonlyArray<LazySceneRegistration> = Array.from(
+  LAZY_SCENE_LOADERS.entries(),
+  ([key, loader]) => ({ key, loader }),
+);
+
+/** Combined registry (eager + lazy) — used for validation. */
+export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [...EAGER_REGISTRY, ...LAZY_REGISTRY];
 
 /**
  * Scene keys referenced by LEVEL_DATA / SCENE_MUSIC that don't have a
@@ -70,8 +91,11 @@ export const SCENE_REGISTRY: ReadonlyArray<SceneRegistration> = [
  */
 const VIRTUAL_SCENE_KEYS: ReadonlySet<string> = new Set(['ProductsFloor']);
 
-/** Constructor list ready to feed into `Phaser.Game.config.scene`. */
-export const SCENE_CLASSES: ReadonlyArray<SceneClass> = SCENE_REGISTRY.map((r) => r.cls);
+/**
+ * Constructor list for `Phaser.Game.config.scene` — **eager scenes only**.
+ * Lazy scenes are registered on demand via `ElevatorScene.lazyStartScene()`.
+ */
+export const SCENE_CLASSES: ReadonlyArray<SceneClass> = EAGER_REGISTRY.map((r) => r.cls);
 
 /**
  * Cross-check that every scene key referenced by LEVEL_DATA and SCENE_MUSIC

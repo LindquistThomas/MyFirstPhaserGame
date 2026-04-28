@@ -55,17 +55,30 @@ export class ElevatorFloorTransitionManager {
   }
 
   /**
-   * Clear the skip-floor guard once the cab has left the floor the player
-   * just returned from. Keeping the guard armed while the cab is still
-   * docked at that floor prevents a bounce when the player brushes the
-   * cab tolerance zone and steps back onto the floor walking surface —
-   * the on-elevator latch can engage while the player is still on the
-   * floor (cab top sits 8 px below the walking surface), so using the
-   * latch alone to clear the guard was too eager. Once the cab moves
-   * (player rides it elsewhere), the guard is no longer needed.
+   * Clear the skip-floor guard once the player has ridden the cab away from
+   * the floor they just returned from.
+   *
+   * Two conditions must both be true before the guard is lifted:
+   *  1. The player is currently on the elevator (they've boarded).
+   *  2. The cab is docked at a different floor than the one being skipped.
+   *
+   * Requiring the player to be on board prevents the guard from being
+   * wiped by the elevator's own auto-descend logic (no rider → cab drifts
+   * downward and leaves the 12 px dock tolerance within ~5 frames), which
+   * was the original source of the looping re-entry bug: the guard was
+   * cleared before the player could even move, so checkFloorEntry()
+   * immediately re-triggered the transition they had just exited.
+   *
+   * Keeping the guard armed while the cab is still docked at that floor
+   * also prevents a bounce when the player brushes the cab tolerance zone
+   * and steps back onto the floor walking surface — the on-elevator latch
+   * can engage while the player is still on the floor (cab top sits 8 px
+   * below the walking surface), so using the latch alone to clear the
+   * guard was too eager.
    */
   clearSkipWhenBackOnElevator(): void {
     if (this.skipFloorEntry === undefined) return;
+    if (!this.deps.isPlayerOnElevator()) return;
     const cabFloor = this.deps.getCabDockedFloor();
     if (cabFloor !== this.skipFloorEntry) {
       this.skipFloorEntry = undefined;

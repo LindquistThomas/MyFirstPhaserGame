@@ -31,12 +31,15 @@ export type GameAction =
   | 'QuickAnswer2'
   | 'QuickAnswer3'
   | 'QuickAnswer4'
-  // Elevator floor call buttons (digit keys map to visual floor order F0..F4)
+  // Elevator floor call buttons (digit keys map to visual floor order F0..F5)
   | 'ElevatorCallFloor0'
   | 'ElevatorCallFloor1'
   | 'ElevatorCallFloor2'
   | 'ElevatorCallFloor3'
   | 'ElevatorCallFloor4'
+  | 'ElevatorCallFloor5'
+  // Gameplay attack — throw/fire what the player is holding
+  | 'Attack'
   // Pause / resume
   | 'Pause'
   // Debug
@@ -83,6 +86,9 @@ export const ACTION_CONTEXTS: Record<GameAction, readonly ActionContextTag[]> = 
   ElevatorCallFloor2: ['gameplay'],
   ElevatorCallFloor3: ['gameplay'],
   ElevatorCallFloor4: ['gameplay'],
+  ElevatorCallFloor5: ['gameplay'],
+
+  Attack: ['gameplay'],
 
   Pause: ['gameplay'],
 

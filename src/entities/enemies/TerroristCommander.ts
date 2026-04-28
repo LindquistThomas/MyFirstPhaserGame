@@ -1,16 +1,13 @@
 import * as Phaser from 'phaser';
 import { Enemy } from '../Enemy';
+import { eventBus } from '../../systems/EventBus';
 
 /**
- * Terrorist Commander — the boss-type enemy for the Executive Suite
- * hostage rescue scenario.
+ * Terrorist Commander — F4 hostage rescue mini-boss.
  *
- * Non-stompable: patrols horizontally between `minX`/`maxX` like other
- * enemies, but cannot be defeated by jumping on top. The player must
- * collect the Pistol mission item first — then overlapping from above
- * triggers `defeatByWeapon()` instead of dealing damage.
- *
- * Higher `hitCost` (2 AU) and faster patrol speed than regular enemies.
+ * Non-stompable, higher hit cost, patrols horizontally.
+ * Can only be defeated when the player has collected the Pistol mission item.
+ * Defeat plays a surrender animation (hands-up tween → fade).
  */
 export class TerroristCommander extends Enemy {
   private minX: number;
@@ -21,41 +18,22 @@ export class TerroristCommander extends Enemy {
     scene: Phaser.Scene,
     x: number,
     y: number,
-    opts: { minX: number; maxX: number; speed?: number } = { minX: x - 200, maxX: x + 200 },
+    opts: { minX: number; maxX: number; speed?: number } = { minX: x - 160, maxX: x + 160 },
   ) {
     super(scene, x, y, 'enemy_terrorist');
     this.canBeStomped = false;
     this.hitCost = 2;
-    this.knockbackX = 320;
-    this.knockbackY = -300;
+    this.knockbackX = 300;
+    this.knockbackY = -280;
     this.minX = opts.minX;
     this.maxX = opts.maxX;
-    this.speed = opts.speed ?? 100;
+    this.speed = opts.speed ?? 90;
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(36, 52);
-    body.setOffset(4, 4);
-
-    // Menacing shoulder-sway idle animation.
-    scene.tweens.add({
-      targets: this,
-      scaleX: 1.05,
-      duration: 600,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
+    body.setSize(36, 50);
+    body.setOffset(2, 6);
 
     this.setVelocityX(this.speed);
-  }
-
-  /**
-   * Stomp routes to `defeatByWeapon()` so the surrender animation plays
-   * instead of the base squash. Only reachable once `canBeStomped` is set
-   * to `true` (i.e. after the player collects the Pistol).
-   */
-  override onStomp(): void {
-    this.defeatByWeapon();
   }
 
   override update(): void {
@@ -71,45 +49,27 @@ export class TerroristCommander extends Enemy {
   }
 
   /**
-   * Defeat this enemy via weapon (pistol). Plays a surrender animation
-   * (raise hands → fade out) instead of the normal stomp squash.
-   *
-   * Returns `true` if the enemy was successfully defeated, `false` if
-   * already defeated.
+   * Surrender defeat — used when player has the Pistol and overlaps this enemy.
+   * Plays hands-up tween then fades out. Distinct from stomp squash.
    */
-  defeatByWeapon(): boolean {
-    if (this.defeated) return false;
+  defeat(): void {
+    if (this.defeated) return;
     this.defeated = true;
     const body = this.body as Phaser.Physics.Arcade.Body | null;
     if (body) body.enable = false;
     this.scene.tweens.killTweensOf(this);
-
-    // White-hot flash for impact readability.
-    this.setTintFill(0xffffff);
-    this.scene.time.delayedCall(80, () => {
-      if (!this.scene) return;
-      this.clearTint();
-    });
-
-    // Surrender: raise hands (scaleY stretch) then fade out.
+    this.setVelocity(0, 0);
+    eventBus.emit('sfx:boss_defeated');
+    // Hands-up: slight scale up then drift upward while fading
     this.scene.tweens.add({
       targets: this,
-      scaleY: 1.2,
-      scaleX: 0.9,
-      duration: 300,
-      ease: 'Back.easeOut',
-      onComplete: () => {
-        if (!this.scene) return;
-        this.scene.tweens.add({
-          targets: this,
-          alpha: 0,
-          y: this.y - 20,
-          duration: 400,
-          ease: 'Quad.easeIn',
-          onComplete: () => this.destroy(),
-        });
-      },
+      y: this.y - 30,
+      alpha: 0,
+      scaleX: 1.2,
+      scaleY: 0.8,
+      duration: 600,
+      ease: 'Sine.easeOut',
+      onComplete: () => this.destroy(),
     });
-    return true;
   }
 }

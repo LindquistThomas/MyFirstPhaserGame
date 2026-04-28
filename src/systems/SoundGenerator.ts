@@ -16,13 +16,18 @@ import {
 } from './sounds/movement';
 import { generateDatacenterAmbience } from './sounds/ambience';
 import { generateCoffeeSipSound, generateFridgeOpenSound } from './sounds/items';
+import { generateLullaby } from './sounds/lullaby';
 import {
+  generateBossHitSound,
+  generateBossDefeatedSound,
+  generateMugThrowSound,
+  generateBossPhaseSound,
+  generateBriefcaseThrowSound,
   generateItemPickupSound,
   generateBombDisarmSound,
-  generateBossDefeatedSound,
   generateHostageFreedSound,
-} from './sounds/mission';
-import { generateLullaby } from './sounds/lullaby';
+  generatePistolShotSound,
+} from './sounds/boss';
 
 /**
  * Composition root for runtime audio generation.
@@ -53,10 +58,16 @@ export function generateSounds(scene: Phaser.Scene): void {
   loadWav(scene, 'coffee_sip', generateCoffeeSipSound());
   loadWav(scene, 'fridge_open', generateFridgeOpenSound());
   loadWav(scene, 'music_lullaby', generateLullaby());
-  loadWav(scene, 'item_pickup', generateItemPickupSound());
-  loadWav(scene, 'bomb_disarm', generateBombDisarmSound());
-  loadWav(scene, 'boss_defeated', generateBossDefeatedSound());
-  loadWav(scene, 'hostage_freed', generateHostageFreedSound());
+  // Boss / hostage SFX
+  loadWav(scene, 'boss_hit',        generateBossHitSound());
+  loadWav(scene, 'boss_defeated',   generateBossDefeatedSound());
+  loadWav(scene, 'mug_throw',       generateMugThrowSound());
+  loadWav(scene, 'boss_phase',      generateBossPhaseSound());
+  loadWav(scene, 'briefcase_throw', generateBriefcaseThrowSound());
+  loadWav(scene, 'item_pickup',     generateItemPickupSound());
+  loadWav(scene, 'bomb_disarm',     generateBombDisarmSound());
+  loadWav(scene, 'hostage_freed',   generateHostageFreedSound());
+  loadWav(scene, 'pistol_shot',     generatePistolShotSound());
 }
 
 export { loadWav, encodeWAV } from './sounds/wav';

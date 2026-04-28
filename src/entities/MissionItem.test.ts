@@ -1,14 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createFakeScene, type FakeScene } from '../../tests/helpers/phaserMock';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createFakeScene } from '../../tests/helpers/phaserMock';
 import type * as Phaser from 'phaser';
+import { eventBus } from '../systems/EventBus';
 
 vi.mock('phaser', () => {
   class Sprite {
     scene: unknown;
     x: number;
     y: number;
-    body: { enable: boolean } = { enable: true };
-    depth = 0;
+    alpha = 1;
 
     constructor(scene: unknown, x: number, y: number) {
       this.scene = scene;
@@ -16,8 +16,8 @@ vi.mock('phaser', () => {
       this.y = y;
     }
 
-    setDepth(depth: number) { this.depth = depth; return this; }
-    destroy() { /* no-op */ }
+    setDepth() { return this; }
+    destroy = vi.fn();
   }
 
   const Phaser = { Physics: { Arcade: { Sprite } } };
@@ -26,78 +26,77 @@ vi.mock('phaser', () => {
 
 import { MissionItem } from './MissionItem';
 
-function makeMissionItem(id: 'pistol' | 'keycard' | 'bomb_code' = 'pistol'): { scene: FakeScene; item: MissionItem } {
-  const scene = createFakeScene();
-  const item = new MissionItem(scene as unknown as Phaser.Scene, 200, 300, `item_${id}`, id);
-  return { scene, item };
-}
-
 describe('MissionItem', () => {
-  it('creates with correct itemId and static body', () => {
-    const { scene, item } = makeMissionItem('keycard');
-
-    expect(item.itemId).toBe('keycard');
-    expect(scene.add.existing).toHaveBeenCalledWith(item);
-    expect(scene.physics.add.existing).toHaveBeenCalledWith(item, true);
-    expect((item as unknown as { depth: number }).depth).toBe(5);
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('creates float and pulse tweens', () => {
-    const { scene } = makeMissionItem();
-    const addTween = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
-    expect(addTween).toHaveBeenCalledTimes(2);
+  it('creates with the correct itemId and starts a pulse tween', () => {
+    const scene = createFakeScene();
+    const cb = vi.fn();
+    const item = new MissionItem(
+      scene as unknown as Phaser.Scene, 400, 500, 'pistol', cb,
+    );
+
+    expect(item.itemId).toBe('pistol');
+    expect(scene.tweens.add).toHaveBeenCalled();
   });
 
-  it('isCollected() returns false initially', () => {
-    const { item } = makeMissionItem();
-    expect(item.isCollected()).toBe(false);
+  it('supports all three MissionItemId values', () => {
+    const scene = createFakeScene();
+    const cb = vi.fn();
+    const pistol = new MissionItem(scene as unknown as Phaser.Scene, 0, 0, 'pistol', cb);
+    const keycard = new MissionItem(scene as unknown as Phaser.Scene, 0, 0, 'keycard', cb);
+    const bombCode = new MissionItem(scene as unknown as Phaser.Scene, 0, 0, 'bomb_code', cb);
+
+    expect(pistol.itemId).toBe('pistol');
+    expect(keycard.itemId).toBe('keycard');
+    expect(bombCode.itemId).toBe('bomb_code');
   });
 
-  it('collect() returns true and sets collected state', () => {
-    const { item } = makeMissionItem();
-    const result = item.collect();
-    expect(result).toBe(true);
-    expect(item.isCollected()).toBe(true);
-  });
+  it('collect() emits sfx:item_pickup and calls the callback', () => {
+    const scene = createFakeScene();
+    const cb = vi.fn();
+    const item = new MissionItem(
+      scene as unknown as Phaser.Scene, 400, 500, 'keycard', cb,
+    );
 
-  it('collect() disables body and stops tweens', () => {
-    const { scene, item } = makeMissionItem();
-    item.collect();
-    expect((item.body as { enable: boolean }).enable).toBe(false);
-    expect(scene.tweens.killTweensOf).toHaveBeenCalledWith(item);
-  });
-
-  it('collect() is idempotent — second call returns false', () => {
-    const { scene, item } = makeMissionItem();
-    const addTween = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
-
-    item.collect();
-    const countAfterFirst = addTween.mock.calls.length;
-    const result = item.collect();
-
-    expect(result).toBe(false);
-    expect(addTween.mock.calls.length).toBe(countAfterFirst);
-  });
-
-  it('collect() queues a fade-out tween that calls destroy', () => {
-    const { scene, item } = makeMissionItem();
-    const addTween = scene.tweens.add as unknown as ReturnType<typeof vi.fn>;
-    const destroy = vi.spyOn(item as unknown as { destroy: () => void }, 'destroy');
+    const sfxSpy = vi.fn();
+    eventBus.on('sfx:item_pickup', sfxSpy);
 
     item.collect();
 
-    const lastResult = addTween.mock.results[addTween.mock.results.length - 1];
-    const fadeTween = lastResult?.value as { onComplete?: () => void } | undefined;
-    expect(fadeTween).toBeDefined();
-    fadeTween?.onComplete?.();
-    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(sfxSpy).toHaveBeenCalledTimes(1);
+    expect(cb).toHaveBeenCalledWith('keycard');
+
+    eventBus.off('sfx:item_pickup', sfxSpy);
   });
 
-  it('works for all three item types', () => {
-    for (const id of ['pistol', 'keycard', 'bomb_code'] as const) {
-      const { item } = makeMissionItem(id);
-      expect(item.itemId).toBe(id);
-      expect(item.collect()).toBe(true);
-    }
+  it('collect() triggers a fly-up tween', () => {
+    const scene = createFakeScene();
+    const cb = vi.fn();
+    const item = new MissionItem(
+      scene as unknown as Phaser.Scene, 400, 500, 'bomb_code', cb,
+    );
+
+    // pulse tween already added in constructor
+    const addCallsBefore = (scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length;
+    item.collect();
+    const addCallsAfter = (scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    expect(addCallsAfter).toBeGreaterThan(addCallsBefore);
+  });
+
+  it('collect() is idempotent — second call does nothing', () => {
+    const scene = createFakeScene();
+    const cb = vi.fn();
+    const item = new MissionItem(
+      scene as unknown as Phaser.Scene, 400, 500, 'pistol', cb,
+    );
+
+    item.collect();
+    item.collect();
+
+    expect(cb).toHaveBeenCalledTimes(1);
   });
 });

@@ -17,6 +17,7 @@ import { generateReceptionistSprite } from './sprites/receptionist';
 import { generateCoffeeSprites } from './sprites/coffee';
 import { generateRubberDuckSprite } from './sprites/npcRubberDuck';
 import { generateEnergyDrinkFridgeSprites } from './sprites/energyDrinkFridge';
+import { generateBossSprites } from './sprites/boss';
 import { generateMissionItemSprites } from './sprites/missionItems';
 
 /**
@@ -47,5 +48,6 @@ export function generateSprites(scene: Phaser.Scene): void {
   generateCoffeeSprites(scene);
   generateRubberDuckSprite(scene);
   generateEnergyDrinkFridgeSprites(scene);
+  generateBossSprites(scene);
   generateMissionItemSprites(scene);
 }

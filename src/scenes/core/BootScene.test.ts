@@ -59,10 +59,10 @@ import { BootScene } from './BootScene';
 
 describe('BootScene M-key mute hotkey', () => {
   let scene: BootScene;
-  let spy: ReturnType<typeof vi.fn>;
+  let spy: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
-    spy = vi.fn();
+    spy = vi.fn<() => void>();
     eventBus.on('audio:toggle-mute', spy);
     scene = new BootScene();
     scene.create();

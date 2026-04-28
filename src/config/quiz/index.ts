@@ -50,6 +50,7 @@ const QUIZZES_BY_FLOOR: Record<FloorId, Record<string, QuizDefinition>> = {
   [FLOORS.BUSINESS]: { ...QUIZ_FINANCE, ...QUIZ_PRODUCT },
   [FLOORS.EXECUTIVE]: QUIZ_EXEC,
   [FLOORS.PRODUCTS]: QUIZ_PRODUCT,
+  [FLOORS.BOSS]: {},
 };
 
 /** Return the quiz catalogue for a specific floor (keyed by infoId). */

@@ -8,6 +8,7 @@ import {
   clearSlot,
   setPlayerSlot,
 } from '../../systems/SaveManager';
+import type { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
@@ -221,6 +222,9 @@ export class SaveSlotScene extends Phaser.Scene {
     const slotId = SAVE_SLOTS[this.selectedIndex]!;
     setPlayerSlot(slotId);
     const info = this.slotInfos[this.selectedIndex]!;
+    // Reset the initial-load guard so ElevatorScene re-applies the correct
+    // save (or fresh state) for this slot selection.
+    (this.registry.get('gameState') as GameStateManager).resetLoadState();
     const ctx: NavigationContext = { loadSave: info.exists };
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.time.delayedCall(400, () => this.scene.start('ElevatorScene', ctx));

@@ -61,6 +61,38 @@ describe('GameStateManager', () => {
     expect(state.progression.getTotalAU()).toBe(5);
   });
 
+  it('resetLoadState() allows applyInitialLoad to run again', () => {
+    const storage = memoryStorage();
+    const pre = new GameStateManager(storage);
+    pre.progression.addAU(FLOORS.LOBBY, 7);
+
+    const state = new GameStateManager(storage);
+    state.applyInitialLoad(true);
+    expect(state.progression.getTotalAU()).toBe(7);
+
+    // Simulate deleting the save then starting fresh on the same slot.
+    state.resetLoadState();
+    state.applyInitialLoad(false);
+    expect(state.progression.getTotalAU()).toBe(0);
+    expect(state.hasSave()).toBe(false);
+  });
+
+  it('resetAll() resets load state so applyInitialLoad runs again', () => {
+    const storage = memoryStorage();
+    const pre = new GameStateManager(storage);
+    pre.progression.addAU(FLOORS.LOBBY, 7);
+
+    const state = new GameStateManager(storage);
+    state.applyInitialLoad(true);
+    expect(state.progression.getTotalAU()).toBe(7);
+
+    state.resetAll();
+    // After resetAll the guard should be cleared — re-applying does nothing
+    // because progression was already wiped, but the call must not be skipped.
+    state.applyInitialLoad(false);
+    expect(state.progression.getTotalAU()).toBe(0);
+  });
+
   it('applyInitialLoad(false) wipes persisted state on first call', () => {
     const storage = memoryStorage();
     const pre = new GameStateManager(storage);

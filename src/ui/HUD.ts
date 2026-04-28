@@ -484,7 +484,10 @@ export class HUD {
     const fd = LEVEL_DATA[floor];
     const nextFloorLabel = fd ? `F${fd.id}: ${fd.name}` : '';
 
-    if (floor !== this.lastFloor) {
+    const floorChanged = floor !== this.lastFloor;
+    const auChanged = au !== this.lastAU;
+
+    if (floorChanged) {
       const isFirstRender = this.lastFloor === -1;
       this.lastFloor = floor;
       this.redrawBackground();
@@ -502,12 +505,14 @@ export class HUD {
     }
     this.lastAU = au;
 
-    const next = this.findNextUnlockFloor();
-    const sig = next ? `${next.id}:${au}:${floor}` : `none:${floor}`;
-    if (sig !== this.lastProgressSig) {
-      this.lastProgressSig = sig;
-      const target = next ? Phaser.Math.Clamp(au / next.auRequired, 0, 1) : 0;
-      this.tweenProgressTo(target);
+    if (auChanged || floorChanged) {
+      const next = this.findNextUnlockFloor();
+      const sig = next ? `${next.id}:${au}:${floor}` : `none:${floor}`;
+      if (sig !== this.lastProgressSig) {
+        this.lastProgressSig = sig;
+        const target = next ? Phaser.Math.Clamp(au / next.auRequired, 0, 1) : 0;
+        this.tweenProgressTo(target);
+      }
     }
 
     if (this.caffeineEndAt > 0 && this.caffeineDuration > 0) {

@@ -8,7 +8,11 @@ vi.mock('phaser', () => {
   class Scene {
     constructor(_config: unknown) {}
   }
-  return { default: { Scene }, Scene };
+  class ArcadeSprite {
+    constructor(_scene: unknown, _x: unknown, _y: unknown, _key: unknown) {}
+  }
+  const Physics = { Arcade: { Sprite: ArcadeSprite, Events: { WORLD_BOUNDS: 'worldbounds' } } };
+  return { default: { Scene, Physics }, Scene, Physics };
 });
 
 vi.mock('../_shared/LevelScene', () => ({
@@ -46,28 +50,40 @@ vi.mock('../../../ui/InteractiveDoor', () => ({
   },
 }));
 
-// MissionItem extends Phaser.Physics.Arcade.Sprite — mock it.
+// MissionItem uses Phaser.Physics.Arcade.Sprite — stub it.
 vi.mock('../../../entities/MissionItem', () => ({
   MissionItem: class MissionItem {
-    readonly itemId: string;
-    constructor(_scene: unknown, _x: number, _y: number, _texture: string, itemId: string) {
-      this.itemId = itemId;
+    itemId: string;
+    constructor(_s: unknown, _x: unknown, _y: unknown, id: string, _cb: unknown) {
+      this.itemId = id;
     }
-    collect() { return true; }
+    collect() {}
   },
 }));
 
-// TerroristCommander extends Enemy → Phaser.Physics.Arcade.Sprite — mock it.
+// TerroristCommander uses Phaser Physics — stub it.
 vi.mock('../../../entities/enemies/TerroristCommander', () => ({
   TerroristCommander: class TerroristCommander {
-    canBeStomped = false;
     defeated = false;
+    knockbackX = 300;
+    knockbackY = -280;
+    constructor() {}
+    update() {}
+    defeat() {}
   },
 }));
 
-// EventBus singleton used for SFX events.
+// PistolProjectile uses Phaser Physics — stub it.
+vi.mock('../../../entities/PistolProjectile', () => ({
+  PistolProjectile: class PistolProjectile {
+    constructor() {}
+    destroySelf() {}
+  },
+}));
+
+// eventBus is a singleton — stub the emit to avoid side effects in config tests.
 vi.mock('../../../systems/EventBus', () => ({
-  eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
+  eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn(), once: vi.fn() },
 }));
 
 // loadDeferredMusic is called in preload(), not getLevelConfig().

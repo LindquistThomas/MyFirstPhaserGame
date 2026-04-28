@@ -14,6 +14,8 @@ function makeFakeBody() {
   return body;
 }
 
+type FakeBodyType = ReturnType<typeof makeFakeBody>;
+
 vi.mock('phaser', () => {
   class Sprite {
     scene: unknown;
@@ -29,10 +31,14 @@ vi.mock('phaser', () => {
     }
 
     setDepth() { return this; }
+    setAlpha() { return this; }
+    setScale() { return this; }
+    setVelocity(x: number, y: number) { this.body.velocity.x = x; this.body.velocity.y = y; return this; }
+    setVelocityX(v: number) { this.body.velocity.x = v; return this; }
+    setVelocityY(v: number) { this.body.velocity.y = v; return this; }
     setFlipX(flipped: boolean) { this.flipped = flipped; return this; }
     setTintFill() { return this; }
     clearTint() { return this; }
-    setVelocityX(v: number) { this.body.velocity.x = v; return this; }
     destroy() { /* no-op */ }
   }
 
@@ -43,87 +49,84 @@ vi.mock('phaser', () => {
 import { TerroristCommander } from './TerroristCommander';
 
 describe('TerroristCommander', () => {
-  it('spawns as non-stompable with hitCost=2 and default speed=100', () => {
+  it('is not stompable, has higher hit cost and knockback, and patrols forward', () => {
     const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600 });
-    const body = cmd.body as ReturnType<typeof makeFakeBody>;
+    const tc = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, {
+      minX: 400, maxX: 600, speed: 90,
+    });
+    const body = tc.body as unknown as FakeBodyType;
 
-    expect(cmd.canBeStomped).toBe(false);
-    expect(cmd.hitCost).toBe(2);
-    expect(body.setSize).toHaveBeenCalledWith(36, 52);
-    expect(body.setOffset).toHaveBeenCalledWith(4, 4);
-    expect(body.velocity.x).toBe(100);
+    expect(tc.canBeStomped).toBe(false);
+    expect(tc.hitCost).toBe(2);
+    expect(tc.knockbackX).toBe(300);
+    expect(tc.knockbackY).toBe(-280);
+    expect(body.setSize).toHaveBeenCalledWith(36, 50);
+    expect(body.setOffset).toHaveBeenCalledWith(2, 6);
+    expect(body.velocity.x).toBe(90);
   });
 
-  it('accepts custom speed', () => {
+  it('uses default patrol bounds when opts omitted', () => {
     const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600, speed: 150 });
-    expect((cmd.body as { velocity: { x: number } }).velocity.x).toBe(150);
+    const tc = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800);
+    // Default speed is 90 and patrol is x ± 160
+    expect((tc.body as unknown as FakeBodyType).velocity.x).toBe(90);
   });
 
   it('turns around at patrol bounds', () => {
     const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600, speed: 100 });
+    const tc = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, {
+      minX: 400, maxX: 600, speed: 90,
+    });
 
-    // Hit right bound
-    cmd.x = 600;
-    (cmd.body as { velocity: { x: number } }).velocity.x = 100;
-    cmd.update();
-    expect((cmd.body as { velocity: { x: number } }).velocity.x).toBe(-100);
-    expect((cmd as unknown as { flipped: boolean }).flipped).toBe(true);
+    tc.x = 600;
+    (tc.body as unknown as FakeBodyType).velocity.x = 90;
+    tc.update();
+    expect((tc.body as unknown as FakeBodyType).velocity.x).toBe(-90);
+    expect((tc as unknown as { flipped: boolean }).flipped).toBe(true);
 
-    // Hit left bound
-    cmd.x = 400;
-    (cmd.body as { velocity: { x: number } }).velocity.x = -100;
-    cmd.update();
-    expect((cmd.body as { velocity: { x: number } }).velocity.x).toBe(100);
-    expect((cmd as unknown as { flipped: boolean }).flipped).toBe(false);
+    tc.x = 400;
+    (tc.body as unknown as FakeBodyType).velocity.x = -90;
+    tc.update();
+    expect((tc.body as unknown as FakeBodyType).velocity.x).toBe(90);
+    expect((tc as unknown as { flipped: boolean }).flipped).toBe(false);
   });
 
-  it('update() is a no-op once defeated', () => {
+  it('update() is no-op when defeated', () => {
     const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600 });
-
-    cmd.defeated = true;
-    cmd.x = 600;
-    (cmd.body as { velocity: { x: number } }).velocity.x = 100;
-    cmd.update();
-    expect((cmd.body as { velocity: { x: number } }).velocity.x).toBe(100);
+    const tc = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, {
+      minX: 400, maxX: 600, speed: 90,
+    });
+    tc.x = 600;
+    (tc.body as unknown as FakeBodyType).velocity.x = 90;
+    tc.defeated = true;
+    tc.update();
+    // velocity unchanged — patrol logic skipped
+    expect((tc.body as unknown as FakeBodyType).velocity.x).toBe(90);
   });
 
-  it('defeatByWeapon() sets defeated=true and returns true', () => {
+  it('defeat() marks defeated, disables body, and triggers tween', () => {
     const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600 });
+    const tc = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, {
+      minX: 400, maxX: 600,
+    });
 
-    expect(cmd.defeated).toBe(false);
-    const result = cmd.defeatByWeapon();
-    expect(result).toBe(true);
-    expect(cmd.defeated).toBe(true);
+    tc.defeat();
+
+    expect(tc.defeated).toBe(true);
+    expect((tc.body as unknown as FakeBodyType).enable).toBe(false);
+    expect(scene.tweens.killTweensOf).toHaveBeenCalledWith(tc);
+    expect(scene.tweens.add).toHaveBeenCalled();
   });
 
-  it('defeatByWeapon() returns false when already defeated', () => {
+  it('defeat() is idempotent', () => {
     const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600 });
+    const tc = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, {
+      minX: 400, maxX: 600,
+    });
 
-    cmd.defeatByWeapon();
-    const result = cmd.defeatByWeapon();
-    expect(result).toBe(false);
-  });
+    tc.defeat();
+    tc.defeat();
 
-  it('defeatByWeapon() disables body', () => {
-    const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600 });
-
-    cmd.defeatByWeapon();
-    expect((cmd.body as { enable: boolean }).enable).toBe(false);
-  });
-
-  it('onStomp() delegates to defeatByWeapon() — sets defeated=true', () => {
-    const scene = createFakeScene();
-    const cmd = new TerroristCommander(scene as unknown as Phaser.Scene, 500, 800, { minX: 400, maxX: 600 });
-
-    expect(cmd.defeated).toBe(false);
-    cmd.onStomp();
-    expect(cmd.defeated).toBe(true);
+    expect(scene.tweens.add).toHaveBeenCalledTimes(1);
   });
 });

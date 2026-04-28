@@ -70,17 +70,14 @@ export const INFO_EXEC: Record<string, InfoPointDef> = {
     floorId: FLOORS.EXECUTIVE,
     content: {
       id: 'executive-hostage-rescued',
-      title: 'Operation: Die Hard',
+      title: 'Leadership Freed',
       body:
-        'You did it. The C-suite leadership has been freed from the ' +
-        'terrorist commander\u2019s grip.\n\n' +
-        'You collected the Pistol, Security Key Card, and Bomb ' +
-        'Deactivation Code. You disarmed the explosive device and ' +
-        'neutralised the threat. The inner sanctum is secure.\n\n' +
-        'In the real world, architects face less cinematic but equally ' +
-        'critical crises: production outages, security breaches, vendor ' +
-        'lock-in, and organisational dysfunction. The lesson is the same: ' +
-        'gather the right tools, understand the threat, and act decisively.',
+        'You made it. The C-suite is safe.\n\n' +
+        'Collect the pistol, secure the keycard, crack the bomb code, ' +
+        'disarm the device, and take down the threat — the full stack of ' +
+        'executive-floor problem-solving in one afternoon.\n\n' +
+        '"Architecture is not just about systems," the CEO says quietly. ' +
+        '"It\'s about protecting the people inside them."',
     },
   },
 };

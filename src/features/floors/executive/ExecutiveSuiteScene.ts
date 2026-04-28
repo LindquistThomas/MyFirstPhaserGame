@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
+import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../_shared/LevelScene';
 import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
@@ -8,26 +8,20 @@ import { InteractiveDoor } from '../../../ui/InteractiveDoor';
 import { loadDeferredMusic } from '../../../config/audioConfig';
 import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
+import { PistolProjectile } from '../../../entities/PistolProjectile';
 import { eventBus } from '../../../systems/EventBus';
-
-/** Scene-local state for the hostage rescue scenario. Reset on every create(). */
-interface RescueState {
-  collected: Set<MissionItemId>;
-  bombDisarmed: boolean;
-  bossDefeated: boolean;
-  leadershipFreed: boolean;
-}
 
 /**
  * Floor 4 — Executive Suite (penthouse).
  *
  * The top of the elevator shaft in Hohpe's metaphor: strategy, vision,
- * and organizational direction.
+ * and organizational direction. Lighter on platforms than the engine-room
+ * floors below, with a single info point exploring the penthouse role.
  *
- * **Die Hard mode:** An external threat has taken the C-suite leadership
- * hostage. The player must collect 3 mission items (Pistol, Security Key
- * Card, Bomb Deactivation Code), disarm a bomb, defeat the Terrorist
- * Commander, and unlock the inner sanctum to free the leadership.
+ * Visuals: uses the shared `sceneBackdrop` pipeline for parity with other
+ * floors — terrazzo pattern + arched-window silhouette with moon halo
+ * (see `floorPatterns.ts` / `floorAccents.ts`). Rim-lit platform tiles
+ * and a staggered alpha-pulse on tokens keep the penthouse feel.
  */
 export class ExecutiveSuiteScene extends LevelScene {
   /** Doors inside the Executive Suite that open into content-only rooms. */
@@ -44,55 +38,55 @@ export class ExecutiveSuiteScene extends LevelScene {
   /** Set when arriving from a suite room — used to spawn next to that door. */
   private spawnNearDoor?: string;
 
-  // ---- Die Hard hostage rescue state ----
-  private rescue!: RescueState;
+  // ---- Hostage rescue state (scene-local, resets on re-entry) ----
+  private rescueState = {
+    collected: new Set<MissionItemId>(),
+    bombDisarmed: false,
+    commanderDefeated: false,
+    leadershipFreed: false,
+  };
   private missionItems: MissionItem[] = [];
+  private commander?: TerroristCommander;
+  private sanctumDoor?: Phaser.GameObjects.Image;
   private bombSprite?: Phaser.GameObjects.Image;
-  private bombLight?: Phaser.GameObjects.Image;
-  private sanctumDoor?: InteractiveDoor;
-  private sanctumPrompt?: Phaser.GameObjects.Text;
-  private bombPrompt?: Phaser.GameObjects.Text;
-  private commanderRef?: TerroristCommander;
-  private hudIcons: Phaser.GameObjects.Image[] = [];
-  private bombStatusIcon?: Phaser.GameObjects.Image;
+  private missionHUD?: Phaser.GameObjects.Container;
+  private missionIconSlots: Phaser.GameObjects.Text[] = [];
+  private bombIndicator?: Phaser.GameObjects.Text;
 
-  /** Position of the inner sanctum door (far right). */
-  private static readonly SANCTUM_X = 1200;
-  /** Position of the bomb device. */
-  private static readonly BOMB_X = 1000;
-  /** Position of the terrorist commander's patrol center. */
-  private static readonly COMMANDER_X = 900;
-  /**
-   * Delay before the debrief info dialog appears after the celebration banner.
-   * Must exceed banner fade: 3000 ms delay + 500 ms fade = 3500 ms total.
-   */
-  private static readonly DEBRIEF_DIALOG_DELAY_MS = 3600;
+  // ---- Pistol projectile group ----
+  private pistolGroup?: Phaser.Physics.Arcade.Group;
+
+  // ---- Bomb mini-game state ----
+  private bombMinigameActive = false;
+  private bombCursorX = 0;
+  private bombCursorSpeed = 0.4;
+  private bombSuccessAccum = 0;
+  private bombBar?: Phaser.GameObjects.Container;
+  private bombPromptText?: Phaser.GameObjects.Text;
 
   constructor() {
     super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
   }
 
   preload(): void {
+    // Pre-load the boss track during this scene's preload phase so it is
+    // ready by the time create() runs (avoids a brief silence on first
+    // entry). MusicPlugin's lazy-loading is the fallback for scenes without
+    // an explicit preload step.
     loadDeferredMusic(this, 'music_executive');
   }
 
   override init(data?: { fromDoor?: string }): void {
     super.init();
     this.spawnNearDoor = data?.fromDoor;
-    this.rescue = {
-      collected: new Set(),
-      bombDisarmed: false,
-      bossDefeated: false,
-      leadershipFreed: false,
-    };
-    this.missionItems = [];
-    this.hudIcons = [];
   }
 
   override create(): void {
     super.create();
 
-    // Stagger-desync alpha pulse on tokens.
+    // Stagger-desync alpha pulse on tokens so they don't all breathe in
+    // lockstep. Token already owns a y-bob + scale pulse; this is a
+    // scene-local additional cadence so Token.ts stays untouched.
     const tokens = this.tokenGroup.getChildren();
     tokens.forEach((t, i) => {
       this.tweens.add({
@@ -106,11 +100,308 @@ export class ExecutiveSuiteScene extends LevelScene {
       });
     });
 
-    this.createMissionItems();
-    this.createBombDevice();
-    this.createSanctumDoor();
-    this.createMissionHUD();
-    this.findCommanderRef();
+    this.setupRescue();
+    this.showMissionBrief();
+  }
+
+  private showMissionBrief(): void {
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const W = 620;
+    const H = 130;
+
+    const bg = this.add.graphics()
+      .fillStyle(0x0a0a1a, 0.92)
+      .fillRect(-W / 2, -H / 2, W, H)
+      .lineStyle(2, 0xffd700, 1)
+      .strokeRect(-W / 2, -H / 2, W, H);
+
+    const title = this.add.text(0, -H / 2 + 14, '⚠ MISSION BRIEF', {
+      fontFamily: 'monospace', fontSize: '14px', color: '#ffd700', fontStyle: 'bold',
+    }).setOrigin(0.5, 0);
+
+    const body = this.add.text(0, -H / 2 + 36, [
+      'ALERT: C-suite leadership has been taken hostage!',
+      'Locate the pistol, keycard, and bomb code.',
+      'Defeat the TerroristCommander and disarm the bomb.',
+    ].join('\n'), {
+      fontFamily: 'monospace', fontSize: '13px', color: '#ccddff',
+      wordWrap: { width: W - 40 }, align: 'center',
+    }).setOrigin(0.5, 0);
+
+    const hint = this.add.text(0, H / 2 - 18, 'Press Enter to continue', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#666677',
+    }).setOrigin(0.5, 1);
+
+    const container = this.add.container(cx, cy, [bg, title, body, hint])
+      .setDepth(90)
+      .setScrollFactor(0);
+
+    const onEnter = (event: KeyboardEvent): void => {
+      if (event.key === 'Enter') {
+        window.removeEventListener('keydown', onEnter);
+        container.destroy();
+      }
+    };
+    window.addEventListener('keydown', onEnter);
+
+    // Also clean up listener on scene shutdown
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('keydown', onEnter);
+    });
+  }
+
+  private setupRescue(): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const T1 = G - 240;
+
+    // ---- Mission items ----
+    const spawnItem = (x: number, y: number, id: MissionItemId): void => {
+      const item = new MissionItem(this, x, y, id, (collected) => this.onItemCollected(collected));
+      this.missionItems.push(item);
+      this.physics.add.overlap(this.player.sprite, item, () => item.collect());
+    };
+    spawnItem(620, T1 - 30, 'pistol');        // on mezzanine
+    spawnItem(940, G - 30, 'keycard');        // near patrol zone (risky)
+    spawnItem(160, G - 30, 'bomb_code');      // behind exit side
+
+    // ---- Terrorist Commander patrol ----
+    this.commander = new TerroristCommander(this, 750, G - 56, {
+      minX: 600, maxX: 1100, speed: 90,
+    });
+    this.physics.add.collider(this.commander, this.platformGroup);
+    // Override stomp: use pistol defeat instead
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.commander,
+      () => this.onCommanderOverlap(),
+    );
+
+    // Pistol projectile group
+    this.pistolGroup = this.physics.add.group();
+
+    // ---- Bomb device (right side, gated by bomb_code) ----
+    this.bombSprite = this.add.image(1100, G - 40, 'bomb_device').setDepth(4);
+    this.tweens.add({
+      targets: this.bombSprite,
+      alpha: 0.5,
+      duration: 500,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // ---- Sanctum door (blocks far-right area) ----
+    this.sanctumDoor = this.add.image(1200, G - 48, 'door_sanctum_locked')
+      .setDepth(4)
+      .setVisible(true);
+
+    // ---- Mission HUD overlay (top-right) ----
+    this.buildMissionHUD();
+
+    // ---- Shutdown cleanup ----
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      // rescueState resets on next create() — nothing to persist
+    });
+  }
+
+  private buildMissionHUD(): void {
+    const icons: Phaser.GameObjects.Text[] = [];
+    const labels = ['🔫', '🪪', '💣'];
+    for (let i = 0; i < 3; i++) {
+      const icon = this.add.text(GAME_WIDTH - 110 + i * 36, 16, labels[i]!, {
+        fontFamily: 'monospace', fontSize: '20px', color: '#333344',
+      }).setScrollFactor(0).setDepth(60);
+      icons.push(icon);
+    }
+    this.missionIconSlots = icons;
+    this.bombIndicator = this.add.text(GAME_WIDTH - 110, 42, '💥 ARMED', {
+      fontFamily: 'monospace', fontSize: '11px', color: '#cc2222',
+    }).setScrollFactor(0).setDepth(60);
+  }
+
+  private onItemCollected(id: MissionItemId): void {
+    this.rescueState.collected.add(id);
+    const idx = ['pistol', 'keycard', 'bomb_code'].indexOf(id);
+    if (idx >= 0 && this.missionIconSlots[idx]) {
+      this.missionIconSlots[idx]!.setColor('#ffd700');
+    }
+  }
+
+  private onCommanderOverlap(): void {
+    if (!this.commander || this.commander.defeated) return;
+    if (!this.rescueState.collected.has('pistol')) {
+      // No pistol — take damage normally (handled by LevelEnemySpawner for listed enemies,
+      // but this commander is spawned outside the spawner config, so handle here)
+      if (!this.player.isInvulnerable()) {
+        this.player.takeHit(this.commander.knockbackX, this.commander.knockbackY);
+        eventBus.emit('sfx:hit');
+      }
+      return;
+    }
+    // Pistol in hand — defeat the commander
+    this.commander.defeat();
+    this.rescueState.commanderDefeated = true;
+    this.checkSanctumUnlock();
+  }
+
+  private checkBombDisarm(delta: number): void {
+    if (this.rescueState.bombDisarmed) return;
+    if (!this.rescueState.collected.has('bomb_code')) return;
+
+    const px = this.player.sprite.x;
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const nearBomb = Math.abs(px - 1100) < 80 && this.player.sprite.y > G - 200;
+
+    if (!nearBomb) {
+      // Player left zone — hide UI and reset
+      if (this.bombMinigameActive || this.bombPromptText?.visible) {
+        this.bombMinigameActive = false;
+        this.bombCursorX = 0;
+        this.bombSuccessAccum = 0;
+        this.bombBar?.destroy();
+        this.bombBar = undefined;
+        this.bombPromptText?.setVisible(false);
+      }
+      return;
+    }
+
+    // Near bomb — show prompt if not active
+    if (!this.bombPromptText) {
+      this.bombPromptText = this.add.text(
+        GAME_WIDTH / 2, GAME_HEIGHT - 148,
+        'Hold [Interact] to disarm',
+        { fontFamily: 'monospace', fontSize: '12px', color: '#ffd700' },
+      ).setOrigin(0.5).setScrollFactor(0).setDepth(65).setVisible(false);
+    }
+
+    const holding = this.inputs.isDown('Interact');
+
+    if (!holding) {
+      // Not holding — show prompt, hide/reset bar
+      this.bombPromptText.setVisible(true);
+      if (this.bombMinigameActive) {
+        this.bombMinigameActive = false;
+        // Only penalize if player released well outside the green zone and
+        // hadn't made significant progress (< 0.3s accumulated in zone).
+        const outsideZone = this.bombCursorX < 0.35 || this.bombCursorX > 0.65;
+        if (outsideZone && this.bombSuccessAccum < 0.3) {
+          this.player.takeHit(40, -100);
+        }
+        this.bombSuccessAccum = 0;
+        this.bombBar?.destroy();
+        this.bombBar = undefined;
+        this.bombCursorX = 0;
+      }
+      return;
+    }
+
+    // Holding Interact — run mini-game
+    this.bombPromptText.setVisible(false);
+    if (!this.bombMinigameActive) {
+      this.bombMinigameActive = true;
+      this.bombCursorX = 0;
+      this.bombSuccessAccum = 0;
+    }
+
+    const dt = delta / 1000;
+    this.bombCursorX = (this.bombCursorX + this.bombCursorSpeed * dt) % 1;
+    const inGreen = this.bombCursorX >= 0.35 && this.bombCursorX <= 0.65;
+    if (inGreen) {
+      this.bombSuccessAccum += dt;
+    } else {
+      this.bombSuccessAccum = Math.max(0, this.bombSuccessAccum - dt * 0.5);
+    }
+
+    // Build/update bar UI
+    if (!this.bombBar) {
+      this.bombBar = this.buildBombBar();
+    }
+    this.updateBombBar(this.bombCursorX);
+
+    if (this.bombSuccessAccum >= 0.8) {
+      // Success!
+      this.bombMinigameActive = false;
+      this.rescueState.bombDisarmed = true;
+      this.bombBar.destroy();
+      this.bombBar = undefined;
+      this.bombPromptText?.destroy();
+      this.bombPromptText = undefined;
+      this.bombSprite?.destroy();
+      eventBus.emit('sfx:bomb_disarm');
+      if (this.bombIndicator) {
+        this.bombIndicator.setText('✓ DEFUSED').setColor('#44ff88');
+      }
+      this.checkSanctumUnlock();
+    }
+  }
+
+  private buildBombBar(): Phaser.GameObjects.Container {
+    const BAR_W = 300;
+    const BAR_H = 18;
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT - 120;
+
+    const bg = this.add.graphics()
+      .fillStyle(0x333333, 1)
+      .fillRect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H)
+      .lineStyle(1, 0xffd700, 1)
+      .strokeRect(-BAR_W / 2, -BAR_H / 2, BAR_W, BAR_H);
+
+    const greenZone = this.add.graphics()
+      .fillStyle(0x00aa44, 0.6)
+      .fillRect(-BAR_W / 2 + BAR_W * 0.35, -BAR_H / 2, BAR_W * 0.3, BAR_H);
+
+    const cursor = this.add.graphics()
+      .fillStyle(0xffffff, 1)
+      .fillRect(-2, -BAR_H / 2, 4, BAR_H);
+    cursor.setName('cursor');
+
+    const container = this.add.container(cx, cy, [bg, greenZone, cursor])
+      .setDepth(65).setScrollFactor(0);
+    return container;
+  }
+
+  private updateBombBar(cursorX: number): void {
+    if (!this.bombBar) return;
+    const BAR_W = 300;
+    const BAR_H = 18;
+    const cursor = this.bombBar.getByName('cursor') as Phaser.GameObjects.Graphics;
+    if (!cursor) return;
+    cursor.clear();
+    cursor.fillStyle(0xffffff, 1);
+    const cx = -BAR_W / 2 + BAR_W * cursorX;
+    cursor.fillRect(cx - 2, -BAR_H / 2, 4, BAR_H);
+  }
+
+  private checkSanctumUnlock(): void {
+    if (this.rescueState.leadershipFreed) return;
+    const { collected, bombDisarmed, commanderDefeated } = this.rescueState;
+    if (
+      collected.has('pistol') &&
+      collected.has('keycard') &&
+      collected.has('bomb_code') &&
+      bombDisarmed &&
+      commanderDefeated
+    ) {
+      this.openSanctum();
+    }
+  }
+
+  private openSanctum(): void {
+    this.rescueState.leadershipFreed = true;
+    this.sanctumDoor?.setTexture('door_sanctum_open');
+    eventBus.emit('sfx:hostage_freed');
+    this.cameras.main.shake(150, 0.006);
+
+    // Grant bonus AU
+    this.progression.addAU(FLOORS.EXECUTIVE, 5);
+    this.gameState.unlockHostageRescue();
+    this.gameState.checkAchievements();
+
+    // Open the rescue info dialog
+    this.time.delayedCall(600, () => {
+      if (this.dialogs) this.dialogs.open('executive-hostage-rescued');
+    });
   }
 
   protected override buildPlatforms(config: LevelConfig): void {
@@ -201,10 +492,13 @@ export class ExecutiveSuiteScene extends LevelScene {
     const G = GAME_HEIGHT - TILE_SIZE;
     const T1 = G - 240;
 
+    // Spawn next to the door the player just came back through, if any.
+    // Default spawn is nudged left of Geir's info zone so the player
+    // doesn't materialise inside it on scene entry.
     let spawnX = 100;
     if (this.spawnNearDoor) {
       const door = ExecutiveSuiteScene.DOORS.find((d) => d.doorId === this.spawnNearDoor);
-      if (door) spawnX = door.x - 70;
+      if (door) spawnX = door.x - 70; // step out to the left of the door
     }
 
     return {
@@ -213,16 +507,14 @@ export class ExecutiveSuiteScene extends LevelScene {
       exitPosition: { x: 80, y: G - 56 },
 
       platforms: [
+        // Ground spans the whole room.
         { x: 0, y: G, width: 10 },
+        // A single mezzanine for the strategy lounge.
         { x: 384, y: T1, width: 4 },
       ],
 
-      catwalks: [
-        // High catwalk for the pistol pickup — forces a jump challenge.
-        { x: 500, y: T1 - 140, width: 180 },
-      ],
-
       roomElevators: [
+        // One in-room lift up to the mezzanine.
         { x: 280, minY: T1 + 6, maxY: G + 6, startY: G + 6 },
       ],
 
@@ -233,17 +525,6 @@ export class ExecutiveSuiteScene extends LevelScene {
         { x: 460,  y: T1 - 40 },
         { x: 600,  y: T1 - 40 },
         { x: 740,  y: T1 - 40 },
-      ],
-
-      enemies: [
-        {
-          type: 'terrorist' as const,
-          x: ExecutiveSuiteScene.COMMANDER_X,
-          y: G - 60,
-          minX: 800,
-          maxX: 1100,
-          speed: 100,
-        },
       ],
 
       coffees: [
@@ -263,280 +544,37 @@ export class ExecutiveSuiteScene extends LevelScene {
     };
   }
 
-  // ---- Mission items ----
-
-  private createMissionItems(): void {
-    const G = GAME_HEIGHT - TILE_SIZE;
-    const T1 = G - 240;
-
-    const items: Array<{ x: number; y: number; texture: string; id: MissionItemId }> = [
-      // Pistol on the high catwalk (hard to reach).
-      { x: 580, y: T1 - 180, texture: 'item_pistol', id: 'pistol' },
-      // Key Card near the commander's patrol zone (risky).
-      { x: 850, y: G - 40, texture: 'item_keycard', id: 'keycard' },
-      // Bomb Code on the mezzanine.
-      { x: 500, y: T1 - 40, texture: 'item_bomb_code', id: 'bomb_code' },
-    ];
-
-    for (const item of items) {
-      const mi = new MissionItem(this, item.x, item.y, item.texture, item.id);
-      this.missionItems.push(mi);
-      this.physics.add.overlap(
-        this.player.sprite,
-        mi,
-        () => this.collectMissionItem(mi),
-        undefined,
-        this,
-      );
-    }
-  }
-
-  private collectMissionItem(item: MissionItem): void {
-    if (!item.collect()) return;
-    this.rescue.collected.add(item.itemId);
-    eventBus.emit('sfx:item_pickup');
-    this.updateMissionHUD();
-
-    // Collecting the pistol enables stomping the commander.
-    if (item.itemId === 'pistol' && this.commanderRef && !this.commanderRef.defeated) {
-      this.commanderRef.canBeStomped = true;
-    }
-  }
-
-  // ---- Bomb Device ----
-
-  private createBombDevice(): void {
-    const G = GAME_HEIGHT - TILE_SIZE;
-    const bx = ExecutiveSuiteScene.BOMB_X;
-
-    this.bombSprite = this.add.image(bx, G - 20, 'bomb_device').setDepth(5);
-
-    // Pulsing red warning light.
-    this.bombLight = this.add.image(bx + 12, G - 36, 'bomb_device').setDepth(5)
-      .setAlpha(0).setScale(0.3).setTint(0xff0000);
-    this.tweens.add({
-      targets: this.bombLight,
-      alpha: { from: 0.3, to: 0.8 },
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-    });
-
-    this.add.text(bx, G - 60, '\u26A0 BOMB', {
-      fontFamily: 'monospace', fontSize: '11px', color: '#ff3333',
-      fontStyle: 'bold', backgroundColor: '#1a0000',
-      padding: { x: 4, y: 2 },
-    }).setOrigin(0.5).setDepth(5);
-
-    this.bombPrompt = this.add.text(bx, G - 80, '', {
-      fontFamily: 'monospace', fontSize: '14px',
-      color: theme.color.css.textWarn, backgroundColor: theme.color.css.bgDialog,
-      padding: { x: 6, y: 3 },
-    }).setOrigin(0.5).setDepth(20).setVisible(false);
-  }
-
-  // ---- Sanctum Door ----
-
-  private createSanctumDoor(): void {
-    const G = GAME_HEIGHT - TILE_SIZE;
-    const sx = ExecutiveSuiteScene.SANCTUM_X;
-
-    this.sanctumDoor = new InteractiveDoor(this, sx, G - 56, 'door_locked', 'door_open');
-
-    this.add.text(sx, G - 110, '\uD83D\uDD12 SANCTUM', {
-      fontFamily: 'monospace', fontSize: '12px', color: '#ff6666',
-      fontStyle: 'bold', backgroundColor: '#1a0808',
-      padding: { x: 4, y: 2 },
-    }).setOrigin(0.5).setDepth(5);
-
-    this.sanctumPrompt = this.add.text(sx, G - 140, '', {
-      fontFamily: 'monospace', fontSize: '14px',
-      color: theme.color.css.textWarn, backgroundColor: theme.color.css.bgDialog,
-      padding: { x: 6, y: 3 },
-    }).setOrigin(0.5).setDepth(20).setVisible(false);
-  }
-
-  // ---- Mission HUD ----
-
-  private createMissionHUD(): void {
-    const startX = GAME_WIDTH - 120;
-    const y = 30;
-    const iconKeys: Array<{ id: MissionItemId; texture: string }> = [
-      { id: 'pistol', texture: 'item_pistol' },
-      { id: 'keycard', texture: 'item_keycard' },
-      { id: 'bomb_code', texture: 'item_bomb_code' },
-    ];
-
-    this.add.text(startX + 30, y - 16, 'MISSION', {
-      fontFamily: 'monospace', fontSize: '10px', color: theme.color.css.textPale,
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
-
-    for (let i = 0; i < iconKeys.length; i++) {
-      const entry = iconKeys[i]!;
-      const icon = this.add.image(startX + i * 28, y + 8, entry.texture)
-        .setDepth(50).setScrollFactor(0).setScale(1.2).setAlpha(0.3).setTint(0x555555);
-      this.hudIcons.push(icon);
-    }
-
-    this.bombStatusIcon = this.add.image(startX + 3 * 28, y + 8, 'bomb_device')
-      .setDepth(50).setScrollFactor(0).setScale(0.8).setAlpha(0.3).setTint(0xff3333);
-  }
-
-  private updateMissionHUD(): void {
-    const ids: MissionItemId[] = ['pistol', 'keycard', 'bomb_code'];
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i]!;
-      if (this.rescue.collected.has(id)) {
-        this.hudIcons[i]?.setAlpha(1).clearTint();
-      }
-    }
-    if (this.rescue.bombDisarmed) {
-      this.bombStatusIcon?.setAlpha(1).setTint(0x33ff33);
-    }
-  }
-
-  // ---- Commander reference ----
-
-  private findCommanderRef(): void {
-    for (const enemy of this.enemies) {
-      if (enemy instanceof TerroristCommander) {
-        this.commanderRef = enemy;
-        break;
-      }
-    }
-  }
-
-  // ---- Update: bomb/sanctum/boss proximity ----
-
-  override update(time: number, delta: number): void {
-    super.update(time, delta);
-    if (this.isTransitioning) return;
-
-    // Detect boss defeat (player stomped while armed with pistol).
-    if (this.commanderRef?.defeated && !this.rescue.bossDefeated) {
-      this.rescue.bossDefeated = true;
-      eventBus.emit('sfx:boss_defeated');
-    }
-
-    this.checkBombProximity();
-    this.checkSanctumProximity();
-  }
-
-  private checkBombProximity(): void {
-    if (this.rescue.bombDisarmed || !this.bombSprite) return;
-
-    const near = Math.abs(this.player.sprite.x - ExecutiveSuiteScene.BOMB_X) < 60;
-
-    if (near && this.rescue.collected.has('bomb_code')) {
-      this.bombPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Disarm Bomb`).setVisible(true);
-      if (this.inputs.justPressed('Interact')) this.disarmBomb();
-    } else if (near) {
-      this.bombPrompt?.setText('Need Deactivation Code').setVisible(true);
-    } else {
-      this.bombPrompt?.setVisible(false);
-    }
-  }
-
-  private disarmBomb(): void {
-    this.rescue.bombDisarmed = true;
-    eventBus.emit('sfx:bomb_disarm');
-    this.bombPrompt?.setVisible(false);
-
-    if (this.bombLight) {
-      this.tweens.killTweensOf(this.bombLight);
-      this.bombLight.setAlpha(0);
-    }
-    this.bombSprite?.setTint(0x333333);
-
-    const confirm = this.add.text(ExecutiveSuiteScene.BOMB_X, GAME_HEIGHT - TILE_SIZE - 80,
-      '\u2713 DISARMED', {
-        fontFamily: 'monospace', fontSize: '16px', color: '#33ff33',
-        fontStyle: 'bold', backgroundColor: '#0a1a0a',
-        padding: { x: 6, y: 3 },
-      }).setOrigin(0.5).setDepth(20);
-
-    this.tweens.add({
-      targets: confirm, alpha: 0, y: confirm.y - 30,
-      duration: 2000, delay: 1000,
-      onComplete: () => confirm.destroy(),
-    });
-
-    this.updateMissionHUD();
-  }
-
-  private checkSanctumProximity(): void {
-    if (this.rescue.leadershipFreed || !this.sanctumDoor) return;
-
-    const near = Math.abs(this.player.sprite.x - ExecutiveSuiteScene.SANCTUM_X) < 60;
-    const ready = this.isRescueReady();
-
-    this.sanctumDoor.setOpen(near && ready);
-
-    if (near && ready) {
-      this.sanctumPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Free Leadership`).setVisible(true);
-      if (this.inputs.justPressed('Interact')) this.freeLeadership();
-    } else if (near) {
-      const missing: string[] = [];
-      if (!this.rescue.collected.has('pistol')) missing.push('Pistol');
-      if (!this.rescue.collected.has('keycard')) missing.push('Key Card');
-      if (!this.rescue.collected.has('bomb_code')) missing.push('Bomb Code');
-      if (!this.rescue.bombDisarmed) missing.push('Disarm Bomb');
-      if (!this.rescue.bossDefeated) missing.push('Defeat Threat');
-      this.sanctumPrompt?.setText(`Need: ${missing.join(', ')}`).setVisible(true);
-    } else {
-      this.sanctumPrompt?.setVisible(false);
-    }
-  }
-
-  private isRescueReady(): boolean {
-    return this.rescue.collected.size === 3
-      && this.rescue.bombDisarmed
-      && this.rescue.bossDefeated;
-  }
-
-  private freeLeadership(): void {
-    if (this.rescue.leadershipFreed) return;
-    this.rescue.leadershipFreed = true;
-    eventBus.emit('sfx:hostage_freed');
-    this.sanctumPrompt?.setVisible(false);
-
-    this.progression.addAU(this.floorId, 5);
-    this.gameState.checkAchievements();
-
-    // Unlock the secret Die Hard achievement.
-    this.gameState.unlockAchievement('hostage-rescue');
-
-    const banner = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 100,
-      '\uD83C\uDFC6 LEADERSHIP FREED!', {
-        fontFamily: 'monospace', fontSize: '32px', color: '#ffd700', fontStyle: 'bold',
-      }).setOrigin(0.5).setDepth(100);
-
-    const sub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 50,
-      '+5 AU  \u2022  The C-suite is safe.', {
-        fontFamily: 'monospace', fontSize: '18px', color: theme.color.css.textSecondary,
-      }).setOrigin(0.5).setDepth(100);
-
-    this.tweens.add({
-      targets: [banner, sub], alpha: 0, duration: 500, delay: 3000,
-      onComplete: () => { banner.destroy(); sub.destroy(); },
-    });
-
-    // Open the mission-debrief info card after the celebration banner fades.
-    this.time.delayedCall(ExecutiveSuiteScene.DEBRIEF_DIALOG_DELAY_MS, () => {
-      this.dialogs.open('executive-hostage-rescued');
-    });
-  }
-
-  // ---- Existing door/exit logic ----
-
   /**
    * Layer door-entry detection on top of the base elevator-exit check.
    * The Finance door sits far to the right of the elevator exit door, so
    * the two prompts never collide.
    */
   protected override checkExitProximity(): void {
+    // Handled by update() override via checkExitProximityWithDelta().
+    // Intentionally empty — super call moved there to get delta.
+  }
+
+  override update(time: number, delta: number): void {
+    super.update(time, delta);
+    this.checkExitProximityWithDelta(delta);
+  }
+
+  private checkExitProximityWithDelta(delta: number): void {
+    // Base class elevator-exit check
     super.checkExitProximity();
+
+    // Fire pistol with Attack action if pistol collected
+    if (this.rescueState.collected.has('pistol') && this.inputs.justPressed('Attack')) {
+      this.firePistol();
+    }
+
+    // Check bomb disarm each frame (proximity-gated, needs delta)
+    this.checkBombDisarm(delta);
+
+    // Commander update (not in LevelEnemySpawner — managed directly here)
+    if (this.commander && !this.commander.defeated) {
+      this.commander.update();
+    }
 
     if (this.isTransitioning) return;
 
@@ -544,8 +582,6 @@ export class ExecutiveSuiteScene extends LevelScene {
     const G = GAME_HEIGHT - TILE_SIZE;
     const playerOnGround = this.player.sprite.y > G - 200;
 
-    // Find the door the player is currently close to (if any) so we can
-    // swap its sprite to the open texture and show the prompt.
     const near = playerOnGround
       ? ExecutiveSuiteScene.DOORS.find((d) => Math.abs(px - d.x) < 60)
       : undefined;
@@ -559,6 +595,28 @@ export class ExecutiveSuiteScene extends LevelScene {
     ).setVisible(true);
     if (this.inputs.justPressed('Interact')) {
       this.enterSuiteRoom(near);
+    }
+  }
+
+  private firePistol(): void {
+    if (!this.pistolGroup) return;
+    const toRight = !this.player.sprite.flipX;
+    const bullet = new PistolProjectile(
+      this,
+      this.player.sprite.x + (toRight ? 20 : -20),
+      this.player.sprite.y - 10,
+      toRight,
+    );
+    this.pistolGroup.add(bullet);
+    eventBus.emit('sfx:pistol_shot');
+    if (this.commander && !this.commander.defeated) {
+      this.physics.add.overlap(bullet, this.commander, () => {
+        if (!this.commander || this.commander.defeated) return;
+        this.commander.defeat();
+        this.rescueState.commanderDefeated = true;
+        bullet.destroySelf();
+        this.checkSanctumUnlock();
+      });
     }
   }
 
