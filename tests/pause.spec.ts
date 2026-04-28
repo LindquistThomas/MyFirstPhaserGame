@@ -57,14 +57,21 @@ test.describe('Pause / Resume', () => {
 
     await page.screenshot({ path: `${SCREENSHOT_DIR}/pause-overlay.png` });
 
-    // The level scene should now be paused (status 6 = PAUSED in Phaser).
-    const levelPaused = await page.evaluate(() => {
-      const g = window.__game!;
-      const scene = g.scene.getScenes(true).find((s) => s.sys.settings.key === 'PlatformTeamScene');
-      // Phaser status 6 = PAUSED, 7 = SLEEPING. Both mean "not running".
-      return !!scene && (scene.sys.settings.status === 6 || scene.sys.settings.status === 7);
-    });
-    expect(levelPaused).toBe(true);
+    // The level scene should now be paused. Phaser's scene.pause() is queued
+    // by SceneManager and applied on the next step, so poll rather than read once.
+    // Status 6 = PAUSED, 7 = SLEEPING. Both mean "not running".
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene
+          .getScenes(false)
+          .find((s) => s.sys.settings.key === 'PlatformTeamScene');
+        return !!scene && (scene.sys.settings.status === 6 || scene.sys.settings.status === 7);
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
 
     errors.assertClean();
   });
@@ -142,13 +149,20 @@ test.describe('Pause / Resume', () => {
       { timeout: 5_000 },
     );
 
-    // The level scene should be paused.
-    const levelPaused = await page.evaluate(() => {
-      const g = window.__game!;
-      const scene = g.scene.getScenes(true).find((s) => s.sys.settings.key === 'PlatformTeamScene');
-      return !!scene && (scene.sys.settings.status === 6 || scene.sys.settings.status === 7);
-    });
-    expect(levelPaused).toBe(true);
+    // The level scene should be paused. Poll because Phaser's scene.pause()
+    // is queued and applied on the next step.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene
+          .getScenes(false)
+          .find((s) => s.sys.settings.key === 'PlatformTeamScene');
+        return !!scene && (scene.sys.settings.status === 6 || scene.sys.settings.status === 7);
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
 
     errors.assertClean();
   });
