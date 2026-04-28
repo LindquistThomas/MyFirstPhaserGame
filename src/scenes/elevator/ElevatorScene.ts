@@ -20,6 +20,7 @@ import { ElevatorFloorTransitionManager } from './ElevatorFloorTransitionManager
 import type { NavigationContext } from '../NavigationContext';
 import type { GameAction } from '../../input/actions';
 import { eventBus } from '../../systems/EventBus';
+import { LAZY_SCENE_LOADERS } from '../sceneRegistry';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -479,7 +480,7 @@ export class ElevatorScene extends Phaser.Scene {
     this.isTransitioning = true;
     this.progression.setCurrentFloor(FLOORS.PRODUCTS);
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start(door.sceneKey));
+    void this.lazyStartScene(door.sceneKey);
   }
 
   /**
@@ -533,7 +534,37 @@ export class ElevatorScene extends Phaser.Scene {
     this.progression.setCurrentFloor(floorId);
     const sceneKey = ElevatorFloorTransitionManager.resolveSceneKey(floorId, direction);
     this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.time.delayedCall(500, () => this.scene.start(sceneKey));
+    void this.lazyStartScene(sceneKey);
+  }
+
+  /**
+   * Registers the scene class with Phaser on first use (via a dynamic import
+   * that Vite splits into its own chunk), then starts it once the 500 ms fade
+   * has elapsed. The fetch and the fade run concurrently — on fast connections
+   * there is no extra black-screen time beyond the animation itself.
+   *
+   * On failure (e.g. network error) the fade is reversed so the player can
+   * retry the transition.
+   */
+  private async lazyStartScene(sceneKey: string): Promise<void> {
+    const fadeDelay = new Promise<void>((resolve) => {
+      this.time.delayedCall(500, () => resolve());
+    });
+
+    try {
+      const loader = LAZY_SCENE_LOADERS.get(sceneKey);
+      if (loader && !this.scene.get(sceneKey)) {
+        const [cls] = await Promise.all([loader(), fadeDelay]);
+        this.scene.add(sceneKey, cls, false);
+      } else {
+        await fadeDelay;
+      }
+      this.scene.start(sceneKey);
+    } catch (err: unknown) {
+      console.error(`[ElevatorScene] Failed to load scene "${sceneKey}":`, err);
+      this.isTransitioning = false;
+      this.cameras.main.fadeIn(300, 0, 0, 0);
+    }
   }
 
   /**
