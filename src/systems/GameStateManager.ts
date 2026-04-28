@@ -7,6 +7,7 @@ import { ProgressionSystem } from './ProgressionSystem';
 import type { KVStorage } from './SaveManager';
 import { eventBus } from './EventBus';
 import { NON_SECRET_IDS, ACHIEVEMENT_MAP } from '../config/achievements';
+import type { AchievementId } from '../config/achievements';
 import { INFO_POINTS } from '../config/info';
 import { QUIZ_DATA } from '../config/quiz';
 import { FLOORS } from '../config/gameConfig';
@@ -68,6 +69,21 @@ export class GameStateManager {
 
   getUnlockedAchievementCount(): number {
     return AchievementManager.getUnlockedCount();
+  }
+
+  /**
+   * Unlock a single achievement by id and emit `achievement:unlocked` if
+   * it was a new unlock. Returns `true` on a new unlock, `false` if already
+   * unlocked. Use this for secret/scenario achievements that are triggered
+   * programmatically rather than through `checkAchievements()`.
+   */
+  unlockAchievement(id: AchievementId): boolean {
+    if (AchievementManager.unlock(id)) {
+      const def = ACHIEVEMENT_MAP.get(id);
+      if (def) eventBus.emit('achievement:unlocked', id, def.label);
+      return true;
+    }
+    return false;
   }
 
   /**

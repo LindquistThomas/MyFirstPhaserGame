@@ -22,6 +22,7 @@ export const VALID_ENEMY_TYPES = [
   'scope-creep',
   'astronaut',
   'tech-debt-ghost',
+  'terrorist',
 ] as const;
 
 export type EnemyType = (typeof VALID_ENEMY_TYPES)[number];

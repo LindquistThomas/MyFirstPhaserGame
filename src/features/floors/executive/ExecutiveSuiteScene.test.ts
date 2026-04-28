@@ -50,14 +50,7 @@ vi.mock('../../../ui/InteractiveDoor', () => ({
   },
 }));
 
-// loadDeferredMusic is called in preload(), not getLevelConfig().
-// Stub it so the import resolves without side effects.
-vi.mock('../../../config/audioConfig', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../config/audioConfig')>();
-  return { ...original, loadDeferredMusic: vi.fn() };
-});
-
-// MissionItem uses Phaser.Physics.Arcade.Sprite — stub the whole module.
+// MissionItem uses Phaser.Physics.Arcade.Sprite — stub it.
 vi.mock('../../../entities/MissionItem', () => ({
   MissionItem: class MissionItem {
     itemId: string;
@@ -80,10 +73,25 @@ vi.mock('../../../entities/enemies/TerroristCommander', () => ({
   },
 }));
 
+// PistolProjectile uses Phaser Physics — stub it.
+vi.mock('../../../entities/PistolProjectile', () => ({
+  PistolProjectile: class PistolProjectile {
+    constructor() {}
+    destroySelf() {}
+  },
+}));
+
 // eventBus is a singleton — stub the emit to avoid side effects in config tests.
 vi.mock('../../../systems/EventBus', () => ({
   eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn(), once: vi.fn() },
 }));
+
+// loadDeferredMusic is called in preload(), not getLevelConfig().
+// Stub it so the import resolves without side effects.
+vi.mock('../../../config/audioConfig', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../../config/audioConfig')>();
+  return { ...original, loadDeferredMusic: vi.fn() };
+});
 
 import { ExecutiveSuiteScene } from './ExecutiveSuiteScene';
 
