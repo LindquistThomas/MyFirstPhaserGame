@@ -218,6 +218,23 @@ describe('HUD', () => {
     expect(scene.tweens.add).toHaveBeenCalled();
   });
 
+  it('does not call findNextUnlockFloor when AU and floor are unchanged between updates', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const spy = vi.spyOn(hud as unknown as { findNextUnlockFloor(): unknown }, 'findNextUnlockFloor');
+
+    // First update: AU=0, floor unchanged — triggers the initial floorChanged path,
+    // so findNextUnlockFloor should be called once.
+    hud.update();
+    const callsAfterFirst = spy.mock.calls.length;
+    expect(callsAfterFirst).toBeGreaterThan(0);
+
+    // Subsequent updates with no state change: findNextUnlockFloor must not be called.
+    hud.update();
+    hud.update();
+    expect(spy.mock.calls.length).toBe(callsAfterFirst);
+  });
+
   it('emits toggle event on mute click and unsubscribes from mute-changed on shutdown', () => {
     scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);
