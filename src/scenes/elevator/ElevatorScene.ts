@@ -89,7 +89,6 @@ export class ElevatorScene extends Phaser.Scene {
   private static readonly CALL_BUTTON_RADIUS = 54;
   private static readonly CALL_BUTTON_RADIUS_SQ =
     ElevatorScene.CALL_BUTTON_RADIUS * ElevatorScene.CALL_BUTTON_RADIUS;
-  private static readonly VALID_FLOOR_IDS = new Set<number>(Object.values(FLOORS));
 
   constructor() {
     super({ key: 'ElevatorScene' });
@@ -298,7 +297,7 @@ export class ElevatorScene extends Phaser.Scene {
   private createUI(): void {
     this.hud = new HUD(this, this.progression);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  0-5  Cab Panel  |  ENTER  Call/Open  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  0-5  Call Floor  |  ENTER  Call/Open  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
     }).setOrigin(0.5).setDepth(50).setScrollFactor(0);
 
@@ -330,9 +329,9 @@ export class ElevatorScene extends Phaser.Scene {
       { side: 'right', x: cx + sw / 2 + 28 },
     ];
 
-    for (const [floorIdText, floorY] of Object.entries(positions)) {
-      const floorId = Number(floorIdText);
-      if (!ElevatorScene.isFloorId(floorId)) continue;
+    const floorIds = Object.keys(positions).map((id) => Number(id) as FloorId);
+    for (const floorId of floorIds) {
+      const floorY = positions[floorId];
       const y = floorY + ElevatorScene.FLOOR_H - 88;
       for (const { side, x } of sides) {
         const container = this.add.container(x, y).setDepth(4);
@@ -349,7 +348,7 @@ export class ElevatorScene extends Phaser.Scene {
         panel.fillTriangle(-5, 8, 5, 8, 0, -1);
         container.add(panel);
 
-        const prompt = this.add.text(0, -36, 'ENTER', {
+        const prompt = this.add.text(0, -36, 'CALL', {
           fontFamily: 'monospace',
           fontSize: '11px',
           color: theme.color.css.textWhite,
@@ -379,10 +378,6 @@ export class ElevatorScene extends Phaser.Scene {
     for (const button of this.floorCallButtons) {
       button.prompt.setVisible(button === activeButton);
     }
-  }
-
-  private static isFloorId(value: number): value is FloorId {
-    return ElevatorScene.VALID_FLOOR_IDS.has(value);
   }
 
   /* ---- helpers ---- */
