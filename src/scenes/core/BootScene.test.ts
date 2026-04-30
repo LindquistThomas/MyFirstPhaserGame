@@ -25,6 +25,9 @@ vi.mock('phaser', () => {
     };
     load = {
       on: vi.fn(),
+      once: vi.fn(),
+      off: vi.fn(),
+      start: vi.fn(),
       audio: vi.fn(),
       svg: vi.fn(),
     };
