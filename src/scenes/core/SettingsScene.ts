@@ -170,6 +170,12 @@ export class SettingsScene extends Phaser.Scene {
         set: (v) => settingsStore.setHideTutorials(v),
       },
       {
+        kind: 'toggle',
+        label: 'HIDE TUTORIALS',
+        get: () => settingsStore.read().hideTutorials,
+        set: (v) => settingsStore.setHideTutorials(v),
+      },
+      {
         kind: 'action',
         label: '[ CONTROLS ]',
         action: () => this.openControls(),
