@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateSprites } from './SpriteGenerator';
+import { generateSprites, SPRITE_PHASES } from './SpriteGenerator';
 
 // Mock all sub-generators so tests run without a real Phaser context.
 vi.mock('./sprites/player', () => ({ generatePlayerSprites: vi.fn() }));
@@ -117,5 +117,43 @@ describe('generateSprites', () => {
     generateSprites(scene as never);
 
     expect(scene.textures.exists).toHaveBeenCalledWith('player');
+  });
+});
+
+describe('SPRITE_PHASES', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is a non-empty array', () => {
+    expect(SPRITE_PHASES.length).toBeGreaterThan(0);
+  });
+
+  it('every phase has a non-empty string label', () => {
+    for (const phase of SPRITE_PHASES) {
+      expect(typeof phase.label).toBe('string');
+      expect(phase.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('every phase has a run function', () => {
+    for (const phase of SPRITE_PHASES) {
+      expect(typeof phase.run).toBe('function');
+    }
+  });
+
+  it('running all phases invokes every sub-generator', () => {
+    const scene = makeScene(false);
+    for (const phase of SPRITE_PHASES) {
+      phase.run(scene as never);
+    }
+    for (const gen of allGenerators) {
+      expect(gen).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('phase labels are unique', () => {
+    const labels = SPRITE_PHASES.map((p) => p.label);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 });

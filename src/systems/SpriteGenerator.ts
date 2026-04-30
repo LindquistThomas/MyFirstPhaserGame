@@ -20,6 +20,34 @@ import { generateEnergyDrinkFridgeSprites } from './sprites/energyDrinkFridge';
 import { generateBossSprites } from './sprites/boss';
 import { generateMissionItemSprites } from './sprites/missionItems';
 
+/** A single named unit of procedural generation work. */
+export interface GeneratorPhase {
+  /** Human-readable label shown in the boot loading text. */
+  label: string;
+  /** Execute this phase's generation against the given scene. */
+  run: (scene: Phaser.Scene) => void;
+}
+
+/**
+ * Ordered sprite generation phases exposed for frame-yielding pipelines.
+ *
+ * `BootScene` iterates this array via `time.addEvent` so each phase runs
+ * on its own frame tick and the progress bar updates smoothly. The cache
+ * guard (`textures.exists('player')`) is checked by the caller before
+ * starting the pipeline.
+ */
+export const SPRITE_PHASES: readonly GeneratorPhase[] = [
+  { label: 'Drawing player', run: generatePlayerSprites },
+  { label: 'Drawing tiles & platforms', run: (s) => { generateTileSprites(s); generateMovingPlatformSprite(s); } },
+  { label: 'Drawing tokens', run: generateAUTokenSprites },
+  { label: 'Drawing elevator', run: (s) => { generateElevatorSprites(s); generateRoomElevatorSprite(s); } },
+  { label: 'Drawing doors & props', run: (s) => { generateDoorSprites(s); generateInfoBoardSprite(s); generateLobbyPropSprites(s); } },
+  { label: 'Drawing environment', run: (s) => { generateParticleSprite(s); generatePlantSprites(s); generateInfraSprites(s); } },
+  { label: 'Drawing enemies', run: (s) => { generateEnemySprites(s); generateBossSprites(s); } },
+  { label: 'Drawing characters', run: (s) => { generateGeirSprite(s); generateReceptionistSprite(s); generateRubberDuckSprite(s); } },
+  { label: 'Drawing items', run: (s) => { generateCoffeeSprites(s); generateEnergyDrinkFridgeSprites(s); generateMissionItemSprites(s); } },
+];
+
 /**
  * Composition root for runtime sprite generation.
  *
@@ -27,27 +55,13 @@ import { generateMissionItemSprites } from './sprites/missionItems';
  * image files. Individual generators live under `./sprites/`; this file
  * just wires them up for BootScene. Guarded by a cache check so
  * re-entering BootScene does not pay the generation cost again.
+ *
+ * For smooth boot-screen progress, prefer driving `SPRITE_PHASES` directly
+ * via a frame-yielding pipeline (see `BootScene`).
  */
 export function generateSprites(scene: Phaser.Scene): void {
   if (scene.textures.exists('player')) return;
-  generatePlayerSprites(scene);
-  generateTileSprites(scene);
-  generateAUTokenSprites(scene);
-  generateElevatorSprites(scene);
-  generateRoomElevatorSprite(scene);
-  generateMovingPlatformSprite(scene);
-  generateDoorSprites(scene);
-  generateParticleSprite(scene);
-  generatePlantSprites(scene);
-  generateInfoBoardSprite(scene);
-  generateLobbyPropSprites(scene);
-  generateInfraSprites(scene);
-  generateEnemySprites(scene);
-  generateGeirSprite(scene);
-  generateReceptionistSprite(scene);
-  generateCoffeeSprites(scene);
-  generateRubberDuckSprite(scene);
-  generateEnergyDrinkFridgeSprites(scene);
-  generateBossSprites(scene);
-  generateMissionItemSprites(scene);
+  for (const phase of SPRITE_PHASES) {
+    phase.run(scene);
+  }
 }
