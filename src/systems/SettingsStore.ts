@@ -18,6 +18,9 @@ import { ALL_ACTIONS } from '../input/actions';
 
 export type MusicStyle = '8bit-chiptune' | 'retro-synth' | 'elevator-jazz';
 
+/** Controls when the on-screen virtual gamepad is displayed. */
+export type OnScreenControlsSetting = 'auto' | 'always' | 'never';
+
 /** Persisted key-binding overrides. Empty map = fall back to DEFAULT_BINDINGS. */
 export type ControlBindings = Partial<Record<GameAction, number[]>>;
 
@@ -44,6 +47,14 @@ export interface SettingsData {
    * simply fall back to DEFAULT_BINDINGS via the empty-object default.
    */
   controlBindings: ControlBindings;
+  /**
+   * Controls when the on-screen virtual gamepad is shown.
+   * - `auto`   (default) — show when device is touch-primary at boot, or on
+   *                        the first `touchstart` event detected during play.
+   * - `always` — always visible regardless of pointer type.
+   * - `never`  — always hidden; player relies on hardware keyboard/controller.
+   */
+  onScreenControls: OnScreenControlsSetting;
   /**
    * When true, first-visit coaching toasts are suppressed on all floors.
    * Useful for replay sessions where the player already knows the controls.
@@ -78,6 +89,7 @@ export function defaultSettings(): SettingsData {
     musicStyle: '8bit-chiptune',
     reducedMotion: defaultReducedMotion(),
     controlBindings: {},
+    onScreenControls: 'auto',
     hideTutorials: false,
     highContrastControls: false,
   };
@@ -124,6 +136,9 @@ function parseSettings(raw: unknown): SettingsData {
       : defaults.musicStyle,
     reducedMotion: typeof r['reducedMotion'] === 'boolean' ? r['reducedMotion'] : defaults.reducedMotion,
     controlBindings: parseControlBindings(r['controlBindings']),
+    onScreenControls: (['auto', 'always', 'never'] as string[]).includes(r['onScreenControls'] as string)
+      ? (r['onScreenControls'] as OnScreenControlsSetting)
+      : defaults.onScreenControls,
     hideTutorials: typeof r['hideTutorials'] === 'boolean' ? r['hideTutorials'] : defaults.hideTutorials,
     highContrastControls: typeof r['highContrastControls'] === 'boolean'
       ? r['highContrastControls']
@@ -184,10 +199,12 @@ export const settingsStore = {
   /**
    * Apply a transform to **non-audio** settings and persist without emitting
    * `audio:volume-changed`. Use for fields that don't affect AudioManager
-   * (musicStyle, reducedMotion).
+   * (musicStyle, reducedMotion, onScreenControls).
+   * Emits `settings:changed` so other systems (e.g. VirtualGamepad) can react.
    */
   updateNonAudio(fn: (prev: SettingsData) => SettingsData): void {
     store.update(fn);
+    eventBus.emit('settings:changed');
   },
 
   setMuteAll(muted: boolean): void {
@@ -230,6 +247,10 @@ export const settingsStore = {
   /** Clear all key-binding overrides, restoring DEFAULT_BINDINGS on next scene load. */
   resetControlBindings(): void {
     this.updateNonAudio((prev) => ({ ...prev, controlBindings: {} }));
+  },
+
+  setOnScreenControls(v: OnScreenControlsSetting): void {
+    this.updateNonAudio((prev) => ({ ...prev, onScreenControls: v }));
   },
 
   /** Toggle the first-visit coaching-toast suppression. */

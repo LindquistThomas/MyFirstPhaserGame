@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
-import type { MusicStyle } from '../../systems/SettingsStore';
+import type { MusicStyle, OnScreenControlsSetting } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
@@ -68,18 +68,32 @@ export class SettingsScene extends Phaser.Scene {
 
   private buildItems(): SettingsItem[] {
     const MUSIC_STYLE_OPTIONS = ['8-BIT', 'SYNTH', 'JAZZ'] as const;
-    const MUSIC_STYLE_VALUES: Record<string, MusicStyle> = {
+    type MusicStyleOption = typeof MUSIC_STYLE_OPTIONS[number];
+    const MUSIC_STYLE_VALUES: Record<MusicStyleOption, MusicStyle> = {
       '8-BIT': '8bit-chiptune',
       'SYNTH': 'retro-synth',
       'JAZZ': 'elevator-jazz',
     };
-    const MUSIC_STYLE_LABELS: Record<MusicStyle, string> = {
+    const MUSIC_STYLE_LABELS: Record<MusicStyle, MusicStyleOption> = {
       '8bit-chiptune': '8-BIT',
       'retro-synth': 'SYNTH',
       'elevator-jazz': 'JAZZ',
     };
 
     const REDUCED_OPTIONS = ['SYSTEM', 'OFF', 'ON'] as const;
+
+    const ON_SCREEN_CONTROLS_OPTIONS = ['AUTO', 'ALWAYS', 'NEVER'] as const;
+    type OnScreenControlsOption = typeof ON_SCREEN_CONTROLS_OPTIONS[number];
+    const ON_SCREEN_CONTROLS_VALUES: Record<OnScreenControlsOption, OnScreenControlsSetting> = {
+      'AUTO': 'auto',
+      'ALWAYS': 'always',
+      'NEVER': 'never',
+    };
+    const ON_SCREEN_CONTROLS_LABELS: Record<OnScreenControlsSetting, OnScreenControlsOption> = {
+      'auto': 'AUTO',
+      'always': 'ALWAYS',
+      'never': 'NEVER',
+    };
 
     return [
       {
@@ -138,7 +152,22 @@ export class SettingsScene extends Phaser.Scene {
         label: 'MUSIC STYLE',
         options: MUSIC_STYLE_OPTIONS,
         get: () => MUSIC_STYLE_LABELS[settingsStore.read().musicStyle] ?? MUSIC_STYLE_OPTIONS[0],
-        set: (v) => settingsStore.setMusicStyle(MUSIC_STYLE_VALUES[v] ?? MUSIC_STYLE_VALUES[MUSIC_STYLE_OPTIONS[0]]),
+        set: (v) => settingsStore.setMusicStyle(MUSIC_STYLE_VALUES[v as MusicStyleOption] ?? MUSIC_STYLE_VALUES[MUSIC_STYLE_OPTIONS[0]]),
+      },
+      {
+        kind: 'cycle',
+        label: 'SHOW CONTROLS',
+        options: ON_SCREEN_CONTROLS_OPTIONS,
+        get: () => ON_SCREEN_CONTROLS_LABELS[settingsStore.read().onScreenControls] ?? ON_SCREEN_CONTROLS_OPTIONS[0],
+        set: (v) => settingsStore.setOnScreenControls(
+          ON_SCREEN_CONTROLS_VALUES[v as OnScreenControlsOption] ?? ON_SCREEN_CONTROLS_VALUES[ON_SCREEN_CONTROLS_OPTIONS[0]],
+        ),
+      },
+      {
+        kind: 'toggle',
+        label: 'HIDE TUTORIALS',
+        get: () => settingsStore.read().hideTutorials,
+        set: (v) => settingsStore.setHideTutorials(v),
       },
       {
         kind: 'toggle',

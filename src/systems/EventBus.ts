@@ -164,6 +164,20 @@ export interface GameEvents {
   'achievement:unlocked': [id: string, label: string];
 
   /**
+   * Fired the first time a `touchstart` event is observed on `window` during a
+   * session. Emitted by `VirtualGamepad` reactive-detection logic. Other systems
+   * can listen to activate touch-specific UI without polling.
+   */
+  'input:touch_detected': [];
+
+  /**
+   * Emitted by `SettingsStore.updateNonAudio()` whenever a non-audio setting
+   * changes (e.g. onScreenControls, musicStyle, reducedMotion). `VirtualGamepad`
+   * listens to re-apply gamepad visibility when `onScreenControls` changes.
+   */
+  'settings:changed': [];
+
+  /**
    * Emitted by `QuizDialog` the moment a cooldown timer reaches zero and the
    * quiz becomes retryable. Screen readers listen via `ariaLive` to announce
    * the unlock (WCAG 2.1 SC 4.1.3 Status Messages).

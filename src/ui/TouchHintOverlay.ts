@@ -26,17 +26,16 @@ const PULSE_CLASS = 'vpad-hint-pulse';
 const OVERLAY_ID = 'touch-hint-overlay';
 
 /**
- * Show the first-run hint overlay if:
- *  - `isTouchPrimary()` is true, AND
- *  - the hint has not yet been seen (flag not set in localStorage).
+ * Internal: mount and manage the hint overlay DOM, attaching dismissal logic.
  *
- * @param padEl  The mounted `#virtual-pad` element.  Pulse classes are added
- *               to buttons inside it; the overlay is appended to `document.body`.
+ * @param padEl      The mounted `#virtual-pad` element.
+ * @param markOnDismiss  When true, `TouchHintStore.markSeen()` is called on
+ *                       dismiss so the hint won't appear again in future
+ *                       sessions. Pass `false` for mid-session re-shows that
+ *                       should not overwrite the persisted flag.
  */
-export function showTouchHintIfNeeded(padEl: HTMLElement): void {
-  if (!isTouchPrimary()) return;
-  if (TouchHintStore.hasSeen()) return;
-  // Guard against double-mount (e.g. HMR or repeated initVirtualGamepad).
+function mountHintOverlay(padEl: HTMLElement, markOnDismiss: boolean): void {
+  // Guard against double-mount (e.g. HMR or repeated calls).
   if (document.getElementById(OVERLAY_ID)) return;
 
   // --- build overlay ---------------------------------------------------------
@@ -82,7 +81,7 @@ export function showTouchHintIfNeeded(padEl: HTMLElement): void {
     }
 
     // Mark seen before removing DOM so repeated rapid taps can't re-trigger.
-    TouchHintStore.markSeen();
+    if (markOnDismiss) TouchHintStore.markSeen();
 
     overlay.classList.add('touch-hint-fadeout');
 
@@ -105,4 +104,36 @@ export function showTouchHintIfNeeded(padEl: HTMLElement): void {
 
   // Auto-dismiss after HINT_DURATION_MS.
   timer = setTimeout(dismiss, HINT_DURATION_MS);
+}
+
+/**
+ * Show the first-run hint overlay if:
+ *  - `isTouchPrimary()` is true, AND
+ *  - the hint has not yet been seen (flag not set in localStorage).
+ *
+ * On dismiss, `TouchHintStore.markSeen()` is called so the hint won't
+ * appear again in future sessions.
+ *
+ * @param padEl  The mounted `#virtual-pad` element.  Pulse classes are added
+ *               to buttons inside it; the overlay is appended to `document.body`.
+ */
+export function showTouchHintIfNeeded(padEl: HTMLElement): void {
+  if (!isTouchPrimary()) return;
+  if (TouchHintStore.hasSeen()) return;
+  mountHintOverlay(padEl, true);
+}
+
+/**
+ * Show the hint overlay unconditionally, bypassing `isTouchPrimary()` and
+ * `hasSeen()` checks.
+ *
+ * Does **not** update `TouchHintStore.hasSeen()` on dismiss — use this for
+ * mid-session re-shows (e.g. reactive touch detection while in a level scene,
+ * or when the user explicitly enables the pad from Settings on a non-touch
+ * device) where the persisted flag must not be overwritten.
+ *
+ * @param padEl  The mounted `#virtual-pad` element.
+ */
+export function showTouchHintForced(padEl: HTMLElement): void {
+  mountHintOverlay(padEl, false);
 }

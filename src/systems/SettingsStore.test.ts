@@ -71,6 +71,7 @@ describe('SettingsStore', () => {
         musicStyle: 'retro-synth',
         reducedMotion: true,
         controlBindings: {},
+        onScreenControls: 'always',
         hideTutorials: true,
         highContrastControls: true,
       }));
@@ -83,6 +84,7 @@ describe('SettingsStore', () => {
       expect(s.muteAll).toBe(true);
       expect(s.musicStyle).toBe('retro-synth');
       expect(s.reducedMotion).toBe(true);
+      expect(s.onScreenControls).toBe('always');
       expect(s.hideTutorials).toBe(true);
       expect(s.highContrastControls).toBe(true);
     });
@@ -101,6 +103,18 @@ describe('SettingsStore', () => {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ musicStyle: 'unknown-genre' }));
       settingsStore._store.setStorage(globalThis.localStorage);
       expect(settingsStore.read().musicStyle).toBe('8bit-chiptune');
+    });
+
+    it('round-trips onScreenControls', () => {
+      settingsStore.setOnScreenControls('never');
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().onScreenControls).toBe('never');
+    });
+
+    it('falls back to auto for invalid onScreenControls values', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ onScreenControls: 'banana' }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().onScreenControls).toBe('auto');
     });
 
     it('works with an isolated in-memory storage', () => {
@@ -192,6 +206,37 @@ describe('SettingsStore', () => {
       eventBus.on('audio:volume-changed', listener);
       settingsStore.setMusicStyle('retro-synth');
       settingsStore.setReducedMotion(true);
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('settings:changed event', () => {
+    it('emits settings:changed for non-audio settings (setMusicStyle)', () => {
+      const listener = vi.fn();
+      eventBus.on('settings:changed', listener);
+      settingsStore.setMusicStyle('retro-synth');
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits settings:changed for non-audio settings (setReducedMotion)', () => {
+      const listener = vi.fn();
+      eventBus.on('settings:changed', listener);
+      settingsStore.setReducedMotion(true);
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits settings:changed for non-audio settings (setOnScreenControls)', () => {
+      const listener = vi.fn();
+      eventBus.on('settings:changed', listener);
+      settingsStore.setOnScreenControls('always');
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT emit settings:changed for audio settings (setMasterVolume, setMuteAll)', () => {
+      const listener = vi.fn();
+      eventBus.on('settings:changed', listener);
+      settingsStore.setMasterVolume(50);
+      settingsStore.setMuteAll(true);
       expect(listener).not.toHaveBeenCalled();
     });
   });
