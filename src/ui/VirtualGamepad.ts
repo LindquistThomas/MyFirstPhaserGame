@@ -241,9 +241,9 @@ export function initVirtualGamepad(): void {
  */
 export function applyHighContrastToDocument(enabled: boolean): void {
   if (enabled) {
-    document.documentElement.dataset['highContrast'] = 'true';
+    document.documentElement.dataset.highContrast = 'true';
   } else {
-    delete document.documentElement.dataset['highContrast'];
+    delete document.documentElement.dataset.highContrast;
   }
   // Keep the virtual-pad class in sync too.
   const pad = document.getElementById('virtual-pad');
@@ -251,13 +251,13 @@ export function applyHighContrastToDocument(enabled: boolean): void {
 }
 
 /**
- * Update the high-contrast CSS class on the mounted virtual pad immediately.
+ * Update the high-contrast state on the virtual pad and the document root.
  * Call this whenever the "HIGH CONTRAST CONTROLS" setting changes so the pad
- * reflects the new value without requiring a page reload or re-init.
- * No-op when the pad is not mounted (e.g. on desktop).
+ * and all HTML UI elements (touch hint, any future HTML overlays) reflect the
+ * new value without requiring a page reload.
  *
- * @deprecated Prefer {@link applyHighContrastToDocument} which also updates
- * the document-level `data-high-contrast` attribute used by all HTML UI.
+ * Delegates to {@link applyHighContrastToDocument} which also sets the
+ * `data-high-contrast` attribute on `<html>` for CSS-level overrides.
  */
 export function updateVirtualGamepadContrast(enabled: boolean): void {
   applyHighContrastToDocument(enabled);

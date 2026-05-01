@@ -70,6 +70,7 @@ export class HUD {
       fontFamily: 'monospace', fontSize: this.tokens.hudFontTitle,
       color: theme.color.css.textQuizMuted, fontStyle: 'bold',
     }).setOrigin(0.5, 0).setAlpha(0.6);
+    this.applyTitleTextContrast();
     this.titleText.setVisible(this.sizeClass !== 'compact');
     container.add(this.titleText as unknown as Phaser.GameObjects.GameObject);
 
@@ -79,12 +80,7 @@ export class HUD {
     });
     // Re-render the title text colour when the high-contrast setting changes
     // so canvas HUD text also benefits from the accessibility toggle.
-    lifecycle.bindEventBus('settings:changed', () => {
-      const highContrast = settingsStore.read().highContrastControls;
-      this.titleText.setColor(
-        highContrast ? theme.color.css.textPrimary : theme.color.css.textQuizMuted,
-      ).setAlpha(highContrast ? 1 : 0.6);
-    });
+    lifecycle.bindEventBus('settings:changed', () => this.applyTitleTextContrast());
 
     const onResize = (): void => {
       const w = (this.scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
@@ -111,6 +107,23 @@ export class HUD {
     this.progressCtrl.relayout(this.tokens);
     this.titleText.setStyle({ fontSize: this.tokens.hudFontTitle });
     this.titleText.setVisible(this.sizeClass !== 'compact');
+  }
+
+  /**
+   * Apply colour and alpha to the HUD title text based on the current
+   * `highContrastControls` setting.
+   *
+   * Default (no high-contrast): muted colour at 0.6 alpha — decorative.
+   * High-contrast: primary text colour at full alpha — readable for
+   * low-vision players and matches the intent of the accessibility toggle.
+   *
+   * Called once in `create()` and again whenever `settings:changed` fires.
+   */
+  private applyTitleTextContrast(): void {
+    const highContrast = settingsStore.read().highContrastControls;
+    this.titleText
+      .setColor(highContrast ? theme.color.css.textPrimary : theme.color.css.textQuizMuted)
+      .setAlpha(highContrast ? 1 : 0.6);
   }
 
   /** Gradient HUD bar with theme-coloured accent line. Repaints only when floor changes. */
