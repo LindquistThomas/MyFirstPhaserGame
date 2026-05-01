@@ -23,7 +23,7 @@ const SNAPSHOT_OPTS = {
   animations: 'disabled' as const,
 };
 
-test.describe('Visual regression (static UI)', () => {
+test.describe('@visual Visual regression (static UI)', () => {
   test.beforeEach(async ({ page }) => {
     await clearStorage(page);
   });
@@ -232,7 +232,7 @@ async function navigateToFloor(
  * Snapshots are skipped on CI (testIgnore in playwright.config.ts) because
  * they are platform-specific (only local / win32 baselines are committed).
  */
-test.describe('Visual regression (floor layouts)', () => {
+test.describe('@visual Visual regression (floor layouts)', () => {
   test.beforeEach(async ({ page }) => {
     await clearStorage(page);
     // Seed a save with all floors unlocked and enough AU. Using addInitScript

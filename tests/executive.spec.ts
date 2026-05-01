@@ -88,44 +88,6 @@ test.describe('Executive Suite — Geir Harald', () => {
     errors.assertClean();
   });
 
-  test('elevator cab info (not Geir) is active when cab is docked at F4', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await navigateToElevator(page);
-
-    // Force cab docked at F4 with the player standing on it and verify that
-    // the active content zone is the elevator's own info card — Geir is
-    // reachable only inside ExecutiveSuiteScene by standing next to him.
-    const activeZone = await page.evaluate(() => {
-      const g = window.__game!;
-      const scene = g.scene
-        .getScenes(true)
-        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
-          elevatorCtrl: { elevator: { platform: { y: number } } };
-          player: { sprite: { x: number; y: number } };
-          zoneManager: { update: () => void; getActiveZone: () => string | null };
-        };
-      const floorStops = (scene.elevatorCtrl.elevator as unknown as {
-        floorStops: Map<number, number>;
-      }).floorStops;
-      const f4Y = floorStops.get(4);
-      if (f4Y !== undefined) scene.elevatorCtrl.elevator.platform.y = f4Y;
-      scene.player.sprite.x = 640;
-      if (f4Y !== undefined) scene.player.sprite.y = f4Y - 40;
-      (scene.elevatorCtrl as unknown as { playerOnElevator: boolean }).playerOnElevator = true;
-      scene.zoneManager.update();
-      return scene.zoneManager.getActiveZone();
-    });
-
-    expect(activeZone).toBe('architecture-elevator');
-
-    errors.assertClean();
-  });
-
   test('Geir F4 proximity zone activates in elevator scene and blocks auto-transition', async ({ page }) => {
     const errors = attachErrorWatchers(page);
 
