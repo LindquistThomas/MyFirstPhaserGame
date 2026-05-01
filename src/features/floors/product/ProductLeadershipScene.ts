@@ -1,5 +1,8 @@
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
-import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { defineFloorScene } from '../_shared/defineFloorScene';
+
+/** Token range reserved for this room — must not overlap CustomerSuccessScene (10..14). */
+const TOKEN_INDEX_OFFSET = 5;
 
 /**
  * Floor 3 — Product Leadership room (left side of the Business floor).
@@ -11,41 +14,13 @@ import { LevelScene, LevelConfig } from '../_shared/LevelScene';
  * Shares FloorId BUSINESS with CustomerSuccessScene; uses disjoint token
  * indices so collected-token bookkeeping does not collide.
  */
-export class ProductLeadershipScene extends LevelScene {
-  /** First token index used in this room — must not overlap CustomerSuccessScene. */
-  private static readonly TOKEN_INDEX_OFFSET = 5;
-
-  constructor() {
-    super('ProductLeadershipScene', FLOORS.BUSINESS);
-    this.returnSide = 'left';
-  }
-
-  protected override createDecorations(): void {
+export class ProductLeadershipScene extends defineFloorScene({
+  key: 'ProductLeadershipScene',
+  floorId: FLOORS.BUSINESS,
+  returnSide: 'left',
+  config: () => {
     const G = GAME_HEIGHT - TILE_SIZE;
-
-    this.addAmbientPlants([
-      { x: 90, kind: 'tall' },
-      { x: 160, kind: 'small' },
-    ]);
-
-    this.addSignpost({
-      x: 230,
-      label: '  PRODUCT\nLEADERSHIP',
-      color: '#ffd6f0',
-      fontSize: 12,
-    });
-
-    // Roadmap wall + workstations.
-    this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
-    this.add.image(720, G - 22, 'monitor_dash').setDepth(3);
-    this.add.image(900, G - 36, 'desk_monitor').setDepth(3);
-    this.add.image(1080, G - 22, 'monitor_dash').setDepth(3);
-  }
-
-  protected getLevelConfig(): LevelConfig {
-    const G = GAME_HEIGHT - TILE_SIZE;
-    const off = ProductLeadershipScene.TOKEN_INDEX_OFFSET;
-
+    const off = TOKEN_INDEX_OFFSET;
     return {
       floorId: FLOORS.BUSINESS,
       playerStart: { x: 150, y: G - 100 },
@@ -77,5 +52,28 @@ export class ProductLeadershipScene extends LevelScene {
         },
       ],
     };
+  },
+}) {
+  protected override createDecorations(): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+
+    this.addAmbientPlants([
+      { x: 90, kind: 'tall' },
+      { x: 160, kind: 'small' },
+    ]);
+
+    this.addSignpost({
+      x: 230,
+      label: '  PRODUCT\nLEADERSHIP',
+      color: '#ffd6f0',
+      fontSize: 12,
+    });
+
+    // Roadmap wall + workstations.
+    this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
+    this.add.image(720, G - 22, 'monitor_dash').setDepth(3);
+    this.add.image(900, G - 36, 'desk_monitor').setDepth(3);
+    this.add.image(1080, G - 22, 'monitor_dash').setDepth(3);
   }
 }
+

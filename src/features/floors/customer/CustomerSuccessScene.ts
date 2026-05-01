@@ -1,5 +1,8 @@
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
-import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { defineFloorScene } from '../_shared/defineFloorScene';
+
+/** Token range reserved for this room — must not overlap ProductLeadershipScene (5..9). */
+const TOKEN_INDEX_OFFSET = 10;
 
 /**
  * Floor 3 — Customer Success room (right side of the Business floor).
@@ -12,41 +15,13 @@ import { LevelScene, LevelConfig } from '../_shared/LevelScene';
  * Shares FloorId BUSINESS with ProductLeadershipScene; uses a disjoint
  * token-index range so collected-token bookkeeping does not collide.
  */
-export class CustomerSuccessScene extends LevelScene {
-  /** First token index used in this room — must not overlap ProductLeadershipScene (5..9). */
-  private static readonly TOKEN_INDEX_OFFSET = 10;
-
-  constructor() {
-    super('CustomerSuccessScene', FLOORS.BUSINESS);
-    this.returnSide = 'right';
-  }
-
-  protected override createDecorations(): void {
+export class CustomerSuccessScene extends defineFloorScene({
+  key: 'CustomerSuccessScene',
+  floorId: FLOORS.BUSINESS,
+  returnSide: 'right',
+  config: () => {
     const G = GAME_HEIGHT - TILE_SIZE;
-
-    this.addAmbientPlants([
-      { x: 1180, kind: 'tall' },
-      { x: 1120, kind: 'small' },
-    ]);
-
-    this.addSignpost({
-      x: 1050,
-      label: ' CUSTOMER\n  SUCCESS',
-      color: '#cfe6ff',
-      fontSize: 12,
-    });
-
-    // Support desks + dashboards — proxy for ticket queues and SLA boards.
-    this.add.image(220, G - 36, 'desk_monitor').setDepth(3);
-    this.add.image(380, G - 22, 'monitor_dash').setDepth(3);
-    this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
-    this.add.image(720, G - 22, 'monitor_dash').setDepth(3);
-  }
-
-  protected getLevelConfig(): LevelConfig {
-    const G = GAME_HEIGHT - TILE_SIZE;
-    const off = CustomerSuccessScene.TOKEN_INDEX_OFFSET;
-
+    const off = TOKEN_INDEX_OFFSET;
     return {
       floorId: FLOORS.BUSINESS,
       playerStart: { x: 1130, y: G - 100 },
@@ -78,5 +53,28 @@ export class CustomerSuccessScene extends LevelScene {
         },
       ],
     };
+  },
+}) {
+  protected override createDecorations(): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+
+    this.addAmbientPlants([
+      { x: 1180, kind: 'tall' },
+      { x: 1120, kind: 'small' },
+    ]);
+
+    this.addSignpost({
+      x: 1050,
+      label: ' CUSTOMER\n  SUCCESS',
+      color: '#cfe6ff',
+      fontSize: 12,
+    });
+
+    // Support desks + dashboards — proxy for ticket queues and SLA boards.
+    this.add.image(220, G - 36, 'desk_monitor').setDepth(3);
+    this.add.image(380, G - 22, 'monitor_dash').setDepth(3);
+    this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
+    this.add.image(720, G - 22, 'monitor_dash').setDepth(3);
   }
 }
+
