@@ -20,25 +20,29 @@ import {
  *
  *  - Document structure (lang, title, landmarks).
  *  - The Phaser game canvas accessible name and keyboard-focus style.
- *  - The virtual D-pad buttons when visible.
+ *  - The virtual D-pad buttons when visible (colour-contrast checked).
  *  - The ARIA live region.
+ *  - The touch-hint overlay when shown.
  *
  * Canvas-rendered colour contrast is verified indirectly: the
  * `highContrastControls` toggle is tested to confirm it applies the
  * `data-high-contrast="true"` attribute on `<html>`, which is the CSS hook
  * used by all HTML-layer UI elements.
  *
- * Rules intentionally disabled:
- *  - `color-contrast` — axe cannot read pixel data from a WebGL/2D canvas, so
- *    any "contrast" result it produces for the canvas element would be
- *    meaningless.  Colour contrast for canvas-rendered text (HUD, dialogs) is
- *    covered by the `highContrastControls` toggle and manual design review.
+ * The Phaser `<canvas>` element is excluded from checks via `.exclude('canvas')`
+ * so axe does not attempt to analyse pixel data it cannot read. All other HTML
+ * elements — including the virtual gamepad buttons — are fully evaluated, which
+ * means colour-contrast violations on those elements WILL fail CI.
  */
 
 async function runAxe(page: import('@playwright/test').Page): Promise<AxeResults> {
   return new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
-    .disableRules(['color-contrast']) // canvas pixel data is opaque to axe
+    // Exclude the Phaser canvas element from all checks: axe cannot read
+    // WebGL/2D canvas pixel data, so colour-contrast results against the
+    // canvas surface would be meaningless. HTML-layer elements (virtual
+    // gamepad, touch hint, ARIA live region) are still fully evaluated.
+    .exclude('canvas')
     .analyze();
 }
 
@@ -116,24 +120,27 @@ test.describe('Accessibility — WCAG 2.1 AA (HTML layer)', () => {
       viewport: { width: 1280, height: 960 },
       reducedMotion: 'reduce',
     });
-    const page = await context.newPage();
-    const errors = attachErrorWatchers(page);
+    try {
+      const page = await context.newPage();
+      const errors = attachErrorWatchers(page);
 
-    await clearStorage(page);
-    await seedFullProgressSave(page);
+      await clearStorage(page);
+      await seedFullProgressSave(page);
 
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
+      await page.goto('/');
+      await waitForGame(page);
+      await waitForScene(page, 'MenuScene');
 
-    const results = await runAxe(page);
-    expect(
-      results.violations,
-      formatViolations(results.violations),
-    ).toEqual([]);
+      const results = await runAxe(page);
+      expect(
+        results.violations,
+        formatViolations(results.violations),
+      ).toEqual([]);
 
-    errors.assertClean();
-    await context.close();
+      errors.assertClean();
+    } finally {
+      await context.close();
+    }
   });
 
   test('highContrastControls: data-high-contrast attribute applied to <html>', async ({ page }) => {

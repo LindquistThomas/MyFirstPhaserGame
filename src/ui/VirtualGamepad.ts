@@ -197,6 +197,18 @@ export function registerReactiveDetection(): void {
 }
 
 /**
+ * Module-level stable handler for the `settings:changed` EventBus event.
+ *
+ * Using a named module-level function (rather than an inline arrow) means
+ * EventBus.on() adds the same reference to the Set on every call, so
+ * repeated invocations of `initVirtualGamepad()` (HMR, test re-runs) are
+ * idempotent — the Set deduplicates automatically.
+ */
+function _syncHighContrastToDocument(): void {
+  applyHighContrastToDocument(settingsStore.read().highContrastControls);
+}
+
+/**
  * Initialise the virtual gamepad subsystem.
  *
  * - Registers a one-shot `touchstart` listener for reactive hybrid-device
@@ -216,9 +228,9 @@ export function initVirtualGamepad(): void {
   // is idempotent — it only does work when onScreenControls actually matters).
   eventBus.on('settings:changed', applyVirtualGamepadVisibility);
   // Keep the document-level high-contrast attribute in sync with the setting.
-  eventBus.on('settings:changed', () =>
-    applyHighContrastToDocument(settingsStore.read().highContrastControls),
-  );
+  // Module-level named function so repeated initVirtualGamepad() calls (HMR /
+  // test resets) add the same reference to the EventBus Set and stay idempotent.
+  eventBus.on('settings:changed', _syncHighContrastToDocument);
 
   applyVirtualGamepadVisibility();
   // Apply high-contrast at startup so a persisted setting takes effect immediately.
