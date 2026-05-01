@@ -105,10 +105,10 @@ export class ElevatorScene extends Phaser.Scene {
     this.spawnAtFloorSide = data?.spawnSide ?? 'left';
     // Kick off lazy-loads for the two floors whose info/quiz icons appear
     // directly in the elevator shaft (lobby info-board + Geir on F4).
-    void preloadQuizFor(FLOORS.LOBBY);
-    void preloadInfoFor(FLOORS.LOBBY);
-    void preloadQuizFor(FLOORS.EXECUTIVE);
-    void preloadInfoFor(FLOORS.EXECUTIVE);
+    preloadQuizFor(FLOORS.LOBBY).catch(() => { /* non-fatal */ });
+    preloadInfoFor(FLOORS.LOBBY).catch(() => { /* non-fatal */ });
+    preloadQuizFor(FLOORS.EXECUTIVE).catch(() => { /* non-fatal */ });
+    preloadInfoFor(FLOORS.EXECUTIVE).catch(() => { /* non-fatal */ });
   }
 
   create(): void {

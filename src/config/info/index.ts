@@ -90,9 +90,11 @@ export function preloadInfoFor(floorId: FloorId): Promise<void> {
     Object.assign(INFO_POINTS, data);
     _infoLoadedFloors.add(floorId);
     _infoPendingFloors.delete(floorId);
-  }).catch(() => {
+  }).catch((err: unknown) => {
     // Remove from pending so callers can retry on the next interaction.
     _infoPendingFloors.delete(floorId);
+    // Rethrow so awaited callers (tests, future code) can detect the failure.
+    throw err;
   });
 
   _infoPendingFloors.set(floorId, p);

@@ -99,9 +99,11 @@ export function preloadQuizFor(floorId: FloorId): Promise<void> {
     _quizFloorCache.set(floorId, data);
     _quizLoadedFloors.add(floorId);
     _quizPendingFloors.delete(floorId);
-  }).catch(() => {
+  }).catch((err: unknown) => {
     // Remove from pending so callers can retry on the next interaction.
     _quizPendingFloors.delete(floorId);
+    // Rethrow so awaited callers (tests, future code) can detect the failure.
+    throw err;
   });
 
   _quizPendingFloors.set(floorId, p);

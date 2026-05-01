@@ -237,8 +237,8 @@ export class LevelScene extends Phaser.Scene {
     // available by the time the player walks to an info icon.  Fire-and-forget:
     // Phaser's create() runs synchronously immediately after init(), but the
     // player still needs several seconds to walk to any interactive element.
-    void preloadQuizFor(this.floorId);
-    void preloadInfoFor(this.floorId);
+    preloadQuizFor(this.floorId).catch(() => { /* non-fatal; player will see no quiz badge */ });
+    preloadInfoFor(this.floorId).catch(() => { /* non-fatal; info icon will be absent */ });
   }
 
   create(): void {
