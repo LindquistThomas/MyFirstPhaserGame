@@ -104,7 +104,11 @@ test.describe('Onboarding flow', () => {
     await page.keyboard.press('Enter');
     await waitForScene(page, 'SettingsScene');
 
-    // Press Enter to activate "Replay Tutorial" (first item = index 0).
+    // [ BACK ] is the last item (ArrowUp wraps from index 0), so two ArrowUps
+    // land on [ REPLAY TUTORIAL ] (second-from-last) without depending on the
+    // total item count.
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('ArrowUp');
     await page.keyboard.press('Enter');
 
     // Should return to MenuScene.
