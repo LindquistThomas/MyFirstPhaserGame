@@ -27,8 +27,8 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # CoffeeMugProjectile, BriefcaseProjectile, PistolProjectile,
 │   │                         # MissionItem, Checkpoint
 │   ├── features/
-│   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, floorAccents/Patterns,
-│   │   │                       sceneBackdrop, validateLevelConfig), one dir per floor (lobby/, platform/, architecture/,
+│   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, coachHints,
+│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig), one dir per floor (lobby/, platform/, architecture/,
 │   │   │                       finance/, product/, customer/, executive/, boss/)
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
 │   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
@@ -40,8 +40,9 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── style/                # theme.ts — colour + spacing token catalogue
 │   ├── systems/              # ProgressionSystem, GameStateManager, EventBus, ZoneManager,
 │   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
-│   │                         # PersistedStore, SettingsStore, AchievementManager,
-│   │                         # MotionPreference, CaffeineBuff, sceneLifecycle,
+│   │                         # PersistedStore, SettingsStore, AchievementManager, TouchHintStore,
+│   │                         # MotionPreference, CaffeineBuff, FloorHitState, sceneLifecycle,
+│   │                         # sliderUtils,
 │   │                         # SpriteGenerator (+ sprites/ per-asset families),
 │   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
