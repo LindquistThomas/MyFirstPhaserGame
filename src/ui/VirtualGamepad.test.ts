@@ -33,9 +33,13 @@ vi.mock('../systems/EventBus', () => ({
 }));
 vi.mock('../systems/SettingsStore', () => ({
   settingsStore: {
-    read: vi.fn(() => ({ onScreenControls: 'auto' })),
+    read: vi.fn(() => ({ onScreenControls: 'auto', hapticsEnabled: true, highContrastControls: false })),
     setOnScreenControls: vi.fn(),
   },
+}));
+
+vi.mock('../systems/MotionPreference', () => ({
+  isReducedMotion: vi.fn(() => false),
 }));
 
 import {
@@ -49,12 +53,15 @@ import * as touchPrimary from './touchPrimary';
 import * as TouchHintOverlay from './TouchHintOverlay';
 import * as EventBusModule from '../systems/EventBus';
 import * as SettingsStoreModule from '../systems/SettingsStore';
+import * as MotionPreference from '../systems/MotionPreference';
 
 // Helpers -------------------------------------------------------------------
 
-function mockSetting(setting: 'auto' | 'always' | 'never'): void {
+function mockSetting(setting: 'auto' | 'always' | 'never', hapticsEnabled = true): void {
   vi.mocked(SettingsStoreModule.settingsStore.read).mockReturnValue({
     onScreenControls: setting,
+    hapticsEnabled,
+    highContrastControls: false,
   } as ReturnType<typeof SettingsStoreModule.settingsStore.read>);
 }
 
@@ -331,5 +338,57 @@ describe('actionsOf / data-actions parsing (via button touch events)', () => {
     Object.defineProperty(touchStartEvent, 'currentTarget', { value: jumpBtn });
     jumpBtn.dispatchEvent(touchStartEvent);
     expect(setVirtualButtonMock).toHaveBeenCalledWith('Jump', true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('haptic feedback on vpad button press', () => {
+  let vibrateMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    _resetReactiveDetected();
+    vi.mocked(touchPrimary.isTouchPrimary).mockReturnValue(true);
+    mockSetting('auto', true);
+    vi.mocked(MotionPreference.isReducedMotion).mockReturnValue(false);
+    document.getElementById('virtual-pad')?.remove();
+
+    // Stub navigator.vibrate
+    vibrateMock = vi.fn();
+    Object.defineProperty(navigator, 'vibrate', { value: vibrateMock, writable: true, configurable: true });
+  });
+
+  afterEach(() => {
+    document.getElementById('virtual-pad')?.remove();
+    vi.restoreAllMocks();
+  });
+
+  function fireTouchStart(btn: HTMLElement): void {
+    const ev = new Event('touchstart');
+    Object.defineProperty(ev, 'preventDefault', { value: vi.fn() });
+    Object.defineProperty(ev, 'currentTarget', { value: btn });
+    btn.dispatchEvent(ev);
+  }
+
+  it('calls navigator.vibrate(10) on touchstart when hapticsEnabled=true and not reduced motion', () => {
+    applyVirtualGamepadVisibility();
+    const jumpBtn = getPad()!.querySelector('[data-actions="Jump"]') as HTMLElement;
+    fireTouchStart(jumpBtn);
+    expect(vibrateMock).toHaveBeenCalledWith(10);
+  });
+
+  it('does NOT call navigator.vibrate when hapticsEnabled=false', () => {
+    mockSetting('auto', false);
+    applyVirtualGamepadVisibility();
+    const jumpBtn = getPad()!.querySelector('[data-actions="Jump"]') as HTMLElement;
+    fireTouchStart(jumpBtn);
+    expect(vibrateMock).not.toHaveBeenCalled();
+  });
+
+  it('does NOT call navigator.vibrate when isReducedMotion() is true', () => {
+    vi.mocked(MotionPreference.isReducedMotion).mockReturnValue(true);
+    applyVirtualGamepadVisibility();
+    const jumpBtn = getPad()!.querySelector('[data-actions="Jump"]') as HTMLElement;
+    fireTouchStart(jumpBtn);
+    expect(vibrateMock).not.toHaveBeenCalled();
   });
 });

@@ -74,6 +74,7 @@ describe('SettingsStore', () => {
         onScreenControls: 'always',
         hideTutorials: true,
         highContrastControls: true,
+        hapticsEnabled: false,
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -87,6 +88,7 @@ describe('SettingsStore', () => {
       expect(s.onScreenControls).toBe('always');
       expect(s.hideTutorials).toBe(true);
       expect(s.highContrastControls).toBe(true);
+      expect(s.hapticsEnabled).toBe(false);
     });
 
     it('clamps masterVolume to 0-100 on parse', () => {

@@ -10,9 +10,14 @@ vi.mock('./touchPrimary', () => ({
   isTouchPrimary: vi.fn(() => true),
 }));
 
+vi.mock('../systems/MotionPreference', () => ({
+  isReducedMotion: vi.fn(() => false),
+}));
+
 import { showTouchHintIfNeeded, showTouchHintForced } from './TouchHintOverlay';
 import * as TouchHintStore from '../systems/TouchHintStore';
 import * as touchPrimary from './touchPrimary';
+import * as MotionPreference from '../systems/MotionPreference';
 
 // --- storage seam -----------------------------------------------------------
 function memStorage(): KVStorage & { data: Record<string, string> } {
@@ -184,6 +189,81 @@ describe('showTouchHintForced', () => {
 
   it('pulses the D-pad and Jump button', () => {
     showTouchHintForced(pad);
+    expect(pad.querySelector('.vpad-dpad')?.classList.contains('vpad-hint-pulse')).toBe(true);
+    expect(pad.querySelector('[data-actions~="Jump"]')?.classList.contains('vpad-hint-pulse')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('reduced-motion support', () => {
+  let storage: ReturnType<typeof memStorage>;
+  let pad: HTMLDivElement;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    storage = memStorage();
+    TouchHintStore.setStorage(storage);
+    vi.spyOn(touchPrimary, 'isTouchPrimary').mockReturnValue(true);
+    pad = makePad();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    document.getElementById('touch-hint-overlay')?.remove();
+    pad.remove();
+  });
+
+  it('sets animation:none on the overlay when isReducedMotion() is true', () => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+    showTouchHintIfNeeded(pad);
+    const overlay = document.getElementById('touch-hint-overlay') as HTMLElement | null;
+    expect(overlay).not.toBeNull();
+    expect(overlay?.style.animation).toBe('none');
+  });
+
+  it('does NOT add vpad-hint-pulse when isReducedMotion() is true', () => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+    showTouchHintIfNeeded(pad);
+    expect(pad.querySelector('.vpad-dpad')?.classList.contains('vpad-hint-pulse')).toBe(false);
+    expect(pad.querySelector('[data-actions~="Jump"]')?.classList.contains('vpad-hint-pulse')).toBe(false);
+  });
+
+  it('removes overlay immediately on dismiss when isReducedMotion() is true', async () => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+    showTouchHintIfNeeded(pad);
+    expect(document.getElementById('touch-hint-overlay')).not.toBeNull();
+
+    // Trigger dismiss via timeout.
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    // Overlay should be gone immediately (no fadeout class, no animation delay).
+    expect(document.getElementById('touch-hint-overlay')).toBeNull();
+  });
+
+  it('does NOT add touch-hint-fadeout class on dismiss when isReducedMotion() is true', async () => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+    showTouchHintIfNeeded(pad);
+    const overlay = document.getElementById('touch-hint-overlay')!;
+
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    // Overlay is removed; verify it didn't receive the fadeout class before removal.
+    expect(overlay.classList.contains('touch-hint-fadeout')).toBe(false);
+  });
+
+  it('still animates normally when isReducedMotion() is false', () => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(false);
+    showTouchHintIfNeeded(pad);
+    const overlay = document.getElementById('touch-hint-overlay') as HTMLElement | null;
+    expect(overlay).not.toBeNull();
+    // No inline animation override — animation comes from CSS.
+    expect(overlay?.style.animation).toBeFalsy();
+  });
+
+  it('still pulses D-pad and Jump button when isReducedMotion() is false', () => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(false);
+    showTouchHintIfNeeded(pad);
     expect(pad.querySelector('.vpad-dpad')?.classList.contains('vpad-hint-pulse')).toBe(true);
     expect(pad.querySelector('[data-actions~="Jump"]')?.classList.contains('vpad-hint-pulse')).toBe(true);
   });

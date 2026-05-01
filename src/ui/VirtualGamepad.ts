@@ -5,6 +5,7 @@ export { isTouchPrimary } from './touchPrimary';
 import { isTouchPrimary } from './touchPrimary';
 import { eventBus } from '../systems/EventBus';
 import { settingsStore } from '../systems/SettingsStore';
+import { isReducedMotion } from '../systems/MotionPreference';
 
 /**
  * Session flag: at least one `touchstart` event was observed on `window`
@@ -31,6 +32,10 @@ function actionsOf(el: Element): GameAction[] {
 function onTouchStart(e: TouchEvent): void {
   e.preventDefault();
   const btn = e.currentTarget as Element;
+  const settings = settingsStore.read();
+  if (settings.hapticsEnabled && !isReducedMotion()) {
+    navigator.vibrate?.(10);
+  }
   for (const action of actionsOf(btn)) {
     setVirtualButton(action, true);
   }
