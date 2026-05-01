@@ -18,7 +18,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── eslint.config.js
 ├── public/
 │   ├── brand/                # Norconsult Digital wordmark SVG (loaded as `lobby_logo` at boot)
-│   └── music/                # MP3/OGG music tracks loaded in BootScene
+│   └── music/                # MP3/OGG/WAV music tracks; eager subset preloaded in BootScene, rest lazy-loaded by MusicPlugin
 ├── src/
 │   ├── main.ts               # Phaser.Game bootstrap; spreads SCENE_CLASSES from sceneRegistry
 │   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry; info/ and quiz/ barrels
@@ -55,7 +55,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 
 See `docs/architecture.md` for the full module map.
 
-There is **no** `public/assets/` directory. Static files: `public/music/` (MP3/OGG tracks loaded in `BootScene.preload()`) and `public/brand/` (the Norconsult Digital wordmark SVG, loaded as `lobby_logo`). Sprites and SFX are still generated procedurally by `SpriteGenerator` / `SoundGenerator`.
+There is **no** `public/assets/` directory. Static files: `public/music/` (MP3/OGG/WAV tracks; the `eager: true` subset of `STATIC_MUSIC_ASSETS` is preloaded in `BootScene.preload()`, the rest are lazy-loaded by `MusicPlugin` on first use) and `public/brand/` (the Norconsult Digital wordmark SVG, loaded as `lobby_logo`). Sprites and SFX are still generated procedurally by `SpriteGenerator` / `SoundGenerator`.
 
 ## Language, tooling, scripts
 
@@ -96,7 +96,7 @@ Short index of where things live. Reach for these instead of re-implementing.
 - **`EventBus`** (`src/systems/EventBus.ts`) — typed pub/sub singleton. The `GameEvents` map is the single source of truth for event names and payloads; add new events there and all call sites become type-checked. No Phaser dependency.
 - **`ZoneManager`** (`src/systems/ZoneManager.ts`) — registers named zones with arbitrary `check: () => boolean` predicates, emits `zone:enter` / `zone:exit` on state change only. UI reacts to events; `getActiveZone()` is a synchronous query for keyboard handlers. Default pattern for anything that should appear only in a specific area of a scene.
 - **`AudioManager`** + **`MusicPlugin`** — fully reactive. Scenes don't play audio directly; entities emit `sfx:*` / `music:*` events. Scene music is auto-driven by `SCENE_MUSIC` in `src/config/audioConfig.ts` via `MusicPlugin`. Player settings (mute, volumes, music style, reduced motion) persist under localStorage key `architect_settings_v1` via `SettingsStore` (`src/systems/SettingsStore.ts`). The legacy `architect_audio_muted_v1` key is migrated on first load and then deleted.
-- **`SoundGenerator`** — procedural SFX generated at runtime and registered as Phaser audio keys. Music is loaded from `public/music/` in `BootScene.preload()` (MP3/OGG). The procedural lullaby track is also generated here (no separate MusicGenerator module).
+- **`SoundGenerator`** — procedural SFX generated at runtime and registered as Phaser audio keys. Music is loaded from `public/music/` (MP3/OGG/WAV). Eager tracks (`STATIC_MUSIC_ASSETS` entries with `eager: true`) preload in `BootScene.preload()`; the rest are lazy-loaded by `MusicPlugin` on first use/request. The procedural lullaby track is also generated here (no separate MusicGenerator module).
 - **`SpriteGenerator`** — procedural pixel-art textures for player, enemies, tokens, platforms, elevator cab, etc.
 - **`QuizManager`** (localStorage key `architect_quiz_v1`) — quiz completion + cooldowns. Data under `src/config/quiz/` (barrel `index.ts`).
 - **`InfoDialogManager`** (localStorage key `architect_info_seen_v1`) — tracks which info dialogs the player has opened. Content under `src/config/info/` (barrel `index.ts`).
