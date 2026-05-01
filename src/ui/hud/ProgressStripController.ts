@@ -7,20 +7,10 @@ import { eventBus } from '../../systems/EventBus';
 import type { ProgressionSystem } from '../../systems/ProgressionSystem';
 import type { LayoutTokens } from '../../style/responsive';
 import type { Toast } from '../Toast';
+import { lighten } from './colorUtils';
 
 const PROGRESS_STRIP_WIDTH = 140;
 const PROGRESS_STRIP_HEIGHT = 6;
-
-/** Lighten a 0xRRGGBB int by `amount` (0..1) toward white. */
-export function lighten(color: number, amount: number): number {
-  const r = (color >> 16) & 0xff;
-  const gC = (color >> 8) & 0xff;
-  const b = color & 0xff;
-  const lr = Math.min(255, Math.round(r + (255 - r) * amount));
-  const lg = Math.min(255, Math.round(gC + (255 - gC) * amount));
-  const lb = Math.min(255, Math.round(b + (255 - b) * amount));
-  return (lr << 16) | (lg << 8) | lb;
-}
 
 /**
  * Owns the unlock-progress strip, floor name indicator, floor pill,
