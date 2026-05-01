@@ -61,7 +61,7 @@ From `package.json`:
 | `npm run test:report` | Open the last Playwright HTML report. |
 | `npm run test:visual:update` | Refresh visual snapshot PNGs. |
 | `npm test` | `test:unit && test:e2e`. |
-| `npm run test:all` | `typecheck && lint && test:unit --coverage && test:e2e` — opt-in, slow. |
+| `npm run test:all` | `npm run typecheck && npm run lint && npm run test:unit -- --coverage && npm run test:e2e` — opt-in, slow. |
 
 ## Conventions to keep in mind
 
