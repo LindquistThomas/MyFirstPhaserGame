@@ -81,7 +81,7 @@ Scripts from `package.json`:
 | `npm run test:report` | Open the last Playwright HTML report. |
 | `npm run size` | `node scripts/check-size.cjs` — bundle-size budget gate (also runs in CI). |
 | `npm test` | `test:unit && test:e2e`. |
-| `npm run test:all` | `typecheck && lint && test:unit --coverage && test:e2e` — the pre-PR gate. |
+| `npm run test:all` | `npm run typecheck && npm run lint && npm run test:unit -- --coverage && npm run test:e2e` — the pre-PR gate. |
 
 **Before declaring work done:** run `npm run typecheck && npm run lint && npm run test:unit`. **Do not run `npm run test:e2e` or `npm run test:all` without asking the user first** — the Playwright suite is slow and should be opt-in. For pure-docs changes, `npm run lint && npm run typecheck` is sufficient.
 
