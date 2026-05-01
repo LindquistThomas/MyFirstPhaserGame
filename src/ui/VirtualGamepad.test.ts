@@ -42,6 +42,7 @@ import {
   applyVirtualGamepadVisibility,
   registerReactiveDetection,
   initVirtualGamepad,
+  updateVirtualGamepadContrast,
   _resetReactiveDetected,
 } from './VirtualGamepad';
 import * as touchPrimary from './touchPrimary';
@@ -240,5 +241,95 @@ describe('initVirtualGamepad', () => {
     mockSetting('always');
     initVirtualGamepad();
     expect(getPad()?.classList.contains('active')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('updateVirtualGamepadContrast', () => {
+  beforeEach(() => {
+    _resetReactiveDetected();
+    vi.mocked(touchPrimary.isTouchPrimary).mockReturnValue(true);
+    mockSetting('auto');
+    document.getElementById('virtual-pad')?.remove();
+  });
+
+  afterEach(() => {
+    document.getElementById('virtual-pad')?.remove();
+    vi.restoreAllMocks();
+  });
+
+  it('is a no-op when the pad is not mounted', () => {
+    expect(() => updateVirtualGamepadContrast(true)).not.toThrow();
+    expect(() => updateVirtualGamepadContrast(false)).not.toThrow();
+  });
+
+  it('adds vpad-high-contrast class when enabled=true', () => {
+    applyVirtualGamepadVisibility(); // mounts the pad
+    const pad = getPad()!;
+    pad.classList.remove('vpad-high-contrast');
+    updateVirtualGamepadContrast(true);
+    expect(pad.classList.contains('vpad-high-contrast')).toBe(true);
+  });
+
+  it('removes vpad-high-contrast class when enabled=false', () => {
+    applyVirtualGamepadVisibility(); // mounts the pad
+    const pad = getPad()!;
+    pad.classList.add('vpad-high-contrast');
+    updateVirtualGamepadContrast(false);
+    expect(pad.classList.contains('vpad-high-contrast')).toBe(false);
+  });
+
+  it('toggles the class in sync with multiple calls', () => {
+    applyVirtualGamepadVisibility();
+    const pad = getPad()!;
+    updateVirtualGamepadContrast(true);
+    expect(pad.classList.contains('vpad-high-contrast')).toBe(true);
+    updateVirtualGamepadContrast(false);
+    expect(pad.classList.contains('vpad-high-contrast')).toBe(false);
+    updateVirtualGamepadContrast(true);
+    expect(pad.classList.contains('vpad-high-contrast')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('actionsOf / data-actions parsing (via button touch events)', () => {
+  beforeEach(() => {
+    _resetReactiveDetected();
+    vi.mocked(touchPrimary.isTouchPrimary).mockReturnValue(true);
+    mockSetting('auto');
+    document.getElementById('virtual-pad')?.remove();
+  });
+
+  afterEach(() => {
+    document.getElementById('virtual-pad')?.remove();
+    vi.restoreAllMocks();
+  });
+
+  it('buildPad creates buttons with data-actions attributes', () => {
+    applyVirtualGamepadVisibility();
+    const pad = getPad()!;
+    const btns = pad.querySelectorAll('[data-actions]');
+    expect(btns.length).toBeGreaterThan(0);
+  });
+
+  it('Jump button has data-actions="Jump"', () => {
+    applyVirtualGamepadVisibility();
+    const pad = getPad()!;
+    const jumpBtn = pad.querySelector('[data-actions="Jump"]');
+    expect(jumpBtn).not.toBeNull();
+  });
+
+  it('touchstart on a button calls setVirtualButton for each action', async () => {
+    const inputMod = await import('../input');
+    const setVirtualButtonMock = vi.mocked(inputMod.setVirtualButton);
+    setVirtualButtonMock.mockClear();
+    applyVirtualGamepadVisibility();
+    const pad = getPad()!;
+    const jumpBtn = pad.querySelector('[data-actions="Jump"]') as HTMLElement;
+    const touchStartEvent = new Event('touchstart');
+    Object.defineProperty(touchStartEvent, 'preventDefault', { value: vi.fn() });
+    Object.defineProperty(touchStartEvent, 'currentTarget', { value: jumpBtn });
+    jumpBtn.dispatchEvent(touchStartEvent);
+    expect(setVirtualButtonMock).toHaveBeenCalledWith('Jump', true);
   });
 });

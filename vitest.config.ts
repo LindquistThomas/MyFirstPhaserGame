@@ -22,9 +22,10 @@ export default defineConfig({
         // Initial UI threshold phase: exclude heavier modal/panel files so
         // HUD and DialogController drive coverage first. Remove these as
         // additional UI unit tests are added.
-        'src/ui/{ElevatorButtons,InfoDialog,InfoIcon,ModalBase,ModalKeyboardNavigator,QuizDialog,QuizResultsScreen}.ts',
+        'src/ui/{ElevatorButtons,InfoDialog,InfoIcon,ModalBase,QuizDialog,QuizResultsScreen}.ts',
         // New UI files added without unit tests yet — excluded until tests are written.
-        'src/ui/{AchievementsDialog,ControlHintsOverlay,VirtualGamepad,WelcomeModal,touchPrimary}.ts',
+        // TODO: add tests for ControlHintsOverlay and touchPrimary to remove them too.
+        'src/ui/{ControlHintsOverlay,touchPrimary}.ts',
 
         'src/input/phaser-augment.d.ts',
       ],
