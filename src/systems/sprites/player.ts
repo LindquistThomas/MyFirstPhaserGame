@@ -127,7 +127,7 @@ function _makeHelpers(ctx: CanvasRenderingContext2D) {
     px(f, frontLegX, 20 + by + frontLen, 4, 2, _SHOE_F);
   };
 
-  return { px, drawUpperBody, drawArm, drawBlueprint, drawLegs };
+  return { px, EYE_W, drawUpperBody, drawArm, drawBlueprint, drawLegs };
 }
 
 /**
@@ -180,7 +180,7 @@ export function drawPlayerWalkFrames(_canvas: HTMLCanvasElement, ctx: CanvasRend
  * after `drawPlayerWalkFrames`. Does NOT register the texture.
  */
 export function drawPlayerFlipFrames(_canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): void {
-  const { px } = _makeHelpers(ctx);
+  const { px, EYE_W } = _makeHelpers(ctx);
 
   /* ------------------------- Flip 6-13 ------------------------- */
   // Each frame is a distinct hand-posed silhouette, not a rotation.
@@ -193,7 +193,7 @@ export function drawPlayerFlipFrames(_canvas: HTMLCanvasElement, ctx: CanvasRend
     px(f, 6, 2 + by, 5, 5, _SKIN);
     px(f, 11, 4 + by, 1, 1, _SKIN_SH);
     px(f, 8, 3 + by, 2, 1, _HAIR);
-    px(f, 8, 4 + by, 2, 1, _OUTLINE); // eye white (simplified in flip frames)
+    px(f, 8, 4 + by, 2, 1, EYE_W);
     px(f, 9, 4 + by, 1, 1, _OUTLINE);
     // Short compressed torso
     px(f, 5, 7 + by, 6, 6, _SHIRT);
@@ -320,7 +320,7 @@ export function drawPlayerFlipFrames(_canvas: HTMLCanvasElement, ctx: CanvasRend
     px(f, 6, 2 + by, 5, 5, _SKIN);
     px(f, 11, 4 + by, 1, 1, _SKIN_SH);
     px(f, 8, 3 + by, 2, 1, _HAIR);
-    px(f, 8, 4 + by, 2, 1, _OUTLINE); // eye white (simplified in flip frames)
+    px(f, 8, 4 + by, 2, 1, EYE_W);
     px(f, 9, 4 + by, 1, 1, _OUTLINE);
     // Torso
     px(f, 5, 7 + by, 6, 8, _SHIRT);
@@ -347,7 +347,7 @@ export function drawPlayerFlipFrames(_canvas: HTMLCanvasElement, ctx: CanvasRend
     px(f, 11, 4 + by, 1, 2, _SKIN_SH);
     px(f, 6, 7 + by, 5, 1, _SKIN_SH);
     px(f, 8, 3 + by, 2, 1, _HAIR);
-    px(f, 8, 4 + by, 2, 1, _OUTLINE); // eye white (simplified in flip frames)
+    px(f, 8, 4 + by, 2, 1, EYE_W);
     px(f, 9, 4 + by, 1, 1, _OUTLINE);
     px(f, 9, 6 + by, 2, 1, _MOUTH);
     // Torso
