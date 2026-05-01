@@ -6,18 +6,35 @@ import * as Phaser from 'phaser';
  * Keeps the zero-image-asset convention. All textures are single-frame;
  * animation (phase tints, squash, etc.) is driven by tweens in the entities.
  */
-export function generateBossSprites(scene: Phaser.Scene): void {
+
+/** First batch: CEO character and combat projectiles. */
+export function generateBossSpritesA(scene: Phaser.Scene): void {
   generateCEOBossSprite(scene);
   generateCEOBossHitSprite(scene);
   generateMugProjectileSprite(scene);
   generateBriefcaseProjectileSprite(scene);
+}
+
+/** Second batch: terrorist commander and mission item sprites. */
+export function generateBossSpritesB(scene: Phaser.Scene): void {
   generateTerroristCommanderSprite(scene);
   generateItemPistolSprite(scene);
   generateItemKeycardSprite(scene);
   generateItemBombCodeSprite(scene);
+}
+
+/** Third batch: bomb device and sanctum door sprites. */
+export function generateBossSpritesC(scene: Phaser.Scene): void {
   generateBombDeviceSprite(scene);
   generateSanctumDoorLockedSprite(scene);
   generateSanctumDoorOpenSprite(scene);
+}
+
+/** Full boss sprite generation for direct / non-split use. */
+export function generateBossSprites(scene: Phaser.Scene): void {
+  generateBossSpritesA(scene);
+  generateBossSpritesB(scene);
+  generateBossSpritesC(scene);
 }
 
 /** CEO boss: bald, dark suit, open collar, slim frame — 48×64. */
