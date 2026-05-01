@@ -1,12 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for gameplay screenshot tests.
+ * Playwright configuration for gameplay end-to-end tests.
  *
  * The `webServer` entry boots the Vite dev server on port 3000 before the
- * tests run, and tears it down afterwards. Tests capture PNG screenshots of
- * each scene into `tests/screenshots/` so reviewers can see how the game
- * actually looks when a feature is implemented.
+ * tests run, and tears it down afterwards. Runtime artifacts are kept lean:
+ * screenshots are captured only on failure, videos are disabled, and CI traces
+ * are recorded on first retry. Dedicated visual snapshots live in
+ * `tests/visual.spec.ts`.
  */
 export default defineConfig({
   testDir: './tests',
@@ -40,7 +41,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     viewport: { width: 1280, height: 960 },
-    trace: 'on-first-retry',
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     video: 'off',
     screenshot: 'only-on-failure',
     // Headless by default — deterministic pixel output for snapshots.
@@ -68,7 +69,7 @@ export default defineConfig({
     // we deliberately do NOT rebuild here — doing so would double the
     // build cost (~15s wasted per run). Locally we keep `npm run dev` so
     // hot-reload works while iterating on tests.
-    command: process.env.CI ? 'npm run preview -- --port 3000 --strictPort' : 'npm run dev -- --port 3000 --strictPort',
+    command: process.env.CI ? 'npm run preview -- --port 3000 --strictPort' : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

@@ -74,7 +74,9 @@ test.describe('Accessibility — WCAG 2.1 AA (HTML layer)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    await page.evaluate(() => window.__game!.scene.start('SettingsScene', { from: 'MenuScene' }));
+    // Settings is the last menu item; ArrowUp wraps from the default first item.
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Enter');
     await waitForScene(page, 'SettingsScene');
 
     const results = await runAxe(page);
@@ -111,6 +113,35 @@ test.describe('Accessibility — WCAG 2.1 AA (HTML layer)', () => {
     ).toEqual([]);
 
     errors.assertClean();
+  });
+
+  test('prefers-reduced-motion: zero WCAG violations', async ({ browser }) => {
+    // Launch a new context with reduced-motion emulation.
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 960 },
+      reducedMotion: 'reduce',
+    });
+    try {
+      const page = await context.newPage();
+      const errors = attachErrorWatchers(page);
+
+      await clearStorage(page);
+      await seedFullProgressSave(page);
+
+      await page.goto('/');
+      await waitForGame(page);
+      await waitForScene(page, 'MenuScene');
+
+      const results = await runAxe(page);
+      expect(
+        results.violations,
+        formatViolations(results.violations),
+      ).toEqual([]);
+
+      errors.assertClean();
+    } finally {
+      await context.close();
+    }
   });
 
   test('highContrastControls: data-high-contrast attribute applied to <html>', async ({ page }) => {

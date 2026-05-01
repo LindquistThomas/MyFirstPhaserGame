@@ -41,6 +41,7 @@ test.describe('Floor 1 (Platform Team)', () => {
       (scene['enterFloor'] as (id: number) => void)(1);
     });
     await waitForScene(page, 'PlatformTeamScene');
+
     // Open the info dialog programmatically through the DialogController.
     // Driving the zone-detection path via arrow keys was the original
     // approach but was timing-sensitive and flaky under parallel CI load;
@@ -120,6 +121,7 @@ test.describe('Floor 1 (Platform Team)', () => {
     );
     await page.keyboard.press('PageDown');
     const after = await collectContainerYs();
+
     // At least one nested Container y must have changed — that's the scroll.
     expect(after).not.toEqual(before);
 

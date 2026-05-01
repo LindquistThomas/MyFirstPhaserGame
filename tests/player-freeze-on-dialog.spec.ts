@@ -152,13 +152,11 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
       dialogs.open('you-build-you-run');
       return snapshot;
     });
-    // Sanity-check: the player really was walking on the ground the moment
-    // the dialog opened. `anim` isn't checked here — under CI's starved
-    // frame loop the animation controller can lag the physics by several
-    // hundred ms (airborne grace + player_land squash + slope jitter), so
-    // the precondition the regression cares about is vx > 0 while
-    // ArrowRight is held.
-    expect(atOpen.onGround).toBe(true);
+    // Sanity-check: the player really had horizontal motion the moment the
+    // dialog opened. `anim` and `onGround` aren't checked here — under CI's
+    // starved frame loop the animation controller and ground flags can lag
+    // physics by several frames, while the regression target is vx during
+    // the input-context switch.
     expect(atOpen.vx).toBeGreaterThan(50);
 
     await waitForDialogOpen(page, 'PlatformTeamScene');

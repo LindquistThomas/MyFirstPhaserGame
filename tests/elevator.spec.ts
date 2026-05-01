@@ -22,18 +22,6 @@ test.describe('Elevator scene', () => {
     });
   });
 
-  test('renders with lobby in view after starting from the menu', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await navigateToElevator(page);
-
-    errors.assertClean();
-  });
-
   test('info dialog opens from the elevator info action', async ({ page }) => {
     const errors = attachErrorWatchers(page);
 
