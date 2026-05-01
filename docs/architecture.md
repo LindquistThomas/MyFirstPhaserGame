@@ -35,7 +35,8 @@ src/
 │       │   ├── floorAccents.ts         Per-floor silhouette accent + ambient tween.
 │       │   ├── floorPatterns.ts        Themed decorative patterns for scene backdrop.
 │       │   ├── sceneBackdrop.ts        Layered gradient/pattern/vignette background.
-│       │   └── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
+│       │   ├── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
+│       │   └── coachHints.ts           First-visit per-floor toast hint copy.
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
 │       ├── architecture/     Architecture Team — largest quiz pool.
@@ -123,6 +124,7 @@ src/
 │   ├── SettingsStore.ts      Persisted volume levels + motion/control overrides.
 │   ├── MotionPreference.ts   Reduced-motion helper (reads OS preference + settings).
 │   ├── CaffeineBuff.ts       Pure timer for caffeine buff; callers supply `now`.
+│   ├── FloorHitState.ts      Per-floor hit / checkpoint tracking; pure (no Phaser/eventBus); 3-hit forced respawn threshold.
 │   ├── PersistedStore.ts     Generic JSON-backed key/value store factory.
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
 │   ├── sliderUtils.ts        Volume slider clamping utilities.
@@ -145,6 +147,7 @@ src/
 ├── ui/                       Modal + HUD widgets built on Phaser containers.
 │   ├── BombDisarmDialog.ts     Wire-cutting mini-game modal for the executive rescue (extends ModalBase).
 │   ├── BossHealthBar.ts        Boss HP bar (boss arena).
+│   ├── BossIntroDialog.ts      Boss-arena intro modal (extends ModalBase).
 │   ├── CallElevatorButton.ts   Call-elevator action button.
 │   ├── ModalBase.ts          Overlay + fade + Esc-key scaffolding for dialogs.
 │   ├── ModalKeyboardNavigator.ts  Shared keyboard nav for InfoDialog + QuizDialog.
@@ -309,10 +312,10 @@ adding an event there type-checks every call site automatically.
 
 - **Unit tests** (`npm run test:unit`) live next to their sources as
   `*.test.ts` and run in jsdom under Vitest. They cover pure
-  systems: `EventBus`, `SaveManager`, `QuizManager`,
-  `ProgressionSystem`, `ZoneManager`, `InputService`,
-  `InfoDialogManager`, `AudioManager`, `GameStateManager`,
-  `sceneLifecycle`, and the `config/info` + `config/quiz` barrels.
+  systems (`src/systems/**`, `src/input/**`), config barrels
+  (`src/config/info`, `src/config/quiz`), entities
+  (`src/entities/**`), UI widgets (`src/ui/**`), and select
+  scene/feature helpers.
 - **End-to-end tests** (`npm test`) drive the real game via
   Playwright (`menu`, `elevator`, `floors`, `tokens`, `quiz`,
   `progression`, `visual`).
