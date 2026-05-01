@@ -1,10 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Phaser from 'phaser';
 import { DialogController } from './DialogController';
 import type { ProgressionSystem } from '../systems/ProgressionSystem';
 import { InfoDialog } from './InfoDialog';
 import { QuizDialog } from './QuizDialog';
 import { canRetryQuiz, getCooldownRemaining, isQuizPassed } from '../systems/QuizManager';
+import { preloadInfoFor } from '../config/info';
+import { preloadQuizFor } from '../config/quiz';
+import { FLOORS } from '../config/gameConfig';
 
 vi.mock('./InfoDialog', () => ({ InfoDialog: vi.fn() }));
 vi.mock('./QuizDialog', () => ({ QuizDialog: vi.fn() }));
@@ -13,6 +16,11 @@ vi.mock('../systems/QuizManager', () => ({
   canRetryQuiz: vi.fn(() => true),
   getCooldownRemaining: vi.fn(() => 0),
 }));
+
+// Preload lobby content so INFO_POINTS and QUIZ_DATA are populated before any test runs.
+beforeAll(async () => {
+  await Promise.all([preloadInfoFor(FLOORS.LOBBY), preloadQuizFor(FLOORS.LOBBY)]);
+});
 
 describe('DialogController', () => {
   const scene = {} as Phaser.Scene;

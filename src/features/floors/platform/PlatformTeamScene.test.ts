@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { assertValidLevelConfig, VALID_ENEMY_TYPES } from '../_shared/validateLevelConfig';
 import type { LevelConfig } from '../_shared/LevelScene';
-import { INFO_POINTS } from '../../../config/info';
-import { GAME_WIDTH, GAME_HEIGHT } from '../../../config/gameConfig';
+import { INFO_POINTS, preloadInfoFor } from '../../../config/info';
+import { GAME_WIDTH, GAME_HEIGHT, FLOORS } from '../../../config/gameConfig';
 
 // Minimal Phaser stub — LevelScene (mocked below) is the only class that
 // extends Phaser.Scene; PlatformTeamScene extends LevelScene.
@@ -47,7 +47,8 @@ class TestablePlatformTeamScene extends PlatformTeamScene {
 describe('PlatformTeamScene — LevelConfig', () => {
   let cfg: LevelConfig;
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    await preloadInfoFor(FLOORS.PLATFORM_TEAM);
     cfg = new TestablePlatformTeamScene().getConfig();
   });
 

@@ -29,6 +29,8 @@ import { CallElevatorButton } from '../../../ui/CallElevatorButton';
 import { eventBus } from '../../../systems/EventBus';
 import { settingsStore } from '../../../systems/SettingsStore';
 import { getCoachHint } from './coachHints';
+import { preloadQuizFor } from '../../../config/quiz';
+import { preloadInfoFor } from '../../../config/info';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
@@ -231,6 +233,12 @@ export class LevelScene extends Phaser.Scene {
     this.movingPlatforms = [];
     this.floorHazard.reset();
     this.heartbeatElapsed = 0;
+    // Kick off lazy-load of this floor's quiz and info content so the data is
+    // available by the time the player walks to an info icon.  Fire-and-forget:
+    // Phaser's create() runs synchronously immediately after init(), but the
+    // player still needs several seconds to walk to any interactive element.
+    void preloadQuizFor(this.floorId);
+    void preloadInfoFor(this.floorId);
   }
 
   create(): void {

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { assertValidLevelConfig } from '../_shared/validateLevelConfig';
 import type { LevelConfig } from '../_shared/LevelScene';
-import { INFO_POINTS } from '../../../config/info';
-import { GAME_WIDTH, GAME_HEIGHT } from '../../../config/gameConfig';
+import { INFO_POINTS, preloadInfoFor } from '../../../config/info';
+import { GAME_WIDTH, GAME_HEIGHT, FLOORS } from '../../../config/gameConfig';
 
 vi.mock('phaser', () => {
   class Scene {
@@ -104,7 +104,8 @@ class TestableExecutiveSuiteScene extends ExecutiveSuiteScene {
 describe('ExecutiveSuiteScene — LevelConfig', () => {
   let cfg: LevelConfig;
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    await preloadInfoFor(FLOORS.EXECUTIVE);
     cfg = new TestableExecutiveSuiteScene().getConfig();
   });
 

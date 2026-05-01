@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import architectureQuizSource from '../../features/floors/architecture/quiz.ts?raw';
 import {
   QUIZ_DATA,
@@ -7,11 +7,31 @@ import {
   QUIZ_PASS_THRESHOLD,
   QUIZ_REWARDS,
   QuizDifficulty,
+  QuizDefinition,
+  preloadQuizFor,
 } from './index';
-import { INFO_POINTS } from '../info';
+import { INFO_POINTS, preloadInfoFor } from '../info';
+import { FLOORS } from '../gameConfig';
+
+// Preload all floor content so QUIZ_DATA and INFO_POINTS are fully populated
+// before any assertions run.  This mirrors what happens at runtime when the
+// player visits each floor.
+beforeAll(async () => {
+  await Promise.all(
+    Object.values(FLOORS).map((fid) =>
+      Promise.all([preloadQuizFor(fid), preloadInfoFor(fid)]),
+    ),
+  );
+});
 
 describe('QUIZ_DATA', () => {
-  const entries = Object.entries(QUIZ_DATA);
+  // entries is captured lazily inside a nested beforeAll so that it reflects
+  // the fully-populated QUIZ_DATA after the outer beforeAll completes.
+  let entries: Array<[string, QuizDefinition]> = [];
+
+  beforeAll(() => {
+    entries = Object.entries(QUIZ_DATA);
+  });
 
   it('is non-empty', () => {
     expect(entries.length).toBeGreaterThan(0);
