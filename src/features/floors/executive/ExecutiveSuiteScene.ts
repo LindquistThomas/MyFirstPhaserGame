@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
-import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { LevelConfig } from '../_shared/LevelScene';
+import { defineFloorScene } from '../_shared/defineFloorScene';
 import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
 import { FinanceTeamScene } from '../finance/FinanceTeamScene';
@@ -24,7 +25,10 @@ import { BombDisarmDialog } from '../../../ui/BombDisarmDialog';
  * (see `floorPatterns.ts` / `floorAccents.ts`). Rim-lit platform tiles
  * and a staggered alpha-pulse on tokens keep the penthouse feel.
  */
-export class ExecutiveSuiteScene extends LevelScene {
+export class ExecutiveSuiteScene extends defineFloorScene({
+  key: 'ExecutiveSuiteScene',
+  floorId: FLOORS.EXECUTIVE,
+}) {
   /** Doors inside the Executive Suite that open into content-only rooms. */
   private static readonly DOORS: Array<{ x: number; label: string; doorId: string; sceneKey: string }> = [
     { x: 1080, label: 'Finance', doorId: FinanceTeamScene.DOOR_ID, sceneKey: 'FinanceTeamScene' },
@@ -75,10 +79,6 @@ export class ExecutiveSuiteScene extends LevelScene {
    * the modal.  Set by tests that need to skip the mini-game.
    */
   static instantDisarm = false;
-
-  constructor() {
-    super('ExecutiveSuiteScene', FLOORS.EXECUTIVE);
-  }
 
   preload(): void {
     // Pre-load the boss track during this scene's preload phase so it is

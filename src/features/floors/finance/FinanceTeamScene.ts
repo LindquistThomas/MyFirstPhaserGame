@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
-import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { defineFloorScene } from '../_shared/defineFloorScene';
 import { allKeyLabels } from '../../../input';
 
 /**
@@ -16,47 +16,11 @@ import { allKeyLabels } from '../../../input';
  * under the penthouse. No tokens are defined here — Finance is an
  * info/narrative room, not an AU-collection floor.
  */
-export class FinanceTeamScene extends LevelScene {
-  /** Door identifier used by ExecutiveSuiteScene to respawn next to this door. */
-  static readonly DOOR_ID = 'finance';
-
-  constructor() {
-    super('FinanceTeamScene', FLOORS.EXECUTIVE);
-  }
-
-  protected override createDecorations(): void {
+export class FinanceTeamScene extends defineFloorScene({
+  key: 'FinanceTeamScene',
+  floorId: FLOORS.EXECUTIVE,
+  config: () => {
     const G = GAME_HEIGHT - TILE_SIZE;
-
-    this.addAmbientPlants([
-      { x: 90, kind: 'tall' },
-      { x: 160, kind: 'small' },
-    ]);
-
-    this.addSignpost({ x: 260, label: '  FINANCE', color: '#b8ffd1' });
-
-    // Parody microtransaction kiosk. Reuses the signpost + monitor sprites
-    // so the gag reads as a tacky sales terminal. The actual interaction
-    // surface is the `microtransaction-kiosk` info point \u2014 no card form,
-    // no buttons, just a dialog whose extendedInfo explains why real apps
-    // don't collect card data themselves.
-    this.addSignpost({
-      x: 460,
-      label: 'AU MegaMart\u2122\n  BUY NOW!!!',
-      color: '#ffd166',
-      fontSize: 11,
-    });
-    this.add.image(460, G - 22, 'monitor_dash').setDepth(3);
-
-    // Trading-desk style monitors \u2014 proxy for FP&A dashboards.
-    this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
-    this.add.image(720, G - 22, 'monitor_dash').setDepth(3);
-    this.add.image(900, G - 36, 'desk_monitor').setDepth(3);
-    this.add.image(1080, G - 22, 'monitor_dash').setDepth(3);
-  }
-
-  protected getLevelConfig(): LevelConfig {
-    const G = GAME_HEIGHT - TILE_SIZE;
-
     return {
       floorId: FLOORS.EXECUTIVE,
       playerStart: { x: 150, y: G - 100 },
@@ -82,6 +46,39 @@ export class FinanceTeamScene extends LevelScene {
         },
       ],
     };
+  },
+}) {
+  /** Door identifier used by ExecutiveSuiteScene to respawn next to this door. */
+  static readonly DOOR_ID = 'finance';
+
+  protected override createDecorations(): void {
+    const G = GAME_HEIGHT - TILE_SIZE;
+
+    this.addAmbientPlants([
+      { x: 90, kind: 'tall' },
+      { x: 160, kind: 'small' },
+    ]);
+
+    this.addSignpost({ x: 260, label: '  FINANCE', color: '#b8ffd1' });
+
+    // Parody microtransaction kiosk. Reuses the signpost + monitor sprites
+    // so the gag reads as a tacky sales terminal. The actual interaction
+    // surface is the `microtransaction-kiosk` info point — no card form,
+    // no buttons, just a dialog whose extendedInfo explains why real apps
+    // don't collect card data themselves.
+    this.addSignpost({
+      x: 460,
+      label: 'AU MegaMart™\n  BUY NOW!!!',
+      color: '#ffd166',
+      fontSize: 11,
+    });
+    this.add.image(460, G - 22, 'monitor_dash').setDepth(3);
+
+    // Trading-desk style monitors — proxy for FP&A dashboards.
+    this.add.image(560, G - 36, 'desk_monitor').setDepth(3);
+    this.add.image(720, G - 22, 'monitor_dash').setDepth(3);
+    this.add.image(900, G - 36, 'desk_monitor').setDepth(3);
+    this.add.image(1080, G - 22, 'monitor_dash').setDepth(3);
   }
 
   /** Return to the Executive Suite next to the Finance door. */
@@ -103,7 +100,7 @@ export class FinanceTeamScene extends LevelScene {
     const near = d < 90;
     this.setExitDoorOpen(near);
     if (near) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Executive Suite`).setPosition(
+      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} → Executive Suite`).setPosition(
         this.exitDoor.x - 80, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();
@@ -112,3 +109,4 @@ export class FinanceTeamScene extends LevelScene {
     }
   }
 }
+

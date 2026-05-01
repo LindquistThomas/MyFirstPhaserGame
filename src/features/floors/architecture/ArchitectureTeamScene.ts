@@ -4,8 +4,11 @@ import {
   TIER_Y_T1 as TIER_T1, TIER_Y_T2 as TIER_T2,
   CATWALK_THICKNESS,
 } from '../../../config/levelGeometry';
-import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { defineFloorScene } from '../_shared/defineFloorScene';
 import { theme } from '../../../style/theme';
+
+/** First token index used in this room — must not overlap PlatformTeamScene (0..6). */
+const TOKEN_INDEX_OFFSET = 7;
 
 /**
  * Floor 1 — Architecture room (right side of the Platform Team floor).
@@ -21,23 +24,118 @@ import { theme } from '../../../style/theme';
  * Token indices are disjoint from PlatformTeamScene so collection state does
  * not collide across the shared ProgressionSystem bookkeeping.
  */
-export class ArchitectureTeamScene extends LevelScene {
-  /** First token index used in this room — must not overlap PlatformTeamScene. */
-  private static readonly TOKEN_INDEX_OFFSET = 7;
+export class ArchitectureTeamScene extends defineFloorScene({
+  key: 'ArchitectureTeamScene',
+  floorId: FLOORS.PLATFORM_TEAM,
+  banner: { title: 'Architecture Team', description: 'Diagrams, decisions, and vertical slices.' },
+  returnSide: 'right',
+  config: () => {
+    const G = GAME_HEIGHT - TILE_SIZE;
+    const K = TOKEN_INDEX_OFFSET;
+    const MID = TIER_T1;
+    const UP = TIER_T2;
+    const T = CATWALK_THICKNESS;
 
-  constructor() {
-    super('ArchitectureTeamScene', FLOORS.PLATFORM_TEAM);
-    this.returnSide = 'right';
-  }
+    return {
+      floorId: FLOORS.PLATFORM_TEAM,
+      playerStart: { x: 150, y: G - 100 },
+      exitPosition: { x: 80, y: G - 56 },
 
-  protected override getBannerTitle(): string {
-    return 'Architecture Team';
-  }
+      platforms: [
+        { x: 0, y: G, width: 10 },
+      ],
 
-  protected override getBannerDescription(): string {
-    return 'Diagrams, decisions, and vertical slices.';
-  }
+      // Mezzanines placed in the horizontal gaps between the four ground
+      // info zones so the 220-px-tall rect zones stay unobstructed.
+      // Gaps: 310..380, 600..710, 890..1000, 1160..1280.
+      catwalks: [
+        // Mid tier (reachable from ground in one jump).
+        { x: 310,  y: MID, width: 70,  thickness: T },
+        { x: 600,  y: MID, width: 110, thickness: T },
+        { x: 890,  y: MID, width: 110, thickness: T },
+        { x: 1160, y: MID, width: 120, thickness: T },
+        // Upper tier (reachable from mid in one jump). Only two — the
+        // horizontal tween bridges the long gap between them.
+        { x: 600,  y: UP,  width: 110, thickness: T },
+        { x: 1020, y: UP,  width: 100, thickness: T },
+      ],
 
+      movingPlatforms: [
+        // 1. Horizontal bouncer on mid-tier, ferrying between Cat-mid-L
+        // (x=310..380) and Cat-mid-C1 (x=600..710) *over* the c4 info zone.
+        {
+          x: 380, y: MID, width: 80, thickness: T,
+          axis: 'x', distance: 240, mode: 'bounce', speed: 70,
+        },
+        // 2. Vertical bouncer, mid → upper on the right side. Travels
+        // between y=MID (aligns with Cat-mid gap) and y=UP (Cat-up-R).
+        {
+          x: 1040, y: MID, width: 80, thickness: T,
+          axis: 'y', distance: UP - MID, mode: 'bounce', speed: 55,
+        },
+        // 3. Tween-driven bridge on upper tier: smooth Sine ease between
+        // Cat-up-C (600..710) and Cat-up-R (1020..1120). The only tween
+        // platform on the floor — deliberately the easiest to time.
+        {
+          x: 710, y: UP, width: 100, thickness: T,
+          axis: 'x', distance: 210, mode: 'tween', duration: 2400, ease: 'Sine.inOut',
+        },
+      ],
+
+      roomElevators: [],
+
+      // Ground tokens 7..10 unchanged; new tokens 11..14 reward the
+      // mezzanine/mover chain.
+      tokens: [
+        { x: 360,  y: G - 40,  index: K + 0 },
+        { x: 670,  y: G - 40,  index: K + 1 },
+        { x: 960,  y: G - 40,  index: K + 2 },
+        { x: 1200, y: G - 40,  index: K + 3 },
+        // Mid-tier: one on Cat-mid-L, one mid-air along the bouncer path
+        // (player collects while riding).
+        { x: 345,  y: MID - 40, index: K + 4 },
+        { x: 500,  y: MID - 40, index: K + 5 },
+        // Upper-tier: one on Cat-up-C, one on Cat-up-R (across the tween).
+        { x: 655,  y: UP  - 40, index: K + 6 },
+        { x: 1070, y: UP  - 40, index: K + 7 },
+      ],
+
+      coffees: [
+        { x: 600, y: G - 40 },
+      ],
+
+      enemies: [
+        // Scope Creep — ground-level patrol in the c4↔vertical-slice gap.
+        { type: 'scope-creep', x: 660, y: G - 20, minX: 620, maxX: 700, speed: 35 },
+        // Architecture Astronaut — hovering above mid-tier catwalks, at
+        // a y the player can reach with a jump from mid-tier for stomping.
+        { type: 'astronaut', x: 500, y: 620, minX: 250, maxX: 900, speed: 65 },
+        // Tech Debt Ghost — drifts across the upper half, phases through
+        // catwalks so retreating upstairs is no escape.
+        { type: 'tech-debt-ghost', x: 700, y: 420, minX: 300, maxX: 1100, speed: 40 },
+      ],
+
+      infoPoints: [
+        {
+          x: 230, y: G, contentId: 'architecture-team',
+          zone: { shape: 'rect', width: 160, height: 220 },
+        },
+        {
+          x: 490, y: G, contentId: 'c4-diagrams',
+          zone: { shape: 'rect', width: 220, height: 220 },
+        },
+        {
+          x: 800, y: G, contentId: 'vertical-slice-architecture',
+          zone: { shape: 'rect', width: 180, height: 220 },
+        },
+        {
+          x: 1080, y: G, contentId: 'architecture-decision-records',
+          zone: { shape: 'rect', width: 160, height: 220 },
+        },
+      ],
+    };
+  },
+}) {
   protected override createDecorations(): void {
     const G = GAME_HEIGHT - TILE_SIZE;
 
@@ -301,112 +399,5 @@ export class ArchitectureTeamScene extends LevelScene {
 
     redraw();
     this.time.addEvent({ delay: 120, loop: true, callback: redraw });
-  }
-
-  protected getLevelConfig(): LevelConfig {
-    const G = GAME_HEIGHT - TILE_SIZE;
-    const K = ArchitectureTeamScene.TOKEN_INDEX_OFFSET;
-    const MID = TIER_T1;
-    const UP = TIER_T2;
-    const T = CATWALK_THICKNESS;
-
-    return {
-      floorId: FLOORS.PLATFORM_TEAM,
-      playerStart: { x: 150, y: G - 100 },
-      exitPosition: { x: 80, y: G - 56 },
-
-      platforms: [
-        { x: 0, y: G, width: 10 },
-      ],
-
-      // Mezzanines placed in the horizontal gaps between the four ground
-      // info zones so the 220-px-tall rect zones stay unobstructed.
-      // Gaps: 310..380, 600..710, 890..1000, 1160..1280.
-      catwalks: [
-        // Mid tier (reachable from ground in one jump).
-        { x: 310,  y: MID, width: 70,  thickness: T },
-        { x: 600,  y: MID, width: 110, thickness: T },
-        { x: 890,  y: MID, width: 110, thickness: T },
-        { x: 1160, y: MID, width: 120, thickness: T },
-        // Upper tier (reachable from mid in one jump). Only two — the
-        // horizontal tween bridges the long gap between them.
-        { x: 600,  y: UP,  width: 110, thickness: T },
-        { x: 1020, y: UP,  width: 100, thickness: T },
-      ],
-
-      movingPlatforms: [
-        // 1. Horizontal bouncer on mid-tier, ferrying between Cat-mid-L
-        // (x=310..380) and Cat-mid-C1 (x=600..710) *over* the c4 info zone.
-        {
-          x: 380, y: MID, width: 80, thickness: T,
-          axis: 'x', distance: 240, mode: 'bounce', speed: 70,
-        },
-        // 2. Vertical bouncer, mid → upper on the right side. Travels
-        // between y=MID (aligns with Cat-mid gap) and y=UP (Cat-up-R).
-        {
-          x: 1040, y: MID, width: 80, thickness: T,
-          axis: 'y', distance: UP - MID, mode: 'bounce', speed: 55,
-        },
-        // 3. Tween-driven bridge on upper tier: smooth Sine ease between
-        // Cat-up-C (600..710) and Cat-up-R (1020..1120). The only tween
-        // platform on the floor — deliberately the easiest to time.
-        {
-          x: 710, y: UP, width: 100, thickness: T,
-          axis: 'x', distance: 210, mode: 'tween', duration: 2400, ease: 'Sine.inOut',
-        },
-      ],
-
-      roomElevators: [],
-
-      // Ground tokens 7..10 unchanged; new tokens 11..14 reward the
-      // mezzanine/mover chain.
-      tokens: [
-        { x: 360,  y: G - 40,  index: K + 0 },
-        { x: 670,  y: G - 40,  index: K + 1 },
-        { x: 960,  y: G - 40,  index: K + 2 },
-        { x: 1200, y: G - 40,  index: K + 3 },
-        // Mid-tier: one on Cat-mid-L, one mid-air along the bouncer path
-        // (player collects while riding).
-        { x: 345,  y: MID - 40, index: K + 4 },
-        { x: 500,  y: MID - 40, index: K + 5 },
-        // Upper-tier: one on Cat-up-C, one on Cat-up-R (across the tween).
-        { x: 655,  y: UP  - 40, index: K + 6 },
-        { x: 1070, y: UP  - 40, index: K + 7 },
-      ],
-
-      coffees: [
-        { x: 600, y: G - 40 },
-      ],
-
-      enemies: [
-        // Scope Creep — ground-level patrol in the c4↔vertical-slice gap.
-        { type: 'scope-creep', x: 660, y: G - 20, minX: 620, maxX: 700, speed: 35 },
-        // Architecture Astronaut — hovering above mid-tier catwalks, at
-        // a y the player can reach with a jump from mid-tier for stomping.
-        { type: 'astronaut', x: 500, y: 620, minX: 250, maxX: 900, speed: 65 },
-        // Tech Debt Ghost — drifts across the upper half, phases through
-        // catwalks so retreating upstairs is no escape.
-        { type: 'tech-debt-ghost', x: 700, y: 420, minX: 300, maxX: 1100, speed: 40 },
-      ],
-
-      infoPoints: [
-        {
-          x: 230, y: G, contentId: 'architecture-team',
-          zone: { shape: 'rect', width: 160, height: 220 },
-        },
-        {
-          x: 490, y: G, contentId: 'c4-diagrams',
-          zone: { shape: 'rect', width: 220, height: 220 },
-        },
-        {
-          x: 800, y: G, contentId: 'vertical-slice-architecture',
-          zone: { shape: 'rect', width: 180, height: 220 },
-        },
-        {
-          x: 1080, y: G, contentId: 'architecture-decision-records',
-          zone: { shape: 'rect', width: 160, height: 220 },
-        },
-      ],
-    };
   }
 }
