@@ -32,6 +32,8 @@ vi.mock('./ModalBase', () => ({
       setAlpha: ReturnType<typeof vi.fn>;
     };
 
+    private destroyed = false;
+
     constructor(scene: unknown) {
       this.scene = scene;
       this.container = {
@@ -47,6 +49,8 @@ vi.mock('./ModalBase', () => ({
     protected fadeIn(): void { /* stub */ }
 
     close(): void {
+      if (this.destroyed) return;
+      this.destroyed = true;
       this.onBeforeClose();
       this.onAfterClose();
     }
@@ -269,6 +273,15 @@ describe('AchievementsDialog', () => {
     const scene = makeScene();
     new AchievementsDialog(scene as unknown as Phaser.Scene);
     scene._fireShutdown();
+    expect(scene.input.off).toHaveBeenCalledWith('wheel', expect.any(Function));
+    expect(scene.inputs.off).toHaveBeenCalledWith('PageUp', expect.any(Function));
+    expect(scene.inputs.off).toHaveBeenCalledWith('PageDown', expect.any(Function));
+  });
+
+  it('cleans up wheel and PageUp/PageDown handlers when dialog is closed (not just shutdown)', () => {
+    const scene = makeScene();
+    const dialog = new AchievementsDialog(scene as unknown as Phaser.Scene);
+    dialog.close();
     expect(scene.input.off).toHaveBeenCalledWith('wheel', expect.any(Function));
     expect(scene.inputs.off).toHaveBeenCalledWith('PageUp', expect.any(Function));
     expect(scene.inputs.off).toHaveBeenCalledWith('PageDown', expect.any(Function));

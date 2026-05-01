@@ -27,6 +27,8 @@ vi.mock('./ModalBase', () => ({
       setAlpha: ReturnType<typeof vi.fn>;
     };
 
+    private destroyed = false;
+
     constructor(scene: unknown) {
       this.scene = scene;
       this.container = {
@@ -42,6 +44,8 @@ vi.mock('./ModalBase', () => ({
     protected fadeIn(): void { /* stub */ }
 
     close(): void {
+      if (this.destroyed) return;
+      this.destroyed = true;
       this.onBeforeClose();
       this.onAfterClose();
     }
@@ -223,20 +227,20 @@ describe('WelcomeModal', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
-  it('second close() call does not invoke onComplete a second time (stub guard)', () => {
-    // The ModalBase stub has no `destroyed` guard; verifies the Confirm handler
-    // is nulled after the first close so the second close's onBeforeClose is a no-op.
+  it('second close() call does not invoke onComplete a second time (destroyed guard)', () => {
+    // The ModalBase stub has a `destroyed` guard matching real ModalBase behaviour:
+    // the second close() is a no-op so onComplete must not be called again.
     const scene = makeScene();
     const onComplete = vi.fn();
     const modal = new WelcomeModal(scene as unknown as Phaser.Scene, onComplete);
     modal.close();
     const firstCallCount = onComplete.mock.calls.length;
     modal.close();
-    // inputs.off should not be called again with the handler (it's been nulled)
-    const offCallsAfterSecondClose = (scene.inputs.off as ReturnType<typeof vi.fn>).mock.calls
+    // onComplete call count must not have grown after the second (no-op) close
+    expect(onComplete.mock.calls.length).toBe(firstCallCount);
+    // inputs.off was called exactly once for Confirm (from the first close)
+    const offConfirmCalls = (scene.inputs.off as ReturnType<typeof vi.fn>).mock.calls
       .filter(([action]) => action === 'Confirm').length;
-    // Only one off call for Confirm (from the first close)
-    expect(offCallsAfterSecondClose).toBe(1);
-    expect(onComplete.mock.calls.length).toBeGreaterThanOrEqual(firstCallCount);
+    expect(offConfirmCalls).toBe(1);
   });
 });

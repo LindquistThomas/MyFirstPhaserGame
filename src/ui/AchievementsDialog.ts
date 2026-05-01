@@ -17,10 +17,29 @@ const ROW_GAP = 6;
  * Extends {@link ModalBase} for overlay dim, Esc-to-close, and fade lifecycle.
  */
 export class AchievementsDialog extends ModalBase {
+  private wheelHandler: ((_ptr: unknown, _over: unknown[], _dx: number, dy: number) => void) | null = null;
+  private pageUpHandler: (() => void) | null = null;
+  private pageDownHandler: (() => void) | null = null;
+
   constructor(scene: Phaser.Scene, onClose?: () => void) {
     super(scene);
     this.buildPanel(onClose);
     this.fadeIn();
+  }
+
+  protected override onBeforeClose(): void {
+    if (this.wheelHandler) {
+      this.scene.input.off('wheel', this.wheelHandler);
+      this.wheelHandler = null;
+    }
+    if (this.pageUpHandler) {
+      this.scene.inputs.off('PageUp', this.pageUpHandler);
+      this.pageUpHandler = null;
+    }
+    if (this.pageDownHandler) {
+      this.scene.inputs.off('PageDown', this.pageDownHandler);
+      this.pageDownHandler = null;
+    }
   }
 
   private buildPanel(onClose?: () => void): void {
@@ -168,15 +187,16 @@ export class AchievementsDialog extends ModalBase {
     };
 
     if (maxScroll > 0) {
-      const wheelHandler = (
+      const wheelHandlerFn = (
         _ptr: unknown, _over: unknown[], _dx: number, dy: number,
       ): void => {
         scrollOffset = Phaser.Math.Clamp(scrollOffset + dy * 0.5, 0, maxScroll);
         applyScroll();
       };
-      this.scene.input.on('wheel', wheelHandler);
-      // Register cleanup on modal close via scene shutdown (ModalBase handles it)
-      this.scene.events.once('shutdown', () => this.scene.input.off('wheel', wheelHandler));
+      this.wheelHandler = wheelHandlerFn;
+      this.scene.input.on('wheel', wheelHandlerFn);
+      // Safety net: also clean up on scene shutdown in case modal wasn't closed first
+      this.scene.events.once('shutdown', () => this.scene.input.off('wheel', wheelHandlerFn));
 
       // Also allow keyboard scroll (PageUp/PageDown)
       const keyUpHandler = (): void => {
@@ -187,6 +207,8 @@ export class AchievementsDialog extends ModalBase {
         scrollOffset = Phaser.Math.Clamp(scrollOffset + contentH * 0.4, 0, maxScroll);
         applyScroll();
       };
+      this.pageUpHandler = keyUpHandler;
+      this.pageDownHandler = keyDownHandler;
       this.scene.inputs.on('PageUp', keyUpHandler);
       this.scene.inputs.on('PageDown', keyDownHandler);
       this.scene.events.once('shutdown', () => {
