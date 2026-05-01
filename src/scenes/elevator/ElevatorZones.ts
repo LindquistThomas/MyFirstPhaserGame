@@ -209,8 +209,13 @@ export class ElevatorZones {
       this.elevatorInfoIcon.setQuizBadge(scene, this.opts.gameState.isQuizPassed(ELEVATOR_INFO_ID));
     } else {
       // Lobby quiz is being lazy-loaded; update the badge once it arrives.
+      // Guard against the scene being destroyed before the promise resolves.
       preloadQuizFor(FLOORS.LOBBY).then(() => {
-        if (QUIZ_DATA[ELEVATOR_INFO_ID] && this.elevatorInfoIcon) {
+        if (
+          QUIZ_DATA[ELEVATOR_INFO_ID] &&
+          this.elevatorInfoIcon &&
+          this.opts.scene.scene.isActive(this.opts.scene.scene.key)
+        ) {
           this.elevatorInfoIcon.setQuizBadge(scene, this.opts.gameState.isQuizPassed(ELEVATOR_INFO_ID));
         }
       }).catch(() => { /* ignore load errors */ });

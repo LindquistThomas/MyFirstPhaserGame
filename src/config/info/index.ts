@@ -71,7 +71,8 @@ const _infoPendingFloors = new Map<FloorId, Promise<void>>();
  * Safe to call multiple times — subsequent calls for the same floor return
  * the already-resolved/in-flight promise.  The loaded data is merged into
  * the shared `INFO_POINTS` object so all existing call sites keep working
- * without modification.
+ * without modification.  If the import fails the floor is removed from the
+ * pending map so the next call can retry.
  */
 export function preloadInfoFor(floorId: FloorId): Promise<void> {
   if (_infoLoadedFloors.has(floorId)) return Promise.resolve();
@@ -88,6 +89,9 @@ export function preloadInfoFor(floorId: FloorId): Promise<void> {
   const p = loader().then((data) => {
     Object.assign(INFO_POINTS, data);
     _infoLoadedFloors.add(floorId);
+    _infoPendingFloors.delete(floorId);
+  }).catch(() => {
+    // Remove from pending so callers can retry on the next interaction.
     _infoPendingFloors.delete(floorId);
   });
 

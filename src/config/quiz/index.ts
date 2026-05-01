@@ -78,7 +78,8 @@ const _quizPendingFloors = new Map<FloorId, Promise<void>>();
  * Safe to call multiple times — subsequent calls for the same floor return
  * the already-resolved/in-flight promise.  The loaded data is merged into
  * the shared `QUIZ_DATA` object so all existing call sites keep working
- * without modification.
+ * without modification.  If the import fails the floor is removed from the
+ * pending map so the next call can retry.
  */
 export function preloadQuizFor(floorId: FloorId): Promise<void> {
   if (_quizLoadedFloors.has(floorId)) return Promise.resolve();
@@ -97,6 +98,9 @@ export function preloadQuizFor(floorId: FloorId): Promise<void> {
     Object.assign(QUIZ_DATA, data);
     _quizFloorCache.set(floorId, data);
     _quizLoadedFloors.add(floorId);
+    _quizPendingFloors.delete(floorId);
+  }).catch(() => {
+    // Remove from pending so callers can retry on the next interaction.
     _quizPendingFloors.delete(floorId);
   });
 
