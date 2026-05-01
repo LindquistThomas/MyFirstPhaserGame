@@ -12,6 +12,7 @@ import { lighten } from './hud/colorUtils';
 import { ProgressStripController } from './hud/ProgressStripController';
 import { CaffeineRingController } from './hud/CaffeineRingController';
 import { AchievementBadgeController } from './hud/AchievementBadgeController';
+import { settingsStore } from '../systems/SettingsStore';
 
 const HUD_HEIGHT = 44;
 
@@ -75,6 +76,14 @@ export class HUD {
     const lifecycle = createSceneLifecycle(this.scene);
     lifecycle.bindEventBus('persistence:failed', (payload) => {
       this.toast.show(persistenceMessage(payload.reason));
+    });
+    // Re-render the title text colour when the high-contrast setting changes
+    // so canvas HUD text also benefits from the accessibility toggle.
+    lifecycle.bindEventBus('settings:changed', () => {
+      const highContrast = settingsStore.read().highContrastControls;
+      this.titleText.setColor(
+        highContrast ? theme.color.css.textPrimary : theme.color.css.textQuizMuted,
+      ).setAlpha(highContrast ? 1 : 0.6);
     });
 
     const onResize = (): void => {

@@ -167,14 +167,23 @@
     }
 
     /* High-contrast controls — toggled via Settings → "High Contrast Controls" */
-    #virtual-pad.vpad-high-contrast .vpad-btn {
+    #virtual-pad.vpad-high-contrast .vpad-btn,
+    html[data-high-contrast="true"] .vpad-btn {
       background: rgba(255, 255, 255, 0.55);
       border: 2px solid rgba(255, 255, 255, 0.85);
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
     }
     #virtual-pad.vpad-high-contrast .vpad-btn:active,
-    #virtual-pad.vpad-high-contrast .vpad-btn.pressed {
+    #virtual-pad.vpad-high-contrast .vpad-btn.pressed,
+    html[data-high-contrast="true"] .vpad-btn:active,
+    html[data-high-contrast="true"] .vpad-btn.pressed {
       background: rgba(255, 255, 255, 0.78);
+    }
+    /* Touch-hint message text is also boosted in high-contrast mode. */
+    html[data-high-contrast="true"] #touch-hint-message {
+      background: rgba(0, 0, 0, 0.88);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.7);
     }
 
     /* Action buttons (A/B) are slightly larger */

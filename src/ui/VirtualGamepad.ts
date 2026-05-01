@@ -215,8 +215,39 @@ export function initVirtualGamepad(): void {
   // Re-apply visibility whenever any non-audio setting changes (the handler
   // is idempotent — it only does work when onScreenControls actually matters).
   eventBus.on('settings:changed', applyVirtualGamepadVisibility);
+  // Keep the document-level high-contrast attribute in sync with the setting.
+  eventBus.on('settings:changed', () =>
+    applyHighContrastToDocument(settingsStore.read().highContrastControls),
+  );
 
   applyVirtualGamepadVisibility();
+  // Apply high-contrast at startup so a persisted setting takes effect immediately.
+  applyHighContrastToDocument(settingsStore.read().highContrastControls);
+}
+
+/**
+ * Toggle the `data-high-contrast` attribute on `<html>` and the
+ * `vpad-high-contrast` CSS class on `#virtual-pad`.
+ *
+ * Setting `data-high-contrast="true"` on the root element makes the CSS
+ * in `index.html` apply to all HTML UI elements (virtual gamepad, touch
+ * hint overlay, any future HTML overlays) rather than scoping the effect
+ * to the virtual pad only.  Canvas-rendered elements (HUD, dialogs) listen
+ * for the `settings:changed` EventBus event and re-render with appropriate
+ * high-contrast colours when the setting changes.
+ *
+ * Called once at app startup (from `initVirtualGamepad`) and again whenever
+ * the setting changes (from `SettingsScene`).
+ */
+export function applyHighContrastToDocument(enabled: boolean): void {
+  if (enabled) {
+    document.documentElement.dataset['highContrast'] = 'true';
+  } else {
+    delete document.documentElement.dataset['highContrast'];
+  }
+  // Keep the virtual-pad class in sync too.
+  const pad = document.getElementById('virtual-pad');
+  if (pad) pad.classList.toggle('vpad-high-contrast', enabled);
 }
 
 /**
@@ -224,9 +255,10 @@ export function initVirtualGamepad(): void {
  * Call this whenever the "HIGH CONTRAST CONTROLS" setting changes so the pad
  * reflects the new value without requiring a page reload or re-init.
  * No-op when the pad is not mounted (e.g. on desktop).
+ *
+ * @deprecated Prefer {@link applyHighContrastToDocument} which also updates
+ * the document-level `data-high-contrast` attribute used by all HTML UI.
  */
 export function updateVirtualGamepadContrast(enabled: boolean): void {
-  const pad = document.getElementById('virtual-pad');
-  if (!pad) return;
-  pad.classList.toggle('vpad-high-contrast', enabled);
+  applyHighContrastToDocument(enabled);
 }
