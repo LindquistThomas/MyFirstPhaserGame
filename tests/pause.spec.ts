@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -54,8 +53,6 @@ test.describe('Pause / Resume', () => {
       undefined,
       { timeout: 5_000 },
     );
-
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/pause-overlay.png` });
 
     // The level scene should now be paused. Phaser's scene.pause() is queued
     // by SceneManager and applied on the next step, so poll rather than read once.

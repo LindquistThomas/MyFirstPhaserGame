@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -32,7 +31,6 @@ test.describe('Elevator scene', () => {
 
     await navigateToElevator(page);
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/02-elevator-lobby.png` });
     errors.assertClean();
   });
 
@@ -83,7 +81,6 @@ test.describe('Elevator scene', () => {
     });
     expect(dialogOpen).toBe(true);
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/04-elevator-info-dialog.png` });
     errors.assertClean();
   });
 
@@ -184,7 +181,6 @@ test.describe('Elevator scene', () => {
     expect(result.leftAnimated.length).toBeGreaterThan(0);
     expect(result.rightAnimated.length).toBeGreaterThan(0);
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/05-elevator-f1-decor-layout.png` });
     errors.assertClean();
   });
 });

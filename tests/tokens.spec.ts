@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -80,10 +79,6 @@ test.describe('Token collection', () => {
     expect(result.before).toBe(0);
     expect(result.after).toBe(1);
     expect(result.bodyEnabled).toBe(false);
-
-    // Give the collection animation a moment to play before the screenshot.
-    await page.waitForTimeout(150);
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/08-token-collected.png` });
 
     // Persistence: the collected index made it into localStorage (slot1).
     const saved = await page.evaluate(() => window.localStorage.getItem('architect_slot1_v1'));

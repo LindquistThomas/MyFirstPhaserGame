@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -42,8 +41,6 @@ test.describe('Floor 1 (Platform Team)', () => {
       (scene['enterFloor'] as (id: number) => void)(1);
     });
     await waitForScene(page, 'PlatformTeamScene');
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/05-floor1-platform-team.png` });
-
     // Open the info dialog programmatically through the DialogController.
     // Driving the zone-detection path via arrow keys was the original
     // approach but was timing-sensitive and flaky under parallel CI load;
@@ -68,8 +65,6 @@ test.describe('Floor 1 (Platform Team)', () => {
       return !!dialogs && dialogs.isOpen === true;
     });
     expect(openBefore).toBe(true);
-
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/05b-floor1-info-top.png` });
 
     // Capture the y-coordinates of every nested Container in the display
     // list — InfoDialog's `scrollContent` is one of them, and pressing
@@ -125,8 +120,6 @@ test.describe('Floor 1 (Platform Team)', () => {
     );
     await page.keyboard.press('PageDown');
     const after = await collectContainerYs();
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/05c-floor1-info-scrolled.png` });
-
     // At least one nested Container y must have changed — that's the scroll.
     expect(after).not.toEqual(before);
 

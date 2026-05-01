@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -139,9 +138,6 @@ test.describe('Quiz flows', () => {
     const total = await answerAll(page, 'correct');
     expect(total).toBeGreaterThan(0);
 
-    await page.waitForTimeout(100);
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/09-quiz-pass.png` });
-
     const store = await readQuizStore(page);
     const record = store[INFO_ID];
     expect(record).toBeTruthy();
@@ -169,9 +165,6 @@ test.describe('Quiz flows', () => {
     await enterFloor1(page);
     await openQuiz(page, INFO_ID);
     await answerAll(page, 'wrong');
-
-    await page.waitForTimeout(100);
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/10-quiz-fail.png` });
 
     const store = await readQuizStore(page);
     const record = store[INFO_ID];

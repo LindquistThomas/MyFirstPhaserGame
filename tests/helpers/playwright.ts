@@ -8,8 +8,6 @@ import { Page, expect } from '@playwright/test';
  * through `window.__game` (the dev-only global the app exposes).
  */
 
-export const SCREENSHOT_DIR = 'tests/screenshots';
-
 export interface PhaserSceneLike {
   sys: {
     settings: { key: string; status?: number };
