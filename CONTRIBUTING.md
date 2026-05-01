@@ -30,7 +30,7 @@ ships with zero image assets and only a handful of music files.
 | Bundler       | Vite                                                                             |
 | Framework     | Phaser 3 (Arcade physics)                                                        |
 | Config        | `src/config/` — `gameConfig`, `levelData`, `audioConfig`, plus barrel re-exports for per-floor info + quiz |
-| Floors        | `src/features/floors/<floor>/` — Scene + `info.ts` + `quiz.ts` (+ optional `enemies.ts`) co-located |
+| Floors        | `src/features/floors/<floor>/` — Scene + `info.ts` + `quiz.ts` (+ optional `enemies.ts`) co-located. Exception: `lobby/` ships only `info.ts` + `quiz.ts`; the lobby is rendered inline by `ElevatorScene`. |
 | Scenes        | `src/scenes/` — infrastructure scenes only: `core/` (Boot, Menu), `elevator/` |
 | Product scenes | `src/features/products/rooms/` — product content scenes (one per ISY room)   |
 | Entities      | `src/entities/` — gameplay objects (Player, Elevator, Token, Enemy)              |
