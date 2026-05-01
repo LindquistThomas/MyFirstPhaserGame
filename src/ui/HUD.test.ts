@@ -228,21 +228,20 @@ describe('HUD', () => {
     expect(scene.tweens.add).toHaveBeenCalled();
   });
 
-  it('does not call findNextUnlockFloor when AU and floor are unchanged between updates', () => {
+  it('does not add new progress tweens when AU and floor are unchanged between updates', () => {
     scene = makeScene(false);
     const hud = new HUD(scene as unknown as Phaser.Scene, progression);
-    const spy = vi.spyOn(hud as unknown as { findNextUnlockFloor(): unknown }, 'findNextUnlockFloor');
 
-    // First update after construction: HUD.lastFloor starts at -1, so the initial
-    // sync treats the floor as changed and should call findNextUnlockFloor().
-    hud.update();
-    const callsAfterFirst = spy.mock.calls.length;
-    expect(callsAfterFirst).toBeGreaterThan(0);
+    // create() now triggers an initial render (including a progress tween), so
+    // tweens should already exist after construction.
+    const tweensAfterInit = (scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(tweensAfterInit).toBeGreaterThan(0);
 
-    // Subsequent updates with no state change: findNextUnlockFloor must not be called.
+    // Subsequent update() calls with no state change must not queue more tweens.
     hud.update();
     hud.update();
-    expect(spy.mock.calls.length).toBe(callsAfterFirst);
+    hud.update();
+    expect((scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length).toBe(tweensAfterInit);
   });
 
   it('shows a toast when progression:au_milestone fires and unsubscribes on shutdown', () => {
