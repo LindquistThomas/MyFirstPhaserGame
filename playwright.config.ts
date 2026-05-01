@@ -68,7 +68,7 @@ export default defineConfig({
     // we deliberately do NOT rebuild here — doing so would double the
     // build cost (~15s wasted per run). Locally we keep `npm run dev` so
     // hot-reload works while iterating on tests.
-    command: process.env.CI ? 'npm run preview -- --port 3000 --strictPort' : 'npm run dev',
+    command: process.env.CI ? 'npm run preview -- --port 3000 --strictPort' : 'npm run dev -- --port 3000 --strictPort',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

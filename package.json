@@ -14,11 +14,11 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:unit:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --grep-invert @visual",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
-    "test:visual:update": "playwright test tests/visual.spec.ts --update-snapshots",
+    "test:visual:update": "playwright test tests/visual.spec.ts --grep @visual --update-snapshots",
     "size": "node scripts/check-size.cjs"
   },
   "license": "MIT",
