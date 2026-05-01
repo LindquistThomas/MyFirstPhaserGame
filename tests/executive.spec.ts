@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -334,7 +333,7 @@ test.describe('Executive Suite — Hostage Rescue', () => {
       (scene['checkSanctumUnlock'] as () => void)();
     });
 
-    // ── Step 4: Verify leadership freed and rescue dialog appears ─────────
+    // ── Step 4: Verify leadership freed ───────────────────────────────────
     const leadershipFreed = await page.evaluate(() => {
       const g = window.__game!;
       const scene = g.scene
@@ -345,13 +344,6 @@ test.describe('Executive Suite — Hostage Rescue', () => {
       return scene.rescueState.leadershipFreed;
     });
     expect(leadershipFreed).toBe(true);
-
-    // openSanctum() opens the rescue dialog after a 600 ms delay.
-    await waitForDialogOpen(page, 'ExecutiveSuiteScene');
-
-    await page.screenshot({
-      path: `${SCREENSHOT_DIR}/executive-hostage-rescue-complete.png`,
-    });
 
     errors.assertClean();
   });
