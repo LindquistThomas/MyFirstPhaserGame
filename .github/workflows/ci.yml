@@ -5,10 +5,17 @@ on:
   push:
     branches: [main]
 
+# Restrict the base-branch token to read-only so untrusted PR code cannot
+# exfiltrate it to modify the repository.
+permissions:
+  contents: read
+
 concurrency:
-  # Option B: cancel stale PR branch runs, but let every main push run to completion.
-  group: ci-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # pull_request_target sets github.ref/sha to the BASE branch, so the old
+  # ref-based key would collapse all PR runs into a single group.  Use the PR
+  # number instead (unique per PR) and fall back to the push SHA on main.
+  group: ${{ github.event_name == 'pull_request_target' && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-push-{0}', github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
   changes:
@@ -19,6 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       # Detect whether this push/PR touches anything outside docs/**.
@@ -39,6 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-node@v6
@@ -73,6 +82,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-node@v6
@@ -107,6 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-node@v6
