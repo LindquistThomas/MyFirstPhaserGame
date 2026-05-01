@@ -40,8 +40,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     viewport: { width: 1280, height: 960 },
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
+    trace: 'on-first-retry',
+    video: 'off',
     screenshot: 'only-on-failure',
     // Headless by default — deterministic pixel output for snapshots.
     headless: true,

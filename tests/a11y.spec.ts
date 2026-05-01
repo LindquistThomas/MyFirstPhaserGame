@@ -74,8 +74,7 @@ test.describe('Accessibility — WCAG 2.1 AA (HTML layer)', () => {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
-    // Navigate to SettingsScene via Escape key (bound to Settings from MenuScene).
-    await page.keyboard.press('Escape');
+    await page.evaluate(() => window.__game!.scene.start('SettingsScene', { from: 'MenuScene' }));
     await waitForScene(page, 'SettingsScene');
 
     const results = await runAxe(page);
