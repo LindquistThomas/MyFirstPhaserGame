@@ -89,8 +89,12 @@ export class HUD {
     this.scene.scale.on('resize', onResize, this);
     lifecycle.add(() => this.scene.scale.off('resize', onResize, this));
 
-    this.lastAU = this.progression.getTotalAU();
+    const au = this.progression.getTotalAU();
+    const floor = this.progression.getCurrentFloor();
+    this.lastAU = au;
+    this.lastFloor = floor;
     this.redrawBackground();
+    this.progressCtrl.update(au, floor, true, true, this.scene.time.now);
   }
 
   private relayout(): void {

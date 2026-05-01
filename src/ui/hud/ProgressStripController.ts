@@ -124,8 +124,7 @@ export class ProgressStripController {
     });
   }
 
-  private findNextUnlockFloor(): (typeof LEVEL_DATA)[FloorId] | undefined {
-    const au = this.progression.getTotalAU();
+  private findNextUnlockFloor(au: number): (typeof LEVEL_DATA)[FloorId] | undefined {
     return Object.values(LEVEL_DATA)
       .filter((f) => f.auRequired > 0 && au < f.auRequired)
       .sort((a, b) => a.auRequired - b.auRequired)[0];
@@ -199,7 +198,7 @@ export class ProgressStripController {
     }
 
     if (auChanged || floorChanged) {
-      const next = this.findNextUnlockFloor();
+      const next = this.findNextUnlockFloor(au);
       this.cachedNextFloor = next;
       const sig = next ? `${next.id}:${au}:${floor}` : `none:${floor}`;
       if (sig !== this.lastProgressSig) {
@@ -231,6 +230,8 @@ export class ProgressStripController {
   }
 
   destroy(): void {
+    this.progressTween?.stop();
+    this.progressTween = undefined;
     this.lifecycle.dispose();
   }
 }

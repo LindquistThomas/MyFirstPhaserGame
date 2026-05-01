@@ -161,15 +161,13 @@ describe('ProgressStripController', () => {
       toast as unknown as import('../Toast').Toast,
       getLayoutTokens('wide'),
     );
-    // The PLATFORM floor requires some AU. Simulate being 1 AU away.
-    // Lobby has auRequired=0, platform has auRequired=10.
-    // If au=9 and next unlock is platform (auRequired=10), delta=1 ≤ 2.
-    ctrl.update(9, FLOORS.LOBBY, true, true, 0);
+    // BUSINESS floor has auRequired=8. With au=6, delta=8-6=2 ≤ 2 → nudge zone.
+    ctrl.update(6, FLOORS.LOBBY, true, true, 0);
     // 19 999 ms later — not yet
-    ctrl.update(9, FLOORS.LOBBY, false, false, 19_999);
+    ctrl.update(6, FLOORS.LOBBY, false, false, 19_999);
     expect(toast.show).not.toHaveBeenCalledWith(expect.stringContaining('💡'));
     // 20 000 ms later — triggers nudge
-    ctrl.update(9, FLOORS.LOBBY, false, false, 20_000);
+    ctrl.update(6, FLOORS.LOBBY, false, false, 20_000);
     expect(toast.show).toHaveBeenCalledWith(expect.stringContaining('💡'));
   });
 });

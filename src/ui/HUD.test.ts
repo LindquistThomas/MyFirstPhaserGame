@@ -232,16 +232,16 @@ describe('HUD', () => {
     scene = makeScene(false);
     const hud = new HUD(scene as unknown as Phaser.Scene, progression);
 
-    // First update after construction: floor changed (-1 → LOBBY), so a progress
-    // tween should be queued.
-    hud.update();
-    const tweensAfterFirst = (scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length;
-    expect(tweensAfterFirst).toBeGreaterThan(0);
+    // create() now triggers an initial render (including a progress tween), so
+    // tweens should already exist after construction.
+    const tweensAfterInit = (scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(tweensAfterInit).toBeGreaterThan(0);
 
-    // Subsequent updates with no state change: no new progress tweens.
+    // Subsequent update() calls with no state change must not queue more tweens.
     hud.update();
     hud.update();
-    expect((scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length).toBe(tweensAfterFirst);
+    hud.update();
+    expect((scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls.length).toBe(tweensAfterInit);
   });
 
   it('shows a toast when progression:au_milestone fires and unsubscribes on shutdown', () => {
