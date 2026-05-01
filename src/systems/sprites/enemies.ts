@@ -7,13 +7,25 @@ import { theme } from '../../style/theme';
  * Keeps the zero-image-asset convention. Each enemy is a single-frame
  * texture; animation (bob, squash) is driven by tweens in the entity.
  */
-export function generateEnemySprites(scene: Phaser.Scene): void {
+
+/** First batch: slime, bureaucracy-bot, scope-creep. */
+export function generateEnemySpritesA(scene: Phaser.Scene): void {
   generateSlimeSprite(scene);
   generateBureaucracyBotSprite(scene);
   generateScopeCreepSprite(scene);
+}
+
+/** Second batch: architecture-astronaut, tech-debt-ghost, terrorist-commander. */
+export function generateEnemySpritesB(scene: Phaser.Scene): void {
   generateArchitectureAstronautSprite(scene);
   generateTechDebtGhostSprite(scene);
   generateTerroristCommanderSprite(scene);
+}
+
+/** Full enemy sprite generation for direct / non-split use. */
+export function generateEnemySprites(scene: Phaser.Scene): void {
+  generateEnemySpritesA(scene);
+  generateEnemySpritesB(scene);
 }
 
 /** Green blob slime — 48×32. Simple Goomba analog. */
