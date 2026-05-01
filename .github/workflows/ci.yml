@@ -108,12 +108,12 @@ jobs:
       # is available in a single CI run.
       fail-fast: false
       matrix:
-        # Two matrix shards × 2 Playwright workers each = 4 effective workers
-        # across two runners, roughly halving the wall-clock cost of the
-        # Playwright suite while staying under the per-runner 4-vCPU ceiling
-        # that triggered timeouts at higher in-runner parallelism.
-        shard: [1, 2]
-        total: [2]
+        # Four matrix shards × 2 Playwright workers each keeps every shard
+        # under the 5-minute E2E budget while staying under the per-runner
+        # 4-vCPU ceiling that triggered timeouts at higher in-runner
+        # parallelism.
+        shard: [1, 2, 3, 4]
+        total: [4]
     steps:
       - uses: actions/checkout@v6
         with:
