@@ -344,6 +344,7 @@ describe('actionsOf / data-actions parsing (via button touch events)', () => {
 // ---------------------------------------------------------------------------
 describe('haptic feedback on vpad button press', () => {
   let vibrateMock: ReturnType<typeof vi.fn>;
+  let originalVibrateDescriptor: PropertyDescriptor | undefined;
 
   beforeEach(() => {
     _resetReactiveDetected();
@@ -352,13 +353,21 @@ describe('haptic feedback on vpad button press', () => {
     vi.mocked(MotionPreference.isReducedMotion).mockReturnValue(false);
     document.getElementById('virtual-pad')?.remove();
 
-    // Stub navigator.vibrate
+    // Save original descriptor before stubbing so afterEach can restore it.
+    originalVibrateDescriptor = Object.getOwnPropertyDescriptor(navigator, 'vibrate');
     vibrateMock = vi.fn();
     Object.defineProperty(navigator, 'vibrate', { value: vibrateMock, writable: true, configurable: true });
   });
 
   afterEach(() => {
     document.getElementById('virtual-pad')?.remove();
+    // Restore navigator.vibrate to its original state to avoid leaking across tests.
+    if (originalVibrateDescriptor !== undefined) {
+      Object.defineProperty(navigator, 'vibrate', originalVibrateDescriptor);
+    } else {
+      // Property didn't exist originally — remove the stub.
+      try { delete (navigator as Record<string, unknown>)['vibrate']; } catch { /* non-configurable in some envs */ }
+    }
     vi.restoreAllMocks();
   });
 

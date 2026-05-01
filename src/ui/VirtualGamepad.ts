@@ -15,6 +15,15 @@ import { isReducedMotion } from '../systems/MotionPreference';
  */
 let reactiveDetected = false;
 
+/**
+ * Cached value of `settingsStore.hapticsEnabled`.
+ * Initialised from the store in `applyVirtualGamepadVisibility()` (which
+ * already reads settings) and kept in sync via the `settings:changed`
+ * subscription registered in `initVirtualGamepad()`. Avoids a storage
+ * read on every vpad `touchstart` event.
+ */
+let hapticsEnabled = true;
+
 /** Reset the session flag — test seam only. */
 export function _resetReactiveDetected(): void {
   reactiveDetected = false;
@@ -32,8 +41,7 @@ function actionsOf(el: Element): GameAction[] {
 function onTouchStart(e: TouchEvent): void {
   e.preventDefault();
   const btn = e.currentTarget as Element;
-  const settings = settingsStore.read();
-  if (settings.hapticsEnabled && !isReducedMotion()) {
+  if (hapticsEnabled && !isReducedMotion()) {
     navigator.vibrate?.(10);
   }
   for (const action of actionsOf(btn)) {
@@ -145,7 +153,12 @@ function isInLevelScene(): boolean {
  * - Normal touch-primary boot → `showTouchHintIfNeeded` (respects hasSeen).
  */
 export function applyVirtualGamepadVisibility(): void {
-  const { onScreenControls } = settingsStore.read();
+  const settings = settingsStore.read();
+  const { onScreenControls } = settings;
+  // Keep haptics cache in sync — applyVirtualGamepadVisibility already reads
+  // settings, so this is free and ensures the cache is always current.
+  hapticsEnabled = settings.hapticsEnabled;
+
   const shouldShow =
     onScreenControls === 'always' ||
     (onScreenControls === 'auto' && (isTouchPrimary() || reactiveDetected));
@@ -159,7 +172,7 @@ export function applyVirtualGamepadVisibility(): void {
     const wasHidden = !pad.classList.contains('active');
     pad.classList.add('active');
     // Keep high-contrast class in sync even if the pad was already mounted.
-    pad.classList.toggle('vpad-high-contrast', settingsStore.read().highContrastControls);
+    pad.classList.toggle('vpad-high-contrast', settings.highContrastControls);
 
     if (wasHidden) {
       if (reactiveDetected && isInLevelScene()) {
@@ -214,6 +227,16 @@ function _syncHighContrastToDocument(): void {
 }
 
 /**
+ * Named handler for `settings:changed` that refreshes the module-level
+ * `hapticsEnabled` cache from the store. Registered once in
+ * `initVirtualGamepad()` and idempotent across repeated calls (EventBus Set
+ * deduplicates the same function reference).
+ */
+function _syncHapticsFromStore(): void {
+  hapticsEnabled = settingsStore.read().hapticsEnabled;
+}
+
+/**
  * Initialise the virtual gamepad subsystem.
  *
  * - Registers a one-shot `touchstart` listener for reactive hybrid-device
@@ -236,6 +259,8 @@ export function initVirtualGamepad(): void {
   // Module-level named function so repeated initVirtualGamepad() calls (HMR /
   // test resets) add the same reference to the EventBus Set and stay idempotent.
   eventBus.on('settings:changed', _syncHighContrastToDocument);
+  // Keep the haptics cache in sync with the persisted setting.
+  eventBus.on('settings:changed', _syncHapticsFromStore);
 
   applyVirtualGamepadVisibility();
   // Apply high-contrast at startup so a persisted setting takes effect immediately.
