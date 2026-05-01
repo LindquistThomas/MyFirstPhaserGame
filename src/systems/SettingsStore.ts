@@ -65,6 +65,13 @@ export interface SettingsData {
    * background. Useful in bright outdoor / sunlight conditions.
    */
   highContrastControls: boolean;
+  /**
+   * When true, a 10 ms vibration pulse is triggered on each virtual-gamepad
+   * button press (where `navigator.vibrate` is available). Defaults to true.
+   * Has no effect when `prefers-reduced-motion` is active (vibration can be
+   * a vestibular trigger).
+   */
+  hapticsEnabled: boolean;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -92,6 +99,7 @@ export function defaultSettings(): SettingsData {
     onScreenControls: 'auto',
     hideTutorials: false,
     highContrastControls: false,
+    hapticsEnabled: true,
   };
 }
 
@@ -143,6 +151,7 @@ function parseSettings(raw: unknown): SettingsData {
     highContrastControls: typeof r['highContrastControls'] === 'boolean'
       ? r['highContrastControls']
       : defaults.highContrastControls,
+    hapticsEnabled: typeof r['hapticsEnabled'] === 'boolean' ? r['hapticsEnabled'] : defaults.hapticsEnabled,
   };
 }
 
@@ -256,6 +265,10 @@ export const settingsStore = {
   /** Toggle the first-visit coaching-toast suppression. */
   setHideTutorials(hide: boolean): void {
     this.updateNonAudio((prev) => ({ ...prev, hideTutorials: hide }));
+  },
+
+  setHapticsEnabled(enabled: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, hapticsEnabled: enabled }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

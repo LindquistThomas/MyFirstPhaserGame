@@ -19,6 +19,7 @@
 
 import { isTouchPrimary } from './touchPrimary';
 import * as TouchHintStore from '../systems/TouchHintStore';
+import { isReducedMotion } from '../systems/MotionPreference';
 
 const HINT_DURATION_MS = 6_000;
 
@@ -38,11 +39,18 @@ function mountHintOverlay(padEl: HTMLElement, markOnDismiss: boolean): void {
   // Guard against double-mount (e.g. HMR or repeated calls).
   if (document.getElementById(OVERLAY_ID)) return;
 
+  const reducedMotion = isReducedMotion();
+
   // --- build overlay ---------------------------------------------------------
   const overlay = document.createElement('div');
   overlay.id = OVERLAY_ID;
   overlay.setAttribute('aria-live', 'polite');
   overlay.setAttribute('role', 'status');
+
+  if (reducedMotion) {
+    // Skip fade-in animation; match the pattern in Toast.ts.
+    overlay.style.animation = 'none';
+  }
 
   const msg = document.createElement('p');
   msg.id = 'touch-hint-message';
@@ -52,12 +60,16 @@ function mountHintOverlay(padEl: HTMLElement, markOnDismiss: boolean): void {
   document.body.appendChild(overlay);
 
   // --- pulse the D-pad and the A (Jump) button --------------------------------
-  const dpad = padEl.querySelector<HTMLElement>('.vpad-dpad');
-  const jumpBtn = padEl.querySelector<HTMLElement>('[data-actions~="Jump"]');
+  // Pulse animations are skipped when reduced motion is active.
   const pulsed: Element[] = [];
 
-  if (dpad) { dpad.classList.add(PULSE_CLASS); pulsed.push(dpad); }
-  if (jumpBtn) { jumpBtn.classList.add(PULSE_CLASS); pulsed.push(jumpBtn); }
+  if (!reducedMotion) {
+    const dpad = padEl.querySelector<HTMLElement>('.vpad-dpad');
+    const jumpBtn = padEl.querySelector<HTMLElement>('[data-actions~="Jump"]');
+
+    if (dpad) { dpad.classList.add(PULSE_CLASS); pulsed.push(dpad); }
+    if (jumpBtn) { jumpBtn.classList.add(PULSE_CLASS); pulsed.push(jumpBtn); }
+  }
 
   // --- dismissal logic -------------------------------------------------------
   let dismissed = false;
@@ -83,14 +95,19 @@ function mountHintOverlay(padEl: HTMLElement, markOnDismiss: boolean): void {
     // Mark seen before removing DOM so repeated rapid taps can't re-trigger.
     if (markOnDismiss) TouchHintStore.markSeen();
 
-    overlay.classList.add('touch-hint-fadeout');
-
-    const afterFade = (): void => {
+    if (reducedMotion) {
+      // Skip fade-out animation; remove immediately.
       overlay.remove();
-    };
-    overlay.addEventListener('animationend', afterFade, { once: true });
-    // Fallback: remove immediately if the animation never fires (e.g. jsdom).
-    setTimeout(() => { if (overlay.isConnected) overlay.remove(); }, 600);
+    } else {
+      overlay.classList.add('touch-hint-fadeout');
+
+      const afterFade = (): void => {
+        overlay.remove();
+      };
+      overlay.addEventListener('animationend', afterFade, { once: true });
+      // Fallback: remove immediately if the animation never fires (e.g. jsdom).
+      setTimeout(() => { if (overlay.isConnected) overlay.remove(); }, 600);
+    }
 
     for (const el of pulsed) el.classList.remove(PULSE_CLASS);
   };

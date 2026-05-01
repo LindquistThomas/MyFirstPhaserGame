@@ -166,6 +166,12 @@ export class SettingsScene extends Phaser.Scene {
       },
       {
         kind: 'toggle',
+        label: 'HAPTIC FEEDBACK',
+        get: () => settingsStore.read().hapticsEnabled,
+        set: (v) => settingsStore.setHapticsEnabled(v),
+      },
+      {
+        kind: 'toggle',
         label: 'HIDE TUTORIALS',
         get: () => settingsStore.read().hideTutorials,
         set: (v) => settingsStore.setHideTutorials(v),
