@@ -1,12 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for gameplay screenshot tests.
+ * Playwright configuration for gameplay end-to-end tests.
  *
  * The `webServer` entry boots the Vite dev server on port 3000 before the
- * tests run, and tears it down afterwards. Tests capture PNG screenshots of
- * each scene into `tests/screenshots/` so reviewers can see how the game
- * actually looks when a feature is implemented.
+ * tests run, and tears it down afterwards. Runtime artifacts are kept lean:
+ * screenshots are captured only on failure, videos are disabled, and CI traces
+ * are recorded on first retry. Dedicated visual snapshots live in
+ * `tests/visual.spec.ts`.
  */
 export default defineConfig({
   testDir: './tests',
