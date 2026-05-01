@@ -77,6 +77,7 @@ function makeText(text: string) {
     return t;
   });
   t.setAlpha = vi.fn().mockReturnValue(t);
+  t.setColor = vi.fn().mockReturnValue(t);
   t.setVisible = vi.fn().mockReturnValue(t);
   t.setStyle = vi.fn().mockReturnValue(t);
   t.destroy = vi.fn();
@@ -90,6 +91,7 @@ function makeText(text: string) {
     setDepth: ReturnType<typeof vi.fn>;
     setY: ReturnType<typeof vi.fn>;
     setAlpha: ReturnType<typeof vi.fn>;
+    setColor: ReturnType<typeof vi.fn>;
     setVisible: ReturnType<typeof vi.fn>;
     setStyle: ReturnType<typeof vi.fn>;
     destroy: ReturnType<typeof vi.fn>;

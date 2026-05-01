@@ -88,6 +88,8 @@ npm run test:ui                   # interactive Playwright UI
 
 After a run, view the HTML report with `npm run test:report`.
 
+`tests/a11y.spec.ts` runs WCAG 2.1 AA checks using `@axe-core/playwright` against the HTML layer of the game at key scenes (menu, settings, floor with HUD, reduced-motion, high-contrast mode). This gate runs as part of the E2E suite and fails CI if a change introduces an accessibility regression.
+
 ## Claude GitHub App Integration
 
 To install the Claude GitHub App on a personal account:

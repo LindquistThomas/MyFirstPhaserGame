@@ -111,6 +111,11 @@ game.events.once(Phaser.Core.Events.READY, () => {
   if (canvas && canvas.tabIndex < 0) {
     canvas.tabIndex = 0;
   }
+  // Provide an accessible name so assistive technologies and axe-core can
+  // identify the canvas as the primary game surface.
+  if (canvas && !canvas.getAttribute('aria-label')) {
+    canvas.setAttribute('aria-label', 'So You Want To Be An Architect — game canvas');
+  }
 });
 
 // Expose the game instance on `window.__game` so E2E tests (Playwright)
