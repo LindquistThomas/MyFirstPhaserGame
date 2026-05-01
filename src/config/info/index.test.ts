@@ -1,9 +1,23 @@
-import { describe, it, expect } from 'vitest';
-import { INFO_POINTS } from './index';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { INFO_POINTS, preloadInfoFor } from './index';
 import { FLOORS } from '../gameConfig';
 
+// Preload all floor info content so INFO_POINTS is fully populated before
+// any assertions run.  This mirrors what happens at runtime when the player
+// visits each floor.
+beforeAll(async () => {
+  await Promise.all(Object.values(FLOORS).map((fid) => preloadInfoFor(fid)));
+});
+
 describe('INFO_POINTS', () => {
-  const entries = Object.entries(INFO_POINTS);
+  // entries is captured lazily inside a nested beforeAll so that it reflects
+  // the fully-populated INFO_POINTS after the outer beforeAll completes.
+  let entries: Array<[string, import('./index').InfoPointDef]> = [];
+
+  beforeAll(() => {
+    entries = Object.entries(INFO_POINTS);
+  });
+
   const validFloorIds = new Set<number>(Object.values(FLOORS));
 
   it('is non-empty', () => {

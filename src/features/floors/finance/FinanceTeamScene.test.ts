@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { assertValidLevelConfig } from '../_shared/validateLevelConfig';
 import type { LevelConfig } from '../_shared/LevelScene';
-import { INFO_POINTS } from '../../../config/info';
+import { INFO_POINTS, preloadInfoFor } from '../../../config/info';
+import { FLOORS } from '../../../config/gameConfig';
 
 vi.mock('phaser', () => {
   class Scene {
@@ -47,7 +48,8 @@ class TestableFinanceTeamScene extends FinanceTeamScene {
 describe('FinanceTeamScene — LevelConfig', () => {
   let cfg: LevelConfig;
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    await preloadInfoFor(FLOORS.BUSINESS);
     cfg = new TestableFinanceTeamScene().getConfig();
   });
 

@@ -103,8 +103,13 @@ export class GameStateManager {
     const collectedTokens = this.progression.getTotalCollectedTokens();
 
     const totalFloors = Object.values(FLOORS).length;
-    const totalInfoPoints = Object.keys(INFO_POINTS).length;
-    const totalQuizzes = Object.keys(QUIZ_DATA).length;
+    // Guard: if no content has been preloaded yet, 'complete all' achievements
+    // must not fire (0 passed >= 0 loaded would always be true).  Infinity
+    // ensures the condition stays false until at least some content is loaded.
+    const loadedInfoCount = Object.keys(INFO_POINTS).length;
+    const loadedQuizCount = Object.keys(QUIZ_DATA).length;
+    const totalInfoPoints = loadedInfoCount > 0 ? loadedInfoCount : Infinity;
+    const totalQuizzes = loadedQuizCount > 0 ? loadedQuizCount : Infinity;
 
     const conditions: Record<string, boolean> = {
       'au-5':        totalAU >= 5,

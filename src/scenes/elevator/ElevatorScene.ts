@@ -21,6 +21,8 @@ import type { NavigationContext } from '../NavigationContext';
 import type { GameAction } from '../../input/actions';
 import { eventBus } from '../../systems/EventBus';
 import { LAZY_SCENE_LOADERS } from '../lazySceneLoaders';
+import { preloadQuizFor } from '../../config/quiz';
+import { preloadInfoFor } from '../../config/info';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -101,6 +103,12 @@ export class ElevatorScene extends Phaser.Scene {
     this.spawnAtProductDoor = data?.spawnDoorId;
     this.spawnAtFloor = data?.fromFloor;
     this.spawnAtFloorSide = data?.spawnSide ?? 'left';
+    // Kick off lazy-loads for the two floors whose info/quiz icons appear
+    // directly in the elevator shaft (lobby info-board + Geir on F4).
+    preloadQuizFor(FLOORS.LOBBY).catch(() => { /* non-fatal */ });
+    preloadInfoFor(FLOORS.LOBBY).catch(() => { /* non-fatal */ });
+    preloadQuizFor(FLOORS.EXECUTIVE).catch(() => { /* non-fatal */ });
+    preloadInfoFor(FLOORS.EXECUTIVE).catch(() => { /* non-fatal */ });
   }
 
   create(): void {

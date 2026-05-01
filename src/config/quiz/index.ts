@@ -8,16 +8,16 @@
  * Callers import from this barrel (`config/quiz`) and keep the same
  * symbols they had before: `QUIZ_DATA`, `QUIZ_REWARDS`, difficulty mix,
  * thresholds, and the `QuizQuestion` / `QuizDefinition` types.
+ *
+ * Quiz content is lazy-loaded per floor via dynamic imports so that large
+ * quiz catalogues (architecture, platform) are excluded from the main bundle
+ * and only fetched when the player enters that floor.  Call
+ * `preloadQuizFor(floorId)` early in a floor scene's `init()` to warm the
+ * cache before the player can interact with info icons.
  */
 
 import { FloorId, FLOORS } from '../gameConfig';
 import { QuizDefinition } from './types';
-import { QUIZ_LOBBY } from '../../features/floors/lobby/quiz';
-import { QUIZ_PLATFORM } from '../../features/floors/platform/quiz';
-import { QUIZ_ARCHITECTURE } from '../../features/floors/architecture/quiz';
-import { QUIZ_FINANCE } from '../../features/floors/finance/quiz';
-import { QUIZ_PRODUCT } from '../../features/floors/product/quiz';
-import { QUIZ_EXEC } from '../../features/floors/executive/quiz';
 
 export type {
   QuizDifficulty,
@@ -32,28 +32,90 @@ export {
   QUIZ_PASS_THRESHOLD,
 } from './types';
 
-/** Merged quiz catalogue keyed by infoId (back-compatible with the old export). */
-export const QUIZ_DATA: Record<string, QuizDefinition> = {
-  ...QUIZ_LOBBY,
-  ...QUIZ_PLATFORM,
-  ...QUIZ_ARCHITECTURE,
-  ...QUIZ_FINANCE,
-  ...QUIZ_PRODUCT,
-  ...QUIZ_EXEC,
-};
+/**
+ * Runtime-populated quiz catalogue keyed by infoId.
+ *
+ * Starts empty and is filled incrementally as floors are preloaded via
+ * `preloadQuizFor(floorId)`.  Use `QUIZ_DATA[infoId]` as before — the
+ * data is guaranteed to be present once the relevant floor has been
+ * preloaded (which happens in `LevelScene.init()` and `ElevatorScene.init()`).
+ */
+export const QUIZ_DATA: Record<string, QuizDefinition> = {};
 
-const QUIZZES_BY_FLOOR: Record<FloorId, Record<string, QuizDefinition>> = {
-  [FLOORS.LOBBY]: QUIZ_LOBBY,
+/** Per-floor dynamic import factories — each is a separate Vite chunk. */
+const QUIZ_LOADERS: Partial<Record<FloorId, () => Promise<Record<string, QuizDefinition>>>> = {
+  [FLOORS.LOBBY]: () =>
+    import('../../features/floors/lobby/quiz').then((m) => m.QUIZ_LOBBY),
   // Floor 1 hosts both the Platform and Architecture rooms.
-  [FLOORS.PLATFORM_TEAM]: { ...QUIZ_PLATFORM, ...QUIZ_ARCHITECTURE },
+  [FLOORS.PLATFORM_TEAM]: () =>
+    Promise.all([
+      import('../../features/floors/platform/quiz').then((m) => m.QUIZ_PLATFORM),
+      import('../../features/floors/architecture/quiz').then((m) => m.QUIZ_ARCHITECTURE),
+    ]).then(([a, b]) => ({ ...a, ...b })),
   // Floor 3 hosts Finance (left) and Product Leadership (right).
-  [FLOORS.BUSINESS]: { ...QUIZ_FINANCE, ...QUIZ_PRODUCT },
-  [FLOORS.EXECUTIVE]: QUIZ_EXEC,
-  [FLOORS.PRODUCTS]: QUIZ_PRODUCT,
-  [FLOORS.BOSS]: {},
+  [FLOORS.BUSINESS]: () =>
+    Promise.all([
+      import('../../features/floors/finance/quiz').then((m) => m.QUIZ_FINANCE),
+      import('../../features/floors/product/quiz').then((m) => m.QUIZ_PRODUCT),
+    ]).then(([a, b]) => ({ ...a, ...b })),
+  [FLOORS.EXECUTIVE]: () =>
+    import('../../features/floors/executive/quiz').then((m) => m.QUIZ_EXEC),
+  [FLOORS.PRODUCTS]: () =>
+    import('../../features/floors/product/quiz').then((m) => m.QUIZ_PRODUCT),
+  [FLOORS.BOSS]: () => Promise.resolve({}),
 };
 
-/** Return the quiz catalogue for a specific floor (keyed by infoId). */
+/** Per-floor quiz cache (for `getQuizFor`). */
+const _quizFloorCache = new Map<FloorId, Record<string, QuizDefinition>>();
+
+/** Track in-flight and completed preloads so we never fetch the same floor twice. */
+const _quizLoadedFloors = new Set<FloorId>();
+const _quizPendingFloors = new Map<FloorId, Promise<void>>();
+
+/**
+ * Kick off (or await) the dynamic import for a floor's quiz content.
+ *
+ * Safe to call multiple times — subsequent calls for the same floor return
+ * the already-resolved/in-flight promise.  The loaded data is merged into
+ * the shared `QUIZ_DATA` object so all existing call sites keep working
+ * without modification.  If the import fails the floor is removed from the
+ * pending map so the next call can retry.
+ */
+export function preloadQuizFor(floorId: FloorId): Promise<void> {
+  if (_quizLoadedFloors.has(floorId)) return Promise.resolve();
+
+  const existing = _quizPendingFloors.get(floorId);
+  if (existing) return existing;
+
+  const loader = QUIZ_LOADERS[floorId];
+  if (!loader) {
+    _quizLoadedFloors.add(floorId);
+    _quizFloorCache.set(floorId, {});
+    return Promise.resolve();
+  }
+
+  const p = loader().then((data) => {
+    Object.assign(QUIZ_DATA, data);
+    _quizFloorCache.set(floorId, data);
+    _quizLoadedFloors.add(floorId);
+    _quizPendingFloors.delete(floorId);
+  }).catch((err: unknown) => {
+    // Remove from pending so callers can retry on the next interaction.
+    _quizPendingFloors.delete(floorId);
+    // Rethrow so awaited callers (tests, future code) can detect the failure.
+    throw err;
+  });
+
+  _quizPendingFloors.set(floorId, p);
+  return p;
+}
+
+/**
+ * Return the cached quiz catalogue for a specific floor (keyed by infoId).
+ *
+ * Returns an empty object if the floor has not been preloaded yet.
+ * Use `preloadQuizFor` to warm the cache before calling this.
+ */
 export function getQuizFor(floorId: FloorId): Record<string, QuizDefinition> {
-  return QUIZZES_BY_FLOOR[floorId] ?? {};
+  return _quizFloorCache.get(floorId) ?? {};
 }
