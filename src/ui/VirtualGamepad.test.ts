@@ -366,7 +366,7 @@ describe('haptic feedback on vpad button press', () => {
       Object.defineProperty(navigator, 'vibrate', originalVibrateDescriptor);
     } else {
       // Property didn't exist originally — remove the stub.
-      try { delete (navigator as Record<string, unknown>)['vibrate']; } catch { /* non-configurable in some envs */ }
+      try { delete (navigator as unknown as Record<string, unknown>)['vibrate']; } catch { /* non-configurable in some envs */ }
     }
     vi.restoreAllMocks();
   });

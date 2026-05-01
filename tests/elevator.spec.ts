@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -21,19 +20,6 @@ test.describe('Elevator scene', () => {
         );
       } catch { /* noop */ }
     });
-  });
-
-  test('renders with lobby in view after starting from the menu', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await navigateToElevator(page);
-
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/02-elevator-lobby.png` });
-    errors.assertClean();
   });
 
   test('info dialog opens from the elevator info action', async ({ page }) => {
@@ -83,7 +69,6 @@ test.describe('Elevator scene', () => {
     });
     expect(dialogOpen).toBe(true);
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/04-elevator-info-dialog.png` });
     errors.assertClean();
   });
 
@@ -184,7 +169,6 @@ test.describe('Elevator scene', () => {
     expect(result.leftAnimated.length).toBeGreaterThan(0);
     expect(result.rightAnimated.length).toBeGreaterThan(0);
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/05-elevator-f1-decor-layout.png` });
     errors.assertClean();
   });
 });

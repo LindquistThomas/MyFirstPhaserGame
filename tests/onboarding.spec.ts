@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import {
-  SCREENSHOT_DIR,
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
@@ -47,7 +46,6 @@ test.describe('Onboarding flow', () => {
       } catch { return false; }
     }, undefined, { timeout: 5_000 });
 
-    await page.screenshot({ path: `${SCREENSHOT_DIR}/onboarding-after-confirm.png` });
     errors.assertClean();
   });
 
