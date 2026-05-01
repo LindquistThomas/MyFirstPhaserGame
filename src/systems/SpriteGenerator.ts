@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { drawPlayerWalkFrames, drawPlayerFlipFrames, generatePlayerSprites } from './sprites/player';
+import { drawPlayerWalkFrames, drawPlayerFlipFrames, generatePlayerSprites, PLAYER_FRAME_W, PLAYER_FRAME_H, PLAYER_FRAME_COUNT } from './sprites/player';
 import { generateTileSprites } from './sprites/tiles';
 import { generateAUTokenSprites } from './sprites/token';
 import { generateElevatorSprites } from './sprites/elevator';
@@ -37,9 +37,6 @@ export interface GeneratorPhase {
  * 20 ms per-tick budget on throttled hardware.
  */
 function buildPlayerPhases(): [GeneratorPhase, GeneratorPhase] {
-  const W = 64;
-  const H = 160;
-  const FRAMES = 14;
   let canvas: HTMLCanvasElement | null = null;
   let ctx: CanvasRenderingContext2D | null = null;
 
@@ -48,23 +45,35 @@ function buildPlayerPhases(): [GeneratorPhase, GeneratorPhase] {
       label: 'Drawing player (walk)',
       run: (_scene: Phaser.Scene) => {
         canvas = document.createElement('canvas');
-        canvas.width = W * FRAMES;
-        canvas.height = H;
-        ctx = canvas.getContext('2d');
-        drawPlayerWalkFrames(canvas, ctx!);
+        canvas.width = PLAYER_FRAME_W * PLAYER_FRAME_COUNT;
+        canvas.height = PLAYER_FRAME_H;
+        const context = canvas.getContext('2d');
+        if (!context) {
+          canvas = null;
+          throw new Error('[SpriteGenerator] Failed to acquire 2D canvas context for player sprite generation.');
+        }
+        ctx = context;
+        drawPlayerWalkFrames(canvas, ctx);
       },
     },
     {
       label: 'Drawing player (flip)',
       run: (scene: Phaser.Scene) => {
-        drawPlayerFlipFrames(canvas!, ctx!);
-        scene.textures.addSpriteSheet(
-          'player',
-          canvas as unknown as HTMLImageElement,
-          { frameWidth: W, frameHeight: H },
-        );
+        if (!canvas || !ctx) {
+          throw new Error(
+            '[SpriteGenerator] Player flip phase requires an initialised canvas/context. Phase 1 may have failed or phases ran out of order.',
+          );
+        }
+        const currentCanvas = canvas;
+        const currentCtx = ctx;
         canvas = null;
         ctx = null;
+        drawPlayerFlipFrames(currentCanvas, currentCtx);
+        scene.textures.addSpriteSheet(
+          'player',
+          currentCanvas as unknown as HTMLImageElement,
+          { frameWidth: PLAYER_FRAME_W, frameHeight: PLAYER_FRAME_H },
+        );
       },
     },
   ];

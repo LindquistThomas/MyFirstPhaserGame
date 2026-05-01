@@ -6,6 +6,9 @@ vi.mock('./sprites/player', () => ({
   generatePlayerSprites: vi.fn(),
   drawPlayerWalkFrames: vi.fn(),
   drawPlayerFlipFrames: vi.fn(),
+  PLAYER_FRAME_W: 64,
+  PLAYER_FRAME_H: 160,
+  PLAYER_FRAME_COUNT: 14,
 }));
 vi.mock('./sprites/tiles', () => ({ generateTileSprites: vi.fn() }));
 vi.mock('./sprites/token', () => ({ generateAUTokenSprites: vi.fn() }));
@@ -99,9 +102,18 @@ function makeScene(playerTextureExists: boolean) {
   };
 }
 
+// jsdom doesn't implement canvas.getContext('2d'); stub it so the null-check
+// inside buildPlayerPhases doesn't fire during unit tests.
+function stubCanvasContext(): void {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+    {} as CanvasRenderingContext2D,
+  );
+}
+
 describe('generateSprites', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    stubCanvasContext();
   });
 
   it('calls every sub-generator exactly once on the first invocation', () => {
@@ -147,6 +159,7 @@ describe('generateSprites', () => {
 describe('SPRITE_PHASES', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    stubCanvasContext();
   });
 
   it('is a non-empty array', () => {
@@ -196,6 +209,18 @@ describe('SPRITE_PHASES', () => {
       expect.anything(),
       { frameWidth: 64, frameHeight: 160 },
     );
+  });
+
+  it('player flip phase throws a descriptive error when phase 1 was not run', () => {
+    // After the closure canvas was cleaned up by a previous run of both phases,
+    // running phase 2 again without phase 1 should throw rather than null-deref.
+    const scene = makeScene(false);
+    // Prime the closure by running phases once (canvas is nulled after phase 2).
+    SPRITE_PHASES[0]!.run(scene as never);
+    SPRITE_PHASES[1]!.run(scene as never);
+    vi.clearAllMocks();
+    // Now phase 2 runs without phase 1 → canvas/ctx are null.
+    expect(() => SPRITE_PHASES[1]!.run(scene as never)).toThrow(/Player flip phase/);
   });
 
   it('has separate phases for enemy batches A and B', () => {

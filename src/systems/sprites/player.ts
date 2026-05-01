@@ -22,10 +22,17 @@ import { theme } from '../../style/theme';
  * and legs outside that band — intentional, for readable silhouettes mid-air.
  */
 
-// Frame dimensions
-const _W = 64;
-const _H = 160;
-const _FRAMES = 14;
+/** Pixel width of a single player animation frame. */
+export const PLAYER_FRAME_W = 64;
+/** Pixel height of a single player animation frame. */
+export const PLAYER_FRAME_H = 160;
+/** Total number of frames in the player sprite sheet. */
+export const PLAYER_FRAME_COUNT = 14;
+
+// Module-private aliases keep the pixel-drawing helpers readable.
+const _W = PLAYER_FRAME_W;
+const _H = PLAYER_FRAME_H;
+const _FRAMES = PLAYER_FRAME_COUNT;
 const _S = 4;
 
 // Palette constants
