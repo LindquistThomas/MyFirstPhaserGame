@@ -354,4 +354,140 @@ describe('Player', () => {
       expect(player.getPlayerState()).toBe('flipping');
     });
   });
+
+  // ── Caffeine buff ──────────────────────────────────────────────────────────
+
+  describe('caffeine buff', () => {
+    it('isCaffeinated returns false before applyCaffeine', () => {
+      expect(player.isCaffeinated()).toBe(false);
+    });
+
+    it('applyCaffeine activates the buff and isCaffeinated returns true', () => {
+      player.applyCaffeine(2000);
+      expect(player.isCaffeinated()).toBe(true);
+    });
+
+    it('isCaffeinated returns false after the buff duration expires', () => {
+      player.applyCaffeine(500);
+      scene.advanceTime(600);
+      expect(player.isCaffeinated()).toBe(false);
+    });
+
+    it('applyCaffeine emits buff:caffeine_start with the duration', () => {
+      const handler = vi.fn();
+      eventBus.on('buff:caffeine_start', handler);
+      try {
+        player.applyCaffeine(3000);
+        expect(handler).toHaveBeenCalledWith(3000);
+      } finally {
+        eventBus.off('buff:caffeine_start', handler);
+      }
+    });
+
+    it('caffeinated jump uses a higher Y velocity', () => {
+      const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+
+      // Baseline jump without caffeine.
+      sprite.body.blocked.down = true;
+      scene.inputs.justPressed = () => true;
+      player.update(16.67);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const baseJumpVy = setVelocityY.mock.calls[setVelocityY.mock.calls.length - 1]![0] as number;
+
+      // Reset and apply caffeine then jump again.
+      const { scene: s2, player: p2, sprite: spr2 } = makePlayer();
+      eventBus.on('sfx:jump', noop);
+      p2.applyCaffeine(5000);
+      spr2.body.blocked.down = true;
+      s2.inputs.justPressed = () => true;
+      const setVelocityY2 = spr2.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+      p2.update(16.67);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const caffJumpVy = setVelocityY2.mock.calls[setVelocityY2.mock.calls.length - 1]![0] as number;
+      eventBus.off('sfx:jump', noop);
+
+      // Caffeinated jump velocity should have a larger magnitude (more negative).
+      expect(caffJumpVy).toBeLessThan(baseJumpVy);
+    });
+
+    it('caffeinated ground movement uses a higher X speed', () => {
+      const setVelocityX = sprite.setVelocityX as unknown as ReturnType<typeof vi.fn>;
+
+      // Baseline ground speed without caffeine.
+      sprite.body.blocked.down = true;
+      scene.inputs.horizontal = () => 1;
+      player.update(16.67);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const baseVx = setVelocityX.mock.calls[setVelocityX.mock.calls.length - 1]![0] as number;
+
+      // Reset and apply caffeine then move again.
+      const { scene: s2, player: p2, sprite: spr2 } = makePlayer();
+      p2.applyCaffeine(5000);
+      spr2.body.blocked.down = true;
+      s2.inputs.horizontal = () => 1;
+      const setVelocityX2 = spr2.setVelocityX as unknown as ReturnType<typeof vi.fn>;
+      p2.update(16.67);
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const caffVx = setVelocityX2.mock.calls[setVelocityX2.mock.calls.length - 1]![0] as number;
+
+      expect(caffVx).toBeGreaterThan(baseVx);
+    });
+  });
+
+  // ── Utility API ────────────────────────────────────────────────────────────
+
+  describe('setPosition', () => {
+    it('snaps sprite to new coordinates and zeroes velocity', () => {
+      sprite.body.velocity.x = 200;
+      sprite.body.velocity.y = -300;
+      player.setPosition(50, 150);
+      expect(sprite.x).toBe(50);
+      expect(sprite.y).toBe(150);
+      expect(sprite.body.velocity.x).toBe(0);
+      expect(sprite.body.velocity.y).toBe(0);
+    });
+  });
+
+  describe('isHitStunned', () => {
+    it('returns false before any hit', () => {
+      expect(player.isHitStunned()).toBe(false);
+    });
+
+    it('returns true immediately after takeHit', () => {
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      player.takeHit(100, -200, 500);
+      expect(player.isHitStunned()).toBe(true);
+    });
+
+    it('returns false after the 220 ms input-lock window expires', () => {
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      player.takeHit(100, -200, 500);
+      scene.advanceTime(250);
+      expect(player.isHitStunned()).toBe(false);
+    });
+  });
+
+  describe('FSM edge cases', () => {
+    it('landing → airborne when player falls off during squash', () => {
+      // Put player into landing state (airborne > grace window, then land).
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('airborne');
+
+      scene.advanceTime(120);
+      player.update(16.67);
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('landing');
+
+      // Walk off the ledge while the squash animation is still playing.
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      player.update(16.67);
+      expect(player.getPlayerState()).toBe('airborne');
+    });
+  });
 });
