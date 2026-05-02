@@ -1,4 +1,4 @@
-import { FLOORS, FloorId } from '../config/gameConfig';
+import { FLOORS, FloorId, FLOOR_IDS } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
 import type { SaveData } from './SaveManager';
 import * as DefaultSaveManager from './SaveManager';
@@ -212,19 +212,43 @@ export class ProgressionSystem {
   loadFromSave(): boolean {
     const data = this.saveAdapter.load();
     if (!data) return false;
+
+    // Build a safe floorAU: seed every known floor at 0, then overwrite only
+    // entries whose key is a recognised FloorId. This handles both legacy saves
+    // that are missing newly-added floors and corrupted saves with alien keys.
+    const allFloors = Object.values(FLOORS) as FloorId[];
+    const safeFloorAU: Record<FloorId, number> = Object.fromEntries(
+      allFloors.map(id => [id, 0]),
+    ) as Record<FloorId, number>;
+    for (const [k, v] of Object.entries(data.floorAU)) {
+      const id = Number(k) as FloorId;
+      if (FLOOR_IDS.includes(id) && typeof v === 'number') {
+        safeFloorAU[id] = v;
+      }
+    }
+
+    // Same for collectedTokens — seed all floors with empty sets.
+    const safeTokens: Record<FloorId, Set<number>> = Object.fromEntries(
+      allFloors.map(id => [id, new Set<number>()]),
+    ) as Record<FloorId, Set<number>>;
+    for (const [k, v] of Object.entries(data.collectedTokens)) {
+      const id = Number(k) as FloorId;
+      if (FLOOR_IDS.includes(id) && Array.isArray(v)) {
+        safeTokens[id] = new Set(v as number[]);
+      }
+    }
+
     this.state = {
       totalAU: data.totalAU,
-      floorAU: data.floorAU as Record<FloorId, number>,
+      floorAU: safeFloorAU,
       // Restore only the floors the player actually unlocked (no merge with
       // defaults). checkUnlocks() below will re-unlock any floor whose
       // auRequired threshold the player's saved total already meets.
-      unlockedFloors: new Set<FloorId>(data.unlockedFloors),
-      currentFloor: data.currentFloor,
-      collectedTokens: Object.fromEntries(
-        Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
-      ) as Record<FloorId, Set<number>>,
+      unlockedFloors: new Set<FloorId>(data.unlockedFloors.filter(id => FLOOR_IDS.includes(id))),
+      currentFloor: FLOOR_IDS.includes(data.currentFloor) ? data.currentFloor : FLOORS.LOBBY,
+      collectedTokens: safeTokens,
       onboardingComplete: data.onboardingComplete ?? false,
-      visitedFloors: new Set<FloorId>(data.visitedFloors ?? []),
+      visitedFloors: new Set<FloorId>((data.visitedFloors ?? []).filter(id => FLOOR_IDS.includes(id))),
     };
     this.checkUnlocks();
     return true;

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ProgressionSystem } from './ProgressionSystem';
 import { setStorage, setPlayerSlot, KVStorage, CURRENT_SAVE_VERSION } from './SaveManager';
 import { FLOORS } from '../config/gameConfig';
+import type { SaveAdapter } from './ProgressionSystem';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage {
@@ -364,5 +365,92 @@ describe('ProgressionSystem — isFirstVisit / resetVisitedFloors', () => {
     expect(q.loadFromSave()).toBe(true);
     expect(q.getVisitedFloorCount()).toBe(0);
     expect(q.isFirstVisit(FLOORS.LOBBY)).toBe(true);
+  });
+});
+
+describe('ProgressionSystem — loadFromSave floor ID sanitisation', () => {
+  it('falls back to FLOORS.LOBBY when currentFloor is an unknown ID', () => {
+    const corrupt = {
+      version: 1,
+      totalAU: 0,
+      floorAU: {},
+      unlockedFloors: [FLOORS.LOBBY],
+      currentFloor: 999, // not a valid FloorId
+      collectedTokens: {},
+    };
+    const adapter: SaveAdapter = { load: () => corrupt as never, save: () => {}, clear: () => {} };
+    const p = new ProgressionSystem(adapter);
+    p.loadFromSave();
+    expect(p.getCurrentFloor()).toBe(FLOORS.LOBBY);
+  });
+
+  it('filters out unknown IDs from unlockedFloors', () => {
+    const corrupt = {
+      version: 1,
+      totalAU: 0,
+      floorAU: {},
+      unlockedFloors: [FLOORS.LOBBY, 999], // 999 is not a valid FloorId
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+    };
+    const adapter: SaveAdapter = { load: () => corrupt as never, save: () => {}, clear: () => {} };
+    const p = new ProgressionSystem(adapter);
+    p.loadFromSave();
+    // 999 must have been stripped; all remaining IDs must be valid FloorId values
+    const unlocked = p.getUnlockedFloors();
+    expect(unlocked).not.toContain(999);
+    expect(unlocked.every(id => [0, 1, 3, 4, 5, 6].includes(id))).toBe(true);
+  });
+
+  it('fills in 0 for floors absent from floorAU in the saved data', () => {
+    // A save that only has LOBBY in floorAU — all other floors should default to 0.
+    const partial = {
+      version: 1,
+      totalAU: 3,
+      floorAU: { [FLOORS.LOBBY]: 3 }, // missing PLATFORM_TEAM, BUSINESS, etc.
+      unlockedFloors: [FLOORS.LOBBY],
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+    };
+    const adapter: SaveAdapter = { load: () => partial as never, save: () => {}, clear: () => {} };
+    const p = new ProgressionSystem(adapter);
+    p.loadFromSave();
+    expect(p.getFloorAU(FLOORS.LOBBY)).toBe(3);
+    expect(p.getFloorAU(FLOORS.PLATFORM_TEAM)).toBe(0);
+    expect(p.getFloorAU(FLOORS.BUSINESS)).toBe(0);
+  });
+
+  it('ignores unknown floor keys in floorAU', () => {
+    const corrupt = {
+      version: 1,
+      totalAU: 7,
+      floorAU: { [FLOORS.LOBBY]: 5, 999: 2 }, // 999 is not a valid FloorId
+      unlockedFloors: [FLOORS.LOBBY],
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+    };
+    const adapter: SaveAdapter = { load: () => corrupt as never, save: () => {}, clear: () => {} };
+    const p = new ProgressionSystem(adapter);
+    p.loadFromSave();
+    expect(p.getFloorAU(FLOORS.LOBBY)).toBe(5);
+    // totalAU is loaded verbatim from the save (not re-derived from floorAU)
+    expect(p.getTotalAU()).toBe(7);
+  });
+
+  it('filters out unknown IDs from visitedFloors', () => {
+    const corrupt = {
+      version: 1,
+      totalAU: 0,
+      floorAU: {},
+      unlockedFloors: [FLOORS.LOBBY],
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+      visitedFloors: [FLOORS.LOBBY, 999], // 999 is not a valid FloorId
+    };
+    const adapter: SaveAdapter = { load: () => corrupt as never, save: () => {}, clear: () => {} };
+    const p = new ProgressionSystem(adapter);
+    p.loadFromSave();
+    expect(p.hasVisitedFloor(FLOORS.LOBBY)).toBe(true);
+    expect(p.getVisitedFloorCount()).toBe(1);
   });
 });
