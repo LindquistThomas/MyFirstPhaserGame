@@ -488,6 +488,26 @@ describe('SaveManager — multi-slot UI helpers', () => {
     expect(info.slotId).toBe('slot3');
   });
 
+  it('loadSlotInfo returns exists:false when required fields are missing (schema invalid)', () => {
+    // A save with missing unlockedFloors/collectedTokens fails schema validation;
+    // loadSlotInfo must return exists:false to match what load() would do.
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', JSON.stringify({ totalAU: 5, currentFloor: 0 }));
+    setStorage(store);
+
+    const info = loadSlotInfo('slot1');
+    expect(info.exists).toBe(false);
+  });
+
+  it('loadSlotInfo returns exists:false when collectedTokens has non-array values (schema invalid)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot2_v1', JSON.stringify({ ...sample, collectedTokens: { 0: 1 } }));
+    setStorage(store);
+
+    const info = loadSlotInfo('slot2');
+    expect(info.exists).toBe(false);
+  });
+
   it('loadSlotInfo does not change the active player slot', () => {
     setPlayerSlot('slot1');
     save({ ...sample, totalAU: 99 });
@@ -588,21 +608,16 @@ describe('SaveManager — migrateDefaultSlot', () => {
 
 
 describe('SaveManager — isValidSaveData schema validation', () => {
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
   beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     setStorage(memoryStorage());
     setPlayerSlot('test');
-    warnSpy.mockClear();
     eventBus.removeAllListeners();
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     eventBus.removeAllListeners();
-  });
-
-  afterAll(() => {
-    warnSpy.mockRestore();
   });
 
   const validBase = {
@@ -739,6 +754,43 @@ describe('SaveManager — isValidSaveData schema validation', () => {
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
   });
 
+  it('returns null and emits persistence:failed when floorAU has non-number values', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, floorAU: { 0: 'bad', 1: 5 } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when collectedTokens has non-array values', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    // {0: 1} (number instead of array) must be rejected
+    const loaded = storeAndLoad({ ...validBase, collectedTokens: { 0: 1, 1: [1] } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when collectedTokens has object values', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, collectedTokens: { 0: {} } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when visitedFloors contains non-numbers', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, visitedFloors: ['a', 'b'] });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
   it('stores a forensic copy and removes the corrupt key on validation failure', () => {
     const store = memoryStorage();
     store.store.set('architect_test_v1', JSON.stringify({ totalAU: 'bad' }));
@@ -749,6 +801,30 @@ describe('SaveManager — isValidSaveData schema validation', () => {
     // Original key removed so hasSave() is false
     expect(store.store.has('architect_test_v1')).toBe(false);
     // A forensic key starting with 'architect_test_v1_corrupt_' should exist
+    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
+    expect(forensicKey).toBeDefined();
+  });
+
+  it('stores a forensic copy on JSON.parse failure (not just schema failure)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', '{not valid json}');
+    setStorage(store);
+
+    load();
+
+    expect(store.store.has('architect_test_v1')).toBe(false);
+    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
+    expect(forensicKey).toBeDefined();
+  });
+
+  it('stores a forensic copy when version is invalid (non-integer)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify({ ...validBase, version: 1.5 }));
+    setStorage(store);
+
+    load();
+
+    expect(store.store.has('architect_test_v1')).toBe(false);
     const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
     expect(forensicKey).toBeDefined();
   });
