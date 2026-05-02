@@ -128,6 +128,8 @@ function isValidSaveData(d: unknown): d is SaveData {
   if (typeof d !== 'object' || d === null) return false;
   const o = d as Record<string, unknown>;
   if (typeof o['version'] !== 'number') return false;
+  // totalAU < 0 is structurally impossible in valid saves; treat it as corruption
+  // rather than deferring to ProgressionSystem which would persist the bad value.
   if (typeof o['totalAU'] !== 'number' || o['totalAU'] < 0) return false;
   if (typeof o['currentFloor'] !== 'number') return false;
   if (!Array.isArray(o['unlockedFloors'])) return false;
