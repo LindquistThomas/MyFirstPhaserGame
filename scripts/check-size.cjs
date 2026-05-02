@@ -12,7 +12,12 @@
  *   App chunk (index-*.js)         150 KB gzipped
  *   Phaser chunk (phaser-*.js)     400 KB gzipped
  *   Total dist/ (excl. music)      700 KB gzipped
- *   Eager music assets              2 MB  raw
+ *   Eager music assets               2 MB raw
+ *   Total music assets (all)       6.5 MB raw   ← guards against audio bloat
+ *
+ * Orphan check: every file in dist/music/ must be declared in
+ * STATIC_MUSIC_ASSETS (src/config/audioConfig.ts).  Any undeclared file
+ * fails the check so orphaned audio cannot sneak in via a PR.
  */
 
 const fs   = require('fs');
@@ -108,6 +113,61 @@ function getEagerMusicPaths() {
   return paths;
 }
 
+/**
+ * Parse `src/config/audioConfig.ts` to find ALL `path` values declared in
+ * `STATIC_MUSIC_ASSETS` (both eager and non-eager).
+ * Returns paths relative to `public/`, e.g. `'music/8bit-chiptune/bgm_menu.mp3'`.
+ * @returns {string[]}
+ */
+function getAllMusicPaths() {
+  const configFile = path.join(ROOT, 'src', 'config', 'audioConfig.ts');
+  if (!fs.existsSync(configFile)) return [];
+
+  const src = fs.readFileSync(configFile, 'utf8');
+
+  // Find the STATIC_MUSIC_ASSETS array literal and extract every `path` value.
+  // Strategy: locate the array opening bracket, then walk the source character-
+  // by-character tracking bracket depth until the array closes, then harvest
+  // all `path: '…'` values from that slice.  Assumptions (the only ones the
+  // parser truly depends on):
+  //   • `path` values are string literals using single or double quotes with
+  //     no escaped quotes inside.
+  //   • No literal bracket characters (`[` / `]`) appear inside string values.
+  //     If a future path contains a literal bracket (e.g. 'music/track[remix].mp3'),
+  //     the depth counter will miscount and the slice will be truncated early.
+  //     Switch to a proper TS-AST parser if that ever happens.
+  //   • The array is assigned to `STATIC_MUSIC_ASSETS`.
+  const arrayStartRe = /STATIC_MUSIC_ASSETS[^=]*=\s*\[/;
+  const startMatch   = arrayStartRe.exec(src);
+  if (!startMatch) return [];
+
+  const arrayBody = src.slice(startMatch.index + startMatch[0].length);
+
+  // Walk until the matching `]` that closes the array.
+  let depth = 1;
+  let i = 0;
+  let body = '';
+  while (i < arrayBody.length && depth > 0) {
+    const ch = arrayBody[i];
+    if (ch === '[') depth++;
+    else if (ch === ']') { depth--; if (depth === 0) break; }
+    body += ch;
+    i++;
+  }
+
+  const pathRe = /path\s*:\s*['"]([^'"]+)['"]/g;
+  // Note: this regex matches any property named `path` in the extracted body.
+  // It is intentionally scoped to `body` (the STATIC_MUSIC_ASSETS array slice)
+  // so that `path` properties in other objects in audioConfig.ts are ignored.
+  // The assumption is that only MusicAsset entries appear in that array.
+  /** @type {string[]} */
+  const paths = [];
+  for (const m of body.matchAll(pathRe)) {
+    paths.push(m[1]);
+  }
+  return paths;
+}
+
 // ── budget table ──────────────────────────────────────────────────────────────
 
 const BUDGETS = /** @type {const} */ ([
@@ -167,6 +227,20 @@ const BUDGETS = /** @type {const} */ ([
       return { bytes: total, found: true, missing };
     },
   },
+  {
+    label:    'Total music assets (raw)',
+    limitKB:  6656,   // 6.5 MB (6656 = Math.ceil(6.5 * 1024)) — calibrated against the clean post-orphan-cleanup baseline
+    raw:      true,
+    required: false,
+    measure() {
+      const distMusic = path.join(DIST, 'music');
+      if (!fs.existsSync(distMusic)) return { bytes: 0, found: false };
+      const files = walk(distMusic, (f) => /\.(mp3|ogg|wav)$/i.test(f));
+      if (files.length === 0) return { bytes: 0, found: false };
+      const total = files.reduce((s, f) => s + fs.statSync(f).size, 0);
+      return { bytes: total, found: true };
+    },
+  },
 ]);
 
 // ── run checks ────────────────────────────────────────────────────────────────
@@ -217,6 +291,51 @@ for (const { label, limitKB, raw, required, measure } of BUDGETS) {
 }
 
 console.log('');
+
+// ── music orphan check ────────────────────────────────────────────────────────
+
+{
+  const distMusic = path.join(DIST, 'music');
+  if (fs.existsSync(distMusic)) {
+    const declaredPaths = new Set(getAllMusicPaths());
+    const audioFiles    = walk(distMusic, (f) => /\.(mp3|ogg|wav)$/i.test(f));
+
+    /** @type {string[]} */
+    const orphans = [];
+    /** @type {string[]} */
+    const summary = [];
+
+    for (const f of audioFiles.sort()) {
+      // Convert absolute dist path → relative path the same way audioConfig
+      // declares it, e.g. 'music/8bit-chiptune/bgm_menu.mp3'.
+      const rel  = path.relative(DIST, f).replace(/\\/g, '/');
+      const size = `${kb(fs.statSync(f).size)} raw`;
+      if (declaredPaths.has(rel)) {
+        summary.push(`  ✓  ${rel}  (${size})`);
+      } else {
+        orphans.push(rel);
+        summary.push(`  ✗  ${rel}  (${size})  ← ORPHAN`);
+      }
+    }
+
+    console.log('Music catalog\n');
+    if (audioFiles.length === 0) {
+      console.log('  (none)\n');
+    } else {
+      for (const line of summary) console.log(line);
+      console.log('');
+    }
+
+    if (orphans.length > 0) {
+      console.error(`  ✗  Music orphan check: ${orphans.length} file(s) in dist/music/ not declared in STATIC_MUSIC_ASSETS:`);
+      for (const o of orphans) console.error(`       ${o}`);
+      console.error('     Remove the file(s) from public/music/ or add them to STATIC_MUSIC_ASSETS.\n');
+      failed = true;
+    } else {
+      console.log(`  ✓  Music orphan check: all ${audioFiles.length} file(s) declared in STATIC_MUSIC_ASSETS\n`);
+    }
+  }
+}
 
 if (failed) {
   console.error('Bundle size budget exceeded. Raise the limits in scripts/check-size.cjs only with explicit justification.\n');
