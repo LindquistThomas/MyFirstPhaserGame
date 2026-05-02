@@ -28,7 +28,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # MissionItem, Checkpoint
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, coachHints,
-│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig), one dir per floor (lobby/, platform/, architecture/,
+│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene), one dir per floor (lobby/, platform/, architecture/,
 │   │   │                       finance/, product/, customer/, executive/, boss/)
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
 │   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
@@ -37,7 +37,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # ControlsScene, PauseScene, SaveSlotScene),
 │   │                         # elevator/, NavigationContext, sceneRegistry,
 │   │                         # lazySceneLoaders
-│   ├── style/                # theme.ts — colour + spacing token catalogue
+│   ├── style/                # theme.ts (colour/spacing tokens) + responsive.ts (viewport helpers)
 │   ├── systems/              # ProgressionSystem, GameStateManager, EventBus, ZoneManager,
 │   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
 │   │                         # PersistedStore, SettingsStore, AchievementManager, TouchHintStore,
@@ -47,6 +47,9 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
 │                               InfoIcon, HUD, DialogController, …
+├── docs/                     # architecture.md, eventbus-audit.md, archive/ (shipped specs)
+├── scripts/                  # check-size.cjs — bundle-size budget gate (used by `npm run size`)
+├── idea/                     # design notes / brainstorm dump (not part of build)
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
     ├── copilot-instructions.md   # Mirror of this file (keep in sync)
