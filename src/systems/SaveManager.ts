@@ -119,6 +119,28 @@ export function save(data: SaveData): void {
   }
 }
 
+/**
+ * Type guard that verifies the parsed JSON object matches the SaveData shape.
+ * Required fields are checked for correct type; optional fields are validated
+ * only when present. Callers should treat a `false` return as corruption.
+ */
+function isValidSaveData(d: unknown): d is SaveData {
+  if (typeof d !== 'object' || d === null) return false;
+  const o = d as Record<string, unknown>;
+  if (typeof o['version'] !== 'number') return false;
+  if (typeof o['totalAU'] !== 'number' || o['totalAU'] < 0) return false;
+  if (typeof o['currentFloor'] !== 'number') return false;
+  if (!Array.isArray(o['unlockedFloors'])) return false;
+  if (!(o['unlockedFloors'] as unknown[]).every((n) => typeof n === 'number')) return false;
+  if (typeof o['floorAU'] !== 'object' || o['floorAU'] === null || Array.isArray(o['floorAU'])) return false;
+  if (typeof o['collectedTokens'] !== 'object' || o['collectedTokens'] === null || Array.isArray(o['collectedTokens'])) return false;
+  // Optional fields: only validated if present.
+  if (o['onboardingComplete'] !== undefined && typeof o['onboardingComplete'] !== 'boolean') return false;
+  if (o['visitedFloors'] !== undefined && !Array.isArray(o['visitedFloors'])) return false;
+  if (o['lastPlayedAt'] !== undefined && typeof o['lastPlayedAt'] !== 'number') return false;
+  return true;
+}
+
 export function load(): SaveData | null {
   checkUnavailable();
   let raw: string | null;
@@ -149,7 +171,15 @@ export function load(): SaveData | null {
     }
     // Stamp the final version so the returned object always has an up-to-date field.
     data['version'] = version;
-    return data as unknown as SaveData;
+    if (!isValidSaveData(data)) {
+      // Stash a forensic copy so the corruption can be diagnosed later, then
+      // remove the bad key so the player gets a clean slot on next boot.
+      try { getStorage().setItem(`${key()}_corrupt_${Date.now()}`, raw); } catch { /* noop */ }
+      try { getStorage().removeItem(key()); } catch { /* noop */ }
+      emitFailed('parse', new Error('SaveData failed schema validation'));
+      return null;
+    }
+    return data;
   } catch (err) {
     emitFailed('parse', err);
     return null;
