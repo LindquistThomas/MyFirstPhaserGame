@@ -1,4 +1,5 @@
 import { eventBus } from './EventBus';
+import { FloorId, FLOOR_IDS } from '../config/gameConfig';
 
 /** Pluggable key-value storage. Defaults to localStorage. */
 export interface KVStorage {
@@ -7,18 +8,18 @@ export interface KVStorage {
   removeItem(key: string): void;
 }
 
-/** Plain data shape — no game-type imports. */
+/** Plain data shape persisted to storage. Floor fields use the same FloorId union as the rest of the game. */
 export interface SaveData {
   version: number;
   totalAU: number;
-  floorAU: Record<number, number>;
-  unlockedFloors: number[];
-  currentFloor: number;
-  collectedTokens: Record<number, number[]>;
+  floorAU: Partial<Record<FloorId, number>>;
+  unlockedFloors: FloorId[];
+  currentFloor: FloorId;
+  collectedTokens: Partial<Record<FloorId, number[]>>;
   /** Set once the player has completed (or explicitly skipped) the onboarding flow. */
   onboardingComplete?: boolean;
   /** Floors the player has entered at least once. Optional for backward-compat. */
-  visitedFloors?: number[];
+  visitedFloors?: FloorId[];
   /** Unix ms timestamp of the last time this save was written. */
   lastPlayedAt?: number;
 }
@@ -32,7 +33,7 @@ export interface SlotInfo {
   slotId: SaveSlotId;
   exists: boolean;
   totalAU?: number;
-  currentFloor?: number;
+  currentFloor?: FloorId;
   lastPlayedAt?: number;
 }
 
@@ -175,11 +176,12 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
   if (!raw) return { slotId, exists: false };
   try {
     const data = JSON.parse(raw) as Record<string, unknown>;
+    const rawCF = data['currentFloor'];
     return {
       slotId,
       exists: true,
       totalAU: typeof data['totalAU'] === 'number' ? data['totalAU'] : undefined,
-      currentFloor: typeof data['currentFloor'] === 'number' ? data['currentFloor'] : undefined,
+      currentFloor: typeof rawCF === 'number' && (FLOOR_IDS as number[]).includes(rawCF) ? rawCF as FloorId : undefined,
       lastPlayedAt: typeof data['lastPlayedAt'] === 'number' ? data['lastPlayedAt'] : undefined,
     };
   } catch {

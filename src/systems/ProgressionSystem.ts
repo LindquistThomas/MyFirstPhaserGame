@@ -218,13 +218,13 @@ export class ProgressionSystem {
       // Restore only the floors the player actually unlocked (no merge with
       // defaults). checkUnlocks() below will re-unlock any floor whose
       // auRequired threshold the player's saved total already meets.
-      unlockedFloors: new Set<FloorId>(data.unlockedFloors as FloorId[]),
-      currentFloor: data.currentFloor as FloorId,
+      unlockedFloors: new Set<FloorId>(data.unlockedFloors),
+      currentFloor: data.currentFloor,
       collectedTokens: Object.fromEntries(
         Object.entries(data.collectedTokens).map(([k, v]) => [Number(k), new Set(v)]),
       ) as Record<FloorId, Set<number>>,
       onboardingComplete: data.onboardingComplete ?? false,
-      visitedFloors: new Set<FloorId>((data.visitedFloors ?? []) as FloorId[]),
+      visitedFloors: new Set<FloorId>(data.visitedFloors ?? []),
     };
     this.checkUnlocks();
     return true;
@@ -239,7 +239,7 @@ export class ProgressionSystem {
       currentFloor: this.state.currentFloor,
       collectedTokens: Object.fromEntries(
         Object.entries(this.state.collectedTokens).map(([k, v]) => [Number(k), Array.from(v)]),
-      ),
+      ) as Record<FloorId, number[]>,
       onboardingComplete: this.state.onboardingComplete,
       visitedFloors: Array.from(this.state.visitedFloors),
       lastPlayedAt: Date.now(),
