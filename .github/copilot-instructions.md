@@ -110,7 +110,7 @@ Short index of where things live. Reach for these instead of re-implementing.
 
 ## Conventions
 
-- **EventBus lifecycle**: always unsubscribe handlers in the scene's `shutdown` event. EventBus is a singleton; Phaser scenes are reused between start/stop, so handlers accumulate forever if not cleaned up.
+- **EventBus lifecycle**: subscribe via `this.scopedEvents.on(...)` (auto-cleaned on shutdown) or `const lc = createSceneLifecycle(this); lc.bindEventBus(...)` (also covers input + DOM listeners). Raw `eventBus.on`/`eventBus.once` in `*Scene.ts` files is blocked by ESLint (`eslint.config.js`).
 - **Zone-gated UI** (info icons, lobby kiosks, …) starts hidden; `zone:enter`/`zone:exit` reveals and hides it. Never initialise a zone-gated element as visible.
 - **Direct calls beat events** for parent→child updates (e.g. refreshing a quiz badge on an `InfoIcon` after a dialog closes). Use EventBus only for loose coupling across systems.
 - **Gameplay mechanics that share a widget with content zones** (e.g. in-room lift buttons) must drive visibility from physics state, not from `ZoneManager`. Content zones are for informational content only.
@@ -152,15 +152,24 @@ Add the question set to the relevant floor's `src/features/floors/<floor>/quiz.t
 ### Add a zone
 Register in the scene's `create()`:
 ```ts
+// Option A — ScopedEventBus (auto-cleaned on shutdown, preferred)
 zoneManager.register('my-zone', () => /* boolean */);
-const onEnter = (id: string) => { if (id === 'my-zone') thing.setVisible(true); };
-const onExit  = (id: string) => { if (id === 'my-zone') thing.setVisible(false); };
-eventBus.on('zone:enter', onEnter);
-eventBus.on('zone:exit', onExit);
-this.events.once('shutdown', () => {
-  eventBus.off('zone:enter', onEnter);
-  eventBus.off('zone:exit', onExit);
+this.scopedEvents.on('zone:enter', (id: string) => {
+  if (id === 'my-zone') thing.setVisible(true);
 });
+this.scopedEvents.on('zone:exit', (id: string) => {
+  if (id === 'my-zone') thing.setVisible(false);
+});
+// In update():
+zoneManager.update();
+```
+
+```ts
+// Option B — sceneLifecycle token (also covers input + DOM listeners)
+const lc = createSceneLifecycle(this);
+zoneManager.register('my-zone', () => /* boolean */);
+lc.bindEventBus('zone:enter', (id) => { if (id === 'my-zone') thing.setVisible(true); });
+lc.bindEventBus('zone:exit',  (id) => { if (id === 'my-zone') thing.setVisible(false); });
 // In update():
 zoneManager.update();
 ```
@@ -189,7 +198,7 @@ For detailed Playwright debugging recipes, see `.github/skills/debug-with-playwr
 Short list of recurring mistakes. Check here first when something breaks inexplicably.
 
 - **`Space` is Jump only.** Scene transitions and dialog confirmation go through `Enter` (bound to `Confirm` / `Interact` / `ToggleInfo`). In Playwright, press `Enter`, not `Space`, to start the game from `MenuScene`.
-- **Unsubscribe EventBus handlers on scene shutdown** (see Conventions). Missing this produces ghost handlers that fire for every future scene instance.
+- **Never call `eventBus.on`/`eventBus.once` directly in `*Scene.ts`** — ESLint blocks it (`eslint.config.js`). Use `this.scopedEvents.on(...)` (auto-clean on shutdown) or `createSceneLifecycle(this).bindEventBus(...)`.
 - **Never `import { saveManager } from '.../SaveManager'` in scene code** — go through `ProgressionSystem`. The one whitelisted exception is `SaveManager.hasSave()` for a "Continue" UI check.
 - **Mask graphics for a scrollFactor:0 modal must also set `scrollFactor(0)`.** Otherwise a scrolled camera drags the mask off the modal and the content disappears (`src/ui/InfoDialog.ts`, `src/ui/ModalBase.ts`).
 - **Elevator boundary clamp** must only zero velocity when moving *out* of bounds (`src/entities/Elevator.ts`). Clamping unconditionally at the start position blocks upward movement.
