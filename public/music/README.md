@@ -52,15 +52,16 @@ The following files are part of the library but are not currently referenced by 
 
 ## Encoding
 
-All files are re-encoded for web delivery using **FFmpeg / libmp3lame**. Encoding settings per track group:
+MP3 background tracks are re-encoded using **FFmpeg / libmp3lame**; the Vorbis OGG loops use **libvorbis**. The two boss rescue-cue WAV files (`boss_tension.wav` / `boss_victory.wav`) are short procedural sounds kept at their original PCM quality and are not subject to the table below.
 
 | Group | Bitrate | Channels | Sample rate | Re-encode command |
 | --- | --- | --- | --- | --- |
 | 8-bit chiptune (`8bit-chiptune/*.mp3`) | **64 kbps CBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 64k -ar 44100 -ac 1 out.mp3` |
 | Elevator jazz (`elevator-jazz/*.mp3`) | **96 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 96k -ar 44100 -ac 2 out.mp3` |
 | Boss battle (`boss/*.mp3`) | **80 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 80k -ar 44100 -ac 2 out.mp3` |
-| OGG loops (`retro-synth/*.ogg`) | **~80–96 kbps VBR** | stereo | 44 100 Hz | `ffmpeg -i in.ogg -c:a libvorbis -b:a 96k out.ogg` |
-| Unused reserve tracks | **64–96 kbps** | as-is | as-is | Match the group above when re-encoding |
+| OGG loops (`retro-synth/*.ogg`) | **96 kbps CBR** | stereo | 48 000 Hz | `ffmpeg -i in.ogg -c:a libvorbis -b:a 96k -ac 2 -ar 48000 out.ogg` |
+
+> **Unused reserve tracks** (`8bit-chiptune/bgm_action_4.mp3`, `bgm_action_5.mp3`; `retro-synth/retro_synth.mp3`; `retro-synth/deadly_contracts-loop1.ogg` etc.) have not yet been re-encoded. Apply the matching group's command from the table above before activating any of them.
 
 > **Note on track lengths and file sizes**: The chiptune, elevator-jazz, and boss tracks are full songs (47–192 s), so their deployed file sizes are large relative to the bitrate. Reducing bitrates further risks audible generation loss since these files are already lossy-encoded MP3s with no lossless source retained. The current settings are the minimum that avoids noticeable artefacts in a browser game context.
 
