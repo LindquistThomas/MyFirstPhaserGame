@@ -345,7 +345,7 @@ automatically.
 | `sfx:coffee_sip`     | —       | Coffee                      | AudioManager |
 | `sfx:fridge_open`    | —       | EnergyDrinkFridge           | AudioManager |
 | `sfx:boss_hit`       | —       | CEOBoss                     | AudioManager |
-| `sfx:boss_defeated`  | —       | CEOBoss                     | AudioManager |
+| `sfx:boss_defeated`  | —       | TerroristCommander          | AudioManager |
 | `sfx:boss_phase_2`   | —       | CEOBoss                     | AudioManager |
 | `sfx:boss_phase_3`   | —       | CEOBoss                     | AudioManager |
 | `sfx:mug_throw`      | —       | Player (mug projectile)     | AudioManager |
@@ -354,13 +354,13 @@ automatically.
 | `sfx:bomb_disarm`    | —       | MissionItem                 | AudioManager |
 | `sfx:hostage_freed`  | —       | MissionItem                 | AudioManager |
 | `sfx:pistol_shot`    | —       | CEOBoss (pistol)            | AudioManager |
-| `sfx:floor_unlocked` | —       | ProgressionSystem           | AudioManager |
+| `sfx:floor_unlocked` | —       | ProgressStripController (HUD) | AudioManager |
 
 #### `checkpoint:*` — save points
 
 | Event                 | Payload       | Emitters | Consumers |
 |-----------------------|---------------|----------|-----------|
-| `checkpoint:activate` | `id: string`  | Player   | LevelScene |
+| `checkpoint:activate` | `id: string`  | LevelScene, BossArenaScene | — |
 
 #### `boss:*` — boss lifecycle
 
@@ -373,8 +373,8 @@ automatically.
 
 | Event                 | Payload               | Emitters             | Consumers    |
 |-----------------------|-----------------------|----------------------|--------------|
-| `buff:caffeine_start` | `durationMs: number`  | Coffee, EnergyDrink  | Player, HUD  |
-| `buff:caffeine_end`   | —                     | CaffeineBuff         | Player, HUD  |
+| `buff:caffeine_start` | `durationMs: number`  | Player               | CaffeineRingController (HUD) |
+| `buff:caffeine_end`   | —                     | Player               | CaffeineRingController (HUD) |
 
 #### `persistence:*` — storage errors
 
@@ -406,19 +406,19 @@ automatically.
 
 | Event                  | Payload | Emitters      | Consumers                  |
 |------------------------|---------|---------------|----------------------------|
-| `input:touch_detected` | —       | VirtualGamepad| VirtualGamepad, HUD        |
+| `input:touch_detected` | —       | VirtualGamepad | — |
 
 #### `settings:*` — user settings
 
 | Event              | Payload | Emitters      | Consumers                     |
 |--------------------|---------|---------------|-------------------------------|
-| `settings:changed` | —       | SettingsStore | VirtualGamepad, AudioManager  |
+| `settings:changed` | —       | SettingsStore | VirtualGamepad, HUD, Token  |
 
 #### `quiz:*` — quiz system
 
 | Event                  | Payload           | Emitters   | Consumers           |
 |------------------------|-------------------|------------|---------------------|
-| `quiz:cooldown_expired`| `infoId: string`  | QuizDialog | HUD / screen reader |
+| `quiz:cooldown_expired`| `infoId: string`  | QuizDialog | ariaLive (screen reader) |
 
 ## Testing
 
