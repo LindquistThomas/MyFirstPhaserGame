@@ -128,9 +128,11 @@ function getAllMusicPaths() {
   // Find the STATIC_MUSIC_ASSETS array literal and extract every `path` value.
   // Strategy: locate the array opening bracket, then walk the source character-
   // by-character tracking bracket depth until the array closes, then harvest
-  // all `path: '…'` values from that slice.  Assumptions:
-  //   • Each MusicAsset entry is a single-line object literal `{ … }`.
-  //   • No bracket characters (`[` / `]`) appear inside string values.
+  // all `path: '…'` values from that slice.  Assumptions (the only ones the
+  // parser truly depends on):
+  //   • `path` values are string literals using single or double quotes with
+  //     no escaped quotes inside.
+  //   • No literal bracket characters (`[` / `]`) appear inside string values.
   //     If a future path contains a literal bracket (e.g. 'music/track[remix].mp3'),
   //     the depth counter will miscount and the slice will be truncated early.
   //     Switch to a proper TS-AST parser if that ever happens.
