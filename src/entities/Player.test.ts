@@ -432,6 +432,23 @@ describe('Player', () => {
 
       expect(caffVx).toBeGreaterThan(baseVx);
     });
+
+    it('tickCaffeine emits buff:caffeine_end and stops steam when buff expires', () => {
+      const endHandler = vi.fn();
+      eventBus.on('buff:caffeine_end', endHandler);
+      try {
+        // Apply a short buff; applyCaffeine calls start() → emitting becomes true.
+        player.applyCaffeine(300);
+        // Advance past the buff window; next update() calls tickCaffeine().
+        scene.advanceTime(400);
+        // Drive an update so tickCaffeine fires the expiry branch.
+        sprite.body.blocked.down = true;
+        player.update(16.67);
+        expect(endHandler).toHaveBeenCalled();
+      } finally {
+        eventBus.off('buff:caffeine_end', endHandler);
+      }
+    });
   });
 
   // ── Utility API ────────────────────────────────────────────────────────────

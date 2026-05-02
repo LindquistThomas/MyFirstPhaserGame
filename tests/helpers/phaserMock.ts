@@ -175,14 +175,17 @@ export function createFakeScene(overrides: Partial<FakeScene> = {}): FakeScene {
     add: {
       existing: vi.fn((obj) => obj),
       graphics: graphicsStub,
-      particles: () => ({
-        setDepth: vi.fn(),
-        setPosition: vi.fn(),
-        explode: vi.fn(),
-        start: vi.fn(),
-        stop: vi.fn(),
-        emitting: false,
-      }),
+      particles: () => {
+        const emitter = {
+          setDepth: vi.fn(),
+          setPosition: vi.fn(),
+          explode: vi.fn(),
+          emitting: false,
+          start: vi.fn(() => { emitter.emitting = true; }),
+          stop: vi.fn(() => { emitter.emitting = false; }),
+        };
+        return emitter;
+      },
       image: (x: number, y: number, _key: string) => {
         const img = {
           x,
