@@ -9,6 +9,8 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
   private pulseTween?: Phaser.Tweens.Tween;
   private halo?: Phaser.GameObjects.Image;
   private collected = false;
+  /** Stored so the handler can be removed when the token is collected/destroyed. */
+  private settingsChangedHandler?: () => void;
 
   constructor(scene: Phaser.Scene, x: number, y: number, textureKey: string = 'token') {
     super(scene, x, y, textureKey);
@@ -38,15 +40,18 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
         repeat: -1,
         ease: 'Sine.easeInOut',
       });
-    }
 
-    // Refresh the default-token halo tint when the color-blind mode changes
-    // (floor-tinted tokens use baked-in colours and don't need updating).
-    if (textureKey === 'token') {
-      const onSettingsChanged = (): void => { this.refreshHaloTint(); };
-      eventBus.on('settings:changed', onSettingsChanged);
-      // Auto-unsubscribe when the scene shuts down so no ghost handlers linger.
-      scene.events.once('shutdown', () => eventBus.off('settings:changed', onSettingsChanged));
+      // Only the default gold token needs live palette refresh — floor tokens
+      // use baked-in per-floor colours. Subscribe here so there is no handler
+      // when the halo texture was never loaded (no halo to update).
+      if (textureKey === 'token') {
+        const handler = (): void => { this.refreshHaloTint(); };
+        this.settingsChangedHandler = handler;
+        eventBus.on('settings:changed', handler);
+        // Also unsubscribe when the scene shuts down in case collect() is
+        // never called (e.g. player leaves the floor before collecting).
+        scene.events.once('shutdown', () => eventBus.off('settings:changed', handler));
+      }
     }
 
     // Floating animation
@@ -89,6 +94,12 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
   collect(): void {
     if (this.collected) return;
     this.collected = true;
+
+    // Unsubscribe the settings:changed handler immediately so a collected
+    // (but not yet GC'd) token no longer holds a reference in EventBus.
+    if (this.settingsChangedHandler) {
+      eventBus.off('settings:changed', this.settingsChangedHandler);
+    }
 
     // Disable physics body immediately to prevent duplicate overlap callbacks
     if (this.body) {
