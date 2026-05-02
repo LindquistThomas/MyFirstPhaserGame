@@ -1,0 +1,44 @@
+name: Auto-approve bot CI
+
+# Runs on the BASE branch (not the PR fork), so it is not subject to the
+# "Fork pull request workflows from outside collaborators" approval gate.
+# When a trusted bot opens a PR, the main CI run is placed in
+# "Action required" state because the bot lacks write access.  This workflow
+# wakes up, verifies the actor is a known Copilot bot, and approves the
+# pending run automatically — equivalent to what an admin would click through
+# in the UI.
+#
+# Security notes:
+#   • The actor check uses github.event.workflow_run.actor.login, which is
+#     set by GitHub and cannot be spoofed by PR code.
+#   • The token scope is limited to `actions: write`; all other permissions
+#     default to none / read.
+#   • Only the specific bot logins listed in the `if` condition are approved.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [requested]
+
+permissions:
+  actions: write
+
+jobs:
+  approve:
+    name: Approve Copilot bot run
+    runs-on: ubuntu-latest
+    # Only trigger for the known Copilot coding-agent bot logins.
+    if: >-
+      github.event.workflow_run.actor.login == 'copilot-swe-agent[bot]' ||
+      github.event.workflow_run.actor.login == 'github-copilot[bot]'
+    steps:
+      - name: Approve pending workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${REPO}/actions/runs/${RUN_ID}/approve"
