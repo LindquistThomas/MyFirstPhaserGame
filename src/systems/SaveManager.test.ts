@@ -483,7 +483,14 @@ describe('SaveManager — multi-slot UI helpers', () => {
     // floor ID that is not in the current FLOORS enum. loadSlotInfo must reject
     // it rather than widening the type to an arbitrary number.
     const store = memoryStorage();
-    store.store.set('architect_slot1_v1', JSON.stringify({ totalAU: 10, currentFloor: 999 }));
+    store.store.set('architect_slot1_v1', JSON.stringify({
+      version: 1,
+      totalAU: 10,
+      currentFloor: 999, // not a valid FloorId
+      unlockedFloors: [0],
+      floorAU: { 0: 10 },
+      collectedTokens: { 0: [] },
+    }));
     setStorage(store);
 
     const info = loadSlotInfo('slot1');

@@ -65,6 +65,7 @@ describe('ProgressionSystem — onboarding', () => {
   it('loadFromSave() defaults onboardingComplete to false when absent (legacy save)', () => {
     // Save without onboardingComplete (simulates an older save file)
     const legacy = {
+      version: 1,
       totalAU: 5,
       floorAU: { [FLOORS.LOBBY]: 5 },
       unlockedFloors: [FLOORS.LOBBY],
