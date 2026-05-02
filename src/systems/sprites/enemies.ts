@@ -249,7 +249,7 @@ function generateArchitectureAstronautSprite(scene: Phaser.Scene): void {
   g.destroy();
 }
 
-/** Translucent wraith trailing `// TODO` — 44×40. */
+/** Translucent wraith carrying a pixel "todo" tag — 44×40. Intentional flavor: the ghost trails a literal stale-task marker. */
 function generateTechDebtGhostSprite(scene: Phaser.Scene): void {
   const W = 44;
   const H = 40;
@@ -288,7 +288,7 @@ function generateTechDebtGhostSprite(scene: Phaser.Scene): void {
   g.lineTo(W / 2 + 6, H / 2 + 7);
   g.strokePath();
 
-  // "// TODO" tag
+  // pixel "todo" label — intentional flavor; the ghost visually carries a stale-task marker
   g.fillStyle(0xffe6ff, 0.9);
   g.fillRect(W / 2 - 10, 3, 20, 6);
   g.fillStyle(0x4a3a8a, 1);
