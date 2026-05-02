@@ -130,7 +130,10 @@ function getAllMusicPaths() {
   // by-character tracking bracket depth until the array closes, then harvest
   // all `path: '…'` values from that slice.  Assumptions:
   //   • Each MusicAsset entry is a single-line object literal `{ … }`.
-  //   • No bracket characters appear inside string values.
+  //   • No bracket characters (`[` / `]`) appear inside string values.
+  //     If a future path contains a literal bracket (e.g. 'music/track[remix].mp3'),
+  //     the depth counter will miscount and the slice will be truncated early.
+  //     Switch to a proper TS-AST parser if that ever happens.
   //   • The array is assigned to `STATIC_MUSIC_ASSETS`.
   const arrayStartRe = /STATIC_MUSIC_ASSETS[^=]*=\s*\[/;
   const startMatch   = arrayStartRe.exec(src);
@@ -151,6 +154,10 @@ function getAllMusicPaths() {
   }
 
   const pathRe = /path\s*:\s*['"]([^'"]+)['"]/g;
+  // Note: this regex matches any property named `path` in the extracted body.
+  // It is intentionally scoped to `body` (the STATIC_MUSIC_ASSETS array slice)
+  // so that `path` properties in other objects in audioConfig.ts are ignored.
+  // The assumption is that only MusicAsset entries appear in that array.
   /** @type {string[]} */
   const paths = [];
   for (const m of body.matchAll(pathRe)) {
@@ -220,7 +227,7 @@ const BUDGETS = /** @type {const} */ ([
   },
   {
     label:    'Total music assets (raw)',
-    limitKB:  6656,   // 6.5 MB — calibrated against the clean post-orphan-cleanup baseline
+    limitKB:  6656,   // 6.5 MB (6656 = Math.ceil(6.5 * 1024)) — calibrated against the clean post-orphan-cleanup baseline
     raw:      true,
     required: false,
     measure() {
@@ -310,8 +317,12 @@ console.log('');
     }
 
     console.log('Music catalog\n');
-    for (const line of summary) console.log(line);
-    console.log('');
+    if (audioFiles.length === 0) {
+      console.log('  (none)\n');
+    } else {
+      for (const line of summary) console.log(line);
+      console.log('');
+    }
 
     if (orphans.length > 0) {
       console.error(`  ✗  Music orphan check: ${orphans.length} file(s) in dist/music/ not declared in STATIC_MUSIC_ASSETS:`);
