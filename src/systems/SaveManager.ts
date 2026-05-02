@@ -1,4 +1,5 @@
 import { eventBus } from './EventBus';
+import { FloorId, FLOOR_IDS } from '../config/gameConfig';
 
 /** Pluggable key-value storage. Defaults to localStorage. */
 export interface KVStorage {
@@ -7,18 +8,18 @@ export interface KVStorage {
   removeItem(key: string): void;
 }
 
-/** Plain data shape — no game-type imports. */
+/** Plain data shape persisted to storage. Floor fields use the same FloorId union as the rest of the game. */
 export interface SaveData {
   version: number;
   totalAU: number;
-  floorAU: Record<number, number>;
-  unlockedFloors: number[];
-  currentFloor: number;
-  collectedTokens: Record<number, number[]>;
+  floorAU: Partial<Record<FloorId, number>>;
+  unlockedFloors: FloorId[];
+  currentFloor: FloorId;
+  collectedTokens: Partial<Record<FloorId, number[]>>;
   /** Set once the player has completed (or explicitly skipped) the onboarding flow. */
   onboardingComplete?: boolean;
   /** Floors the player has entered at least once. Optional for backward-compat. */
-  visitedFloors?: number[];
+  visitedFloors?: FloorId[];
   /** Unix ms timestamp of the last time this save was written. */
   lastPlayedAt?: number;
 }
@@ -32,10 +33,17 @@ export interface SlotInfo {
   slotId: SaveSlotId;
   exists: boolean;
   totalAU?: number;
-  currentFloor?: number;
+  currentFloor?: FloorId;
   lastPlayedAt?: number;
 }
 
+
+/** Type guard: returns the value as FloorId if it is a valid floor identifier, otherwise undefined. */
+function validateFloorId(value: unknown): FloorId | undefined {
+  return typeof value === 'number' && FLOOR_IDS.includes(value as FloorId)
+    ? value as FloorId
+    : undefined;
+}
 
 /** Schema version written by this build. Increment when SaveData shape changes. */
 export const CURRENT_SAVE_VERSION = 1;
@@ -230,7 +238,6 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
   let raw: string | null = null;
   try { raw = getStorage().getItem(slotKey); } catch { /* ignore */ }
   if (!raw) return { slotId, exists: false };
-
   const data = parseAndValidateSave(raw);
   if (!data) {
     // Corrupt data — treat as absent so the slot picker shows "EMPTY" and
@@ -241,7 +248,7 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
     slotId,
     exists: true,
     totalAU: data.totalAU,
-    currentFloor: data.currentFloor,
+    currentFloor: validateFloorId(data.currentFloor),
     lastPlayedAt: data.lastPlayedAt,
   };
 }

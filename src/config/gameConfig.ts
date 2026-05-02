@@ -25,3 +25,6 @@ export const FLOORS = {
 } as const;
 
 export type FloorId = typeof FLOORS[keyof typeof FLOORS];
+
+/** All valid floor IDs — use for runtime validation of untrusted data (e.g. saves). */
+export const FLOOR_IDS: ReadonlyArray<FloorId> = Object.values(FLOORS) as FloorId[];

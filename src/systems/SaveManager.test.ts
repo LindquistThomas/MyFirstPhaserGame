@@ -15,10 +15,10 @@ function memoryStorage(): KVStorage & { store: Map<string, string> } {
 const sample: SaveData = {
   version: CURRENT_SAVE_VERSION,
   totalAU: 7,
-  floorAU: { 0: 1, 1: 4, 2: 2 },
-  unlockedFloors: [0, 1, 2],
+  floorAU: { 0: 1, 1: 4, 3: 2 },
+  unlockedFloors: [0, 1, 3],
   currentFloor: 1,
-  collectedTokens: { 0: [0], 1: [0, 1, 2], 2: [3] },
+  collectedTokens: { 0: [0], 1: [0, 1, 2], 3: [3] },
 };
 
 describe('SaveManager', () => {
@@ -477,6 +477,28 @@ describe('SaveManager — multi-slot UI helpers', () => {
     expect(info.currentFloor).toBe(3);
     expect(info.lastPlayedAt).toBe(1234567890);
   });
+
+  it('loadSlotInfo returns undefined currentFloor for an unrecognised floor ID', () => {
+    // Saves from hypothetical future builds or corrupted data may contain a
+    // floor ID that is not in the current FLOORS enum. loadSlotInfo must reject
+    // it rather than widening the type to an arbitrary number.
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', JSON.stringify({
+      version: 1,
+      totalAU: 10,
+      currentFloor: 999, // not a valid FloorId
+      unlockedFloors: [0],
+      floorAU: { 0: 10 },
+      collectedTokens: { 0: [] },
+    }));
+    setStorage(store);
+
+    const info = loadSlotInfo('slot1');
+    expect(info.exists).toBe(true);
+    expect(info.totalAU).toBe(10);
+    expect(info.currentFloor).toBeUndefined();
+  });
+
 
   it('loadSlotInfo returns exists:false when the slot data is corrupt JSON', () => {
     const store = memoryStorage();

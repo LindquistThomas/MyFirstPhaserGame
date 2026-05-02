@@ -50,10 +50,10 @@ describe('ProgressionSystem — onboarding', () => {
     adapter.save({
       version: CURRENT_SAVE_VERSION,
       totalAU: 0,
-      floorAU: { [FLOORS.LOBBY]: 0 } as Record<number, number>,
+      floorAU: { [FLOORS.LOBBY]: 0 },
       unlockedFloors: [FLOORS.LOBBY],
       currentFloor: FLOORS.LOBBY,
-      collectedTokens: { [FLOORS.LOBBY]: [] } as Record<number, number[]>,
+      collectedTokens: { [FLOORS.LOBBY]: [] },
       onboardingComplete: true,
     });
 
@@ -65,11 +65,12 @@ describe('ProgressionSystem — onboarding', () => {
   it('loadFromSave() defaults onboardingComplete to false when absent (legacy save)', () => {
     // Save without onboardingComplete (simulates an older save file)
     const legacy = {
+      version: 1,
       totalAU: 5,
-      floorAU: { [FLOORS.LOBBY]: 5 } as Record<number, number>,
+      floorAU: { [FLOORS.LOBBY]: 5 },
       unlockedFloors: [FLOORS.LOBBY],
       currentFloor: FLOORS.LOBBY,
-      collectedTokens: { [FLOORS.LOBBY]: [] } as Record<number, number[]>,
+      collectedTokens: { [FLOORS.LOBBY]: [] },
     } as SaveData;
     adapter.save(legacy);
 
