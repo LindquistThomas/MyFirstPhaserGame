@@ -19,7 +19,8 @@
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report",
     "test:visual:update": "playwright test tests/visual.spec.ts --grep @visual --update-snapshots",
-    "size": "node scripts/check-size.cjs"
+    "size": "node scripts/check-size.cjs",
+    "check:orphan-music": "node scripts/check-orphan-music.cjs"
   },
   "license": "MIT",
   "dependencies": {

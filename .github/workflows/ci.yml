@@ -98,6 +98,9 @@ jobs:
       - name: Check bundle size budgets
         run: npm run size
 
+      - name: Check for orphan music assets
+        run: npm run check:orphan-music
+
   e2e:
     name: Playwright E2E (shard ${{ matrix.shard }}/${{ matrix.total }})
     needs: changes

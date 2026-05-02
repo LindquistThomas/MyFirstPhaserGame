@@ -32,17 +32,6 @@ Any code that needs to play or push a non-eager track imperatively must emit `mu
 | `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` on open (`music:request-push`); `QuizDialog` on close (`music:pop`) | Imperative |
 | `music_executive` | `boss/bossroom-battle-431358.mp3` | `ExecutiveSuiteScene` (via `SCENE_MUSIC`); also pre-loaded in its `preload()` to avoid any silence gap on first entry | Automatic + optional preload |
 
-## Unused tracks present on disk
-
-The following files are part of the library but are not currently referenced by `STATIC_MUSIC_ASSETS`. They are kept so future floors / UI can pick them up without a round-trip through asset sourcing:
-
-- `8bit-chiptune/bgm_action_4.mp3`
-- `8bit-chiptune/bgm_action_5.mp3`
-- `retro-synth/retro_synth.mp3`
-- `retro-synth/deadly_contracts-loop1.ogg`
-- `retro-synth/going_undercover-loop1.ogg`
-- `retro-synth/the_price_of_freedom-loop1.ogg`
-
 ## Swapping in or adding a track
 
 1. Drop the file into an appropriate subdirectory under `public/music/` (current packs: `8bit-chiptune/`, `elevator-jazz/`, `retro-synth/`, `boss/` — or create a new pack directory).
@@ -57,7 +46,6 @@ All files are re-encoded for web delivery. Target bitrates:
 - 8-bit chiptune tracks (`8bit-chiptune/*.mp3`): **80 kbps** (originals were already at this bitrate)
 - Regular music (`elevator-jazz/*.mp3`, `boss/*.mp3`): **128 kbps** / boss at **96 kbps**
 - OGG loop tracks (`retro-synth/*.ogg`): **96 kbps CBR** or **VBR quality 2** (~80 kbps average)
-- Unused reserve tracks: **80–96 kbps** (quality is acceptable since they serve as a library)
 
 Re-encode command: `ffmpeg -i in.mp3 -b:a 128k -ac 2 out.mp3` (music), `ffmpeg -i in.ogg -c:a libvorbis -b:a 96k out.ogg` (loops).
 
