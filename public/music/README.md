@@ -52,14 +52,17 @@ The following files are part of the library but are not currently referenced by 
 
 ## Encoding
 
-All files are re-encoded for web delivery. Target bitrates:
+All files are re-encoded for web delivery using **FFmpeg / libmp3lame**. Encoding settings per track group:
 
-- 8-bit chiptune tracks (`8bit-chiptune/*.mp3`): **80 kbps** (originals were already at this bitrate)
-- Regular music (`elevator-jazz/*.mp3`, `boss/*.mp3`): **128 kbps** / boss at **96 kbps**
-- OGG loop tracks (`retro-synth/*.ogg`): **96 kbps CBR** or **VBR quality 2** (~80 kbps average)
-- Unused reserve tracks: **80–96 kbps** (quality is acceptable since they serve as a library)
+| Group | Bitrate | Channels | Sample rate | Re-encode command |
+| --- | --- | --- | --- | --- |
+| 8-bit chiptune (`8bit-chiptune/*.mp3`) | **64 kbps CBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 64k -ar 44100 -ac 1 out.mp3` |
+| Elevator jazz (`elevator-jazz/*.mp3`) | **96 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 96k -ar 44100 -ac 2 out.mp3` |
+| Boss battle (`boss/*.mp3`) | **80 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 80k -ar 44100 -ac 2 out.mp3` |
+| OGG loops (`retro-synth/*.ogg`) | **~80–96 kbps VBR** | stereo | 44 100 Hz | `ffmpeg -i in.ogg -c:a libvorbis -b:a 96k out.ogg` |
+| Unused reserve tracks | **64–96 kbps** | as-is | as-is | Match the group above when re-encoding |
 
-Re-encode command: `ffmpeg -i in.mp3 -b:a 128k -ac 2 out.mp3` (music), `ffmpeg -i in.ogg -c:a libvorbis -b:a 96k out.ogg` (loops).
+> **Note on track lengths and file sizes**: The chiptune, elevator-jazz, and boss tracks are full songs (47–192 s), so their deployed file sizes are large relative to the bitrate. Reducing bitrates further risks audible generation loss since these files are already lossy-encoded MP3s with no lossless source retained. The current settings are the minimum that avoids noticeable artefacts in a browser game context.
 
 ## Licensing
 
