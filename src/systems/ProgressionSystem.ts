@@ -237,6 +237,9 @@ export class ProgressionSystem {
       floorAU: this.state.floorAU,
       unlockedFloors: Array.from(this.state.unlockedFloors),
       currentFloor: this.state.currentFloor,
+      // Object.entries() widens keys to string; Number(k) restores the FloorId
+      // value. The source (this.state.collectedTokens) is Record<FloorId, ...>,
+      // so all keys are guaranteed to be valid FloorIds.
       collectedTokens: Object.fromEntries(
         Object.entries(this.state.collectedTokens).map(([k, v]) => [Number(k), Array.from(v)]),
       ) as Record<FloorId, number[]>,

@@ -40,7 +40,7 @@ export interface SlotInfo {
 
 /** Type guard: returns the value as FloorId if it is a valid floor identifier, otherwise undefined. */
 function validateFloorId(value: unknown): FloorId | undefined {
-  return typeof value === 'number' && (FLOOR_IDS as number[]).includes(value)
+  return typeof value === 'number' && FLOOR_IDS.includes(value as FloorId)
     ? value as FloorId
     : undefined;
 }
