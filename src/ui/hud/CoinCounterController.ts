@@ -1,8 +1,8 @@
 import type * as Phaser from 'phaser';
-import { COLORS } from '../../config/gameConfig';
-import { theme } from '../../style/theme';
+import { theme, getColorBlindPalette } from '../../style/theme';
 import type { LayoutTokens } from '../../style/responsive';
 import type { ProgressionSystem } from '../../systems/ProgressionSystem';
+import { settingsStore } from '../../systems/SettingsStore';
 import { lighten } from './colorUtils';
 
 const COIN_X = 26;
@@ -36,7 +36,8 @@ export class CoinCounterController {
 
     // AU icon (gold coin) — drawn centered at (0,0) so scale tweens pivot on center.
     this.coinIcon = scene.add.graphics();
-    this.coinIcon.fillStyle(COLORS.token);
+    const coinPalette = getColorBlindPalette(settingsStore.read().colorBlindMode);
+    this.coinIcon.fillStyle(coinPalette.token);
     this.coinIcon.fillCircle(0, 0, 12);
     this.coinIcon.fillStyle(theme.color.ui.hover);
     this.coinIcon.fillCircle(-1, -1, 8);
@@ -54,7 +55,7 @@ export class CoinCounterController {
     // AU label + counter
     this.auText = scene.add.text(46, 6, 'AU: 0', {
       fontFamily: 'monospace', fontSize: tokens.hudFontAU,
-      color: COLORS.hudText, fontStyle: 'bold',
+      color: theme.color.css.textPrimary, fontStyle: 'bold',
     });
     container.add(this.auText as unknown as Phaser.GameObjects.GameObject);
   }
@@ -109,6 +110,16 @@ export class CoinCounterController {
       ease: 'Sine.out',
       onComplete: () => float.destroy(),
     });
+  }
+
+  /** Redraw the coin icon to reflect the current color-blind palette. */
+  refreshCoinColor(): void {
+    const palette = getColorBlindPalette(settingsStore.read().colorBlindMode);
+    this.coinIcon.clear();
+    this.coinIcon.fillStyle(palette.token);
+    this.coinIcon.fillCircle(0, 0, 12);
+    this.coinIcon.fillStyle(theme.color.ui.hover);
+    this.coinIcon.fillCircle(-1, -1, 8);
   }
 
   /** Update the AU text. Call every frame from HUD.update(). */

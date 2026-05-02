@@ -9,6 +9,92 @@
  * Numeric names (e.g. `color.text.primary`) are shared by the canvas-
  * side renderer paths; the string counterparts live under `color.css.*`.
  */
+
+/** Active color-blind simulation mode. Persisted in SettingsStore. */
+export type ColorBlindMode = 'off' | 'deuteranopia' | 'protanopia' | 'tritanopia';
+
+/**
+ * Semantic color roles that change across color-blind palettes.
+ * Covers quiz feedback and token glow — the highest-stakes color-coded UI.
+ */
+export interface ColorBlindPalette {
+  /** Numeric tint for correct-answer border/accent (Phaser graphics). */
+  quizCorrect: number;
+  /** Numeric tint for wrong-answer border/accent (Phaser graphics). */
+  quizWrong: number;
+  /** Numeric fill for correct choice background. */
+  quizChoiceCorrect: number;
+  /** Numeric fill for wrong choice background. */
+  quizChoiceWrong: number;
+  /** CSS string for "Correct!" result text. */
+  textQuizCorrect: string;
+  /** CSS string for "Wrong!" result text (maps to textQuizHard in default palette). */
+  textQuizHard: string;
+  /** Numeric tint for token coin / halo. */
+  token: number;
+}
+
+/**
+ * Per-mode palette overrides for the color-blind-sensitive semantic roles.
+ *
+ * Design rationale (verified against Coblis simulator):
+ *  - deuteranopia / protanopia: both are red-green deficient.
+ *    Replace green→blue and red→orange so correct/wrong are never confused.
+ *  - tritanopia: blue-yellow deficient.
+ *    Green/magenta pair avoids the blue-yellow axis entirely; gold token
+ *    shifts to orange so it doesn't wash into yellow.
+ */
+const COLOR_BLIND_PALETTES: Record<ColorBlindMode, ColorBlindPalette> = {
+  off: {
+    quizCorrect:       0x44ff88,
+    quizWrong:         0xff4444,
+    quizChoiceCorrect: 0x1a4a2a,
+    quizChoiceWrong:   0x4a1a1a,
+    textQuizCorrect:   '#44ff88',
+    textQuizHard:      '#ff6644',
+    token:             0xffd700,
+  },
+  deuteranopia: {
+    // Red-green blind: swap green→blue for correct, red→orange for wrong.
+    quizCorrect:       0x4488ff,
+    quizWrong:         0xff8800,
+    quizChoiceCorrect: 0x1a2a4a,
+    quizChoiceWrong:   0x4a2a1a,
+    textQuizCorrect:   '#4488ff',
+    textQuizHard:      '#ff8800',
+    token:             0xffd700,
+  },
+  protanopia: {
+    // Red-blind: reds appear very dark; use blue for correct, amber for wrong.
+    quizCorrect:       0x44bbff,
+    quizWrong:         0xffaa00,
+    quizChoiceCorrect: 0x1a3a4a,
+    quizChoiceWrong:   0x4a3a1a,
+    textQuizCorrect:   '#44bbff',
+    textQuizHard:      '#ffaa00',
+    token:             0xffd700,
+  },
+  tritanopia: {
+    // Blue-yellow blind: green/magenta pair avoids the confusion axis.
+    quizCorrect:       0x44ff88,
+    quizWrong:         0xff44aa,
+    quizChoiceCorrect: 0x1a4a2a,
+    quizChoiceWrong:   0x4a1a3a,
+    textQuizCorrect:   '#44ff88',
+    textQuizHard:      '#ff44aa',
+    // Gold → orange to avoid yellow-blue confusion.
+    token:             0xff9944,
+  },
+};
+
+/**
+ * Returns the color-blind palette for the given mode.
+ * Pass `settingsStore.read().colorBlindMode` from the call site to keep
+ * `theme.ts` free of store dependencies.
+ */
+export function getColorBlindPalette(mode: ColorBlindMode): ColorBlindPalette {
+  return COLOR_BLIND_PALETTES[mode];
+}
 export const theme = {
   color: {
     /** Background fills — numeric (Phaser graphics / camera). */

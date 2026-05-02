@@ -15,8 +15,10 @@ import { createPersistedStore } from './PersistedStore';
 import { eventBus } from './EventBus';
 import type { GameAction } from '../input/actions';
 import { ALL_ACTIONS } from '../input/actions';
+import type { ColorBlindMode } from '../style/theme';
 
 export type MusicStyle = '8bit-chiptune' | 'retro-synth' | 'elevator-jazz';
+export type { ColorBlindMode };
 
 /** Controls when the on-screen virtual gamepad is displayed. */
 export type OnScreenControlsSetting = 'auto' | 'always' | 'never';
@@ -72,12 +74,19 @@ export interface SettingsData {
    * a vestibular trigger).
    */
   hapticsEnabled: boolean;
+  /**
+   * Color-blind simulation mode. Controls which palette is used for
+   * color-coded quiz feedback and token glow.
+   * Defaults to `'off'` (standard palette).
+   */
+  colorBlindMode: ColorBlindMode;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
 const LEGACY_MUTE_KEY = 'architect_audio_muted_v1';
 
 const VALID_MUSIC_STYLES: ReadonlySet<string> = new Set(['8bit-chiptune', 'retro-synth', 'elevator-jazz']);
+const VALID_COLOR_BLIND_MODES: ReadonlySet<string> = new Set(['off', 'deuteranopia', 'protanopia', 'tritanopia']);
 
 function defaultReducedMotion(): boolean {
   try {
@@ -100,6 +109,7 @@ export function defaultSettings(): SettingsData {
     hideTutorials: false,
     highContrastControls: false,
     hapticsEnabled: true,
+    colorBlindMode: 'off',
   };
 }
 
@@ -152,6 +162,9 @@ function parseSettings(raw: unknown): SettingsData {
       ? r['highContrastControls']
       : defaults.highContrastControls,
     hapticsEnabled: typeof r['hapticsEnabled'] === 'boolean' ? r['hapticsEnabled'] : defaults.hapticsEnabled,
+    colorBlindMode: VALID_COLOR_BLIND_MODES.has(r['colorBlindMode'] as string)
+      ? (r['colorBlindMode'] as ColorBlindMode)
+      : defaults.colorBlindMode,
   };
 }
 
@@ -269,6 +282,10 @@ export const settingsStore = {
 
   setHapticsEnabled(enabled: boolean): void {
     this.updateNonAudio((prev) => ({ ...prev, hapticsEnabled: enabled }));
+  },
+
+  setColorBlindMode(mode: ColorBlindMode): void {
+    this.updateNonAudio((prev) => ({ ...prev, colorBlindMode: mode }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

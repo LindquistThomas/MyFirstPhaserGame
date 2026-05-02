@@ -111,6 +111,7 @@ export interface FakeScene {
     create: (config: Record<string, unknown>) => void;
     generateFrameNumbers: (key: string, cfg: Record<string, unknown>) => unknown;
   };
+  events: { once: (event: string, handler: () => void) => void };
   physics: {
     add: {
       image: (x: number, y: number, key: string) => FakeSprite;
@@ -199,6 +200,7 @@ export function createFakeScene(overrides: Partial<FakeScene> = {}): FakeScene {
       horizontal: () => 0,
       justPressed: () => false,
     },
+    events: { once: vi.fn() },
     advanceTime: (ms: number) => { scene.time.now += ms; },
     runDelayedCalls: () => {
       const ready = pending.filter((p) => p.at <= scene.time.now);

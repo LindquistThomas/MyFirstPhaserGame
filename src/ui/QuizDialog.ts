@@ -1,10 +1,11 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FloorId } from '../config/gameConfig';
-import { theme } from '../style/theme';
+import { theme, getColorBlindPalette } from '../style/theme';
 import { QuizQuestion, QuizDifficulty, QUIZ_DATA, QUIZ_QUESTION_COUNT, QUIZ_DIFFICULTY_MIX } from '../config/quiz';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
+import { settingsStore } from '../systems/SettingsStore';
 import { ModalBase } from './ModalBase';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
 import { renderQuizResults } from './QuizResultsScreen';
@@ -362,6 +363,8 @@ export class QuizDialog extends ModalBase {
     const CHOICE_H = 52;
     const CHOICE_GAP = 8;
 
+    const palette = getColorBlindPalette(settingsStore.read().colorBlindMode);
+
     const qMeasure = this.scene.make.text({
       x: 0, y: 0, text: question.question,
       style: { fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textQuizBody,
@@ -393,17 +396,17 @@ export class QuizDialog extends ModalBase {
     const bg = this.scene.add.graphics();
     bg.fillStyle(theme.color.ui.quizPanel, 0.95);
     bg.fillRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
-    bg.lineStyle(2, correct ? theme.color.ui.quizCorrect : theme.color.ui.quizWrong, 0.7);
+    bg.lineStyle(2, correct ? palette.quizCorrect : palette.quizWrong, 0.7);
     bg.strokeRoundedRect(panelX, panelY, PANEL_W, panelH, 10);
     this.container.add(bg);
 
     let curY = panelY + PADDING;
 
     const diffColors: Record<QuizDifficulty, string> = {
-      easy: theme.color.css.textQuizCorrect, medium: theme.color.css.textWarn, hard: theme.color.css.textQuizHard,
+      easy: palette.textQuizCorrect, medium: theme.color.css.textWarn, hard: palette.textQuizHard,
     };
     const resultText = correct ? 'Correct!' : 'Wrong!';
-    const resultColor = correct ? theme.color.css.textQuizCorrect : theme.color.css.textQuizHard;
+    const resultColor = correct ? palette.textQuizCorrect : palette.textQuizHard;
 
     const header = this.scene.add.text(
       GAME_WIDTH / 2, curY, resultText,
@@ -438,13 +441,13 @@ export class QuizDialog extends ModalBase {
       let textColor: string = theme.color.css.textQuizHint;
 
       if (isCorrect) {
-        fillColor = theme.color.ui.quizChoiceCorrect;
-        borderColor = theme.color.ui.quizCorrect;
-        textColor = theme.color.css.textQuizCorrect;
+        fillColor = palette.quizChoiceCorrect;
+        borderColor = palette.quizCorrect;
+        textColor = palette.textQuizCorrect;
       } else if (isSelected && !isCorrect) {
-        fillColor = theme.color.ui.quizChoiceWrong;
-        borderColor = theme.color.ui.quizWrong;
-        textColor = theme.color.css.textQuizHard;
+        fillColor = palette.quizChoiceWrong;
+        borderColor = palette.quizWrong;
+        textColor = palette.textQuizHard;
       }
 
       const btnBg = this.scene.add.graphics();
@@ -473,7 +476,7 @@ export class QuizDialog extends ModalBase {
     this.container.add(expText);
 
     const expBorder = this.scene.add.graphics();
-    expBorder.fillStyle(correct ? theme.color.ui.quizCorrect : theme.color.ui.quizWrong, 0.6);
+    expBorder.fillStyle(correct ? palette.quizCorrect : palette.quizWrong, 0.6);
     expBorder.fillRect(panelX + PADDING, curY - 2, 3, expHeight + 4);
     this.container.add(expBorder);
 

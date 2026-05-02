@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { theme, COLORS } from './theme';
+import { theme, COLORS, getColorBlindPalette, type ColorBlindMode } from './theme';
 
 describe('theme', () => {
   it('exposes a stable top-level shape', () => {
@@ -140,5 +140,74 @@ describe('theme', () => {
       const ratio = contrastRatio(value, bg);
       expect(ratio, `${key} (${value}) must be ≥4.5:1 on ${bg}, got ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+describe('getColorBlindPalette', () => {
+  const modes: ColorBlindMode[] = ['off', 'deuteranopia', 'protanopia', 'tritanopia'];
+
+  it('returns a palette for every mode', () => {
+    for (const mode of modes) {
+      const p = getColorBlindPalette(mode);
+      expect(p).toHaveProperty('quizCorrect');
+      expect(p).toHaveProperty('quizWrong');
+      expect(p).toHaveProperty('quizChoiceCorrect');
+      expect(p).toHaveProperty('quizChoiceWrong');
+      expect(p).toHaveProperty('textQuizCorrect');
+      expect(p).toHaveProperty('textQuizHard');
+      expect(p).toHaveProperty('token');
+    }
+  });
+
+  it('off palette matches existing theme tokens', () => {
+    const p = getColorBlindPalette('off');
+    expect(p.quizCorrect).toBe(theme.color.ui.quizCorrect);
+    expect(p.quizWrong).toBe(theme.color.ui.quizWrong);
+    expect(p.textQuizCorrect).toBe(theme.color.css.textQuizCorrect);
+    expect(p.token).toBe(theme.color.ui.token);
+  });
+
+  it('deuteranopia correct color differs from off correct color', () => {
+    expect(getColorBlindPalette('deuteranopia').quizCorrect).not.toBe(
+      getColorBlindPalette('off').quizCorrect,
+    );
+  });
+
+  it('deuteranopia wrong color differs from off wrong color', () => {
+    expect(getColorBlindPalette('deuteranopia').quizWrong).not.toBe(
+      getColorBlindPalette('off').quizWrong,
+    );
+  });
+
+  it('protanopia correct color differs from off correct color', () => {
+    expect(getColorBlindPalette('protanopia').quizCorrect).not.toBe(
+      getColorBlindPalette('off').quizCorrect,
+    );
+  });
+
+  it('tritanopia wrong color differs from off wrong color', () => {
+    expect(getColorBlindPalette('tritanopia').quizWrong).not.toBe(
+      getColorBlindPalette('off').quizWrong,
+    );
+  });
+
+  it('deuteranopia and protanopia correct colors are distinct from each other', () => {
+    expect(getColorBlindPalette('deuteranopia').quizCorrect).not.toBe(
+      getColorBlindPalette('protanopia').quizCorrect,
+    );
+  });
+
+  it('tritanopia token color differs from off token color', () => {
+    expect(getColorBlindPalette('tritanopia').token).not.toBe(
+      getColorBlindPalette('off').token,
+    );
+  });
+
+  it('each mode returns distinct quizCorrect values', () => {
+    const values = modes.map((m) => getColorBlindPalette(m).quizCorrect);
+    // off vs deuteranopia vs protanopia should all differ (tritanopia matches off for green)
+    expect(values[0]).not.toBe(values[1]); // off vs deuteranopia
+    expect(values[0]).not.toBe(values[2]); // off vs protanopia
+    expect(values[1]).not.toBe(values[2]); // deuteranopia vs protanopia
   });
 });
