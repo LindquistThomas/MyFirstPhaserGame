@@ -38,6 +38,13 @@ export interface SlotInfo {
 }
 
 
+/** Type guard: returns the value as FloorId if it is a valid floor identifier, otherwise undefined. */
+function validateFloorId(value: unknown): FloorId | undefined {
+  return typeof value === 'number' && (FLOOR_IDS as number[]).includes(value)
+    ? value as FloorId
+    : undefined;
+}
+
 /** Schema version written by this build. Increment when SaveData shape changes. */
 export const CURRENT_SAVE_VERSION = 1;
 
@@ -181,7 +188,7 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
       slotId,
       exists: true,
       totalAU: typeof data['totalAU'] === 'number' ? data['totalAU'] : undefined,
-      currentFloor: typeof rawCF === 'number' && (FLOOR_IDS as number[]).includes(rawCF) ? rawCF as FloorId : undefined,
+      currentFloor: validateFloorId(rawCF),
       lastPlayedAt: typeof data['lastPlayedAt'] === 'number' ? data['lastPlayedAt'] : undefined,
     };
   } catch {
