@@ -165,3 +165,21 @@ jobs:
           path: tests/screenshots/
           if-no-files-found: ignore
           retention-days: 14
+
+  # Stable fan-in job: branch protection requires THIS name, not individual
+  # shard names.  Adding/removing shards never invalidates the required check.
+  e2e-complete:
+    name: Playwright E2E complete
+    needs: [changes, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: All shards passed (or skipped for doc-only PRs)
+        run: |
+          result="${{ needs.e2e.result }}"
+          if [ "$result" = "success" ] || [ "$result" = "skipped" ]; then
+            echo "E2E result: $result — OK"
+          else
+            echo "E2E shards failed or were cancelled (result: $result)"
+            exit 1
+          fi
