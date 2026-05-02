@@ -107,7 +107,7 @@ Short index of where things live. Reach for these instead of re-implementing.
 
 ## Conventions
 
-- **EventBus lifecycle**: subscribe via `this.scopedEvents.on(...)` (auto-cleaned on shutdown) or `createSceneLifecycle(this).bindEventBus(...)` (also covers input + DOM listeners). Raw `eventBus.on`/`eventBus.once` in `*Scene.ts` files is blocked by ESLint (`eslint.config.js`).
+- **EventBus lifecycle**: subscribe via `this.scopedEvents.on(...)` (auto-cleaned on shutdown) or `const lc = createSceneLifecycle(this); lc.bindEventBus(...)` (also covers input + DOM listeners). Raw `eventBus.on`/`eventBus.once` in `*Scene.ts` files is blocked by ESLint (`eslint.config.js`).
 - **Zone-gated UI** (info icons, lobby kiosks, …) starts hidden; `zone:enter`/`zone:exit` reveals and hides it. Never initialise a zone-gated element as visible.
 - **Direct calls beat events** for parent→child updates (e.g. refreshing a quiz badge on an `InfoIcon` after a dialog closes). Use EventBus only for loose coupling across systems.
 - **Gameplay mechanics that share a widget with content zones** (e.g. in-room lift buttons) must drive visibility from physics state, not from `ZoneManager`. Content zones are for informational content only.
