@@ -121,7 +121,7 @@ export interface FakeScene {
   add: {
     existing: (obj: unknown) => unknown;
     graphics: () => { clear: () => void; setDepth: (n: number) => unknown; lineStyle: (...a: unknown[]) => unknown; fillStyle: (...a: unknown[]) => unknown; fillRect: (...a: unknown[]) => unknown; strokeRect: (...a: unknown[]) => unknown; fillCircle: (...a: unknown[]) => unknown; strokeCircle: (...a: unknown[]) => unknown; fillTriangle: (...a: unknown[]) => unknown; lineBetween: (...a: unknown[]) => unknown };
-    particles: () => { setDepth: (n: number) => unknown; setPosition: (x: number, y: number) => unknown; explode: (n: number) => unknown };
+    particles: (x: number, y: number, key: string, config?: Record<string, unknown>) => { setDepth: (n: number) => unknown; setPosition: (x: number, y: number) => unknown; explode: (n: number) => unknown; start: () => void; stop: () => void; emitting: boolean };
     image: (x: number, y: number, key: string) => { x: number; y: number; setDepth: (n: number) => unknown; setAlpha: (a: number) => unknown; setTint: (t: number) => unknown; setScale: (s: number) => unknown; setScrollFactor: (s: number) => unknown; destroy: () => void };
   };
   textures: { exists: (key: string) => boolean };
@@ -175,11 +175,17 @@ export function createFakeScene(overrides: Partial<FakeScene> = {}): FakeScene {
     add: {
       existing: vi.fn((obj) => obj),
       graphics: graphicsStub,
-      particles: () => ({
-        setDepth: vi.fn(),
-        setPosition: vi.fn(),
-        explode: vi.fn(),
-      }),
+      particles: () => {
+        const emitter = {
+          setDepth: vi.fn(),
+          setPosition: vi.fn(),
+          explode: vi.fn(),
+          emitting: false,
+          start: vi.fn(() => { emitter.emitting = true; }),
+          stop: vi.fn(() => { emitter.emitting = false; }),
+        };
+        return emitter;
+      },
       image: (x: number, y: number, _key: string) => {
         const img = {
           x,

@@ -90,14 +90,15 @@ describe('SaveManager — forward compatibility & robustness', () => {
   });
 
   it('preserves unknown/extra fields on load (forward-compat)', () => {
-    // SaveManager uses a raw JSON.parse with no schema filtering, so extra
-    // fields written by a future version survive a load() round-trip verbatim.
+    // load() has no schema filtering for unknown keys — extra fields written by
+    // a future build survive the round-trip verbatim, as long as all required
+    // fields are present and valid.
     const store = memoryStorage();
     const future = {
       ...sample,
       schemaVersion: 2,
       cosmetics: { hat: 'wizard' },
-      lastPlayedAt: '2099-01-01T00:00:00Z',
+      lastPlayedAt: 4070908800000, // valid number timestamp (year 2099)
     };
     store.store.set('architect_test_v1', JSON.stringify(future));
     setStorage(store);
@@ -118,30 +119,40 @@ describe('SaveManager — forward compatibility & robustness', () => {
     expect(load()).toBeNull();
   });
 
-  it('returns an empty object cast to SaveData when storage holds "{}" (no validation)', () => {
-    // load() applies migrations (v0 → v1) and stamps `version: 1`.
-    // All other fields remain absent; consumers merge with defaults.
+  it('returns null and emits persistence:failed when storage holds "{}" (required fields missing)', () => {
+    // load() now validates required fields; an empty object fails schema validation.
     const store = memoryStorage();
     store.store.set('architect_test_v1', '{}');
     setStorage(store);
 
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
     const loaded = load();
-    expect(loaded).not.toBeNull();
-    expect(loaded).toEqual({ version: CURRENT_SAVE_VERSION });
-    expect((loaded as Partial<SaveData>).totalAU).toBeUndefined();
-    expect((loaded as Partial<SaveData>).floorAU).toBeUndefined();
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+
+    eventBus.off('persistence:failed', handler);
   });
 
-  it('returns a partial object verbatim when required fields are missing', () => {
+  it('returns null and emits persistence:failed when required fields are missing', () => {
+    // A partial save (e.g. missing unlockedFloors and collectedTokens) fails
+    // schema validation and must not be fed into ProgressionSystem.
     const store = memoryStorage();
     const partial = { totalAU: 5, currentFloor: 2 };
     store.store.set('architect_test_v1', JSON.stringify(partial));
     setStorage(store);
 
-    const loaded = load() as Partial<SaveData> | null;
-    expect(loaded).toEqual({ ...partial, version: CURRENT_SAVE_VERSION });
-    expect(loaded?.unlockedFloors).toBeUndefined();
-    expect(loaded?.collectedTokens).toBeUndefined();
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = load();
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+
+    eventBus.off('persistence:failed', handler);
   });
 
   it('save() then load() returns a deeply-equal, structurally-independent copy', () => {
@@ -492,6 +503,26 @@ describe('SaveManager — multi-slot UI helpers', () => {
     expect(info.slotId).toBe('slot3');
   });
 
+  it('loadSlotInfo returns exists:false when required fields are missing (schema invalid)', () => {
+    // A save with missing unlockedFloors/collectedTokens fails schema validation;
+    // loadSlotInfo must return exists:false to match what load() would do.
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', JSON.stringify({ totalAU: 5, currentFloor: 0 }));
+    setStorage(store);
+
+    const info = loadSlotInfo('slot1');
+    expect(info.exists).toBe(false);
+  });
+
+  it('loadSlotInfo returns exists:false when collectedTokens has non-array values (schema invalid)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot2_v1', JSON.stringify({ ...sample, collectedTokens: { 0: 1 } }));
+    setStorage(store);
+
+    const info = loadSlotInfo('slot2');
+    expect(info.exists).toBe(false);
+  });
+
   it('loadSlotInfo does not change the active player slot', () => {
     setPlayerSlot('slot1');
     save({ ...sample, totalAU: 99 });
@@ -587,5 +618,229 @@ describe('SaveManager — migrateDefaultSlot', () => {
     const second = migrateDefaultSlot(); // slot1 now exists → skips
     expect(second).toBe(false);
     expect(loadSlotInfo('slot1').totalAU).toBe(20);
+  });
+});
+
+
+describe('SaveManager — isValidSaveData schema validation', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    setStorage(memoryStorage());
+    setPlayerSlot('test');
+    eventBus.removeAllListeners();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    eventBus.removeAllListeners();
+  });
+
+  const validBase = {
+    version: CURRENT_SAVE_VERSION,
+    totalAU: 10,
+    floorAU: { 0: 5, 1: 5 },
+    unlockedFloors: [0, 1],
+    currentFloor: 1,
+    collectedTokens: { 0: [0], 1: [1] },
+  };
+
+  function storeAndLoad(data: Record<string, unknown>): SaveData | null {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify(data));
+    setStorage(store);
+    return load();
+  }
+
+  it('accepts a fully valid save and returns it', () => {
+    const loaded = storeAndLoad(validBase);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.totalAU).toBe(10);
+  });
+
+  it('accepts a valid save with all optional fields present', () => {
+    const withOptionals = {
+      ...validBase,
+      onboardingComplete: true,
+      visitedFloors: [0, 1],
+      lastPlayedAt: 1234567890,
+    };
+    const loaded = storeAndLoad(withOptionals);
+    expect(loaded).not.toBeNull();
+    expect(loaded?.onboardingComplete).toBe(true);
+  });
+
+  it('returns null and emits persistence:failed when totalAU is missing', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const { totalAU: _omit, ...missing } = validBase;
+    const loaded = storeAndLoad(missing);
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when totalAU is negative', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, totalAU: -1 });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when totalAU is a string', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, totalAU: '10' });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when unlockedFloors is an object (not array)', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, unlockedFloors: { 0: 0, 1: 1 } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when unlockedFloors contains non-numbers', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, unlockedFloors: ['a', 'b'] });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when floorAU is an array (not object)', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, floorAU: [5, 5] });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when floorAU is null', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, floorAU: null });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when collectedTokens is an array', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, collectedTokens: [[0], [1]] });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when optional onboardingComplete is a string', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, onboardingComplete: 'yes' });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when optional visitedFloors is an object', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, visitedFloors: { 0: 0 } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when optional lastPlayedAt is a string', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, lastPlayedAt: '2026-01-01' });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when floorAU has non-number values', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, floorAU: { 0: 'bad', 1: 5 } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when collectedTokens has non-array values', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    // {0: 1} (number instead of array) must be rejected
+    const loaded = storeAndLoad({ ...validBase, collectedTokens: { 0: 1, 1: [1] } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when collectedTokens has object values', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, collectedTokens: { 0: {} } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when visitedFloors contains non-numbers', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, visitedFloors: ['a', 'b'] });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('stores a forensic copy and removes the corrupt key on validation failure', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify({ totalAU: 'bad' }));
+    setStorage(store);
+
+    load();
+
+    // Original key removed so hasSave() is false
+    expect(store.store.has('architect_test_v1')).toBe(false);
+    // A forensic key starting with 'architect_test_v1_corrupt_' should exist
+    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
+    expect(forensicKey).toBeDefined();
+  });
+
+  it('stores a forensic copy on JSON.parse failure (not just schema failure)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', '{not valid json}');
+    setStorage(store);
+
+    load();
+
+    expect(store.store.has('architect_test_v1')).toBe(false);
+    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
+    expect(forensicKey).toBeDefined();
+  });
+
+  it('stores a forensic copy when version is invalid (non-integer)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_test_v1', JSON.stringify({ ...validBase, version: 1.5 }));
+    setStorage(store);
+
+    load();
+
+    expect(store.store.has('architect_test_v1')).toBe(false);
+    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
+    expect(forensicKey).toBeDefined();
   });
 });

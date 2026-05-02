@@ -127,6 +127,76 @@ export function save(data: SaveData): void {
   }
 }
 
+/**
+ * Type guard that verifies the parsed JSON object matches the SaveData shape.
+ * Required fields are checked for correct type and value; optional fields are
+ * validated only when present. Callers should treat a `false` return as
+ * corruption.
+ */
+function isValidSaveData(d: unknown): d is SaveData {
+  if (typeof d !== 'object' || d === null) return false;
+  const o = d as Record<string, unknown>;
+  if (typeof o['version'] !== 'number') return false;
+  // totalAU < 0 is structurally impossible in valid saves; treat it as corruption
+  // rather than deferring to ProgressionSystem which would persist the bad value.
+  if (typeof o['totalAU'] !== 'number' || o['totalAU'] < 0) return false;
+  if (typeof o['currentFloor'] !== 'number') return false;
+  if (!Array.isArray(o['unlockedFloors'])) return false;
+  if (!(o['unlockedFloors'] as unknown[]).every((n) => typeof n === 'number')) return false;
+  if (typeof o['floorAU'] !== 'object' || o['floorAU'] === null || Array.isArray(o['floorAU'])) return false;
+  // floorAU values must all be finite numbers (ProgressionSystem treats them as such).
+  if (!Object.values(o['floorAU'] as object).every((v) => typeof v === 'number' && isFinite(v))) return false;
+  if (typeof o['collectedTokens'] !== 'object' || o['collectedTokens'] === null || Array.isArray(o['collectedTokens'])) return false;
+  // collectedTokens values must be arrays of numbers (consumed via new Set(…) in ProgressionSystem).
+  if (!Object.values(o['collectedTokens'] as object).every(
+    (v) => Array.isArray(v) && (v as unknown[]).every((n) => typeof n === 'number'),
+  )) return false;
+  // Optional fields: only validated if present.
+  if (o['onboardingComplete'] !== undefined && typeof o['onboardingComplete'] !== 'boolean') return false;
+  if (o['visitedFloors'] !== undefined) {
+    if (!Array.isArray(o['visitedFloors'])) return false;
+    if (!(o['visitedFloors'] as unknown[]).every((n) => typeof n === 'number')) return false;
+  }
+  if (o['lastPlayedAt'] !== undefined && typeof o['lastPlayedAt'] !== 'number') return false;
+  return true;
+}
+
+/**
+ * Stash a forensic copy of raw save data under a timestamped key and remove
+ * the corrupt primary key so the next boot gets a clean slot.
+ */
+function discardCorrupt(raw: string): void {
+  try { getStorage().setItem(`${key()}_corrupt_${Date.now()}`, raw); } catch { /* noop */ }
+  try { getStorage().removeItem(key()); } catch { /* noop */ }
+}
+
+/**
+ * Parse and fully validate a raw save string (migrations + schema guard).
+ * Returns the validated SaveData on success, or null if the data is invalid.
+ * Has no side-effects: callers are responsible for cleanup and event emission.
+ */
+function parseAndValidateSave(raw: string): SaveData | null {
+  try {
+    let data = JSON.parse(raw) as Record<string, unknown>;
+    const rawVersion = data['version'];
+    let version = 0;
+    if (typeof rawVersion === 'number') {
+      if (!Number.isInteger(rawVersion) || rawVersion < 0) return null;
+      version = rawVersion;
+    }
+    while (version < CURRENT_SAVE_VERSION) {
+      const migrate = MIGRATIONS[version];
+      if (!migrate) return null;
+      data = migrate(data);
+      version++;
+    }
+    data['version'] = version;
+    return isValidSaveData(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 export function load(): SaveData | null {
   checkUnavailable();
   let raw: string | null;
@@ -137,31 +207,16 @@ export function load(): SaveData | null {
     return null;
   }
   if (!raw) return null;
-  try {
-    let data = JSON.parse(raw) as Record<string, unknown>;
-    // Saves written before versioning was introduced have no `version` field → treat as v0.
-    // Non-integer or negative values are invalid; return null rather than guess.
-    const rawVersion = data['version'];
-    let version = 0;
-    if (typeof rawVersion === 'number') {
-      if (!Number.isInteger(rawVersion) || rawVersion < 0) return null;
-      version = rawVersion;
-    }
-    while (version < CURRENT_SAVE_VERSION) {
-      const migrate = MIGRATIONS[version];
-      // A missing migration entry is a developer error — throw so the outer catch
-      // returns null rather than silently serving partially-migrated data.
-      if (!migrate) throw new Error(`No migration found for save version ${version}`);
-      data = migrate(data);
-      version++;
-    }
-    // Stamp the final version so the returned object always has an up-to-date field.
-    data['version'] = version;
-    return data as unknown as SaveData;
-  } catch (err) {
-    emitFailed('parse', err);
+
+  const validated = parseAndValidateSave(raw);
+  if (!validated) {
+    // Stash a forensic copy so the corruption can be diagnosed later, then
+    // remove the bad key so the player gets a clean slot on next boot.
+    discardCorrupt(raw);
+    emitFailed('parse', new Error('Save data is corrupt or failed schema validation'));
     return null;
   }
+  return validated;
 }
 
 export function clear(): void {
@@ -174,6 +229,8 @@ export function clear(): void {
 /**
  * Read summary information for a specific slot without changing the active
  * slot. Safe to call during the slot-picker UI before the player has chosen.
+ * Returns `exists: false` for any slot whose data would be rejected by load()
+ * (corrupt JSON, missing required fields, failed schema validation).
  */
 export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
   checkUnavailable();
@@ -181,21 +238,19 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
   let raw: string | null = null;
   try { raw = getStorage().getItem(slotKey); } catch { /* ignore */ }
   if (!raw) return { slotId, exists: false };
-  try {
-    const data = JSON.parse(raw) as Record<string, unknown>;
-    const rawCF = data['currentFloor'];
-    return {
-      slotId,
-      exists: true,
-      totalAU: typeof data['totalAU'] === 'number' ? data['totalAU'] : undefined,
-      currentFloor: validateFloorId(rawCF),
-      lastPlayedAt: typeof data['lastPlayedAt'] === 'number' ? data['lastPlayedAt'] : undefined,
-    };
-  } catch {
+  const data = parseAndValidateSave(raw);
+  if (!data) {
     // Corrupt data — treat as absent so the slot picker shows "EMPTY" and
     // SaveSlotScene won't pass loadSave:true to a slot that can't be loaded.
     return { slotId, exists: false };
   }
+  return {
+    slotId,
+    exists: true,
+    totalAU: data.totalAU,
+    currentFloor: validateFloorId(data.currentFloor),
+    lastPlayedAt: data.lastPlayedAt,
+  };
 }
 
 /**
