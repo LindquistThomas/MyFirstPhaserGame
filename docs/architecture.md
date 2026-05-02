@@ -281,32 +281,144 @@ into the constructor to swap localStorage atomically.
 ### Event catalog
 
 Every pub/sub message goes through `src/systems/EventBus.ts`. The
-`GameEvents` interface at the top of that file is the catalog —
-adding an event there type-checks every call site automatically.
+`GameEvents` interface at the top of that file is the **canonical
+source of truth** — adding an event there type-checks every call site
+automatically.
 
-| Event                | Payload            | Emitters                     | Consumers     |
-|----------------------|--------------------|------------------------------|---------------|
-| `music:play`         | `key: string`      | Scenes, ElevatorController   | AudioManager  |
-| `music:stop`         | —                  | MusicPlugin                  | AudioManager  |
-| `music:push`         | `key: string`      | Scenes (temp overlay music)  | AudioManager  |
-| `music:pop`          | —                  | Scenes (restore after push)  | AudioManager  |
-| `audio:toggle-mute`  | —                  | Menu / HUD                   | AudioManager  |
-| `audio:mute-changed` | `muted: boolean`   | AudioManager                 | HUD, Menu     |
-| `zone:enter`         | `zoneId: string`   | ZoneManager                  | Scenes, UI    |
-| `zone:exit`          | `zoneId: string`   | ZoneManager                  | Scenes, UI    |
-| `sfx:info_open`      | —                  | DialogController             | AudioManager  |
-| `sfx:link_click`     | —                  | InfoDialog                   | AudioManager  |
-| `sfx:jump`           | —                  | Player                       | AudioManager  |
-| `sfx:footstep_a`     | —                  | Player                       | AudioManager  |
-| `sfx:footstep_b`     | —                  | Player                       | AudioManager  |
-| `sfx:quiz_correct`   | —                  | QuizDialog                   | AudioManager  |
-| `sfx:quiz_wrong`     | —                  | QuizDialog                   | AudioManager  |
-| `sfx:quiz_success`   | —                  | QuizDialog                   | AudioManager  |
-| `sfx:quiz_fail`      | —                  | QuizDialog                   | AudioManager  |
-| `sfx:hit`            | —                  | Player (damage)              | AudioManager  |
-| `sfx:stomp`          | —                  | Enemy (stomped)              | AudioManager  |
-| `sfx:drop_au`        | —                  | Player (AU dropped on hit)   | AudioManager  |
-| `sfx:recover_au`     | —                  | Player (AU recovered)        | AudioManager  |
+> **Full catalog:** see the `GameEvents` interface in
+> `src/systems/EventBus.ts`. The table below mirrors every event as of
+> the last sync; if they diverge, `EventBus.ts` wins.
+
+#### `music:*` — playback control
+
+| Event                   | Payload         | Emitters                          | Consumers            |
+|-------------------------|-----------------|-----------------------------------|----------------------|
+| `music:play`            | `key: string`   | Scenes, ElevatorController        | AudioManager         |
+| `music:stop`            | —               | MusicPlugin                       | AudioManager         |
+| `music:push`            | `key: string`   | Scenes (temp overlay)             | AudioManager         |
+| `music:pop`             | —               | Scenes (restore after push)       | AudioManager         |
+| `music:request`         | `key: string`   | Scenes (lazy-load then play)      | MusicPlugin          |
+| `music:request-push`    | `key: string`   | Scenes (lazy-load then push)      | MusicPlugin          |
+| `music:pause`           | —               | PauseScene                        | AudioManager         |
+| `music:resume`          | —               | PauseScene                        | AudioManager         |
+
+#### `audio:*` — volume / mute
+
+| Event                   | Payload           | Emitters      | Consumers          |
+|-------------------------|-------------------|---------------|--------------------|
+| `audio:toggle-mute`     | —                 | Menu / HUD    | AudioManager       |
+| `audio:mute-changed`    | `muted: boolean`  | AudioManager  | HUD, Menu          |
+| `audio:volume-changed`  | —                 | SettingsStore | AudioManager       |
+
+#### `ambience:*` — ambient bed
+
+| Event            | Payload         | Emitters | Consumers    |
+|------------------|-----------------|----------|--------------|
+| `ambience:play`  | `key: string`   | Scenes   | AudioManager |
+| `ambience:stop`  | —               | Scenes   | AudioManager |
+
+#### `zone:*` — proximity zones
+
+| Event        | Payload           | Emitters    | Consumers  |
+|--------------|-------------------|-------------|------------|
+| `zone:enter` | `zoneId: string`  | ZoneManager | Scenes, UI |
+| `zone:exit`  | `zoneId: string`  | ZoneManager | Scenes, UI |
+
+#### `sfx:*` — sound effects
+
+| Event                | Payload | Emitters                    | Consumers    |
+|----------------------|---------|-----------------------------|--------------|
+| `sfx:info_open`      | —       | DialogController            | AudioManager |
+| `sfx:link_click`     | —       | InfoDialog                  | AudioManager |
+| `sfx:jump`           | —       | Player                      | AudioManager |
+| `sfx:footstep_a`     | —       | Player                      | AudioManager |
+| `sfx:footstep_b`     | —       | Player                      | AudioManager |
+| `sfx:quiz_correct`   | —       | QuizDialog                  | AudioManager |
+| `sfx:quiz_wrong`     | —       | QuizDialog                  | AudioManager |
+| `sfx:quiz_success`   | —       | QuizDialog                  | AudioManager |
+| `sfx:quiz_fail`      | —       | QuizDialog                  | AudioManager |
+| `sfx:hit`            | —       | Player (damage)             | AudioManager |
+| `sfx:stomp`          | —       | Enemy (stomped)             | AudioManager |
+| `sfx:heartbeat`      | —       | Player (danger zone)        | AudioManager |
+| `sfx:drop_au`        | —       | Player (AU dropped on hit)  | AudioManager |
+| `sfx:recover_au`     | —       | Player (AU recovered)       | AudioManager |
+| `sfx:coffee_sip`     | —       | Coffee                      | AudioManager |
+| `sfx:fridge_open`    | —       | EnergyDrinkFridge           | AudioManager |
+| `sfx:boss_hit`       | —       | CEOBoss                     | AudioManager |
+| `sfx:boss_defeated`  | —       | CEOBoss                     | AudioManager |
+| `sfx:boss_phase_2`   | —       | CEOBoss                     | AudioManager |
+| `sfx:boss_phase_3`   | —       | CEOBoss                     | AudioManager |
+| `sfx:mug_throw`      | —       | Player (mug projectile)     | AudioManager |
+| `sfx:briefcase_throw`| —       | CEOBoss                     | AudioManager |
+| `sfx:item_pickup`    | —       | MissionItem                 | AudioManager |
+| `sfx:bomb_disarm`    | —       | MissionItem                 | AudioManager |
+| `sfx:hostage_freed`  | —       | MissionItem                 | AudioManager |
+| `sfx:pistol_shot`    | —       | CEOBoss (pistol)            | AudioManager |
+| `sfx:floor_unlocked` | —       | ProgressionSystem           | AudioManager |
+
+#### `checkpoint:*` — save points
+
+| Event                 | Payload       | Emitters | Consumers |
+|-----------------------|---------------|----------|-----------|
+| `checkpoint:activate` | `id: string`  | Player   | LevelScene |
+
+#### `boss:*` — boss lifecycle
+
+| Event               | Payload          | Emitters | Consumers     |
+|---------------------|------------------|----------|---------------|
+| `boss:defeated`     | —                | CEOBoss  | BossArenaScene |
+| `boss:phase_changed`| `phase: number`  | CEOBoss  | BossArenaScene |
+
+#### `buff:*` — player buffs
+
+| Event                 | Payload               | Emitters             | Consumers    |
+|-----------------------|-----------------------|----------------------|--------------|
+| `buff:caffeine_start` | `durationMs: number`  | Coffee, EnergyDrink  | Player, HUD  |
+| `buff:caffeine_end`   | —                     | CaffeineBuff         | Player, HUD  |
+
+#### `persistence:*` — storage errors
+
+| Event                | Payload                                              | Emitters       | Consumers |
+|----------------------|------------------------------------------------------|----------------|-----------|
+| `persistence:error`  | `storageKey: string, message: string`                | PersistedStore | HUD       |
+| `persistence:failed` | `{reason: 'quota'\|'unavailable'\|'parse'\|'unknown'; detail?}` | SaveManager | HUD |
+
+#### `pause:*` — pause menu
+
+| Event                   | Payload | Emitters      | Consumers  |
+|-------------------------|---------|---------------|------------|
+| `pause:settings-closed` | —       | SettingsScene | PauseScene |
+
+#### `progression:*` — AU / floor progression
+
+| Event                       | Payload              | Emitters           | Consumers         |
+|-----------------------------|----------------------|--------------------|-------------------|
+| `progression:floor_unlocked`| `floorId: FloorId`   | ProgressionSystem  | ElevatorScene, HUD |
+| `progression:au_milestone`  | `milestone: number`  | ProgressionSystem  | HUD               |
+
+#### `achievement:*` — achievements
+
+| Event                  | Payload                      | Emitters             | Consumers |
+|------------------------|------------------------------|----------------------|-----------|
+| `achievement:unlocked` | `id: string, label: string`  | GameStateManager     | HUD       |
+
+#### `input:*` — input detection
+
+| Event                  | Payload | Emitters      | Consumers                  |
+|------------------------|---------|---------------|----------------------------|
+| `input:touch_detected` | —       | VirtualGamepad| VirtualGamepad, HUD        |
+
+#### `settings:*` — user settings
+
+| Event              | Payload | Emitters      | Consumers                     |
+|--------------------|---------|---------------|-------------------------------|
+| `settings:changed` | —       | SettingsStore | VirtualGamepad, AudioManager  |
+
+#### `quiz:*` — quiz system
+
+| Event                  | Payload           | Emitters   | Consumers           |
+|------------------------|-------------------|------------|---------------------|
+| `quiz:cooldown_expired`| `infoId: string`  | QuizDialog | HUD / screen reader |
 
 ## Testing
 
