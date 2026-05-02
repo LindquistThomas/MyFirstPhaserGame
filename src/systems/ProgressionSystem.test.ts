@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ProgressionSystem } from './ProgressionSystem';
 import { setStorage, setPlayerSlot, KVStorage, CURRENT_SAVE_VERSION } from './SaveManager';
-import { FLOORS } from '../config/gameConfig';
+import { FLOORS, FLOOR_IDS } from '../config/gameConfig';
 import type { SaveAdapter } from './ProgressionSystem';
 import { eventBus } from './EventBus';
 
@@ -399,7 +399,7 @@ describe('ProgressionSystem — loadFromSave floor ID sanitisation', () => {
     // 999 must have been stripped; all remaining IDs must be valid FloorId values
     const unlocked = p.getUnlockedFloors();
     expect(unlocked).not.toContain(999);
-    expect(unlocked.every(id => [0, 1, 3, 4, 5, 6].includes(id))).toBe(true);
+    expect(unlocked.every(id => FLOOR_IDS.includes(id))).toBe(true);
   });
 
   it('fills in 0 for floors absent from floorAU in the saved data', () => {

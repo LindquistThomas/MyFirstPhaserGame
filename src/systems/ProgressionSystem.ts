@@ -216,9 +216,8 @@ export class ProgressionSystem {
     // Build a safe floorAU: seed every known floor at 0, then overwrite only
     // entries whose key is a recognised FloorId. This handles both legacy saves
     // that are missing newly-added floors and corrupted saves with alien keys.
-    const allFloors = Object.values(FLOORS) as FloorId[];
     const safeFloorAU: Record<FloorId, number> = Object.fromEntries(
-      allFloors.map(id => [id, 0]),
+      FLOOR_IDS.map(id => [id, 0]),
     ) as Record<FloorId, number>;
     for (const [k, v] of Object.entries(data.floorAU)) {
       const id = Number(k) as FloorId;
@@ -229,7 +228,7 @@ export class ProgressionSystem {
 
     // Same for collectedTokens — seed all floors with empty sets.
     const safeTokens: Record<FloorId, Set<number>> = Object.fromEntries(
-      allFloors.map(id => [id, new Set<number>()]),
+      FLOOR_IDS.map(id => [id, new Set<number>()]),
     ) as Record<FloorId, Set<number>>;
     for (const [k, v] of Object.entries(data.collectedTokens)) {
       const id = Number(k) as FloorId;
