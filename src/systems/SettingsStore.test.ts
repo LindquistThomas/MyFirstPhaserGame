@@ -6,6 +6,7 @@ import {
   migrate,
   SETTINGS_STORAGE_KEY,
   type MusicStyle,
+  type ColorBlindMode,
 } from './SettingsStore';
 import type { KVStorage } from './SaveManager';
 
@@ -75,6 +76,7 @@ describe('SettingsStore', () => {
         hideTutorials: true,
         highContrastControls: true,
         hapticsEnabled: false,
+        colorBlindMode: 'deuteranopia',
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -89,6 +91,7 @@ describe('SettingsStore', () => {
       expect(s.hideTutorials).toBe(true);
       expect(s.highContrastControls).toBe(true);
       expect(s.hapticsEnabled).toBe(false);
+      expect(s.colorBlindMode).toBe('deuteranopia');
     });
 
     it('clamps masterVolume to 0-100 on parse', () => {
@@ -412,6 +415,49 @@ describe('SettingsStore', () => {
       eventBus.on('audio:volume-changed', listener);
       settingsStore.setHideTutorials(true);
       expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('colorBlindMode', () => {
+    const modes: ColorBlindMode[] = ['off', 'deuteranopia', 'protanopia', 'tritanopia'];
+
+    it('defaults to "off"', () => {
+      expect(settingsStore.read().colorBlindMode).toBe('off');
+    });
+
+    for (const mode of modes) {
+      it(`setColorBlindMode("${mode}") persists the mode`, () => {
+        settingsStore.setColorBlindMode(mode);
+        expect(settingsStore.read().colorBlindMode).toBe(mode);
+      });
+    }
+
+    it('round-trips colorBlindMode through storage', () => {
+      settingsStore.setColorBlindMode('tritanopia');
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().colorBlindMode).toBe('tritanopia');
+    });
+
+    it('falls back to "off" for invalid stored value', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ colorBlindMode: 'rainbow' }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().colorBlindMode).toBe('off');
+    });
+
+    it('falls back to "off" when field is missing from stored object', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ masterVolume: 50 }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().colorBlindMode).toBe('off');
+    });
+
+    it('emits settings:changed (not audio:volume-changed)', () => {
+      const audioListener = vi.fn();
+      const settingsListener = vi.fn();
+      eventBus.on('audio:volume-changed', audioListener);
+      eventBus.on('settings:changed', settingsListener);
+      settingsStore.setColorBlindMode('protanopia');
+      expect(audioListener).not.toHaveBeenCalled();
+      expect(settingsListener).toHaveBeenCalledTimes(1);
     });
   });
 });

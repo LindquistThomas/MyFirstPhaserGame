@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
-import type { MusicStyle, OnScreenControlsSetting } from '../../systems/SettingsStore';
+import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
@@ -94,6 +94,21 @@ export class SettingsScene extends Phaser.Scene {
       'never': 'NEVER',
     };
 
+    const COLOR_BLIND_OPTIONS = ['OFF', 'DEUTERANOPIA', 'PROTANOPIA', 'TRITANOPIA'] as const;
+    type ColorBlindOption = typeof COLOR_BLIND_OPTIONS[number];
+    const COLOR_BLIND_VALUES: Record<ColorBlindOption, ColorBlindMode> = {
+      'OFF': 'off',
+      'DEUTERANOPIA': 'deuteranopia',
+      'PROTANOPIA': 'protanopia',
+      'TRITANOPIA': 'tritanopia',
+    };
+    const COLOR_BLIND_LABELS: Record<ColorBlindMode, ColorBlindOption> = {
+      'off': 'OFF',
+      'deuteranopia': 'DEUTERANOPIA',
+      'protanopia': 'PROTANOPIA',
+      'tritanopia': 'TRITANOPIA',
+    };
+
     return [
       {
         kind: 'slider',
@@ -169,6 +184,15 @@ export class SettingsScene extends Phaser.Scene {
         label: 'HAPTIC FEEDBACK',
         get: () => settingsStore.read().hapticsEnabled,
         set: (v) => settingsStore.setHapticsEnabled(v),
+      },
+      {
+        kind: 'cycle',
+        label: 'COLOR BLIND MODE',
+        options: COLOR_BLIND_OPTIONS,
+        get: () => COLOR_BLIND_LABELS[settingsStore.read().colorBlindMode] ?? COLOR_BLIND_OPTIONS[0],
+        set: (v) => settingsStore.setColorBlindMode(
+          COLOR_BLIND_VALUES[v as ColorBlindOption] ?? COLOR_BLIND_VALUES[COLOR_BLIND_OPTIONS[0]],
+        ),
       },
       {
         kind: 'toggle',

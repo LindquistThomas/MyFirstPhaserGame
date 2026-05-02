@@ -80,7 +80,11 @@ export class HUD {
     });
     // Re-render the title text colour when the high-contrast setting changes
     // so canvas HUD text also benefits from the accessibility toggle.
-    lifecycle.bindEventBus('settings:changed', () => this.applyTitleTextContrast());
+    // Also refresh the coin icon when the color-blind mode changes.
+    lifecycle.bindEventBus('settings:changed', () => {
+      this.applyTitleTextContrast();
+      this.coinCtrl.refreshCoinColor();
+    });
 
     const onResize = (): void => {
       const w = (this.scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
