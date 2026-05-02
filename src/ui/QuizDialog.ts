@@ -403,6 +403,10 @@ export class QuizDialog extends ModalBase {
     let curY = panelY + PADDING;
 
     const diffColors: Record<QuizDifficulty, string> = {
+      // easy/hard map to correct/wrong palette roles so color-blind players see
+      // the same adapted hues as the answer feedback.
+      // medium uses yellow (textWarn) — a neutral warning that is not confused
+      // with correct/wrong feedback under any common deficiency type.
       easy: palette.textQuizCorrect, medium: theme.color.css.textWarn, hard: palette.textQuizHard,
     };
     const resultText = correct ? 'Correct!' : 'Wrong!';

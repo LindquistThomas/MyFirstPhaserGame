@@ -9,12 +9,9 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
   private pulseTween?: Phaser.Tweens.Tween;
   private halo?: Phaser.GameObjects.Image;
   private collected = false;
-  /** The texture key of this token, saved so the halo tint can be recalculated. */
-  private readonly textureKeyStr: string;
 
   constructor(scene: Phaser.Scene, x: number, y: number, textureKey: string = 'token') {
     super(scene, x, y, textureKey);
-    this.textureKeyStr = textureKey;
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // static body
 
