@@ -39,7 +39,7 @@ ships with zero image assets and only a handful of music files.
 | UI            | `src/ui/` — dialogs, HUD, icons, buttons                                         |
 | Theme tokens  | `src/style/theme.ts` — colour + spacing catalogue (both `0x…` and `#…` forms)    |
 | Plugins       | `src/plugins/` — Phaser plugins                                                  |
-| Music assets  | `public/music/` — only runtime-loaded files                                      |
+| Static assets | `public/music/` (MP3/OGG/WAV tracks) and `public/brand/` (SVG wordmark, loaded as `lobby_logo`); the only runtime-loaded files |
 | License       | MIT                                                                              |
 
 ## Naming conventions
