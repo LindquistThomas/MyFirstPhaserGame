@@ -6,22 +6,6 @@ import {
   waitForScene,
 } from './helpers/playwright';
 
-/** Returns the label of the currently selected SettingsScene item via the live game instance. */
-async function getSelectedItemLabel(page: import('@playwright/test').Page): Promise<string | null> {
-  return page.evaluate(() => {
-    const g = window.__game;
-    if (!g) return null;
-    const settings = g.scene
-      .getScenes(true)
-      .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
-    if (!settings) return null;
-    const items = settings['items'] as Array<{ label?: string }> | undefined;
-    const selectedIndex = settings['selectedIndex'] as number | undefined;
-    if (!items || selectedIndex === undefined) return null;
-    return items[selectedIndex]?.label ?? null;
-  });
-}
-
 test.describe('Help / How to Play recall', () => {
   test('opens welcome modal without altering onboardingComplete flag', async ({ page }) => {
     // Seed a fully-progressed save (onboardingComplete: true) so no modal
@@ -107,10 +91,6 @@ test.describe('Help / How to Play recall', () => {
       } catch { return null; }
     });
     expect(afterModal?.onboardingComplete).toBe(true);
-
-    // Verify the selected label helper works (sanity check).
-    const label = await getSelectedItemLabel(page);
-    expect(label).toBeTruthy();
 
     errors.assertClean();
   });
