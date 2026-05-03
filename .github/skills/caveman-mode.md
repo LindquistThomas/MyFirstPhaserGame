@@ -53,7 +53,7 @@ next: <action | "done">
 ✅ Caveman:
 > EventBus = singleton. Scene stop ≠ handler cleanup. Auto-clean via plugin/helper.
 > - prefer `this.scopedEvents.on('zone:enter', fn)` — `ScopedEventBus` plugin, cleared on shutdown.
-> - or `createSceneLifecycle(this).bindEventBus('zone:enter', fn)` — also covers input + DOM.
+> - or `const lc = createSceneLifecycle(this); lc.bindEventBus('zone:enter', fn)` — one token, reuse for all input + DOM + EventBus teardown.
 > - raw `eventBus.on`/`once` in `*Scene.ts` = ESLint error (`eslint.config.js` no-restricted-syntax).
 > - ref: `src/plugins/ScopedEventBus.ts`, `src/systems/sceneLifecycle.ts`, `docs/eventbus-audit.md`.
 
