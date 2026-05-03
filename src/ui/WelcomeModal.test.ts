@@ -270,23 +270,39 @@ describe('WelcomeModal', () => {
     expect(titleCalls[0][2]).toBe('Welcome, Architect!');
   });
 
-  it('source: help — does NOT call onComplete when modal is closed', () => {
-    // When opened from the Help menu, the first-run seen flag must not be
-    // persisted — onComplete (which would call completeOnboarding() in
-    // ElevatorScene) is intentionally skipped.
+  it('source: help — calls onComplete when modal is closed (caller manages side effects)', () => {
+    // With the new design, onComplete is always called on close; the caller
+    // (SettingsScene.openHowToPlay) passes a guard-clearing callback rather
+    // than the completeOnboarding() handler used for first-run.
     const scene = makeScene();
     const onComplete = vi.fn();
     const modal = new WelcomeModal(scene as unknown as Phaser.Scene, onComplete, 'help');
     modal.close();
-    expect(onComplete).not.toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('source: help — Confirm key press also does not call onComplete', () => {
+  it('source: help — Confirm key press also calls onComplete', () => {
     const scene = makeScene();
     const onComplete = vi.fn();
     new WelcomeModal(scene as unknown as Phaser.Scene, onComplete, 'help');
     scene._fire('Confirm');
-    expect(onComplete).not.toHaveBeenCalled();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('source: help — renders "Esc to close" footer (not "Esc to skip")', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'help');
+    const allTextArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(allTextArgs.some((t) => t === 'Esc to close')).toBe(true);
+    expect(allTextArgs.some((t) => t === 'Esc to skip')).toBe(false);
+  });
+
+  it('source: first-run — renders "Esc to skip" footer', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'first-run');
+    const allTextArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(allTextArgs.some((t) => t === 'Esc to skip')).toBe(true);
+    expect(allTextArgs.some((t) => t === 'Esc to close')).toBe(false);
   });
 
   it('source: first-run (default) — calls onComplete when closed', () => {

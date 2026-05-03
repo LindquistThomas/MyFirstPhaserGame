@@ -7,7 +7,7 @@ import { getReducedMotionOverride, setReducedMotionOverride } from '../../system
 import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { WelcomeModal } from '../../ui/WelcomeModal';
-import { showTouchHintForced } from '../../ui/TouchHintOverlay';
+import { showTouchHintForcedWithPersist } from '../../ui/TouchHintOverlay';
 import * as TouchHintStore from '../../systems/TouchHintStore';
 import { announce } from '../../ui/ariaLive';
 import { pushContext, popContext } from '../../input';
@@ -439,10 +439,10 @@ export class SettingsScene extends Phaser.Scene {
   private openHowToPlay(): void {
     this.helpModalOpen = true;
     announce('Help opened');
-    new WelcomeModal(this, () => { /* no-op: source:'help' skips onComplete */ }, 'help');
-    // Reset the guard once the modal's close tween finishes (~350 ms total:
-    // 150 ms fade-out tween + some buffer for async dispatch ordering).
-    this.time.delayedCall(350, () => { this.helpModalOpen = false; });
+    // Pass a real onComplete that clears the guard when the modal closes.
+    // WelcomeModal.onAfterClose always calls onComplete, so this fires on
+    // both button-click and Esc dismissal.
+    new WelcomeModal(this, () => { this.helpModalOpen = false; }, 'help');
   }
 
   /**
@@ -452,7 +452,9 @@ export class SettingsScene extends Phaser.Scene {
   private resetTouchHint(): void {
     TouchHintStore.clearSeen();
     const padEl = document.getElementById('virtual-pad');
-    if (padEl) showTouchHintForced(padEl);
+    // Use the "persist" variant so when the user dismisses the re-shown hint,
+    // markSeen() fires and the hint won't auto-appear again next session.
+    if (padEl) showTouchHintForcedWithPersist(padEl);
   }
 
   private replayTutorial(): void {

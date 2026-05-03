@@ -49,11 +49,7 @@ export class WelcomeModal extends ModalBase {
   }
 
   protected override onAfterClose(): void {
-    // Do not call onComplete when opened as 'help' — the first-run seen flag
-    // must not be altered when the player re-reads the tutorial from Settings.
-    if (this.source !== 'help') {
-      this.onComplete();
-    }
+    this.onComplete();
   }
 
   private buildPanel(): void {
@@ -144,10 +140,10 @@ export class WelcomeModal extends ModalBase {
     this.confirmHandler = () => this.close();
     this.scene.inputs.on('Confirm', this.confirmHandler);
 
-    // Skip label
+    // Skip / close label
     const skip = this.scene.add.text(
       GAME_WIDTH / 2, btnY + 38,
-      'Esc to skip',
+      this.source === 'help' ? 'Esc to close' : 'Esc to skip',
       { fontFamily: 'monospace', fontSize: '12px', color: theme.color.css.textHint },
     ).setOrigin(0.5).setScrollFactor(0);
     this.container.add(skip);

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Phaser stub ─────────────────────────────────────────────────────────────
 
@@ -122,13 +122,11 @@ vi.mock('../../systems/EventBus', () => ({
 }));
 
 vi.mock('../../ui/WelcomeModal', () => ({
-  WelcomeModal: vi.fn().mockImplementation((_scene: unknown, onComplete: () => void) => ({
-    close: vi.fn(() => { onComplete?.(); }),
-  })),
+  WelcomeModal: vi.fn(),
 }));
 
 vi.mock('../../ui/TouchHintOverlay', () => ({
-  showTouchHintForced: vi.fn(),
+  showTouchHintForcedWithPersist: vi.fn(),
 }));
 
 vi.mock('../../systems/TouchHintStore', () => ({
@@ -141,6 +139,10 @@ vi.mock('../../ui/ariaLive', () => ({
 
 import { SettingsScene } from './SettingsScene';
 import { eventBus } from '../../systems/EventBus';
+import { WelcomeModal } from '../../ui/WelcomeModal';
+import { showTouchHintForcedWithPersist } from '../../ui/TouchHintOverlay';
+import * as TouchHintStore from '../../systems/TouchHintStore';
+import { announce } from '../../ui/ariaLive';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -206,5 +208,112 @@ describe('SettingsScene.goBack()', () => {
   it('defaults callerScene to MenuScene when no from is provided', () => {
     const scene = makeSettings();
     expect(scene['callerScene']).toBe('MenuScene');
+  });
+});
+
+// ── openHowToPlay ─────────────────────────────────────────────────────────────
+
+describe('SettingsScene.openHowToPlay()', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('sets helpModalOpen, creates WelcomeModal with source "help", and announces', () => {
+    const scene = makeSettings();
+    (scene as unknown as { openHowToPlay: () => void }).openHowToPlay();
+
+    // helpModalOpen is immediately true while the modal is open.
+    expect(scene['helpModalOpen']).toBe(true);
+
+    // WelcomeModal was constructed with source:'help'.
+    expect(vi.mocked(WelcomeModal)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Function),
+      'help',
+    );
+
+    // ariaLive announcement is emitted.
+    expect(vi.mocked(announce)).toHaveBeenCalledWith('Help opened');
+  });
+
+  it('clears helpModalOpen when the WelcomeModal onComplete callback fires', () => {
+    const scene = makeSettings();
+    (scene as unknown as { openHowToPlay: () => void }).openHowToPlay();
+    expect(scene['helpModalOpen']).toBe(true);
+
+    // Simulate modal close by invoking the onComplete callback directly.
+    const onComplete = vi.mocked(WelcomeModal).mock.calls[0]?.[1] as () => void;
+    onComplete();
+    expect(scene['helpModalOpen']).toBe(false);
+  });
+
+  it('does NOT schedule a delayedCall guard reset (guard is driven by onComplete now)', () => {
+    const scene = makeSettings();
+    const delayedCallBefore = (scene as unknown as { time: { delayedCall: ReturnType<typeof vi.fn> } }).time.delayedCall.mock.calls.length;
+    (scene as unknown as { openHowToPlay: () => void }).openHowToPlay();
+    const delayedCallAfter = (scene as unknown as { time: { delayedCall: ReturnType<typeof vi.fn> } }).time.delayedCall.mock.calls.length;
+    // No additional delayedCall should have been scheduled by openHowToPlay().
+    expect(delayedCallAfter).toBe(delayedCallBefore);
+  });
+});
+
+// ── activate / goBack guard ───────────────────────────────────────────────────
+
+describe('SettingsScene.helpModalOpen guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('activate() is a no-op when helpModalOpen is true', () => {
+    const scene = makeSettings();
+    (scene as unknown as { helpModalOpen: boolean }).helpModalOpen = true;
+    (scene as unknown as { activate: () => void }).activate();
+    // WelcomeModal should not be instantiated again.
+    expect(vi.mocked(WelcomeModal)).not.toHaveBeenCalled();
+  });
+
+  it('goBack() is blocked when helpModalOpen is true', () => {
+    const scene = makeSettings('MenuScene');
+    (scene as unknown as { helpModalOpen: boolean }).helpModalOpen = true;
+    (scene as unknown as { goBack: () => void }).goBack();
+    flushDelayed(scene);
+    expect(scene.scene.start).not.toHaveBeenCalled();
+    expect(scene.scene.stop).not.toHaveBeenCalled();
+  });
+});
+
+// ── resetTouchHint ────────────────────────────────────────────────────────────
+
+describe('SettingsScene.resetTouchHint()', () => {
+  let pad: HTMLDivElement;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    pad = document.createElement('div');
+    pad.id = 'virtual-pad';
+    document.body.appendChild(pad);
+  });
+
+  afterEach(() => {
+    pad.remove();
+  });
+
+  it('calls TouchHintStore.clearSeen()', () => {
+    const scene = makeSettings();
+    (scene as unknown as { resetTouchHint: () => void }).resetTouchHint();
+    expect(vi.mocked(TouchHintStore.clearSeen)).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls showTouchHintForcedWithPersist with the pad element', () => {
+    const scene = makeSettings();
+    (scene as unknown as { resetTouchHint: () => void }).resetTouchHint();
+    expect(vi.mocked(showTouchHintForcedWithPersist)).toHaveBeenCalledWith(pad);
+  });
+
+  it('does not call showTouchHintForcedWithPersist when virtual-pad is absent', () => {
+    pad.remove();
+    const scene = makeSettings();
+    (scene as unknown as { resetTouchHint: () => void }).resetTouchHint();
+    expect(vi.mocked(showTouchHintForcedWithPersist)).not.toHaveBeenCalled();
   });
 });

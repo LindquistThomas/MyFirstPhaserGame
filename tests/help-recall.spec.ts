@@ -6,6 +6,22 @@ import {
   waitForScene,
 } from './helpers/playwright';
 
+/** Returns the label of the currently selected SettingsScene item via the live game instance. */
+async function getSelectedItemLabel(page: import('@playwright/test').Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const g = window.__game;
+    if (!g) return null;
+    const settings = g.scene
+      .getScenes(true)
+      .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
+    if (!settings) return null;
+    const items = settings['items'] as Array<{ label?: string }> | undefined;
+    const selectedIndex = settings['selectedIndex'] as number | undefined;
+    if (!items || selectedIndex === undefined) return null;
+    return items[selectedIndex]?.label ?? null;
+  });
+}
+
 test.describe('Help / How to Play recall', () => {
   test('opens welcome modal without altering onboardingComplete flag', async ({ page }) => {
     // Seed a fully-progressed save (onboardingComplete: true) so no modal
@@ -22,13 +38,33 @@ test.describe('Help / How to Play recall', () => {
     await page.keyboard.press('Enter');
     await waitForScene(page, 'SettingsScene');
 
-    // Navigate to [ HOW TO PLAY ] — it is index 11 in the items list.
-    // From the default selected index 0, pressing ArrowUp wraps to the last
-    // item ([ BACK ]), then four more presses arrive at [ HOW TO PLAY ]:
+    // Navigate to [ HOW TO PLAY ] — from the default selection (index 0),
+    // pressing ArrowUp wraps to the last item ([ BACK ]), then four more
+    // presses arrive at [ HOW TO PLAY ]:
     //   1 → BACK, 2 → REPLAY TUTORIAL, 3 → CONTROLS, 4 → SHOW TOUCH HINT, 5 → HOW TO PLAY
     for (let i = 0; i < 5; i++) {
       await page.keyboard.press('ArrowUp');
     }
+
+    // Assert the correct item is selected before pressing Enter, so failures
+    // surface as "wrong item selected" rather than silently exercising the wrong action.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const settings = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
+        if (!settings) return false;
+        const items = settings['items'] as Array<{ label?: string }> | undefined;
+        const selectedIndex = settings['selectedIndex'] as number | undefined;
+        if (!items || selectedIndex === undefined) return false;
+        return items[selectedIndex]?.label === '[ HOW TO PLAY ]';
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
+
     // Activate [ HOW TO PLAY ] — the WelcomeModal overlays SettingsScene.
     await page.keyboard.press('Enter');
 
@@ -45,8 +81,22 @@ test.describe('Help / How to Play recall', () => {
     // Dismiss the modal with Enter (Confirm binding).
     await page.keyboard.press('Enter');
 
-    // Wait for the SettingsScene to resume (modal close tween + guard reset).
-    await page.waitForTimeout(500);
+    // Wait deterministically until helpModalOpen guard is cleared — this is
+    // set to false by the WelcomeModal onComplete callback and proves both
+    // that the modal closed and that SettingsScene resumed correctly.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const settings = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
+        if (!settings) return false;
+        return settings['helpModalOpen'] === false;
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
 
     // onboardingComplete must still be true after dismissal.
     const afterModal = await page.evaluate(() => {
@@ -57,6 +107,10 @@ test.describe('Help / How to Play recall', () => {
       } catch { return null; }
     });
     expect(afterModal?.onboardingComplete).toBe(true);
+
+    // Verify the selected label helper works (sanity check).
+    const label = await getSelectedItemLabel(page);
+    expect(label).toBeTruthy();
 
     errors.assertClean();
   });
