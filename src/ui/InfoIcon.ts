@@ -305,6 +305,7 @@ export class InfoIcon {
     this.cooldownChipText!.setText(this.formatCooldown(remainingMs));
     this.cooldownChip.setVisible(true);
     this.hint?.setVisible(false);
+    this.bg.setTint(theme.color.status.lockedGrey);
 
     const contentId = this.contentId;
     this.cooldownTimer = this.scene.time.addEvent({
@@ -336,6 +337,7 @@ export class InfoIcon {
       this.cooldownTimer = undefined;
     }
     this.cooldownChip?.setVisible(false);
+    this.bg.clearTint();
   }
 
   private createCooldownChip(): Phaser.GameObjects.Container {
