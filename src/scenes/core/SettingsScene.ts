@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
-import { theme } from '../../style/theme';
+import { theme, getHighContrastCss } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
 import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode, TextScale } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
@@ -324,6 +324,7 @@ export class SettingsScene extends Phaser.Scene {
     const rowH = 52;
     const sliderX = GAME_WIDTH / 2 - 80;
     const sliderW = 200;
+    const hcPalette = getHighContrastCss(settingsStore.read().highContrast);
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
@@ -333,7 +334,7 @@ export class SettingsScene extends Phaser.Scene {
       if (!item || !label || !valText || !bar) continue;
 
       const isSelected = i === this.selectedIndex;
-      const labelColor = isSelected ? '#ffffff' : theme.color.css.textPrimary;
+      const labelColor = isSelected ? '#ffffff' : hcPalette.textPrimary;
       const labelScale = isSelected ? 1.06 : 1;
       label.setColor(labelColor).setScale(labelScale);
 
@@ -343,7 +344,7 @@ export class SettingsScene extends Phaser.Scene {
 
       if (item.kind === 'slider') {
         const pct = item.get() / 100;
-        valText.setText(`${item.get()}%`).setColor(theme.color.css.textPanel);
+        valText.setText(`${item.get()}%`).setColor(hcPalette.textPanel);
 
         // Trough
         bar.fillStyle(theme.color.bg.mid, 0.6);
@@ -356,10 +357,10 @@ export class SettingsScene extends Phaser.Scene {
         bar.fillCircle(sliderX + Math.round(sliderW * pct), y + 12, 8);
       } else if (item.kind === 'toggle') {
         const on = item.get();
-        valText.setText(on ? 'ON' : 'OFF').setColor(on ? theme.color.css.textAccent : theme.color.css.textMuted);
+        valText.setText(on ? 'ON' : 'OFF').setColor(on ? hcPalette.textAccent : theme.color.css.textMuted);
       } else if (item.kind === 'cycle') {
         const val = item.get();
-        valText.setText(val).setColor(theme.color.css.textAccent);
+        valText.setText(val).setColor(hcPalette.textAccent);
       } else if (item.kind === 'action') {
         valText.setText('');
         if (isSelected) {

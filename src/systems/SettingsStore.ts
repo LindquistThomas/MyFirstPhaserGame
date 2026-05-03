@@ -22,8 +22,9 @@ export type { ColorBlindMode };
 
 /**
  * Text-scale multiplier applied to all font-size tokens in `getLayoutTokens()`.
- * WCAG 2.1 SC 1.4.4 requires support up to 200%; the 1.5 step covers that
- * range within the Phaser canvas coordinate space without clipping dialogs.
+ * Provides up to 150% scaling within the Phaser canvas coordinate space.
+ * This is a partial accommodation of WCAG 2.1 SC 1.4.4 (which requires 200%);
+ * values beyond 150% would clip dialog panels at the current fixed canvas width.
  */
 export type TextScale = 1 | 1.15 | 1.3 | 1.5;
 

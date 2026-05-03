@@ -46,7 +46,7 @@ export class HUD {
     this.progression = progression;
     const displayW = (scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
     this.sizeClass = getSizeClass(displayW);
-    this.tokens = getLayoutTokens(this.sizeClass);
+    this.tokens = getLayoutTokens(this.sizeClass, settingsStore.read().textScale);
     this.create();
   }
 
@@ -81,9 +81,13 @@ export class HUD {
     // Re-render the title text colour when the high-contrast setting changes
     // so canvas HUD text also benefits from the accessibility toggle.
     // Also refresh the coin icon when the color-blind mode changes.
+    // Also refresh tokens when textScale changes.
     lifecycle.bindEventBus('settings:changed', () => {
       this.applyTitleTextContrast();
       this.coinCtrl.refreshCoinColor();
+      const newTokens = getLayoutTokens(this.sizeClass, settingsStore.read().textScale);
+      this.tokens = newTokens;
+      this.relayout();
     });
 
     const onResize = (): void => {
@@ -91,7 +95,7 @@ export class HUD {
       const newClass = getSizeClass(w);
       if (newClass !== this.sizeClass) {
         this.sizeClass = newClass;
-        this.tokens = getLayoutTokens(newClass);
+        this.tokens = getLayoutTokens(newClass, settingsStore.read().textScale);
         this.relayout();
       }
     };

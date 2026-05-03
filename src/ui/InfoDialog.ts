@@ -1,7 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
-import { theme } from '../style/theme';
+import { theme, getHighContrastCss } from '../style/theme';
 import { eventBus } from '../systems/EventBus';
+import { settingsStore } from '../systems/SettingsStore';
 import { ModalBase } from './ModalBase';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
 import { getSizeClass, getLayoutTokens } from '../style/responsive';
@@ -75,7 +76,9 @@ export class InfoDialog extends ModalBase {
   private buildPanel(content: InfoDialogContent, options?: InfoDialogOptions): void {
     const displayW = (this.scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
     const sc = getSizeClass(displayW);
-    const tokens = getLayoutTokens(sc);
+    const settings = settingsStore.read();
+    const tokens = getLayoutTokens(sc, settings.textScale);
+    const hcPalette = getHighContrastCss(settings.highContrast);
     const panelW = tokens.dialogPanelW;
     const panelX = (GAME_WIDTH - panelW) / 2;
     const PADDING = 32;
@@ -102,7 +105,7 @@ export class InfoDialog extends ModalBase {
     // --- title (sticky) ---
     const titleY = panelY + PADDING;
     const title = this.scene.add.text(GAME_WIDTH / 2, titleY, content.title, {
-      fontFamily: 'monospace', fontSize: tokens.dialogFontTitle, color: theme.color.css.textTitle, fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: tokens.dialogFontTitle, color: hcPalette.textAccent, fontStyle: 'bold',
     }).setOrigin(0.5, 0);
     this.container.add(title);
 
@@ -143,7 +146,7 @@ export class InfoDialog extends ModalBase {
     let cy = 0;
 
     const body = this.scene.add.text(PADDING, cy, content.body, {
-      fontFamily: 'monospace', fontSize: tokens.dialogFontBody, color: '#c0c8d4',
+      fontFamily: 'monospace', fontSize: tokens.dialogFontBody, color: hcPalette.textPanel,
       wordWrap: { width: panelW - PADDING * 2 }, lineSpacing: 6,
     }).setX(panelX + PADDING);
     scrollContent.add(body);
