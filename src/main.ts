@@ -12,11 +12,14 @@ import { initAriaLive } from './ui/ariaLive';
 import { initVirtualGamepad } from './ui/VirtualGamepad';
 import { eventBus } from './systems/EventBus';
 
-// Render all Text objects at 2x internal resolution so glyphs stay crisp
-// after the canvas is FIT-scaled to the viewport. Applies to both
-// `scene.add.text(...)` and `scene.make.text(...)` unless a resolution is
-// explicitly set by the caller.
-const TEXT_RESOLUTION = 2;
+// Render all Text objects at 1.5x internal resolution — the sweet spot between
+// crispness and memory. ~30% lower texture footprint than 2x while remaining
+// visually indistinguishable at typical FIT-scaled viewport sizes.
+// Applies to both `scene.add.text(...)` and `scene.make.text(...)` unless
+// `resolution` is explicitly set by the caller.
+// Override sites that need maximum crispness (HUD AU counter, dialog titles,
+// large menu headings) pass `resolution: 2` directly in their style object.
+const TEXT_RESOLUTION = 1.5;
 const factoryProto = Phaser.GameObjects.GameObjectFactory.prototype as unknown as {
   text: (x: number, y: number, text: string | string[], style?: Phaser.Types.GameObjects.Text.TextStyle) => Phaser.GameObjects.Text;
 };

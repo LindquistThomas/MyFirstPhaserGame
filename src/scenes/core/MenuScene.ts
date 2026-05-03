@@ -361,13 +361,15 @@ export class MenuScene extends Phaser.Scene {
     panel.fillRect(0, cy - 260, 720, 440);
 
     // Title with a soft glow (stack of offset shadows).
+    // Explicit resolution: 2 on both styles — these are the largest, most prominent
+    // headings in the game and warrant maximum crispness.
     const titleStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace', fontSize: '44px',
-      color: COLORS.titleText, fontStyle: 'bold',
+      color: COLORS.titleText, fontStyle: 'bold', resolution: 2,
     };
     const subStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace', fontSize: '70px',
-      color: '#ffffff', fontStyle: 'bold',
+      color: '#ffffff', fontStyle: 'bold', resolution: 2,
     };
     this.add.text(cx, cy - 220, 'SO YOU WANT', titleStyle).setOrigin(0.5)
       .setShadow(0, 0, '#0099cc', 18, true, true).setDepth(TEXT_DEPTH);
