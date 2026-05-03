@@ -53,6 +53,30 @@ export interface PersistedStoreOptions<T> {
   serialise?: (value: T) => unknown;
 }
 
+/**
+ * Probes whether the browser's localStorage is available for read/write.
+ * Performs a single `setItem`/`removeItem` round-trip on a throwaway key.
+ * Returns `true` when storage is usable, `false` when it throws (Safari
+ * private mode, blocked storage, embedded webviews, etc.).
+ *
+ * Called once from `BootScene.create()` so the result can be stashed in the
+ * Phaser registry (`persistenceAvailable`) and read by the rest of the game
+ * to gate save-failure warnings.
+ *
+ * Uses an app-namespaced key (`__architect_probe__`) to avoid colliding with
+ * other apps sharing the same origin.
+ */
+export function isPersistenceAvailable(): boolean {
+  try {
+    const ls = globalThis.localStorage;
+    ls.setItem('__architect_probe__', '1');
+    ls.removeItem('__architect_probe__');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function createPersistedStore<T>(opts: PersistedStoreOptions<T>): PersistedStore<T> {
   let storage: KVStorage | null = null;
   // Cache the raw string alongside the parsed value so external storage

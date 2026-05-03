@@ -9,6 +9,7 @@ import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { COLORS } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
+import { isPersistenceAvailable } from '../../systems/PersistedStore';
 
 /** Count of static assets that failed to load during this boot pass. */
 let _bootAssetErrorCount = 0;
@@ -123,6 +124,10 @@ export class BootScene extends Phaser.Scene {
     migrateDefaultSlot();
     // Default active slot for the session (SaveSlotScene will override this).
     setPlayerSlot('slot1');
+
+    // Probe storage availability at startup so every subsequent scene can
+    // read `registry.get('persistenceAvailable')` to gate UI and toasts.
+    this.registry.set('persistenceAvailable', isPersistenceAvailable());
 
     // Initialize audio manager and wire it to the EventBus
     const audio = new AudioManager(this.sound, this.game);

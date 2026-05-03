@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createPersistedStore } from './PersistedStore';
+import { createPersistedStore, isPersistenceAvailable } from './PersistedStore';
 import { eventBus } from './EventBus';
 import type { KVStorage } from './SaveManager';
 
@@ -128,5 +128,38 @@ describe('PersistedStore', () => {
     expect(s.read()).toBe('from-a');
     s.setStorage(b);
     expect(s.read()).toBe('from-b');
+  });
+});
+
+describe('isPersistenceAvailable', () => {
+  it('returns true in a normal jsdom environment (localStorage is functional)', () => {
+    // jsdom provides a working localStorage by default.
+    expect(isPersistenceAvailable()).toBe(true);
+  });
+
+  it('returns false when localStorage.setItem throws', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+    expect(() => isPersistenceAvailable()).not.toThrow();
+    expect(isPersistenceAvailable()).toBe(false);
+    spy.mockRestore();
+  });
+
+  it('returns false when accessing localStorage itself throws', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', {
+      get() { throw new Error('SecurityError: storage is disabled'); },
+      configurable: true,
+    });
+    try {
+      expect(() => isPersistenceAvailable()).not.toThrow();
+      expect(isPersistenceAvailable()).toBe(false);
+    } finally {
+      // Restore original descriptor so subsequent tests see a real localStorage.
+      if (descriptor) {
+        Object.defineProperty(globalThis, 'localStorage', descriptor);
+      }
+    }
   });
 });

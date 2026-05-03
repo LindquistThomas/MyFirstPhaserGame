@@ -76,6 +76,14 @@ export class HUD {
 
     const lifecycle = createSceneLifecycle(this.scene);
     lifecycle.bindEventBus('persistence:failed', (payload) => {
+      // When the boot-time probe returned false the player has already been
+      // told via the guest-mode banner. Suppress ALL persistence toasts for
+      // the session — not just 'unavailable', because a blocked localStorage
+      // can surface as 'quota' or 'unknown' from SaveManager depending on
+      // the browser and error type.
+      if (this.scene.registry.get('persistenceAvailable') === false) {
+        return;
+      }
       this.toast.show(persistenceMessage(payload.reason));
     });
     // Re-render the title text colour when the high-contrast setting changes

@@ -87,8 +87,38 @@ vi.mock('../../config/audioConfig', () => ({ STATIC_MUSIC_ASSETS: [] }));
 vi.mock('../../config/gameConfig', () => ({ COLORS: { hudText: '#fff', titleText: '#fff' } }));
 vi.mock('../../style/theme', () => ({ theme: { color: { ui: { accent: 0xffffff } } } }));
 
+// isPersistenceAvailable is the module under test — NOT mocked by default.
+// Individual tests that need to control the return value use vi.spyOn.
+
 import { eventBus } from '../../systems/EventBus';
 import { BootScene } from './BootScene';
+import * as PersistedStore from '../../systems/PersistedStore';
+
+describe('BootScene — persistenceAvailable registry flag', () => {
+  let scene: BootScene;
+
+  beforeEach(() => {
+    scene = new BootScene();
+  });
+
+  afterEach(() => {
+    // Trigger destroy so the window keydown listener is removed (same as M-key suite).
+    (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
+    vi.restoreAllMocks();
+  });
+
+  it('writes true to registry when storage is available', () => {
+    vi.spyOn(PersistedStore, 'isPersistenceAvailable').mockReturnValue(true);
+    scene.create();
+    expect(scene.registry.set).toHaveBeenCalledWith('persistenceAvailable', true);
+  });
+
+  it('writes false to registry when storage is unavailable', () => {
+    vi.spyOn(PersistedStore, 'isPersistenceAvailable').mockReturnValue(false);
+    scene.create();
+    expect(scene.registry.set).toHaveBeenCalledWith('persistenceAvailable', false);
+  });
+});
 
 describe('BootScene M-key mute hotkey', () => {
   let scene: BootScene;
