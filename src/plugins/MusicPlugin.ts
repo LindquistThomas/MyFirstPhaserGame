@@ -13,6 +13,13 @@ const MUSIC_PATH: Readonly<Record<string, string>> = Object.fromEntries(
  * plugin instance in every scene shares the same skip-set.
  * `playOrLoad` and `loadAndEmitPush` silently return for any key in this set,
  * preventing noisy retry loops when an eager track was missing at boot.
+ *
+ * These module-level subscriptions are intentionally never removed: the module
+ * is imported exactly once per application lifetime (Phaser's plugin system
+ * caches module imports), and the EventBus singleton is co-located in the same
+ * bundle, so there is no cross-context leak risk. Tests that call
+ * `eventBus.removeAllListeners()` in beforeEach accept that these passive
+ * bookkeeping listeners are temporarily suspended — that is intentional.
  */
 const _failedMusicKeys = new Set<string>();
 eventBus.on('boot:reset', () => { _failedMusicKeys.clear(); });
