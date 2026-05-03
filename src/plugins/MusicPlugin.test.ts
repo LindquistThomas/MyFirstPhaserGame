@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Minimal Phaser mock — only the surface MusicPlugin uses.
 vi.mock('phaser', () => {
@@ -23,7 +23,7 @@ vi.mock('phaser', () => {
   return { ...phaser, default: phaser };
 });
 
-import { MusicPlugin } from './MusicPlugin';
+import { MusicPlugin, _failedMusicKeys } from './MusicPlugin';
 import { eventBus } from '../systems/EventBus';
 
 // ── Fake scene helpers ──────────────────────────────────────────────────────
@@ -365,5 +365,85 @@ describe('MusicPlugin', () => {
       expect(spy).toHaveBeenCalledWith('music_menu');
       expect(fakeScene.load.start).not.toHaveBeenCalled();
     });
+  });
+});
+
+// ── Boot-failure skip-set tests ─────────────────────────────────────────────
+// These tests manipulate _failedMusicKeys directly (exported test seam) rather
+// than relying on the module-level eventBus listeners, which are cleared by
+// eventBus.removeAllListeners() in the outer describe's beforeEach.
+
+describe('MusicPlugin boot-failure skip-set', () => {
+  beforeEach(() => {
+    _failedMusicKeys.clear();
+    eventBus.removeAllListeners();
+  });
+
+  afterEach(() => {
+    _failedMusicKeys.clear();
+  });
+
+  it('onSceneCreate suppresses auto-play for a key in the skip-set', () => {
+    _failedMusicKeys.add('music_menu');
+    const { fakeScene } = mountPlugin('MenuScene');
+    const spy = vi.fn();
+    eventBus.on('music:play', spy);
+
+    fakeScene.sys.events.emit('create');
+
+    // Neither music:play emitted nor any load attempted
+    expect(spy).not.toHaveBeenCalled();
+    expect(fakeScene.load.audio).not.toHaveBeenCalled();
+  });
+
+  it('playOrLoad still attempts to load a key in the skip-set (user-triggered, not suppressed)', () => {
+    _failedMusicKeys.add('music_menu');
+    const { plugin, fakeScene } = mountPlugin('MenuScene');
+
+    plugin.playOrLoad('music_menu');
+
+    // playOrLoad is NOT gated by _failedMusicKeys — the load is attempted
+    expect(fakeScene.load.audio).toHaveBeenCalledWith(
+      'music_menu',
+      expect.stringContaining('bgm_menu.mp3'),
+    );
+  });
+
+  it('loadAndEmitPush still attempts to load a key in the skip-set (user-triggered, not suppressed)', () => {
+    _failedMusicKeys.add('music_quiz');
+    const { plugin, fakeScene } = mountPlugin('PlatformTeamScene');
+
+    plugin.loadAndEmitPush('music_quiz');
+
+    // loadAndEmitPush is NOT gated by _failedMusicKeys — the load is attempted
+    expect(fakeScene.load.audio).toHaveBeenCalledWith(
+      'music_quiz',
+      expect.stringContaining('hostile_territory-loop1.ogg'),
+    );
+  });
+
+  it('onSceneCreate resumes auto-play after the skip-set is cleared', () => {
+    _failedMusicKeys.add('music_menu');
+    _failedMusicKeys.clear(); // simulate boot:reset
+
+    const { fakeScene } = mountPlugin('MenuScene', ['music_menu']);
+    const spy = vi.fn();
+    eventBus.on('music:play', spy);
+
+    fakeScene.sys.events.emit('create');
+
+    expect(spy).toHaveBeenCalledWith('music_menu');
+  });
+
+  it('boot:asset-error populates and boot:reset clears the skip-set via EventBus', () => {
+    // Re-register the module-level listeners (cleared by removeAllListeners above).
+    eventBus.on('boot:asset-error', ({ key }: { key: string }) => { _failedMusicKeys.add(key); });
+    eventBus.on('boot:reset', () => { _failedMusicKeys.clear(); });
+
+    eventBus.emit('boot:asset-error', { key: 'music_menu', type: 'audio', url: 'music/a.mp3' });
+    expect(_failedMusicKeys.has('music_menu')).toBe(true);
+
+    eventBus.emit('boot:reset');
+    expect(_failedMusicKeys.has('music_menu')).toBe(false);
   });
 });
