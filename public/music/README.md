@@ -10,7 +10,7 @@ Only these tracks are loaded before the menu renders:
 
 | Asset key | File | Used by |
 | --- | --- | --- |
-| `music_menu` | `8bit-chiptune/bgm_menu.mp3` | `MenuScene` (via `SCENE_MUSIC`) |
+| `music_menu` | `8bit-chiptune/bgm_menu.ogg` | `MenuScene` (via `SCENE_MUSIC`) |
 
 ## Lazy-loaded tracks
 
@@ -52,10 +52,11 @@ The following files are part of the library but are not currently referenced by 
 
 ## Encoding
 
-MP3 background tracks are re-encoded using **FFmpeg / libmp3lame**; the Vorbis OGG loops use **libvorbis**. The two boss rescue-cue WAV files (`boss_tension.wav` / `boss_victory.wav`) are short procedural sounds kept at their original PCM quality and are not subject to the table below.
+MP3 background tracks are re-encoded using **FFmpeg / libmp3lame**; the Vorbis OGG loops (including the menu track) use **libvorbis**. The two boss rescue-cue WAV files (`boss_tension.wav` / `boss_victory.wav`) are short procedural sounds kept at their original PCM quality and are not subject to the table below.
 
 | Group | Bitrate | Channels | Sample rate | Re-encode command |
 | --- | --- | --- | --- | --- |
+| Menu track (`8bit-chiptune/bgm_menu.ogg`) | **64 kbps VBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -c:a libvorbis -b:a 64k -ac 1 -ar 44100 bgm_menu.ogg` |
 | 8-bit chiptune (`8bit-chiptune/*.mp3`) | **64 kbps CBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 64k -ar 44100 -ac 1 out.mp3` |
 | Elevator jazz (`elevator-jazz/*.mp3`) | **96 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 96k -ar 44100 -ac 2 out.mp3` |
 | Boss battle (`boss/*.mp3`) | **80 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 80k -ar 44100 -ac 2 out.mp3` |
