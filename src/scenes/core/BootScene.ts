@@ -10,6 +10,9 @@ import { COLORS } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 
+/** Count of static assets that failed to load during this boot pass. */
+let _bootAssetErrorCount = 0;
+
 export class BootScene extends Phaser.Scene {
   // Guard: window listener is installed once per instance and removed only
   // when the Phaser.Game is fully destroyed (not on scene shutdown, which
@@ -29,11 +32,20 @@ export class BootScene extends Phaser.Scene {
   // 0–10% scaling being incorrectly applied to that run.
   private _onFileProgress: ((value: number) => void) | null = null;
 
+  // Named reference to the loaderror handler so re-entering preload() replaces
+  // it rather than accumulating a second copy on the loader.
+  private _onLoaderError: ((file: { key: string; type: string; src: string }) => void) | null = null;
+
   constructor() {
     super({ key: 'BootScene' });
   }
 
   preload(): void {
+    // Reset per-boot-pass error counter and signal a fresh boot to any
+    // listeners that maintain boot-derived state (e.g. MusicPlugin's skip-set).
+    _bootAssetErrorCount = 0;
+    eventBus.emit('boot:reset');
+
     // Show loading bar
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
@@ -70,10 +82,30 @@ export class BootScene extends Phaser.Scene {
         this.load.off('progress', this._onFileProgress);
         this._onFileProgress = null;
       }
+      if (this._onLoaderError) {
+        this.load.off('loaderror', this._onLoaderError);
+        this._onLoaderError = null;
+      }
     });
 
     // Load only eager music tracks at boot (everything else is lazy-loaded
     // by MusicPlugin on first play so the initial download stays small).
+    //
+    // Attach a single loaderror handler so missing/CORS-blocked assets surface
+    // in logs and on the EventBus rather than failing silently.
+    // Stored as an instance field and explicitly removed before re-registering
+    // so calling preload() more than once (e.g. on BootScene re-entry) does
+    // not accumulate duplicate handlers.
+    if (this._onLoaderError) {
+      this.load.off('loaderror', this._onLoaderError);
+    }
+    this._onLoaderError = (file: { key: string; type: string; src: string }): void => {
+      console.error('[BootScene] Asset failed to load:', file.key, file.src);
+      eventBus.emit('boot:asset-error', { key: file.key, type: file.type, url: file.src });
+      _bootAssetErrorCount++;
+    };
+    this.load.on('loaderror', this._onLoaderError);
+
     for (const { key, path, eager } of STATIC_MUSIC_ASSETS) {
       if (eager) this.load.audio(key, path);
     }
@@ -144,6 +176,10 @@ export class BootScene extends Phaser.Scene {
     const GEN_SHARE = 1 - FILE_SHARE;
 
     const finish = (): void => {
+      // Write the final error count now that all loading (including the second
+      // pass for procedurally-generated audio blobs) is complete, so MenuScene
+      // reads an accurate total rather than a snapshot taken mid-boot.
+      this.registry.set('bootAssetErrors', _bootAssetErrorCount);
       this._destroyProgress();
       this.scene.start('MenuScene');
     };

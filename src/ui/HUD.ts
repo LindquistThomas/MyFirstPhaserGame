@@ -46,7 +46,7 @@ export class HUD {
     this.progression = progression;
     const displayW = (scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
     this.sizeClass = getSizeClass(displayW);
-    this.tokens = getLayoutTokens(this.sizeClass);
+    this.tokens = getLayoutTokens(this.sizeClass, settingsStore.read().textScale);
     this.create();
   }
 
@@ -81,9 +81,13 @@ export class HUD {
     // Re-render the title text colour when the high-contrast setting changes
     // so canvas HUD text also benefits from the accessibility toggle.
     // Also refresh the coin icon when the color-blind mode changes.
+    // Also refresh tokens when textScale changes.
     lifecycle.bindEventBus('settings:changed', () => {
       this.applyTitleTextContrast();
       this.coinCtrl.refreshCoinColor();
+      const newTokens = getLayoutTokens(this.sizeClass, settingsStore.read().textScale);
+      this.tokens = newTokens;
+      this.relayout();
     });
 
     const onResize = (): void => {
@@ -91,7 +95,7 @@ export class HUD {
       const newClass = getSizeClass(w);
       if (newClass !== this.sizeClass) {
         this.sizeClass = newClass;
-        this.tokens = getLayoutTokens(newClass);
+        this.tokens = getLayoutTokens(newClass, settingsStore.read().textScale);
         this.relayout();
       }
     };
@@ -115,7 +119,7 @@ export class HUD {
 
   /**
    * Apply colour and alpha to the HUD title text based on the current
-   * `highContrastControls` setting.
+   * `highContrast` setting.
    *
    * Default (no high-contrast): muted colour at 0.6 alpha — decorative.
    * High-contrast: primary text colour at full alpha — readable for
@@ -124,7 +128,7 @@ export class HUD {
    * Called once in `create()` and again whenever `settings:changed` fires.
    */
   private applyTitleTextContrast(): void {
-    const highContrast = settingsStore.read().highContrastControls;
+    const highContrast = settingsStore.read().highContrast;
     this.titleText
       .setColor(highContrast ? theme.color.css.textPrimary : theme.color.css.textQuizMuted)
       .setAlpha(highContrast ? 1 : 0.6);

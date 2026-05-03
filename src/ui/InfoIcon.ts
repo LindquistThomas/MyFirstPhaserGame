@@ -158,6 +158,7 @@ export class InfoIcon {
   private cooldownChip?: Phaser.GameObjects.Container;
   private cooldownChipText?: Phaser.GameObjects.Text;
   private cooldownTimer?: Phaser.Time.TimerEvent;
+  private cooldownActive = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void,
               contentId?: string, worldSpace = false,
@@ -186,9 +187,11 @@ export class InfoIcon {
       .setAlpha(0.001);
 
     hitArea.on('pointerover', () => {
+      if (this.cooldownActive) return;
       this.bg.setTint(0x9feaff);
     });
     hitArea.on('pointerout', () => {
+      if (this.cooldownActive) return;
       this.bg.clearTint();
     });
     hitArea.on('pointerdown', () => onClick());
@@ -305,6 +308,8 @@ export class InfoIcon {
     this.cooldownChipText!.setText(this.formatCooldown(remainingMs));
     this.cooldownChip.setVisible(true);
     this.hint?.setVisible(false);
+    this.cooldownActive = true;
+    this.bg.setTint(theme.color.status.lockedGrey);
 
     const contentId = this.contentId;
     this.cooldownTimer = this.scene.time.addEvent({
@@ -335,7 +340,9 @@ export class InfoIcon {
       this.cooldownTimer.destroy();
       this.cooldownTimer = undefined;
     }
+    this.cooldownActive = false;
     this.cooldownChip?.setVisible(false);
+    this.bg.clearTint();
   }
 
   private createCooldownChip(): Phaser.GameObjects.Container {

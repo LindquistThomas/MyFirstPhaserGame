@@ -1,8 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
-import { theme } from '../../style/theme';
+import { theme, getHighContrastCss } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
-import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode } from '../../systems/SettingsStore';
+import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode, TextScale } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
@@ -116,6 +116,21 @@ export class SettingsScene extends Phaser.Scene {
       'tritanopia': 'TRITANOPIA',
     };
 
+    const TEXT_SIZE_OPTIONS = ['100%', '115%', '130%', '150%'] as const;
+    type TextSizeOption = typeof TEXT_SIZE_OPTIONS[number];
+    const TEXT_SIZE_VALUES: Record<TextSizeOption, TextScale> = {
+      '100%': 1,
+      '115%': 1.15,
+      '130%': 1.3,
+      '150%': 1.5,
+    };
+    const TEXT_SIZE_LABELS: Record<TextScale, TextSizeOption> = {
+      1: '100%',
+      1.15: '115%',
+      1.3: '130%',
+      1.5: '150%',
+    };
+
     return [
       {
         kind: 'slider',
@@ -146,11 +161,11 @@ export class SettingsScene extends Phaser.Scene {
       },
       {
         kind: 'toggle',
-        label: 'HIGH CONTRAST CONTROLS',
-        get: () => settingsStore.read().highContrastControls,
+        label: 'HIGH CONTRAST',
+        get: () => settingsStore.read().highContrast,
         set: (v) => {
-          settingsStore.setHighContrastControls(v);
-          // `settings:changed` emitted by setHighContrastControls() triggers
+          settingsStore.setHighContrast(v);
+          // `settings:changed` emitted by setHighContrast() triggers
           // applyHighContrastToDocument() via the EventBus handler registered
           // in initVirtualGamepad() — no explicit call needed here.
         },
@@ -199,6 +214,15 @@ export class SettingsScene extends Phaser.Scene {
         get: () => COLOR_BLIND_LABELS[settingsStore.read().colorBlindMode] ?? COLOR_BLIND_OPTIONS[0],
         set: (v) => settingsStore.setColorBlindMode(
           COLOR_BLIND_VALUES[v as ColorBlindOption] ?? COLOR_BLIND_VALUES[COLOR_BLIND_OPTIONS[0]],
+        ),
+      },
+      {
+        kind: 'cycle',
+        label: 'TEXT SIZE',
+        options: TEXT_SIZE_OPTIONS,
+        get: () => TEXT_SIZE_LABELS[settingsStore.read().textScale] ?? TEXT_SIZE_OPTIONS[0],
+        set: (v) => settingsStore.setTextScale(
+          TEXT_SIZE_VALUES[v as TextSizeOption] ?? TEXT_SIZE_VALUES[TEXT_SIZE_OPTIONS[0]],
         ),
       },
       {
@@ -317,6 +341,7 @@ export class SettingsScene extends Phaser.Scene {
     const rowH = 52;
     const sliderX = GAME_WIDTH / 2 - 80;
     const sliderW = 200;
+    const hcPalette = getHighContrastCss(settingsStore.read().highContrast);
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
@@ -326,7 +351,7 @@ export class SettingsScene extends Phaser.Scene {
       if (!item || !label || !valText || !bar) continue;
 
       const isSelected = i === this.selectedIndex;
-      const labelColor = isSelected ? '#ffffff' : theme.color.css.textPrimary;
+      const labelColor = isSelected ? '#ffffff' : hcPalette.textPrimary;
       const labelScale = isSelected ? 1.06 : 1;
       label.setColor(labelColor).setScale(labelScale);
 
@@ -336,7 +361,7 @@ export class SettingsScene extends Phaser.Scene {
 
       if (item.kind === 'slider') {
         const pct = item.get() / 100;
-        valText.setText(`${item.get()}%`).setColor(theme.color.css.textPanel);
+        valText.setText(`${item.get()}%`).setColor(hcPalette.textPanel);
 
         // Trough
         bar.fillStyle(theme.color.bg.mid, 0.6);
@@ -349,10 +374,10 @@ export class SettingsScene extends Phaser.Scene {
         bar.fillCircle(sliderX + Math.round(sliderW * pct), y + 12, 8);
       } else if (item.kind === 'toggle') {
         const on = item.get();
-        valText.setText(on ? 'ON' : 'OFF').setColor(on ? theme.color.css.textAccent : theme.color.css.textMuted);
+        valText.setText(on ? 'ON' : 'OFF').setColor(on ? hcPalette.textAccent : theme.color.css.textMuted);
       } else if (item.kind === 'cycle') {
         const val = item.get();
-        valText.setText(val).setColor(theme.color.css.textAccent);
+        valText.setText(val).setColor(hcPalette.textAccent);
       } else if (item.kind === 'action') {
         valText.setText('');
         if (isSelected) {

@@ -8,6 +8,28 @@ const MUSIC_PATH: Readonly<Record<string, string>> = Object.fromEntries(
 );
 
 /**
+ * Music keys that failed to load during BootScene.
+ * Populated via the `boot:asset-error` event so every plugin instance in
+ * every scene shares the same skip-set.
+ *
+ * Only `onSceneCreate` checks this set to suppress automatic scene-entry
+ * playback (which would otherwise retry on every scene enter and spam logs).
+ * `playOrLoad` and `loadAndEmitPush` are NOT gated — they remain available
+ * for user-triggered requests (soundtrack button, quiz music) so playback
+ * can recover if connectivity is restored mid-session.
+ *
+ * These module-level subscriptions are intentionally never removed: the
+ * module is imported exactly once per application lifetime (Phaser's plugin
+ * system caches module imports), and the EventBus singleton is co-located in
+ * the same bundle, so there is no cross-context leak risk.
+ *
+ * @internal Exported as a test seam — do not use in production code.
+ */
+export const _failedMusicKeys = new Set<string>();
+eventBus.on('boot:reset', () => { _failedMusicKeys.clear(); });
+eventBus.on('boot:asset-error', ({ key }) => { _failedMusicKeys.add(key); });
+
+/**
  * Phaser ScenePlugin — bridges the framework's scene lifecycle to the
  * standalone EventBus.
  *
@@ -56,6 +78,12 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
     const sceneKey = this.scene!.scene.key;
     const musicKey = SCENE_MUSIC[sceneKey];
     if (!musicKey) return;
+
+    // Suppress automatic scene-entry playback for tracks that failed to load
+    // during boot to avoid a noisy retry loop on every scene enter.
+    // User-triggered requests via playOrLoad / loadAndEmitPush bypass this
+    // guard so playback can recover if connectivity improves mid-session.
+    if (_failedMusicKeys.has(musicKey)) return;
 
     this.playOrLoad(musicKey);
   }

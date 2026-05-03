@@ -184,6 +184,22 @@ export interface GameEvents {
    * Payload: the `infoId` of the quiz that was unlocked.
    */
   'quiz:cooldown_expired': [infoId: string];
+
+  /**
+   * Emitted at the start of `BootScene.preload()` to signal a new boot pass.
+   * `MusicPlugin` clears its skip-set on this event so re-entering BootScene
+   * after fixing a 404 gives assets a fresh chance to load.
+   */
+  'boot:reset': [];
+
+  /**
+   * A static asset failed to load in BootScene (404, CORS error, broken cache,
+   * missing file, etc.). Emitted once per failing asset. Left in production so
+   * APMs / Sentry can capture it.
+   * Payload: `key` — Phaser asset key; `type` — file type (e.g. `'audio'`, `'svg'`);
+   * `url` — the URL that failed.
+   */
+  'boot:asset-error': [info: { key: string; type: string; url: string }];
 }
 
 export type GameEventName = keyof GameEvents;

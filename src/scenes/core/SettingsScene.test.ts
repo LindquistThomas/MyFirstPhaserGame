@@ -72,6 +72,10 @@ vi.mock('../../style/theme', () => ({
       },
     },
   },
+  getHighContrastCss: vi.fn((enabled: boolean) => enabled
+    ? { textPrimary: '#ffffff', textSecondary: '#ffffff', textAccent: '#ffeb3b', textPanel: '#ffffff', bgPanel: '#000000', bgDialog: '#000000cc' }
+    : { textPrimary: '#ccc', textSecondary: '#aaa', textAccent: '#ff0', textPanel: '#bbb', bgPanel: '#222', bgDialog: '#00000088' }
+  ),
 }));
 
 vi.mock('../../systems/SettingsStore', () => ({
@@ -82,12 +86,26 @@ vi.mock('../../systems/SettingsStore', () => ({
       sfxVolume: 90,
       muteAll: false,
       musicStyle: '8bit-chiptune',
+      highContrast: false,
+      textScale: 1,
+      reducedMotion: false,
+      onScreenControls: 'auto',
+      hapticsEnabled: true,
+      colorBlindMode: 'off',
+      hideTutorials: false,
     })),
     setMasterVolume: vi.fn(),
     setMusicVolume: vi.fn(),
     setSfxVolume: vi.fn(),
     setMuteAll: vi.fn(),
     setMusicStyle: vi.fn(),
+    setHighContrast: vi.fn(),
+    setTextScale: vi.fn(),
+    setOnScreenControls: vi.fn(),
+    setHapticsEnabled: vi.fn(),
+    setColorBlindMode: vi.fn(),
+    setHideTutorials: vi.fn(),
+    setReducedMotion: vi.fn(),
   },
 }));
 
@@ -143,6 +161,7 @@ import { WelcomeModal } from '../../ui/WelcomeModal';
 import { showTouchHintForcedWithPersist } from '../../ui/TouchHintOverlay';
 import * as TouchHintStore from '../../systems/TouchHintStore';
 import { announce } from '../../ui/ariaLive';
+import * as SettingsStoreModule from '../../systems/SettingsStore';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -210,6 +229,34 @@ describe('SettingsScene.goBack()', () => {
     expect(scene['callerScene']).toBe('MenuScene');
   });
 });
+
+// ── Helper: access private items/activate/adjust ─────────────────────────────
+
+type PrivateScene = {
+  items: Array<{
+    kind: string;
+    label: string;
+    get?: () => unknown;
+    set?: (v: unknown) => void;
+    options?: readonly string[];
+  }>;
+  selectedIndex: number;
+  activate: () => void;
+  adjust: (d: number) => void;
+};
+
+function findItemIndex(scene: MockSettingsScene, label: string): number {
+  const s = scene as unknown as PrivateScene;
+  return s.items.findIndex((i) => i.label === label);
+}
+
+function activateItem(scene: MockSettingsScene, label: string): void {
+  const s = scene as unknown as PrivateScene;
+  const idx = findItemIndex(scene, label);
+  expect(idx, `item "${label}" not found`).toBeGreaterThanOrEqual(0);
+  s.selectedIndex = idx;
+  s.activate();
+}
 
 // ── openHowToPlay ─────────────────────────────────────────────────────────────
 
@@ -315,5 +362,93 @@ describe('SettingsScene.resetTouchHint()', () => {
     const scene = makeSettings();
     (scene as unknown as { resetTouchHint: () => void }).resetTouchHint();
     expect(vi.mocked(showTouchHintForcedWithPersist)).not.toHaveBeenCalled();
+  });
+});
+
+// ── Accessibility items ───────────────────────────────────────────────────────
+
+describe('SettingsScene accessibility items', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('buildItems includes a HIGH CONTRAST toggle', () => {
+    const scene = makeSettings('MenuScene');
+    const idx = findItemIndex(scene, 'HIGH CONTRAST');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const item = (scene as unknown as PrivateScene).items[idx];
+    expect(item?.kind).toBe('toggle');
+  });
+
+  it('HIGH CONTRAST toggle calls setHighContrast(true) when activated while off', () => {
+    vi.mocked(SettingsStoreModule.settingsStore.read).mockReturnValue({
+      ...vi.mocked(SettingsStoreModule.settingsStore.read)(),
+      highContrast: false,
+    } as ReturnType<typeof SettingsStoreModule.settingsStore.read>);
+    const scene = makeSettings('MenuScene');
+    activateItem(scene, 'HIGH CONTRAST');
+    expect(vi.mocked(SettingsStoreModule.settingsStore.setHighContrast)).toHaveBeenCalledWith(true);
+  });
+
+  it('HIGH CONTRAST toggle calls setHighContrast(false) when activated while on', () => {
+    vi.mocked(SettingsStoreModule.settingsStore.read).mockReturnValue({
+      ...vi.mocked(SettingsStoreModule.settingsStore.read)(),
+      highContrast: true,
+    } as ReturnType<typeof SettingsStoreModule.settingsStore.read>);
+    const scene = makeSettings('MenuScene');
+    activateItem(scene, 'HIGH CONTRAST');
+    expect(vi.mocked(SettingsStoreModule.settingsStore.setHighContrast)).toHaveBeenCalledWith(false);
+  });
+
+  it('buildItems includes a TEXT SIZE cycle', () => {
+    const scene = makeSettings('MenuScene');
+    const idx = findItemIndex(scene, 'TEXT SIZE');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const item = (scene as unknown as PrivateScene).items[idx];
+    expect(item?.kind).toBe('cycle');
+  });
+
+  it('TEXT SIZE cycle options are 100%, 115%, 130%, 150%', () => {
+    const scene = makeSettings('MenuScene');
+    const idx = findItemIndex(scene, 'TEXT SIZE');
+    const item = (scene as unknown as PrivateScene).items[idx];
+    expect(item?.options).toEqual(['100%', '115%', '130%', '150%']);
+  });
+
+  it('TEXT SIZE activate calls setTextScale(1.15) when currently at 100%', () => {
+    vi.mocked(SettingsStoreModule.settingsStore.read).mockReturnValue({
+      ...vi.mocked(SettingsStoreModule.settingsStore.read)(),
+      textScale: 1,
+    } as ReturnType<typeof SettingsStoreModule.settingsStore.read>);
+    const scene = makeSettings('MenuScene');
+    activateItem(scene, 'TEXT SIZE');
+    expect(vi.mocked(SettingsStoreModule.settingsStore.setTextScale)).toHaveBeenCalledWith(1.15);
+  });
+
+  it('TEXT SIZE activate cycles through all four steps', () => {
+    const scene = makeSettings('MenuScene');
+    const s = scene as unknown as PrivateScene;
+    const idx = findItemIndex(scene, 'TEXT SIZE');
+    s.selectedIndex = idx;
+
+    const steps: Array<{ scale: number; expectedCall: number }> = [
+      { scale: 1, expectedCall: 1.15 },
+      { scale: 1.15, expectedCall: 1.3 },
+      { scale: 1.3, expectedCall: 1.5 },
+      { scale: 1.5, expectedCall: 1 },
+    ];
+
+    for (const { scale, expectedCall } of steps) {
+      vi.mocked(SettingsStoreModule.settingsStore.read).mockReturnValue({
+        ...vi.mocked(SettingsStoreModule.settingsStore.read)(),
+        textScale: scale,
+      } as ReturnType<typeof SettingsStoreModule.settingsStore.read>);
+      vi.mocked(SettingsStoreModule.settingsStore.setTextScale).mockClear();
+      s.activate();
+      expect(
+        vi.mocked(SettingsStoreModule.settingsStore.setTextScale),
+        `activating at scale=${scale}`,
+      ).toHaveBeenCalledWith(expectedCall);
+    }
   });
 });

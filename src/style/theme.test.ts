@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { theme, COLORS, getColorBlindPalette, type ColorBlindMode } from './theme';
+import { theme, COLORS, getColorBlindPalette, getHighContrastCss, type ColorBlindMode } from './theme';
 
 describe('theme', () => {
   it('exposes a stable top-level shape', () => {
@@ -209,5 +209,53 @@ describe('getColorBlindPalette', () => {
     expect(values[0]).not.toBe(values[1]); // off vs deuteranopia
     expect(values[0]).not.toBe(values[2]); // off vs protanopia
     expect(values[1]).not.toBe(values[2]); // deuteranopia vs protanopia
+  });
+});
+
+describe('getHighContrastCss', () => {
+  it('returns standard palette when disabled', () => {
+    const p = getHighContrastCss(false);
+    expect(p.textPrimary).toBe(theme.color.css.textPrimary);
+    expect(p.textAccent).toBe(theme.color.css.textAccent);
+    expect(p.bgPanel).toBe(theme.color.css.bgPanel);
+  });
+
+  it('returns high-contrast palette when enabled', () => {
+    const p = getHighContrastCss(true);
+    expect(p.textPrimary).toBe('#ffffff');
+    expect(p.textAccent).toBe('#ffeb3b');
+    expect(p.bgPanel).toBe('#000000');
+  });
+
+  it('high-contrast text colours meet WCAG AA on black background', () => {
+    function relativeLuminance(hex: string): number {
+      const r = parseInt(hex.slice(1, 3), 16) / 255;
+      const g = parseInt(hex.slice(3, 5), 16) / 255;
+      const b = parseInt(hex.slice(5, 7), 16) / 255;
+      const toLinear = (c: number): number =>
+        c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+    }
+    function contrastRatio(hex1: string, hex2: string): number {
+      const l1 = relativeLuminance(hex1);
+      const l2 = relativeLuminance(hex2);
+      const lighter = Math.max(l1, l2);
+      const darker  = Math.min(l1, l2);
+      return (lighter + 0.05) / (darker + 0.05);
+    }
+
+    const p = getHighContrastCss(true);
+    const bg = p.bgPanel; // '#000000'
+    expect(contrastRatio(p.textPrimary, bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(p.textSecondary, bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(p.textAccent, bg)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(p.textPanel, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('standard palette matches theme tokens for both text and bg', () => {
+    const p = getHighContrastCss(false);
+    expect(p.textSecondary).toBe(theme.color.css.textSecondary);
+    expect(p.textPanel).toBe(theme.color.css.textPanel);
+    expect(p.bgDialog).toBe(theme.color.css.bgDialog);
   });
 });

@@ -43,6 +43,26 @@ export class MenuScene extends Phaser.Scene {
     this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
     this.idlePreloadMusic();
+
+    // Dev-only diagnostic: show a red banner if any static boot asset failed to
+    // load so broken CDN / missing file failures are impossible to miss locally.
+    if (import.meta.env.DEV) {
+      const errorCount = (this.registry.get('bootAssetErrors') as number | undefined) ?? 0;
+      if (errorCount > 0) {
+        this.add.text(
+          GAME_WIDTH / 2,
+          16,
+          `\u26a0 ${errorCount} boot asset${errorCount > 1 ? 's' : ''} failed to load \u2014 check console`,
+          {
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            color: '#ff4444',
+            backgroundColor: '#220000',
+            padding: { x: 8, y: 4 },
+          },
+        ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
+      }
+    }
   }
 
   /**
@@ -361,13 +381,15 @@ export class MenuScene extends Phaser.Scene {
     panel.fillRect(0, cy - 260, 720, 440);
 
     // Title with a soft glow (stack of offset shadows).
+    // Explicit resolution: 2 on both styles — these are the largest, most prominent
+    // headings in the game and warrant maximum crispness.
     const titleStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace', fontSize: '44px',
-      color: COLORS.titleText, fontStyle: 'bold',
+      color: COLORS.titleText, fontStyle: 'bold', resolution: 2,
     };
     const subStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: 'monospace', fontSize: '70px',
-      color: '#ffffff', fontStyle: 'bold',
+      color: '#ffffff', fontStyle: 'bold', resolution: 2,
     };
     this.add.text(cx, cy - 220, 'SO YOU WANT', titleStyle).setOrigin(0.5)
       .setShadow(0, 0, '#0099cc', 18, true, true).setDepth(TEXT_DEPTH);
