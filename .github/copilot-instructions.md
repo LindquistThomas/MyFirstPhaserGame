@@ -21,7 +21,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   └── music/                # MP3/OGG/WAV music tracks; eager subset preloaded in BootScene, rest lazy-loaded by MusicPlugin
 ├── src/
 │   ├── main.ts               # Phaser.Game bootstrap; spreads SCENE_CLASSES from sceneRegistry
-│   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry; info/ and quiz/ barrels
+│   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry, achievements; info/ and quiz/ barrels
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator,
 │   │                         # MovingPlatform, Coffee, EnergyDrinkFridge, CEOBoss,
 │   │                         # CoffeeMugProjectile, BriefcaseProjectile, PistolProjectile,
