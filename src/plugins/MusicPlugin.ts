@@ -8,6 +8,16 @@ const MUSIC_PATH: Readonly<Record<string, string>> = Object.fromEntries(
 );
 
 /**
+ * Music keys that failed to load during BootScene.
+ * Populated at module-load time via the `boot:asset-error` event so every
+ * plugin instance in every scene shares the same skip-set.
+ * `playOrLoad` and `loadAndEmitPush` silently return for any key in this set,
+ * preventing noisy retry loops when an eager track was missing at boot.
+ */
+const _failedMusicKeys = new Set<string>();
+eventBus.on('boot:asset-error', ({ key }) => { _failedMusicKeys.add(key); });
+
+/**
  * Phaser ScenePlugin — bridges the framework's scene lifecycle to the
  * standalone EventBus.
  *
@@ -68,6 +78,9 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
   playOrLoad(musicKey: string): void {
     const scene = this.scene!;
 
+    // Silently skip keys that failed to load during boot (avoids retry loops).
+    if (_failedMusicKeys.has(musicKey)) return;
+
     // Already cached — play immediately.
     if (scene.cache.audio.exists(musicKey)) {
       eventBus.emit('music:play', musicKey);
@@ -97,6 +110,9 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
    */
   loadAndEmitPush(musicKey: string): void {
     const scene = this.scene!;
+
+    // Silently skip keys that failed to load during boot (avoids retry loops).
+    if (_failedMusicKeys.has(musicKey)) return;
 
     if (scene.cache.audio.exists(musicKey)) {
       eventBus.emit('music:push', musicKey);

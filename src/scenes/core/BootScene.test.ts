@@ -23,14 +23,24 @@ vi.mock('phaser', () => {
       graphics: () => ({ fillStyle: vi.fn(), fillRect: vi.fn(), clear: vi.fn(), destroy: vi.fn() }),
       text: () => ({ setOrigin: vi.fn().mockReturnThis(), setText: vi.fn(), destroy: vi.fn() }),
     };
-    load = {
-      on: vi.fn(),
-      once: vi.fn(),
-      off: vi.fn(),
-      start: vi.fn(),
-      audio: vi.fn(),
-      svg: vi.fn(),
-    };
+    load = (() => {
+      const loadHandlers: Record<string, Array<(file: unknown) => void>> = {};
+      return {
+        _handlers: loadHandlers,
+        on: vi.fn((event: string, fn: (file: unknown) => void) => {
+          (loadHandlers[event] ??= []).push(fn);
+        }),
+        once: vi.fn(),
+        off: vi.fn(),
+        start: vi.fn(),
+        audio: vi.fn(),
+        svg: vi.fn(),
+        /** Test helper: fire all registered handlers for a loader event. */
+        emit(event: string, arg: unknown) {
+          for (const fn of loadHandlers[event] ?? []) fn(arg);
+        },
+      };
+    })();
     sound = {};
     game = {};
     cache = { audio: { exists: vi.fn().mockReturnValue(false) } };
@@ -136,5 +146,101 @@ describe('BootScene M-key mute hotkey', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'm', bubbles: true }));
     expect(spy).not.toHaveBeenCalled();
     document.body.removeChild(input);
+  });
+});
+
+// Helper: access the fake loader's emit method added in the Phaser mock above.
+type LoadEmitter = { emit: (event: string, arg: unknown) => void };
+
+describe('BootScene loaderror handler', () => {
+  afterEach(() => {
+    eventBus.removeAllListeners();
+  });
+
+  it('emits boot:asset-error and calls console.error when a file fails to load', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const scene = new BootScene();
+
+    scene.preload();
+
+    const errorSpy = vi.fn();
+    eventBus.on('boot:asset-error', errorSpy);
+
+    const fakeFile = { key: 'music_menu', type: 'audio', src: 'music/bgm_menu.mp3' };
+    (scene.load as unknown as LoadEmitter).emit('loaderror', fakeFile);
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[BootScene] Asset failed to load:',
+      'music_menu',
+      'music/bgm_menu.mp3',
+    );
+    expect(errorSpy).toHaveBeenCalledWith({
+      key: 'music_menu',
+      type: 'audio',
+      url: 'music/bgm_menu.mp3',
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  it('emits boot:asset-error for SVG assets too', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const scene = new BootScene();
+
+    scene.preload();
+
+    const errorSpy = vi.fn();
+    eventBus.on('boot:asset-error', errorSpy);
+
+    const fakeFile = { key: 'lobby_logo', type: 'svg', src: 'brand/logo.svg' };
+    (scene.load as unknown as LoadEmitter).emit('loaderror', fakeFile);
+
+    expect(errorSpy).toHaveBeenCalledWith({
+      key: 'lobby_logo',
+      type: 'svg',
+      url: 'brand/logo.svg',
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  it('emits boot:asset-error for each failing file independently', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const scene = new BootScene();
+
+    scene.preload();
+
+    const receivedPayloads: Array<{ key: string; type: string; url: string }> = [];
+    eventBus.on('boot:asset-error', (info) => receivedPayloads.push(info));
+
+    (scene.load as unknown as LoadEmitter).emit('loaderror', { key: 'music_menu', type: 'audio', src: 'music/bgm_menu.mp3' });
+    (scene.load as unknown as LoadEmitter).emit('loaderror', { key: 'lobby_logo', type: 'svg', src: 'brand/logo.svg' });
+
+    expect(receivedPayloads).toHaveLength(2);
+    expect(receivedPayloads[0]).toMatchObject({ key: 'music_menu', type: 'audio' });
+    expect(receivedPayloads[1]).toMatchObject({ key: 'lobby_logo', type: 'svg' });
+
+    consoleSpy.mockRestore();
+  });
+
+  it('stores error count in the Phaser registry after create()', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const scene = new BootScene();
+
+    scene.preload();
+
+    // Trigger two load failures before create()
+    (scene.load as unknown as LoadEmitter).emit('loaderror', { key: 'music_menu', type: 'audio', src: 'music/a.mp3' });
+    (scene.load as unknown as LoadEmitter).emit('loaderror', { key: 'lobby_logo', type: 'svg', src: 'brand/b.svg' });
+
+    scene.create();
+
+    expect(scene.registry.set).toHaveBeenCalledWith('bootAssetErrors', expect.any(Number));
+    // Extract the stored value to verify it reflects the two errors.
+    const calls = (scene.registry.set as ReturnType<typeof vi.fn>).mock.calls;
+    const errorEntry = calls.find((c: unknown[]) => c[0] === 'bootAssetErrors');
+    expect(errorEntry?.[1]).toBeGreaterThanOrEqual(2);
+
+    consoleSpy.mockRestore();
   });
 });

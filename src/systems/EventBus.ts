@@ -184,6 +184,15 @@ export interface GameEvents {
    * Payload: the `infoId` of the quiz that was unlocked.
    */
   'quiz:cooldown_expired': [infoId: string];
+
+  /**
+   * A static asset failed to load in BootScene (404, CORS error, broken cache,
+   * missing file, etc.). Emitted once per failing asset. Left in production so
+   * APMs / Sentry can capture it.
+   * Payload: `key` — Phaser asset key; `type` — file type (e.g. `'audio'`, `'svg'`);
+   * `url` — the URL that failed.
+   */
+  'boot:asset-error': [info: { key: string; type: string; url: string }];
 }
 
 export type GameEventName = keyof GameEvents;

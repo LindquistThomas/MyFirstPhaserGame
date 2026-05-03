@@ -43,6 +43,26 @@ export class MenuScene extends Phaser.Scene {
     this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
     this.idlePreloadMusic();
+
+    // Dev-only diagnostic: show a red banner if any static boot asset failed to
+    // load so broken CDN / missing file failures are impossible to miss locally.
+    if (import.meta.env.DEV) {
+      const errorCount = (this.registry.get('bootAssetErrors') as number | undefined) ?? 0;
+      if (errorCount > 0) {
+        this.add.text(
+          GAME_WIDTH / 2,
+          16,
+          `\u26a0 ${errorCount} boot asset${errorCount > 1 ? 's' : ''} failed to load \u2014 check console`,
+          {
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            color: '#ff4444',
+            backgroundColor: '#220000',
+            padding: { x: 8, y: 4 },
+          },
+        ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
+      }
+    }
   }
 
   /**

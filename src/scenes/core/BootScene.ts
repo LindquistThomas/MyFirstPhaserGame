@@ -10,6 +10,9 @@ import { COLORS } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 
+/** Count of static assets that failed to load during this boot pass. */
+let _bootAssetErrorCount = 0;
+
 export class BootScene extends Phaser.Scene {
   // Guard: window listener is installed once per instance and removed only
   // when the Phaser.Game is fully destroyed (not on scene shutdown, which
@@ -74,6 +77,15 @@ export class BootScene extends Phaser.Scene {
 
     // Load only eager music tracks at boot (everything else is lazy-loaded
     // by MusicPlugin on first play so the initial download stays small).
+    //
+    // Attach a single loaderror handler so missing/CORS-blocked assets surface
+    // in logs and on the EventBus rather than failing silently.
+    this.load.on('loaderror', (file: { key: string; type: string; src: string }) => {
+      console.error('[BootScene] Asset failed to load:', file.key, file.src);
+      eventBus.emit('boot:asset-error', { key: file.key, type: file.type, url: file.src });
+      _bootAssetErrorCount++;
+    });
+
     for (const { key, path, eager } of STATIC_MUSIC_ASSETS) {
       if (eager) this.load.audio(key, path);
     }
@@ -91,6 +103,10 @@ export class BootScene extends Phaser.Scene {
     migrateDefaultSlot();
     // Default active slot for the session (SaveSlotScene will override this).
     setPlayerSlot('slot1');
+
+    // Expose boot-phase asset error count so downstream scenes (MenuScene in dev)
+    // can show a diagnostic banner without importing BootScene directly.
+    this.registry.set('bootAssetErrors', _bootAssetErrorCount);
 
     // Initialize audio manager and wire it to the EventBus
     const audio = new AudioManager(this.sound, this.game);
