@@ -76,6 +76,14 @@ export class HUD {
 
     const lifecycle = createSceneLifecycle(this.scene);
     lifecycle.bindEventBus('persistence:failed', (payload) => {
+      // Suppress the 'unavailable' toast when the boot-time guest-mode banner
+      // has already informed the player — avoid double messaging.
+      if (
+        payload.reason === 'unavailable' &&
+        this.scene.registry.get('persistenceAvailable') === false
+      ) {
+        return;
+      }
       this.toast.show(persistenceMessage(payload.reason));
     });
     // Re-render the title text colour when the high-contrast setting changes

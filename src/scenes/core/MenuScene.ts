@@ -5,6 +5,8 @@ import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
+const GUEST_BANNER_ID = 'guest-mode-banner';
+
 /**
  * Title screen.
  *
@@ -23,6 +25,8 @@ export class MenuScene extends Phaser.Scene {
   private soundtrackButton?: Phaser.GameObjects.Text;
   /** -1 so first playNextSoundtrack() wraps to index 0 (first track). */
   private soundtrackIndex = -1;
+  /** DOM banner element shown when browser storage is unavailable; null when absent. */
+  private guestBannerEl: HTMLElement | null = null;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -38,6 +42,10 @@ export class MenuScene extends Phaser.Scene {
     this.createFeaturedBuilding();
     this.createTitlePanel();
     this.createControlsFooter();
+
+    if (this.registry.get('persistenceAvailable') === false) {
+      this.createGuestModeBanner();
+    }
 
     this.setupKeyboardNavigation();
     this.updateSelection();
@@ -460,6 +468,36 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(cx, GAME_HEIGHT - 35, 'Collect AU to unlock new floors  \u2022  Inspired by Impossible Mission (C64)', {
       fontFamily: 'monospace', fontSize: '12px', color: '#5e6e85',
     }).setOrigin(0.5).setDepth(10);
+  }
+
+  /**
+   * Creates a persistent DOM banner informing the player that browser storage
+   * is unavailable (Safari private mode, enterprise restrictions, etc.).
+   *
+   * The banner is a DOM element so it is keyboard-focusable (`tabindex="0"`)
+   * and announced automatically by assistive technologies via `aria-live`.
+   * It is removed when this scene shuts down (lifecycle cleanup).
+   */
+  private createGuestModeBanner(): void {
+    // Guard against double-mount (e.g. on scene restart before shutdown).
+    if (this.guestBannerEl || document.getElementById(GUEST_BANNER_ID)) return;
+
+    const banner = document.createElement('div');
+    banner.id = GUEST_BANNER_ID;
+    banner.setAttribute('role', 'status');
+    banner.setAttribute('aria-live', 'polite');
+    banner.setAttribute('tabindex', '0');
+    banner.textContent =
+      'Guest mode — progress will not be saved. Enable storage in your browser settings to save.';
+    document.body.appendChild(banner);
+    this.guestBannerEl = banner;
+
+    // Remove when this scene shuts down (player navigated away).
+    const lifecycle = createSceneLifecycle(this);
+    lifecycle.add(() => {
+      this.guestBannerEl?.remove();
+      this.guestBannerEl = null;
+    });
   }
 
   private openSlotPicker(): void {

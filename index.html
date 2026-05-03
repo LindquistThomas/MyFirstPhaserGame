@@ -257,6 +257,31 @@
       border: 2px solid rgba(255, 255, 255, 0.35);
       padding: 4px;
     }
+    /* Guest-mode storage-unavailable banner: shown in MenuScene when localStorage
+       is blocked (Safari private mode, embedded webviews, etc.). Rendered as a DOM
+       element so it is keyboard-focusable and announced by assistive technologies. */
+    #guest-mode-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      background: rgba(160, 60, 0, 0.94);
+      color: #ffffff;
+      font-family: monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      text-align: center;
+      padding: 8px 20px;
+      border-bottom: 2px solid rgba(255, 130, 0, 0.7);
+      pointer-events: auto;
+      cursor: default;
+    }
+    #guest-mode-banner:focus-visible {
+      outline: 3px solid #ffd166;
+      outline-offset: -3px;
+    }
+
   </style>
 </head>
 <body>

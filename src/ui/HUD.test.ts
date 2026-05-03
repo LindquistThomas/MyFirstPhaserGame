@@ -345,4 +345,52 @@ describe('HUD', () => {
 
     expect(scene.scale.off).toHaveBeenCalledWith('resize', expect.any(Function), expect.anything());
   });
+
+  it('suppresses the persistence:unavailable toast when registry flag is false', () => {
+    scene = makeScene(false);
+    // Override registry to return persistenceAvailable=false.
+    (scene.registry.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
+      if (key === 'audio') return { isMuted: () => false };
+      if (key === 'persistenceAvailable') return false;
+      return undefined;
+    });
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('persistence:failed', { reason: 'unavailable' });
+    expect(showSpy).not.toHaveBeenCalled();
+  });
+
+  it('still shows the persistence:unavailable toast when registry flag is true', () => {
+    scene = makeScene(false);
+    (scene.registry.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
+      if (key === 'audio') return { isMuted: () => false };
+      if (key === 'persistenceAvailable') return true;
+      return undefined;
+    });
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('persistence:failed', { reason: 'unavailable' });
+    expect(showSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Browser storage is unavailable'),
+    );
+  });
+
+  it('still shows other persistence:failed toasts when persistenceAvailable is false', () => {
+    scene = makeScene(false);
+    (scene.registry.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
+      if (key === 'audio') return { isMuted: () => false };
+      if (key === 'persistenceAvailable') return false;
+      return undefined;
+    });
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('persistence:failed', { reason: 'quota' });
+    expect(showSpy).toHaveBeenCalledWith(expect.stringContaining('Storage full'));
+  });
 });
