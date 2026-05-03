@@ -52,10 +52,11 @@ export class CoinCounterController {
     container.add(this.coinShine as unknown as Phaser.GameObjects.GameObject);
     this.scheduleCoinShimmer();
 
-    // AU label + counter
+    // AU label + counter — explicit resolution: 2 for maximum crispness on the
+    // most-read HUD element (overrides the 1.5 global default).
     this.auText = scene.add.text(46, 6, 'AU: 0', {
       fontFamily: 'monospace', fontSize: tokens.hudFontAU,
-      color: theme.color.css.textPrimary, fontStyle: 'bold',
+      color: theme.color.css.textPrimary, fontStyle: 'bold', resolution: 2,
     });
     container.add(this.auText as unknown as Phaser.GameObjects.GameObject);
   }

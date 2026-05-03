@@ -99,10 +99,10 @@ export class InfoDialog extends ModalBase {
     bg.strokeRoundedRect(panelX, panelY, panelW, panelH, 10);
     this.container.add(bg);
 
-    // --- title (sticky) ---
+    // --- title (sticky) — explicit resolution: 2 for maximum heading crispness.
     const titleY = panelY + PADDING;
     const title = this.scene.add.text(GAME_WIDTH / 2, titleY, content.title, {
-      fontFamily: 'monospace', fontSize: tokens.dialogFontTitle, color: theme.color.css.textTitle, fontStyle: 'bold',
+      fontFamily: 'monospace', fontSize: tokens.dialogFontTitle, color: theme.color.css.textTitle, fontStyle: 'bold', resolution: 2,
     }).setOrigin(0.5, 0);
     this.container.add(title);
 
