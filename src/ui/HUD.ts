@@ -76,12 +76,12 @@ export class HUD {
 
     const lifecycle = createSceneLifecycle(this.scene);
     lifecycle.bindEventBus('persistence:failed', (payload) => {
-      // Suppress the 'unavailable' toast when the boot-time guest-mode banner
-      // has already informed the player — avoid double messaging.
-      if (
-        payload.reason === 'unavailable' &&
-        this.scene.registry.get('persistenceAvailable') === false
-      ) {
+      // When the boot-time probe returned false the player has already been
+      // told via the guest-mode banner. Suppress ALL persistence toasts for
+      // the session — not just 'unavailable', because a blocked localStorage
+      // can surface as 'quota' or 'unknown' from SaveManager depending on
+      // the browser and error type.
+      if (this.scene.registry.get('persistenceAvailable') === false) {
         return;
       }
       this.toast.show(persistenceMessage(payload.reason));

@@ -272,7 +272,10 @@
       font-size: 13px;
       line-height: 1.5;
       text-align: center;
-      padding: 8px 20px;
+      /* Respect notch / status-bar safe area so the text is not obscured on
+         iPhones and iPads with a Dynamic Island or Home-indicator notch —
+         exactly the Safari-private-mode devices this banner targets. */
+      padding: max(env(safe-area-inset-top, 0px), 8px) 20px 8px;
       border-bottom: 2px solid rgba(255, 130, 0, 0.7);
       pointer-events: auto;
       cursor: default;

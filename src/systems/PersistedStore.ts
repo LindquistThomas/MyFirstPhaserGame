@@ -62,12 +62,15 @@ export interface PersistedStoreOptions<T> {
  * Called once from `BootScene.create()` so the result can be stashed in the
  * Phaser registry (`persistenceAvailable`) and read by the rest of the game
  * to gate save-failure warnings.
+ *
+ * Uses an app-namespaced key (`__architect_probe__`) to avoid colliding with
+ * other apps sharing the same origin.
  */
 export function isPersistenceAvailable(): boolean {
   try {
     const ls = globalThis.localStorage;
-    ls.setItem('__probe__', '1');
-    ls.removeItem('__probe__');
+    ls.setItem('__architect_probe__', '1');
+    ls.removeItem('__architect_probe__');
     return true;
   } catch {
     return false;
