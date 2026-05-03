@@ -32,6 +32,10 @@ export class BootScene extends Phaser.Scene {
   // 0–10% scaling being incorrectly applied to that run.
   private _onFileProgress: ((value: number) => void) | null = null;
 
+  // Named reference to the loaderror handler so re-entering preload() replaces
+  // it rather than accumulating a second copy on the loader.
+  private _onLoaderError: ((file: { key: string; type: string; src: string }) => void) | null = null;
+
   constructor() {
     super({ key: 'BootScene' });
   }
@@ -78,6 +82,10 @@ export class BootScene extends Phaser.Scene {
         this.load.off('progress', this._onFileProgress);
         this._onFileProgress = null;
       }
+      if (this._onLoaderError) {
+        this.load.off('loaderror', this._onLoaderError);
+        this._onLoaderError = null;
+      }
     });
 
     // Load only eager music tracks at boot (everything else is lazy-loaded
@@ -85,11 +93,18 @@ export class BootScene extends Phaser.Scene {
     //
     // Attach a single loaderror handler so missing/CORS-blocked assets surface
     // in logs and on the EventBus rather than failing silently.
-    this.load.on('loaderror', (file: { key: string; type: string; src: string }) => {
+    // Stored as an instance field and explicitly removed before re-registering
+    // so calling preload() more than once (e.g. on BootScene re-entry) does
+    // not accumulate duplicate handlers.
+    if (this._onLoaderError) {
+      this.load.off('loaderror', this._onLoaderError);
+    }
+    this._onLoaderError = (file: { key: string; type: string; src: string }): void => {
       console.error('[BootScene] Asset failed to load:', file.key, file.src);
       eventBus.emit('boot:asset-error', { key: file.key, type: file.type, url: file.src });
       _bootAssetErrorCount++;
-    });
+    };
+    this.load.on('loaderror', this._onLoaderError);
 
     for (const { key, path, eager } of STATIC_MUSIC_ASSETS) {
       if (eager) this.load.audio(key, path);
@@ -108,10 +123,6 @@ export class BootScene extends Phaser.Scene {
     migrateDefaultSlot();
     // Default active slot for the session (SaveSlotScene will override this).
     setPlayerSlot('slot1');
-
-    // Expose boot-phase asset error count so downstream scenes (MenuScene in dev)
-    // can show a diagnostic banner without importing BootScene directly.
-    this.registry.set('bootAssetErrors', _bootAssetErrorCount);
 
     // Initialize audio manager and wire it to the EventBus
     const audio = new AudioManager(this.sound, this.game);
@@ -165,6 +176,10 @@ export class BootScene extends Phaser.Scene {
     const GEN_SHARE = 1 - FILE_SHARE;
 
     const finish = (): void => {
+      // Write the final error count now that all loading (including the second
+      // pass for procedurally-generated audio blobs) is complete, so MenuScene
+      // reads an accurate total rather than a snapshot taken mid-boot.
+      this.registry.set('bootAssetErrors', _bootAssetErrorCount);
       this._destroyProgress();
       this.scene.start('MenuScene');
     };

@@ -31,7 +31,12 @@ vi.mock('phaser', () => {
           (loadHandlers[event] ??= []).push(fn);
         }),
         once: vi.fn(),
-        off: vi.fn(),
+        off: vi.fn((event: string, fn: (file: unknown) => void) => {
+          const list = loadHandlers[event];
+          if (!list) return;
+          const idx = list.indexOf(fn);
+          if (idx >= 0) list.splice(idx, 1);
+        }),
         start: vi.fn(),
         audio: vi.fn(),
         svg: vi.fn(),
@@ -240,6 +245,27 @@ describe('BootScene loaderror handler', () => {
     const calls = (scene.registry.set as ReturnType<typeof vi.fn>).mock.calls;
     const errorEntry = calls.find((c: unknown[]) => c[0] === 'bootAssetErrors');
     expect(errorEntry?.[1]).toBe(2);
+
+    consoleSpy.mockRestore();
+  });
+
+  it('does not accumulate loaderror handlers when preload() is called twice', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const scene = new BootScene();
+
+    // First boot pass
+    scene.preload();
+    // Second boot pass — must replace the handler, not add another
+    scene.preload();
+
+    const errorSpy = vi.fn();
+    eventBus.on('boot:asset-error', errorSpy);
+
+    const fakeFile = { key: 'music_menu', type: 'audio', src: 'music/a.mp3' };
+    (scene.load as unknown as LoadEmitter).emit('loaderror', fakeFile);
+
+    // If the handler were accumulated, errorSpy would fire twice (once per handler).
+    expect(errorSpy).toHaveBeenCalledTimes(1);
 
     consoleSpy.mockRestore();
   });
