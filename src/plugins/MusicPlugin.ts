@@ -15,6 +15,7 @@ const MUSIC_PATH: Readonly<Record<string, string>> = Object.fromEntries(
  * preventing noisy retry loops when an eager track was missing at boot.
  */
 const _failedMusicKeys = new Set<string>();
+eventBus.on('boot:reset', () => { _failedMusicKeys.clear(); });
 eventBus.on('boot:asset-error', ({ key }) => { _failedMusicKeys.add(key); });
 
 /**

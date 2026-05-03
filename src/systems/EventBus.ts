@@ -186,6 +186,13 @@ export interface GameEvents {
   'quiz:cooldown_expired': [infoId: string];
 
   /**
+   * Emitted at the start of `BootScene.preload()` to signal a new boot pass.
+   * `MusicPlugin` clears its skip-set on this event so re-entering BootScene
+   * after fixing a 404 gives assets a fresh chance to load.
+   */
+  'boot:reset': [];
+
+  /**
    * A static asset failed to load in BootScene (404, CORS error, broken cache,
    * missing file, etc.). Emitted once per failing asset. Left in production so
    * APMs / Sentry can capture it.

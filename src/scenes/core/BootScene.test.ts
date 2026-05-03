@@ -236,10 +236,10 @@ describe('BootScene loaderror handler', () => {
     scene.create();
 
     expect(scene.registry.set).toHaveBeenCalledWith('bootAssetErrors', expect.any(Number));
-    // Extract the stored value to verify it reflects the two errors.
+    // Extract the stored value to verify it reflects exactly the two errors.
     const calls = (scene.registry.set as ReturnType<typeof vi.fn>).mock.calls;
     const errorEntry = calls.find((c: unknown[]) => c[0] === 'bootAssetErrors');
-    expect(errorEntry?.[1]).toBeGreaterThanOrEqual(2);
+    expect(errorEntry?.[1]).toBe(2);
 
     consoleSpy.mockRestore();
   });

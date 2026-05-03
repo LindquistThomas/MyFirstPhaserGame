@@ -37,6 +37,11 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // Reset per-boot-pass error counter and signal a fresh boot to any
+    // listeners that maintain boot-derived state (e.g. MusicPlugin's skip-set).
+    _bootAssetErrorCount = 0;
+    eventBus.emit('boot:reset');
+
     // Show loading bar
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
