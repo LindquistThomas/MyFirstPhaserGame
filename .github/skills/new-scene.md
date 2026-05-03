@@ -33,9 +33,12 @@ export class NameScene extends Phaser.Scene {
   create(): void {
     // Build the scene. Assets should already be loaded by BootScene.
     // Register zones / input / UI here.
-    this.events.once('shutdown', () => {
-      // Unsubscribe any EventBus handlers here.
-    });
+    // EventBus subscriptions go through scene plugins / lifecycle helpers
+    // (auto-cleaned on shutdown):
+    //   this.scopedEvents.on('zone:enter', handler);
+    //   // or, if also covering input / DOM listeners:
+    //   const lc = createSceneLifecycle(this);
+    //   lc.bindEventBus('zone:enter', handler);
   }
 
   update(_time: number, _delta: number): void {
@@ -112,6 +115,6 @@ Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, 
 ## Conventions checklist
 
 - Load assets in `BootScene`, not in the new scene.
-- Clean up EventBus subscriptions on `shutdown` (see `src/systems/EventBus.ts`).
+- Subscribe to EventBus through `this.scopedEvents.on(...)` (auto-clean on shutdown) or `createSceneLifecycle(this).bindEventBus(...)`. Raw `eventBus.on`/`eventBus.once` in `*Scene.ts` is blocked by ESLint.
 - Zone-gated UI starts hidden; reveal it via `zone:enter`.
 - Don't reference raw keycodes — use `GameAction`s through `scene.inputs`.
