@@ -205,7 +205,7 @@ const BUDGETS = /** @type {const} */ ([
   },
   {
     label:    'Eager music assets (raw)',
-    // 700 KB: just above the single eager track (bgm_menu.ogg, Opus 48 kbps VBR ≈ 540 KB).
+    // 700 KB: just above the single eager track (bgm_menu.ogg, Vorbis 64 kbps ≈ 638 KB).
     // Tightened from 2048 KB to prevent silent regressions — adding one more eager track
     // should trigger a conscious review before this gate fires.
     limitKB:  700,
