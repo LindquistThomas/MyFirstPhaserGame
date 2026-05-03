@@ -12,8 +12,6 @@ export default defineConfig({
       exclude: [
         'src/**/*.test.ts',
         'src/main.ts',
-        'src/scenes/**',
-        'src/features/floors/**',
         'src/plugins/**',
         'src/systems/SpriteGenerator.ts',
         'src/systems/sprites/**',
@@ -34,6 +32,8 @@ export default defineConfig({
         'src/input/**': { lines: 80, branches: 80, functions: 80, statements: 80 },
         'src/ui/**': { lines: 65, branches: 60, functions: 65, statements: 65 },
         'src/entities/**': { lines: 60, branches: 60, functions: 60, statements: 60 },
+        'src/scenes/**': { lines: 20, branches: 20 },
+        'src/features/floors/**': { lines: 17, branches: 12 },
       },
     },
   },
