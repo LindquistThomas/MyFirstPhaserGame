@@ -10,7 +10,7 @@ Only these tracks are loaded before the menu renders:
 
 | Asset key | File | Used by |
 | --- | --- | --- |
-| `music_menu` | `8bit-chiptune/bgm_menu.mp3` | `MenuScene` (via `SCENE_MUSIC`) |
+| `music_menu` | `8bit-chiptune/bgm_menu.ogg` | `MenuScene` (via `SCENE_MUSIC`) |
 
 ## Lazy-loaded tracks
 
@@ -56,6 +56,7 @@ MP3 background tracks are re-encoded using **FFmpeg / libmp3lame**; the Vorbis O
 
 | Group | Bitrate | Channels | Sample rate | Re-encode command |
 | --- | --- | --- | --- | --- |
+| Menu track (`8bit-chiptune/bgm_menu.ogg`) | **48 kbps VBR** | mono | 48 000 Hz | `ffmpeg -i bgm_menu.mp3 -c:a libopus -b:a 48k -vbr on -ar 48000 bgm_menu.ogg` |
 | 8-bit chiptune (`8bit-chiptune/*.mp3`) | **64 kbps CBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 64k -ar 44100 -ac 1 out.mp3` |
 | Elevator jazz (`elevator-jazz/*.mp3`) | **96 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 96k -ar 44100 -ac 2 out.mp3` |
 | Boss battle (`boss/*.mp3`) | **80 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 80k -ar 44100 -ac 2 out.mp3` |

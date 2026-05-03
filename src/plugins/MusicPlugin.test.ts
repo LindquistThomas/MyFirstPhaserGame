@@ -146,7 +146,7 @@ describe('MusicPlugin', () => {
       plugin.playOrLoad('music_menu');
       expect(fakeScene.load.audio).toHaveBeenCalledWith(
         'music_menu',
-        expect.stringContaining('bgm_menu.mp3'),
+        expect.stringContaining('bgm_menu.ogg'),
       );
     });
 

@@ -51,7 +51,7 @@ export interface MusicAsset {
  * split — `BootScene` now filters by `eager === true`.
  */
 export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
-  { key: 'music_menu',          path: 'music/8bit-chiptune/bgm_menu.mp3',                   eager: true },
+  { key: 'music_menu',          path: 'music/8bit-chiptune/bgm_menu.ogg',                   eager: true },
   { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.mp3' },
   { key: 'music_elevator_ride', path: 'music/8bit-chiptune/bgm_action_3.mp3' },
   { key: 'music_floor1',        path: 'music/8bit-chiptune/bgm_action_1.mp3' },
