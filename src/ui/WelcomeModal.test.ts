@@ -251,16 +251,23 @@ describe('WelcomeModal', () => {
   it('source: help — renders "How to Play" title (not "Welcome, Architect!")', () => {
     const scene = makeScene();
     new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'help');
-    const textArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
-    expect(textArgs.some((t) => t === 'How to Play')).toBe(true);
-    expect(textArgs.some((t) => t === 'Welcome, Architect!')).toBe(false);
+    // Filter to the title call specifically: the third arg is the text string
+    // and the fourth arg contains fontStyle: 'bold' with fontSize: '30px'.
+    const titleCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => typeof c[2] === 'string' && c[3]?.fontStyle === 'bold' && c[3]?.fontSize === '30px',
+    );
+    expect(titleCalls.length).toBe(1);
+    expect(titleCalls[0][2]).toBe('How to Play');
   });
 
   it('source: first-run — renders "Welcome, Architect!" title', () => {
     const scene = makeScene();
     new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'first-run');
-    const textArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
-    expect(textArgs.some((t) => t === 'Welcome, Architect!')).toBe(true);
+    const titleCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => typeof c[2] === 'string' && c[3]?.fontStyle === 'bold' && c[3]?.fontSize === '30px',
+    );
+    expect(titleCalls.length).toBe(1);
+    expect(titleCalls[0][2]).toBe('Welcome, Architect!');
   });
 
   it('source: help — does NOT call onComplete when modal is closed', () => {

@@ -440,7 +440,8 @@ export class SettingsScene extends Phaser.Scene {
     this.helpModalOpen = true;
     announce('Help opened');
     new WelcomeModal(this, () => { /* no-op: source:'help' skips onComplete */ }, 'help');
-    // Reset the guard once the modal's close tween finishes (~200 ms).
+    // Reset the guard once the modal's close tween finishes (~350 ms total:
+    // 150 ms fade-out tween + some buffer for async dispatch ordering).
     this.time.delayedCall(350, () => { this.helpModalOpen = false; });
   }
 
