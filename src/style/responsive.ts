@@ -71,8 +71,24 @@ export interface LayoutTokens {
   dialogPanelW: number;
 }
 
-/** Canonical layout tokens per size class. */
-export function getLayoutTokens(sc: SizeClass): LayoutTokens {
+/** Canonical layout tokens per size class, optionally scaled by a text-scale multiplier. */
+export function getLayoutTokens(sc: SizeClass, textScale = 1): LayoutTokens {
+  const base = getBaseLayoutTokens(sc);
+  if (textScale === 1) return base;
+  const scalePx = (s: string): string => `${Math.round(parseInt(s, 10) * textScale)}px`;
+  return {
+    ...base,
+    hudFontAU:        scalePx(base.hudFontAU),
+    hudFontFloor:     scalePx(base.hudFontFloor),
+    hudFontTitle:     scalePx(base.hudFontTitle),
+    hudFontFloorLabel: scalePx(base.hudFontFloorLabel),
+    dialogFontBody:   scalePx(base.dialogFontBody),
+    dialogFontTitle:  scalePx(base.dialogFontTitle),
+  };
+}
+
+/** Raw (unscaled) layout tokens per size class. */
+function getBaseLayoutTokens(sc: SizeClass): LayoutTokens {
   switch (sc) {
     case 'compact':
       return {

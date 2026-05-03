@@ -20,6 +20,13 @@ import type { ColorBlindMode } from '../style/theme';
 export type MusicStyle = '8bit-chiptune' | 'retro-synth' | 'elevator-jazz';
 export type { ColorBlindMode };
 
+/**
+ * Text-scale multiplier applied to all font-size tokens in `getLayoutTokens()`.
+ * WCAG 2.1 SC 1.4.4 requires support up to 200%; the 1.5 step covers that
+ * range within the Phaser canvas coordinate space without clipping dialogs.
+ */
+export type TextScale = 1 | 1.15 | 1.3 | 1.5;
+
 /** Controls when the on-screen virtual gamepad is displayed. */
 export type OnScreenControlsSetting = 'auto' | 'always' | 'never';
 
@@ -63,10 +70,12 @@ export interface SettingsData {
    */
   hideTutorials: boolean;
   /**
-   * When true, the virtual D-pad buttons use a higher-contrast (more opaque)
-   * background. Useful in bright outdoor / sunlight conditions.
+   * When true, the full game UI (dialogs, HUD, floor text) switches to a
+   * WCAG-AA-compliant high-contrast palette. Also applies to the virtual
+   * D-pad via the `data-high-contrast` attribute on `<html>`.
+   * Replaces the legacy `highContrastControls` field (migrated on load).
    */
-  highContrastControls: boolean;
+  highContrast: boolean;
   /**
    * When true, a 10 ms vibration pulse is triggered on each virtual-gamepad
    * button press (where `navigator.vibrate` is available). Defaults to true.
@@ -80,6 +89,11 @@ export interface SettingsData {
    * Defaults to `'off'` (standard palette).
    */
   colorBlindMode: ColorBlindMode;
+  /**
+   * User-chosen text-scale multiplier applied to all font-size tokens.
+   * Defaults to `1` (100%). Supports up to 1.5 (150%) per WCAG 2.1 SC 1.4.4.
+   */
+  textScale: TextScale;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -87,6 +101,7 @@ const LEGACY_MUTE_KEY = 'architect_audio_muted_v1';
 
 const VALID_MUSIC_STYLES: ReadonlySet<string> = new Set(['8bit-chiptune', 'retro-synth', 'elevator-jazz']);
 const VALID_COLOR_BLIND_MODES: ReadonlySet<string> = new Set(['off', 'deuteranopia', 'protanopia', 'tritanopia']);
+const VALID_TEXT_SCALES: ReadonlySet<number> = new Set([1, 1.15, 1.3, 1.5]);
 
 function defaultReducedMotion(): boolean {
   try {
@@ -107,9 +122,10 @@ export function defaultSettings(): SettingsData {
     controlBindings: {},
     onScreenControls: 'auto',
     hideTutorials: false,
-    highContrastControls: false,
+    highContrast: false,
     hapticsEnabled: true,
     colorBlindMode: 'off',
+    textScale: 1,
   };
 }
 
@@ -158,13 +174,18 @@ function parseSettings(raw: unknown): SettingsData {
       ? (r['onScreenControls'] as OnScreenControlsSetting)
       : defaults.onScreenControls,
     hideTutorials: typeof r['hideTutorials'] === 'boolean' ? r['hideTutorials'] : defaults.hideTutorials,
-    highContrastControls: typeof r['highContrastControls'] === 'boolean'
-      ? r['highContrastControls']
-      : defaults.highContrastControls,
+    // Migration: legacy `highContrastControls` field is mapped to `highContrast`.
+    // If `highContrast` is explicitly stored, it takes precedence.
+    highContrast: typeof r['highContrast'] === 'boolean'
+      ? r['highContrast']
+      : (typeof r['highContrastControls'] === 'boolean' ? r['highContrastControls'] : defaults.highContrast),
     hapticsEnabled: typeof r['hapticsEnabled'] === 'boolean' ? r['hapticsEnabled'] : defaults.hapticsEnabled,
     colorBlindMode: VALID_COLOR_BLIND_MODES.has(r['colorBlindMode'] as string)
       ? (r['colorBlindMode'] as ColorBlindMode)
       : defaults.colorBlindMode,
+    textScale: VALID_TEXT_SCALES.has(r['textScale'] as number)
+      ? (r['textScale'] as TextScale)
+      : defaults.textScale,
   };
 }
 
@@ -257,8 +278,12 @@ export const settingsStore = {
     this.updateNonAudio((prev) => ({ ...prev, reducedMotion: reduced }));
   },
 
-  setHighContrastControls(enabled: boolean): void {
-    this.updateNonAudio((prev) => ({ ...prev, highContrastControls: enabled }));
+  setHighContrast(enabled: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, highContrast: enabled }));
+  },
+
+  setTextScale(scale: TextScale): void {
+    this.updateNonAudio((prev) => ({ ...prev, textScale: scale }));
   },
 
   /** Persist a full set of key-binding overrides. Merges with nothing — replaces entirely. */

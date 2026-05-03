@@ -86,4 +86,36 @@ describe('getLayoutTokens', () => {
     expect(wide.dialogFontBody).toBe('15px');
     expect(wide.dialogPanelW).toBe(620);
   });
+
+  it('textScale=1 returns identical tokens to no-scale call', () => {
+    for (const sc of sizeClasses) {
+      expect(getLayoutTokens(sc, 1)).toEqual(getLayoutTokens(sc));
+    }
+  });
+
+  it('textScale multiplies all font-size tokens', () => {
+    const base = getLayoutTokens('wide');
+    const scaled = getLayoutTokens('wide', 1.5);
+    const px = (s: string): number => parseInt(s, 10);
+    expect(px(scaled.hudFontAU)).toBe(Math.round(px(base.hudFontAU) * 1.5));
+    expect(px(scaled.hudFontFloor)).toBe(Math.round(px(base.hudFontFloor) * 1.5));
+    expect(px(scaled.hudFontTitle)).toBe(Math.round(px(base.hudFontTitle) * 1.5));
+    expect(px(scaled.hudFontFloorLabel)).toBe(Math.round(px(base.hudFontFloorLabel) * 1.5));
+    expect(px(scaled.dialogFontBody)).toBe(Math.round(px(base.dialogFontBody) * 1.5));
+    expect(px(scaled.dialogFontTitle)).toBe(Math.round(px(base.dialogFontTitle) * 1.5));
+  });
+
+  it('textScale does not affect non-font numeric tokens', () => {
+    const base = getLayoutTokens('wide');
+    const scaled = getLayoutTokens('wide', 1.5);
+    expect(scaled.dialogTapTarget).toBe(base.dialogTapTarget);
+    expect(scaled.dialogPanelW).toBe(base.dialogPanelW);
+  });
+
+  it('textScale applies correctly to compact size class', () => {
+    const base = getLayoutTokens('compact');
+    const scaled = getLayoutTokens('compact', 1.15);
+    const px = (s: string): number => parseInt(s, 10);
+    expect(px(scaled.dialogFontBody)).toBe(Math.round(px(base.dialogFontBody) * 1.15));
+  });
 });

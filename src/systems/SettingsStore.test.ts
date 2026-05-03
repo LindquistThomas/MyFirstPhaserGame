@@ -7,6 +7,7 @@ import {
   SETTINGS_STORAGE_KEY,
   type MusicStyle,
   type ColorBlindMode,
+  type TextScale,
 } from './SettingsStore';
 import type { KVStorage } from './SaveManager';
 
@@ -74,9 +75,10 @@ describe('SettingsStore', () => {
         controlBindings: {},
         onScreenControls: 'always',
         hideTutorials: true,
-        highContrastControls: true,
+        highContrast: true,
         hapticsEnabled: false,
         colorBlindMode: 'deuteranopia',
+        textScale: 1.3,
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -89,9 +91,10 @@ describe('SettingsStore', () => {
       expect(s.reducedMotion).toBe(true);
       expect(s.onScreenControls).toBe('always');
       expect(s.hideTutorials).toBe(true);
-      expect(s.highContrastControls).toBe(true);
+      expect(s.highContrast).toBe(true);
       expect(s.hapticsEnabled).toBe(false);
       expect(s.colorBlindMode).toBe('deuteranopia');
+      expect(s.textScale).toBe(1.3);
     });
 
     it('clamps masterVolume to 0-100 on parse', () => {
@@ -456,6 +459,103 @@ describe('SettingsStore', () => {
       eventBus.on('audio:volume-changed', audioListener);
       eventBus.on('settings:changed', settingsListener);
       settingsStore.setColorBlindMode('protanopia');
+      expect(audioListener).not.toHaveBeenCalled();
+      expect(settingsListener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('highContrast', () => {
+    it('defaults to false', () => {
+      expect(settingsStore.read().highContrast).toBe(false);
+    });
+
+    it('setHighContrast(true) persists the flag', () => {
+      settingsStore.setHighContrast(true);
+      expect(settingsStore.read().highContrast).toBe(true);
+    });
+
+    it('setHighContrast(false) clears the flag', () => {
+      settingsStore.setHighContrast(true);
+      settingsStore.setHighContrast(false);
+      expect(settingsStore.read().highContrast).toBe(false);
+    });
+
+    it('round-trips through storage', () => {
+      settingsStore.setHighContrast(true);
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().highContrast).toBe(true);
+    });
+
+    it('migrates legacy highContrastControls=true to highContrast=true', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ highContrastControls: true }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().highContrast).toBe(true);
+    });
+
+    it('migrates legacy highContrastControls=false to highContrast=false', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ highContrastControls: false }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().highContrast).toBe(false);
+    });
+
+    it('explicit highContrast takes precedence over legacy highContrastControls', () => {
+      localStorage.setItem(
+        SETTINGS_STORAGE_KEY,
+        JSON.stringify({ highContrast: true, highContrastControls: false }),
+      );
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().highContrast).toBe(true);
+    });
+
+    it('emits settings:changed (not audio:volume-changed)', () => {
+      const audioListener = vi.fn();
+      const settingsListener = vi.fn();
+      eventBus.on('audio:volume-changed', audioListener);
+      eventBus.on('settings:changed', settingsListener);
+      settingsStore.setHighContrast(true);
+      expect(audioListener).not.toHaveBeenCalled();
+      expect(settingsListener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('textScale', () => {
+    const scales: TextScale[] = [1, 1.15, 1.3, 1.5];
+
+    it('defaults to 1', () => {
+      expect(settingsStore.read().textScale).toBe(1);
+    });
+
+    for (const scale of scales) {
+      it(`setTextScale(${scale}) persists the value`, () => {
+        settingsStore.setTextScale(scale);
+        expect(settingsStore.read().textScale).toBe(scale);
+      });
+    }
+
+    it('round-trips textScale through storage', () => {
+      settingsStore.setTextScale(1.5);
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().textScale).toBe(1.5);
+    });
+
+    it('falls back to 1 for invalid stored value', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ textScale: 2.0 }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().textScale).toBe(1);
+    });
+
+    it('falls back to 1 when field is missing', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ masterVolume: 50 }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().textScale).toBe(1);
+    });
+
+    it('emits settings:changed (not audio:volume-changed)', () => {
+      const audioListener = vi.fn();
+      const settingsListener = vi.fn();
+      eventBus.on('audio:volume-changed', audioListener);
+      eventBus.on('settings:changed', settingsListener);
+      settingsStore.setTextScale(1.3);
       expect(audioListener).not.toHaveBeenCalled();
       expect(settingsListener).toHaveBeenCalledTimes(1);
     });

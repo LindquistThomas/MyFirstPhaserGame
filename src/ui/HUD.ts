@@ -115,7 +115,7 @@ export class HUD {
 
   /**
    * Apply colour and alpha to the HUD title text based on the current
-   * `highContrastControls` setting.
+   * `highContrast` setting.
    *
    * Default (no high-contrast): muted colour at 0.6 alpha — decorative.
    * High-contrast: primary text colour at full alpha — readable for
@@ -124,7 +124,7 @@ export class HUD {
    * Called once in `create()` and again whenever `settings:changed` fires.
    */
   private applyTitleTextContrast(): void {
-    const highContrast = settingsStore.read().highContrastControls;
+    const highContrast = settingsStore.read().highContrast;
     this.titleText
       .setColor(highContrast ? theme.color.css.textPrimary : theme.color.css.textQuizMuted)
       .setAlpha(highContrast ? 1 : 0.6);
