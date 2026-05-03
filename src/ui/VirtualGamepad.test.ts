@@ -33,7 +33,7 @@ vi.mock('../systems/EventBus', () => ({
 }));
 vi.mock('../systems/SettingsStore', () => ({
   settingsStore: {
-    read: vi.fn(() => ({ onScreenControls: 'auto', hapticsEnabled: true, highContrastControls: false })),
+    read: vi.fn(() => ({ onScreenControls: 'auto', hapticsEnabled: true, highContrast: false })),
     setOnScreenControls: vi.fn(),
   },
 }));
@@ -61,7 +61,7 @@ function mockSetting(setting: 'auto' | 'always' | 'never', hapticsEnabled = true
   vi.mocked(SettingsStoreModule.settingsStore.read).mockReturnValue({
     onScreenControls: setting,
     hapticsEnabled,
-    highContrastControls: false,
+    highContrast: false,
   } as ReturnType<typeof SettingsStoreModule.settingsStore.read>);
 }
 

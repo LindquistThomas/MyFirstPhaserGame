@@ -25,7 +25,7 @@ import {
  *  - The touch-hint overlay when shown.
  *
  * Canvas-rendered colour contrast is verified indirectly: the
- * `highContrastControls` toggle is tested to confirm it applies the
+ * `highContrast` toggle is tested to confirm it applies the
  * `data-high-contrast="true"` attribute on `<html>`, which is the CSS hook
  * used by all HTML-layer UI elements.
  *
