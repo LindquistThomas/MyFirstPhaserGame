@@ -243,4 +243,50 @@ describe('WelcomeModal', () => {
       .filter(([action]) => action === 'Confirm').length;
     expect(offConfirmCalls).toBe(1);
   });
+
+  // -------------------------------------------------------------------------
+  // source: 'help' branch
+  // -------------------------------------------------------------------------
+
+  it('source: help — renders "How to Play" title (not "Welcome, Architect!")', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'help');
+    const textArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(textArgs.some((t) => t === 'How to Play')).toBe(true);
+    expect(textArgs.some((t) => t === 'Welcome, Architect!')).toBe(false);
+  });
+
+  it('source: first-run — renders "Welcome, Architect!" title', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'first-run');
+    const textArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(textArgs.some((t) => t === 'Welcome, Architect!')).toBe(true);
+  });
+
+  it('source: help — does NOT call onComplete when modal is closed', () => {
+    // When opened from the Help menu, the first-run seen flag must not be
+    // persisted — onComplete (which would call completeOnboarding() in
+    // ElevatorScene) is intentionally skipped.
+    const scene = makeScene();
+    const onComplete = vi.fn();
+    const modal = new WelcomeModal(scene as unknown as Phaser.Scene, onComplete, 'help');
+    modal.close();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('source: help — Confirm key press also does not call onComplete', () => {
+    const scene = makeScene();
+    const onComplete = vi.fn();
+    new WelcomeModal(scene as unknown as Phaser.Scene, onComplete, 'help');
+    scene._fire('Confirm');
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('source: first-run (default) — calls onComplete when closed', () => {
+    const scene = makeScene();
+    const onComplete = vi.fn();
+    const modal = new WelcomeModal(scene as unknown as Phaser.Scene, onComplete);
+    modal.close();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
 });

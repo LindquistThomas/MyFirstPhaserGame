@@ -121,6 +121,24 @@ vi.mock('../../systems/EventBus', () => ({
   eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn() },
 }));
 
+vi.mock('../../ui/WelcomeModal', () => ({
+  WelcomeModal: vi.fn().mockImplementation((_scene: unknown, onComplete: () => void) => ({
+    close: vi.fn(() => { onComplete?.(); }),
+  })),
+}));
+
+vi.mock('../../ui/TouchHintOverlay', () => ({
+  showTouchHintForced: vi.fn(),
+}));
+
+vi.mock('../../systems/TouchHintStore', () => ({
+  clearSeen: vi.fn(),
+}));
+
+vi.mock('../../ui/ariaLive', () => ({
+  announce: vi.fn(),
+}));
+
 import { SettingsScene } from './SettingsScene';
 import { eventBus } from '../../systems/EventBus';
 
