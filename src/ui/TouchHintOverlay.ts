@@ -154,3 +154,18 @@ export function showTouchHintIfNeeded(padEl: HTMLElement): void {
 export function showTouchHintForced(padEl: HTMLElement): void {
   mountHintOverlay(padEl, false);
 }
+
+/**
+ * Show the hint overlay unconditionally (bypassing `isTouchPrimary()` and
+ * `hasSeen()` checks), but **mark seen on dismiss** just like the first-run
+ * flow does.
+ *
+ * Use this when the player explicitly asks to replay the hint from the Help /
+ * Settings screen.  Marking seen on dismiss means the hint won't auto-show
+ * again on the next session (normal first-run behaviour is restored).
+ *
+ * @param padEl  The mounted `#virtual-pad` element.
+ */
+export function showTouchHintForcedWithPersist(padEl: HTMLElement): void {
+  mountHintOverlay(padEl, true);
+}

@@ -6,8 +6,13 @@ import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode, TextScale } f
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
+import { WelcomeModal } from '../../ui/WelcomeModal';
+import { showTouchHintForcedWithPersist } from '../../ui/TouchHintOverlay';
+import * as TouchHintStore from '../../systems/TouchHintStore';
+import { announce } from '../../ui/ariaLive';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+
 import { clampSlider } from '../../systems/sliderUtils';
 
 /**
@@ -39,6 +44,8 @@ export class SettingsScene extends Phaser.Scene {
   /** Key of the scene that opened settings (returned to on back/cancel). */
   private callerScene = 'MenuScene';
   private gameState!: GameStateManager;
+  /** True while the How-to-Play WelcomeModal is open; blocks settings nav. */
+  private helpModalOpen = false;
 
   constructor() {
     super({ key: 'SettingsScene' });
@@ -223,6 +230,16 @@ export class SettingsScene extends Phaser.Scene {
         label: 'HIDE TUTORIALS',
         get: () => settingsStore.read().hideTutorials,
         set: (v) => settingsStore.setHideTutorials(v),
+      },
+      {
+        kind: 'action',
+        label: '[ HOW TO PLAY ]',
+        action: () => this.openHowToPlay(),
+      },
+      {
+        kind: 'action',
+        label: '[ SHOW TOUCH HINT ]',
+        action: () => this.resetTouchHint(),
       },
       {
         kind: 'action',
@@ -414,6 +431,7 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private activate(): void {
+    if (this.helpModalOpen) return;
     const item = this.items[this.selectedIndex];
     if (!item) return;
 
@@ -438,14 +456,40 @@ export class SettingsScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Open the Welcome / How-to-Play modal on demand without touching the
+   * first-run `onboardingComplete` flag. Blocks settings navigation while
+   * the modal is open so stacked Confirm/Cancel key presses don't interfere.
+   */
+  private openHowToPlay(): void {
+    this.helpModalOpen = true;
+    announce('Help opened');
+    // Pass a real onComplete that clears the guard when the modal closes.
+    // WelcomeModal.onAfterClose always calls onComplete, so this fires on
+    // both button-click and Esc dismissal.
+    new WelcomeModal(this, () => { this.helpModalOpen = false; }, 'help');
+  }
+
+  /**
+   * Clear the touch-hint seen flag so the virtual-gamepad hint will appear
+   * again on the next pointer-down (or immediately if the pad is mounted).
+   */
+  private resetTouchHint(): void {
+    TouchHintStore.clearSeen();
+    const padEl = document.getElementById('virtual-pad');
+    // Use the "persist" variant so when the user dismisses the re-shown hint,
+    // markSeen() fires and the hint won't auto-appear again next session.
+    if (padEl) showTouchHintForcedWithPersist(padEl);
+  }
+
   private replayTutorial(): void {
     this.gameState?.resetOnboarding();
     this.gameState?.resetVisitedFloors();
     this.goBack();
   }
 
-
   private goBack(): void {
+    if (this.helpModalOpen) return;
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {
       if (this.callerScene === 'PauseScene') {

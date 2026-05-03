@@ -15,20 +15,28 @@ const TOUCH_CONTROLS = [
 ] as const;
 
 /**
- * First-time welcome card shown when a brand-new save reaches the elevator
- * lobby for the first time.
+ * Welcome / How-to-Play card.
  *
- * Explains AU, the goal, and how to play. Skippable via Esc (Cancel) or the
- * "Continue" button (Confirm). Closing it marks `onboardingComplete` via the
- * supplied callback so it never appears again for this save.
+ * - `source: 'first-run'` (default): shown when a brand-new save reaches the
+ *   elevator lobby for the first time. Closing it calls `onComplete` so the
+ *   caller can mark `onboardingComplete`.
+ * - `source: 'help'`: opened on demand from Settings. Shows the same content
+ *   with the title "How to Play". Does **not** call `onComplete` on close so
+ *   the first-run seen flag is never altered.
  */
 export class WelcomeModal extends ModalBase {
   private readonly onComplete: () => void;
+  private readonly source: 'first-run' | 'help';
   private confirmHandler: (() => void) | null = null;
 
-  constructor(scene: Phaser.Scene, onComplete: () => void) {
+  constructor(
+    scene: Phaser.Scene,
+    onComplete: () => void = () => { /* no-op */ },
+    source: 'first-run' | 'help' = 'first-run',
+  ) {
     super(scene);
     this.onComplete = onComplete;
+    this.source = source;
     this.buildPanel();
     this.fadeIn();
   }
@@ -65,10 +73,10 @@ export class WelcomeModal extends ModalBase {
     accentBar.fillRect(panelX + 12, panelY, panelW - 24, 4);
     this.container.add(accentBar);
 
-    // Title
+    // Title — differs between first-run onboarding and on-demand help.
     const title = this.scene.add.text(
       GAME_WIDTH / 2, panelY + PADDING,
-      'Welcome, Architect!',
+      this.source === 'help' ? 'How to Play' : 'Welcome, Architect!',
       { fontFamily: 'monospace', fontSize: '30px', color: '#ffffff', fontStyle: 'bold' },
     ).setOrigin(0.5, 0).setScrollFactor(0);
     this.container.add(title);
@@ -132,10 +140,10 @@ export class WelcomeModal extends ModalBase {
     this.confirmHandler = () => this.close();
     this.scene.inputs.on('Confirm', this.confirmHandler);
 
-    // Skip label
+    // Skip / close label
     const skip = this.scene.add.text(
       GAME_WIDTH / 2, btnY + 38,
-      'Esc to skip',
+      this.source === 'help' ? 'Esc to close' : 'Esc to skip',
       { fontFamily: 'monospace', fontSize: '12px', color: theme.color.css.textHint },
     ).setOrigin(0.5).setScrollFactor(0);
     this.container.add(skip);

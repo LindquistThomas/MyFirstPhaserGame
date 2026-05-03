@@ -243,4 +243,73 @@ describe('WelcomeModal', () => {
       .filter(([action]) => action === 'Confirm').length;
     expect(offConfirmCalls).toBe(1);
   });
+
+  // -------------------------------------------------------------------------
+  // source: 'help' branch
+  // -------------------------------------------------------------------------
+
+  it('source: help — renders "How to Play" title (not "Welcome, Architect!")', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'help');
+    // Filter to the title call specifically: the third arg is the text string
+    // and the fourth arg contains fontStyle: 'bold' with fontSize: '30px'.
+    const titleCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => typeof c[2] === 'string' && c[3]?.fontStyle === 'bold' && c[3]?.fontSize === '30px',
+    );
+    expect(titleCalls.length).toBe(1);
+    expect(titleCalls[0][2]).toBe('How to Play');
+  });
+
+  it('source: first-run — renders "Welcome, Architect!" title', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'first-run');
+    const titleCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c) => typeof c[2] === 'string' && c[3]?.fontStyle === 'bold' && c[3]?.fontSize === '30px',
+    );
+    expect(titleCalls.length).toBe(1);
+    expect(titleCalls[0][2]).toBe('Welcome, Architect!');
+  });
+
+  it('source: help — calls onComplete when modal is closed (caller manages side effects)', () => {
+    // With the new design, onComplete is always called on close; the caller
+    // (SettingsScene.openHowToPlay) passes a guard-clearing callback rather
+    // than the completeOnboarding() handler used for first-run.
+    const scene = makeScene();
+    const onComplete = vi.fn();
+    const modal = new WelcomeModal(scene as unknown as Phaser.Scene, onComplete, 'help');
+    modal.close();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('source: help — Confirm key press also calls onComplete', () => {
+    const scene = makeScene();
+    const onComplete = vi.fn();
+    new WelcomeModal(scene as unknown as Phaser.Scene, onComplete, 'help');
+    scene._fire('Confirm');
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('source: help — renders "Esc to close" footer (not "Esc to skip")', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'help');
+    const allTextArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(allTextArgs.some((t) => t === 'Esc to close')).toBe(true);
+    expect(allTextArgs.some((t) => t === 'Esc to skip')).toBe(false);
+  });
+
+  it('source: first-run — renders "Esc to skip" footer', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn(), 'first-run');
+    const allTextArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    expect(allTextArgs.some((t) => t === 'Esc to skip')).toBe(true);
+    expect(allTextArgs.some((t) => t === 'Esc to close')).toBe(false);
+  });
+
+  it('source: first-run (default) — calls onComplete when closed', () => {
+    const scene = makeScene();
+    const onComplete = vi.fn();
+    const modal = new WelcomeModal(scene as unknown as Phaser.Scene, onComplete);
+    modal.close();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
 });
