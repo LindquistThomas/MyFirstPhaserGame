@@ -112,6 +112,7 @@ type FakeTimerEvent = { destroyed: boolean; destroy: ReturnType<typeof vi.fn> };
 
 function makeScene() {
   const timerCallbacks: Array<{ callback: () => void; event: FakeTimerEvent }> = [];
+  const hitAreaHandlers: Record<string, () => void> = {};
 
   const scene = {
     textures: {
@@ -124,11 +125,17 @@ function makeScene() {
     add: {
       container: vi.fn(() => makeContainer()),
       image: vi.fn(() => makeImage()),
-      rectangle: vi.fn(() => ({
-        setInteractive: vi.fn().mockReturnThis(),
-        setAlpha: vi.fn().mockReturnThis(),
-        on: vi.fn().mockReturnThis(),
-      })),
+      rectangle: vi.fn(() => {
+        const rect = {
+          setInteractive: vi.fn().mockReturnThis(),
+          setAlpha: vi.fn().mockReturnThis(),
+          on: vi.fn((event: string, handler: () => void) => {
+            hitAreaHandlers[event] = handler;
+            return rect;
+          }),
+        };
+        return rect;
+      }),
       text: vi.fn(() => makeText()),
       graphics: vi.fn(() => makeGraphics()),
     },
@@ -161,6 +168,10 @@ function makeScene() {
     _text(i: number) {
       return (scene.add.text as ReturnType<typeof vi.fn>).mock.results[i]?.value as
         ReturnType<typeof makeText>;
+    },
+    /** Simulate a pointer event on the hit area. */
+    _triggerHitArea(event: string): void {
+      hitAreaHandlers[event]?.();
     },
   };
 
@@ -294,5 +305,37 @@ describe('InfoIcon cooldown chip', () => {
     icon.startCooldown(0);
 
     expect(scene.time.addEvent).not.toHaveBeenCalled();
+  });
+
+  it('(g) pointerover during cooldown does NOT change the grey tint', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(
+      scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-quiz',
+    );
+
+    icon.startCooldown(10_000);
+
+    const bg = scene._image(1);
+    const setTintCallCount = (bg.setTint as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    // Hovering while locked must not call setTint again
+    scene._triggerHitArea('pointerover');
+    expect(bg.setTint).toHaveBeenCalledTimes(setTintCallCount);
+  });
+
+  it('(g2) pointerout during cooldown does NOT clear the grey tint', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(
+      scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-quiz',
+    );
+
+    icon.startCooldown(10_000);
+
+    // pointerout while locked must not call clearTint
+    const bg = scene._image(1);
+    const clearTintCallsBefore = (bg.clearTint as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    scene._triggerHitArea('pointerout');
+    expect(bg.clearTint).toHaveBeenCalledTimes(clearTintCallsBefore);
   });
 });
