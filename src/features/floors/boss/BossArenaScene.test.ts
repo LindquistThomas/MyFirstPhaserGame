@@ -76,15 +76,13 @@ describe('BossArenaScene — static properties', () => {
   });
 });
 
-describe('BossArenaScene — PROMPTS structure (validated via constructor access)', () => {
+describe('BossArenaScene — constructor smoke test', () => {
   it('instantiates without throwing', () => {
     expect(() => new BossArenaScene()).not.toThrow();
   });
 
-  it('has Phaser scene key BossArenaScene', () => {
+  it('instance is defined after construction', () => {
     const scene = new BossArenaScene();
-    // The scene key is passed to super({ key: 'BossArenaScene' }).
-    // Since Phaser is mocked, we can verify the constructor ran without error.
     expect(scene).toBeDefined();
   });
 });
