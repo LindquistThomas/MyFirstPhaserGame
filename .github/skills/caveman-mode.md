@@ -48,13 +48,14 @@ next: <action | "done">
 **User:** "Explain like a caveman: how does EventBus shutdown work?"
 
 ❌ Verbose:
-> The `EventBus` is a singleton, so when a Phaser scene is stopped and later restarted, any handlers it subscribed to are still attached. This means you need to remember to unsubscribe them during the scene's `shutdown` event, otherwise they will accumulate forever and fire for every future scene instance.
+> The EventBus is a singleton, so handlers attached during a scene's lifetime persist across scene restarts. Use `ScopedEventBus` (the `scopedEvents` scene plugin) or `createSceneLifecycle(this)` so subscriptions auto-clean on shutdown.
 
 ✅ Caveman:
-> EventBus = singleton. Scene stop ≠ handler cleanup.
-> - subscribe in `create()` → unsubscribe in `this.events.once('shutdown', …)`.
-> - skip it → ghost handlers fire on every later scene instance.
-> - ref: `src/systems/EventBus.ts`, convention in `.github/copilot-instructions.md`.
+> EventBus = singleton. Scene stop ≠ handler cleanup. Auto-clean via plugin/helper.
+> - prefer `this.scopedEvents.on('zone:enter', fn)` — `ScopedEventBus` plugin, cleared on shutdown.
+> - or `const lc = createSceneLifecycle(this); lc.bindEventBus('zone:enter', fn)` — one token, reuse for all input + DOM + EventBus teardown.
+> - raw `eventBus.on`/`once` in `*Scene.ts` = ESLint error (`eslint.config.js` no-restricted-syntax).
+> - ref: `src/plugins/ScopedEventBus.ts`, `src/systems/sceneLifecycle.ts`, `docs/eventbus-audit.md`.
 
 ---
 
