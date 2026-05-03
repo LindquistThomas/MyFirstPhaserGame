@@ -37,6 +37,7 @@ export class NameScene extends Phaser.Scene {
     // (auto-cleaned on shutdown):
     //   this.scopedEvents.on('zone:enter', handler);
     //   // or, if also covering input / DOM listeners:
+    //   // import { createSceneLifecycle } from '../../systems/sceneLifecycle'; (adjust relative path)
     //   const lc = createSceneLifecycle(this);
     //   lc.bindEventBus('zone:enter', handler);
   }
