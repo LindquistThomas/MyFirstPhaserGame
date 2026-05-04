@@ -141,7 +141,7 @@ export interface GameEvents {
   'progression:floor_unlocked': [floorId: FloorId];
 
   /**
-   * The player entered a floor scene. Emitted from `LevelScene.create()` on
+   * The player entered a floor scene. Emitted from `LevelScene.init()` on
    * every floor visit (including revisits). Used by analytics to track which
    * floors players explore and where they churn.
    */

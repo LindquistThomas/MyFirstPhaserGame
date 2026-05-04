@@ -127,11 +127,28 @@ export class HttpProvider implements AnalyticsProvider {
 
 const CLIENT_ID_KEY = 'architect_analytics_client_v1';
 
+/** Generate a random UUID using the Web Crypto API when available. */
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback: use crypto.getRandomValues if available, otherwise Date.now() only.
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6]! & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8]! & 0x3f) | 0x80; // variant bits
+    const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return `${Date.now().toString(36)}-${Date.now().toString(36)}-anon`;
+}
+
 function getOrCreateClientId(): string {
   try {
     const stored = globalThis.localStorage?.getItem(CLIENT_ID_KEY);
     if (stored) return stored;
-    const id = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const id = generateId();
     globalThis.localStorage?.setItem(CLIENT_ID_KEY, id);
     return id;
   } catch {
@@ -286,7 +303,7 @@ export function createAnalyticsService(): AnalyticsService | null {
   }
 
   const clientId = getOrCreateClientId();
-  const sessionId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const sessionId = generateId();
   const provider = new HttpProvider(endpoint, clientId);
   const service = new AnalyticsService(provider, sessionId);
   service.bind();
