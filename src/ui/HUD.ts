@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, type FloorId } from '../config/gameConfig';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
+import { PlaytimeTracker } from '../systems/PlaytimeTracker';
 import { LEVEL_DATA } from '../config/levelData';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 import { theme } from '../style/theme';
@@ -13,8 +14,17 @@ import { ProgressStripController } from './hud/ProgressStripController';
 import { CaffeineRingController } from './hud/CaffeineRingController';
 import { AchievementBadgeController } from './hud/AchievementBadgeController';
 import { settingsStore } from '../systems/SettingsStore';
+import { isReducedMotion } from '../systems/MotionPreference';
 
 const HUD_HEIGHT = 44;
+
+/** Format milliseconds as M:SS (e.g. 125 300 ms → "2:05"). */
+export function formatPlaytime(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 function persistenceMessage(reason: 'quota' | 'unavailable' | 'parse' | 'unknown'): string {
   switch (reason) {
@@ -28,8 +38,10 @@ function persistenceMessage(reason: 'quota' | 'unavailable' | 'parse' | 'unknown
 export class HUD {
   private readonly scene: Phaser.Scene;
   private readonly progression: ProgressionSystem;
+  private readonly playtime: PlaytimeTracker | null;
   private bg!: Phaser.GameObjects.Graphics;
   private titleText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
   private toast!: Toast;
   private muteCtrl!: MuteIconController;
   private coinCtrl!: CoinCounterController;
@@ -41,9 +53,10 @@ export class HUD {
   private sizeClass: SizeClass = 'wide';
   private tokens: LayoutTokens = getLayoutTokens('wide');
 
-  constructor(scene: Phaser.Scene, progression: ProgressionSystem) {
+  constructor(scene: Phaser.Scene, progression: ProgressionSystem, playtime?: PlaytimeTracker) {
     this.scene = scene;
     this.progression = progression;
+    this.playtime = playtime ?? null;
     const displayW = (scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
     this.sizeClass = getSizeClass(displayW);
     this.tokens = getLayoutTokens(this.sizeClass, settingsStore.read().textScale);
@@ -73,6 +86,15 @@ export class HUD {
     this.applyTitleTextContrast();
     this.titleText.setVisible(this.sizeClass !== 'compact');
     container.add(this.titleText as unknown as Phaser.GameObjects.GameObject);
+
+    // Floor timer — small M:SS counter in the top-left corner.
+    // Hidden on compact viewports and when reduced-motion is active.
+    this.timerText = this.scene.add.text(8, 14, '0:00', {
+      fontFamily: 'monospace', fontSize: '12px',
+      color: theme.color.css.textMuted,
+    }).setOrigin(0, 0.5);
+    this.timerText.setVisible(this._isTimerVisible());
+    container.add(this.timerText as unknown as Phaser.GameObjects.GameObject);
 
     const lifecycle = createSceneLifecycle(this.scene);
     lifecycle.bindEventBus('persistence:failed', (payload) => {
@@ -123,6 +145,7 @@ export class HUD {
     this.progressCtrl.relayout(this.tokens);
     this.titleText.setStyle({ fontSize: this.tokens.hudFontTitle });
     this.titleText.setVisible(this.sizeClass !== 'compact');
+    this.timerText.setVisible(this._isTimerVisible());
   }
 
   /**
@@ -188,5 +211,18 @@ export class HUD {
 
     this.progressCtrl.update(au, floor, floorChanged, auChanged, this.scene.time.now);
     this.caffeineCtrl.update(this.scene.time.now);
+
+    // Update floor timer.
+    if (this.playtime !== null) {
+      const floorMs = this.playtime.getFloorMs(floor);
+      this.timerText.setText(formatPlaytime(floorMs));
+    }
+  }
+
+  /** Whether the timer widget should be visible. Hidden on compact viewports and when the user prefers reduced motion (avoids a distracting animated counter). */
+  private _isTimerVisible(): boolean {
+    if (this.playtime === null) return false;
+    if (this.sizeClass === 'compact') return false;
+    return !isReducedMotion();
   }
 }

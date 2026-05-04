@@ -163,6 +163,14 @@ export class BossArenaScene extends Phaser.Scene {
     this.scopedEvents.on('boss:phase_changed', this.onPhaseChanged);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
 
+    // Start playtime tracking for the boss floor.
+    const tracker = this.gameState.playtime;
+    tracker.setFloor(FLOORS.BOSS);
+    tracker.resume();
+    // Phaser automatically removes these listeners on shutdown.
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => tracker.pause(), this);
+    this.events.on(Phaser.Scenes.Events.RESUME, () => tracker.resume(), this);
+
     if (isFirstVisit) {
       // Freeze the arena until the player dismisses the intro card.
       this.isTransitioning = true;
@@ -351,6 +359,9 @@ export class BossArenaScene extends Phaser.Scene {
     }
 
     this.mugCountText?.setText(`Mugs: ${this.heldMugs}`);
+
+    // Throttled playtime persist.
+    this.gameState.playtime.update();
   }
 
   private spawnInitialMugPickups(): void {
@@ -611,20 +622,45 @@ export class BossArenaScene extends Phaser.Scene {
     this.progression.addAU(FLOORS.BOSS, 20);
     this.gameState.checkBossAchievements(true, noDamage);
 
+    // Capture the run elapsed time BEFORE recordClear() clears runStartedAt,
+    // so we always display the time for THIS run (not just the best ever).
+    const tracker = this.gameState.playtime;
+    const thisRunMs = tracker.getRunElapsedMs(); // 0 when no run was active
+    const isNewBest = tracker.recordClear();
+    const bestMs = tracker.getBestClearMs();
+    tracker.flush();
+
     const overlay = this.add.graphics().setScrollFactor(0).setDepth(100);
     overlay.fillStyle(0x000000, 0.7);
     overlay.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, '✓  ARCHITECT APPROVED', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 80, '✓  ARCHITECT APPROVED', {
       fontFamily: 'monospace', fontSize: '32px', color: '#ffd700', fontStyle: 'bold',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, '+20 Architecture Utility', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 30, '+20 Architecture Utility', {
       fontFamily: 'monospace', fontSize: '18px', color: '#e0e0f0',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
+    // Clear time display — only shown when a run was active.
+    if (thisRunMs > 0) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10, `Run time: ${this._formatMs(thisRunMs)}`, {
+        fontFamily: 'monospace', fontSize: '15px', color: '#aaddff',
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+
+      if (isNewBest) {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, '⭐ NEW BEST!', {
+          fontFamily: 'monospace', fontSize: '17px', color: '#ffd700', fontStyle: 'bold',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+      } else if (bestMs !== undefined) {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, `Best: ${this._formatMs(bestMs)}`, {
+          fontFamily: 'monospace', fontSize: '13px', color: '#888',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+      }
+    }
+
     if (noDamage) {
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 52, '🏆  Untouchable', {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 62, '🏆  Untouchable', {
         fontFamily: 'monospace', fontSize: '16px', color: '#ffd700',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
     }
@@ -635,6 +671,14 @@ export class BossArenaScene extends Phaser.Scene {
         fromFloor: FLOORS.BOSS, spawnSide: 'left',
       } satisfies import('../../../scenes/NavigationContext').NavigationContext));
     });
+  }
+
+  /** Format milliseconds as M:SS for the victory screen. */
+  private _formatMs(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
   private onPhaseChanged = (phase: number): void => {
@@ -667,6 +711,9 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   private onShutdown(): void {
+    // Flush playtime before the scene is destroyed.
+    this.gameState.playtime.pause();
+    this.gameState.playtime.flush();
     // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.
     const promptHandler = this.promptPanel?.getData('keyHandler');
     if (promptHandler) this.input.keyboard?.off('keydown', promptHandler);

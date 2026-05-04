@@ -4,9 +4,12 @@ import { eventBus } from '../../systems/EventBus';
 import { theme } from '../../style/theme';
 import { createSceneLifecycle, type SceneLifecycle } from '../../systems/sceneLifecycle';
 import { pushContext, popContext } from '../../input';
+import { GameStateManager } from '../../systems/GameStateManager';
+import { formatPlaytime } from '../../ui/HUD';
+import { LEVEL_DATA } from '../../config/levelData';
 
 const PANEL_WIDTH = 360;
-const PANEL_HEIGHT = 360;
+const PANEL_HEIGHT = 460;
 
 /**
  * Full-screen pause overlay launched as a sibling scene alongside any
@@ -25,6 +28,7 @@ export class PauseScene extends Phaser.Scene {
   private menuItems: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
   /** Active input lifecycle — disposed when Settings overlay opens, recreated on return. */
   private lc!: SceneLifecycle;
+  private gameState!: GameStateManager;
 
   constructor() {
     super({ key: 'PauseScene' });
@@ -34,6 +38,7 @@ export class PauseScene extends Phaser.Scene {
     this.parentKey = data.parentKey;
     this.selectedIndex = 0;
     this.menuItems = [];
+    this.gameState = this.registry.get('gameState') as GameStateManager;
   }
 
   create(): void {
@@ -90,16 +95,19 @@ export class PauseScene extends Phaser.Scene {
     container.add(divider);
 
     // Resume button (index 0)
-    const resumeBtn = this.makeButton('Resume  [Esc / Enter]', 0, 10, () => this.resumeGame());
+    const resumeBtn = this.makeButton('Resume  [Esc / Enter]', 0, -PANEL_HEIGHT / 2 + 110, () => this.resumeGame());
     container.add(resumeBtn);
 
     // Settings button (index 1)
-    const settingsBtn = this.makeButton('Settings', 0, 80, () => this.openSettings());
+    const settingsBtn = this.makeButton('Settings', 0, -PANEL_HEIGHT / 2 + 180, () => this.openSettings());
     container.add(settingsBtn);
 
     // Quit to Menu button (index 2)
-    const quitBtn = this.makeButton('Quit to Menu', 0, 150, () => this.quitToMenu());
+    const quitBtn = this.makeButton('Quit to Menu', 0, -PANEL_HEIGHT / 2 + 250, () => this.quitToMenu());
     container.add(quitBtn);
+
+    // Playtime stats
+    this.buildPlaytimeStats(container);
 
     // Hint text
     const hint = this.add.text(0, PANEL_HEIGHT / 2 - 24, 'Progress is saved automatically', {
@@ -115,6 +123,45 @@ export class PauseScene extends Phaser.Scene {
 
     // Apply initial selection highlight.
     this.updateSelection();
+  }
+
+  private buildPlaytimeStats(container: Phaser.GameObjects.Container): void {
+    const tracker = this.gameState?.playtime;
+    if (!tracker) return;
+
+    const statsY = -PANEL_HEIGHT / 2 + 306;
+    const divider2 = this.add.graphics();
+    divider2.lineStyle(1, theme.color.ui.border, 0.3);
+    divider2.lineBetween(-PANEL_WIDTH / 2 + 24, statsY - 8, PANEL_WIDTH / 2 - 24, statsY - 8);
+    container.add(divider2);
+
+    const totalMs = tracker.getTotalMs();
+    const totalText = this.add.text(0, statsY + 4, `Total: ${formatPlaytime(totalMs)}`, {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color: theme.color.css.textMuted,
+    }).setOrigin(0.5, 0);
+    container.add(totalText);
+
+    // Per-floor breakdown (top 3 floors sorted by time descending).
+    const allFloors = tracker.getAllFloorMs();
+    const sorted = Object.entries(allFloors)
+      .map(([k, ms]) => ({ floorId: Number(k), ms: ms as number }))
+      .filter((f) => f.ms > 0)
+      .sort((a, b) => b.ms - a.ms)
+      .slice(0, 3);
+
+    let rowY = statsY + 26;
+    for (const { floorId, ms } of sorted) {
+      const floorName = LEVEL_DATA[floorId as keyof typeof LEVEL_DATA]?.name ?? `Floor ${floorId}`;
+      const row = this.add.text(0, rowY, `${floorName}: ${formatPlaytime(ms)}`, {
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        color: theme.color.css.textPale,
+      }).setOrigin(0.5, 0);
+      container.add(row);
+      rowY += 18;
+    }
   }
 
   private makeButton(
