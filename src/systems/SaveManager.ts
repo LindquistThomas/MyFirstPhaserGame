@@ -86,6 +86,7 @@ function getStorage(): KVStorage { return storage ?? (storage = getDefaultStorag
 
 export function setStorage(s: KVStorage): void { storage = s; unavailableEmitted = false; }
 export function setPlayerSlot(slot: string): void { playerSlot = slot; }
+export function getPlayerSlot(): string { return playerSlot; }
 
 function key(): string { return `architect_${playerSlot}_v1`; }
 
@@ -175,7 +176,7 @@ function discardCorrupt(raw: string): void {
  * Returns the validated SaveData on success, or null if the data is invalid.
  * Has no side-effects: callers are responsible for cleanup and event emission.
  */
-function parseAndValidateSave(raw: string): SaveData | null {
+export function parseAndValidateSave(raw: string): SaveData | null {
   try {
     let data = JSON.parse(raw) as Record<string, unknown>;
     const rawVersion = data['version'];
@@ -290,4 +291,73 @@ export function clearSlot(slotId: SaveSlotId): void {
     console.warn('[SaveManager] Failed to clear save slot', { slotId, slotKey, detail });
     eventBus.emit('persistence:failed', { reason: 'unknown' as const, detail });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Save export / import
+
+/** The fixed format string written to every exported envelope. */
+export const SAVE_ENVELOPE_FORMAT = 'architect-save-v1' as const;
+export type SaveEnvelopeFormat = typeof SAVE_ENVELOPE_FORMAT;
+
+/** Top-level wrapper around a save payload for cross-device transfer. */
+export interface SaveEnvelope {
+  format: SaveEnvelopeFormat;
+  exportedAt: string; // ISO 8601 timestamp
+  payload: SaveData;
+}
+
+/**
+ * Read the save for `slotId`, wrap it in a `SaveEnvelope`, and return it as
+ * a serialised JSON string. Returns `null` when the slot is empty or corrupt.
+ * Has no side-effects (does not change `playerSlot`).
+ */
+export function exportSlot(slotId: SaveSlotId): string | null {
+  checkUnavailable();
+  const slotKey = `architect_${slotId}_v1`;
+  let raw: string | null = null;
+  try { raw = getStorage().getItem(slotKey); } catch { return null; }
+  if (!raw) return null;
+  const data = parseAndValidateSave(raw);
+  if (!data) return null;
+  const envelope: SaveEnvelope = {
+    format: SAVE_ENVELOPE_FORMAT,
+    exportedAt: new Date().toISOString(),
+    payload: data,
+  };
+  return JSON.stringify(envelope, null, 2);
+}
+
+/**
+ * Parse and validate a JSON string as a `SaveEnvelope`, then write the
+ * embedded payload directly into `slotId` without changing `playerSlot`.
+ *
+ * Returns the validated `SaveData` on success so the caller can reload
+ * in-memory progression state. Returns `null` on any failure — the slot
+ * is left untouched.
+ *
+ * Validation rules:
+ *  - Must be valid JSON.
+ *  - `format` must equal `SAVE_ENVELOPE_FORMAT` (future formats are rejected).
+ *  - `payload` must pass `parseAndValidateSave()` (runs migrations).
+ */
+export function importToSlot(slotId: SaveSlotId, json: string): SaveData | null {
+  let envelope: unknown;
+  try { envelope = JSON.parse(json); } catch { return null; }
+  if (typeof envelope !== 'object' || envelope === null) return null;
+  const env = envelope as Record<string, unknown>;
+  if (env['format'] !== SAVE_ENVELOPE_FORMAT) return null;
+  if (typeof env['payload'] !== 'object' || env['payload'] === null) return null;
+  const payloadRaw = JSON.stringify(env['payload']);
+  const data = parseAndValidateSave(payloadRaw);
+  if (!data) return null;
+  checkUnavailable();
+  const slotKey = `architect_${slotId}_v1`;
+  try {
+    getStorage().setItem(slotKey, JSON.stringify(data));
+  } catch (err) {
+    emitFailed(isQuotaError(err) ? 'quota' : 'unknown', err);
+    return null;
+  }
+  return data;
 }

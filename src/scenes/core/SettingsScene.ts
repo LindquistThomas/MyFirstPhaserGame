@@ -6,6 +6,14 @@ import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode, TextScale } f
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
+import {
+  SaveSlotId,
+  exportSlot,
+  importToSlot,
+  SAVE_ENVELOPE_FORMAT,
+  SAVE_SLOTS,
+  getPlayerSlot,
+} from '../../systems/SaveManager';
 import { WelcomeModal } from '../../ui/WelcomeModal';
 import { showTouchHintForcedWithPersist } from '../../ui/TouchHintOverlay';
 import * as TouchHintStore from '../../systems/TouchHintStore';
@@ -46,6 +54,12 @@ export class SettingsScene extends Phaser.Scene {
   private gameState!: GameStateManager;
   /** True while the How-to-Play WelcomeModal is open; blocks settings nav. */
   private helpModalOpen = false;
+  /** True while the import-confirm overlay is open; blocks settings nav. */
+  private importConfirmOpen = false;
+  /** Overlay container shown while the import-confirm dialog is active. */
+  private importOverlay?: Phaser.GameObjects.Container;
+  /** Inline status message shown after export/import actions. */
+  private statusText?: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'SettingsScene' });
@@ -253,6 +267,16 @@ export class SettingsScene extends Phaser.Scene {
       },
       {
         kind: 'action',
+        label: '[ EXPORT SAVE ]',
+        action: () => this.exportSave(),
+      },
+      {
+        kind: 'action',
+        label: '[ IMPORT SAVE ]',
+        action: () => this.importSave(),
+      },
+      {
+        kind: 'action',
         label: '[ BACK ]',
         action: () => this.goBack(),
       },
@@ -432,6 +456,7 @@ export class SettingsScene extends Phaser.Scene {
 
   private activate(): void {
     if (this.helpModalOpen) return;
+    if (this.importConfirmOpen) return;
     const item = this.items[this.selectedIndex];
     if (!item) return;
 
@@ -488,8 +513,220 @@ export class SettingsScene extends Phaser.Scene {
     this.goBack();
   }
 
+  /**
+   * Return the currently active save slot ID.
+   * Falls back to 'slot1' when the active slot is not one of the canonical
+   * three (e.g. during testing with a custom slot key).
+   */
+  private activeSlotId(): SaveSlotId {
+    const current = getPlayerSlot();
+    return (SAVE_SLOTS as readonly string[]).includes(current)
+      ? (current as SaveSlotId)
+      : SAVE_SLOTS[0];
+  }
+
+  /**
+   * Show a brief inline status message below the settings panel.
+   * Auto-hides after 4 s. Any subsequent call replaces the previous message.
+   */
+  private showStatus(message: string, isError = false): void {
+    if (this.statusText) {
+      this.statusText.destroy();
+      this.statusText = undefined;
+    }
+    const color = isError ? '#ff6680' : '#44dd88';
+    this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 290, message, {
+      fontFamily: 'monospace',
+      fontSize: '13px',
+      color,
+      wordWrap: { width: 580 },
+      align: 'center',
+    }).setOrigin(0.5).setDepth(20);
+
+    this.time.delayedCall(4000, () => {
+      if (this.statusText) { this.statusText.destroy(); this.statusText = undefined; }
+    });
+  }
+
+  /**
+   * Export the currently active save slot as a JSON file download.
+   * Uses a temporary <a download> element to trigger the browser's native
+   * save-file dialog — works on both desktop and mobile browsers.
+   */
+  private exportSave(): void {
+    if (this.importConfirmOpen) return;
+
+    // Derive current slot (best-effort matching via AU count)
+    const slotId = this.activeSlotId();
+    const json = exportSlot(slotId);
+    if (!json) {
+      this.showStatus('Nothing to export — slot is empty.', true);
+      return;
+    }
+
+    // Build a filename like: architect-save-slot1-20240101.json
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const filename = `architect-save-${slotId}-${date}.json`;
+
+    try {
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.showStatus(`Save exported as ${filename}`);
+      announce(`Save exported as ${filename}`);
+    } catch {
+      this.showStatus('Export failed — browser may not support downloads.', true);
+    }
+  }
+
+  /**
+   * Open a file picker, validate the selected file as a SaveEnvelope,
+   * and show a confirm overlay before applying the import.
+   */
+  private importSave(): void {
+    if (this.importConfirmOpen || this.helpModalOpen) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+
+    input.onchange = (): void => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e): void => {
+        const raw = e.target?.result;
+        if (typeof raw !== 'string') {
+          this.showStatus('Could not read file.', true);
+          return;
+        }
+
+        // Pre-validate before showing the confirm dialog so we fail fast.
+        let envelope: unknown;
+        try { envelope = JSON.parse(raw); } catch {
+          this.showStatus(
+            'This file is not a valid Architect save (bad format / corrupt / wrong version).',
+            true,
+          );
+          return;
+        }
+        if (
+          typeof envelope !== 'object' || envelope === null ||
+          (envelope as Record<string, unknown>)['format'] !== SAVE_ENVELOPE_FORMAT
+        ) {
+          this.showStatus(
+            'This file is not a valid Architect save (bad format / corrupt / wrong version).',
+            true,
+          );
+          return;
+        }
+
+        const slotId = this.activeSlotId();
+        const slotNum = SAVE_SLOTS.indexOf(slotId) + 1;
+        this.openImportConfirm(raw, slotId, slotNum);
+      };
+      reader.onerror = (): void => {
+        this.showStatus('Could not read file.', true);
+      };
+      reader.readAsText(file);
+    };
+
+    // Trigger the file picker. Appending briefly to the DOM is needed on
+    // some mobile browsers (iOS Safari) for the picker to open correctly.
+    document.body.appendChild(input);
+    input.click();
+    document.body.removeChild(input);
+  }
+
+  /**
+   * Show the import-confirm overlay.
+   * On confirm: write the imported data and reload progression state.
+   * On cancel: dismiss without touching storage.
+   */
+  private openImportConfirm(raw: string, slotId: SaveSlotId, slotNum: number): void {
+    if (this.importConfirmOpen) return;
+    this.importConfirmOpen = true;
+
+    const ow = 440, oh = 160;
+    const ox = (GAME_WIDTH - ow) / 2;
+    const oy = (GAME_HEIGHT - oh) / 2;
+
+    const overlay = this.add.container(0, 0).setDepth(100);
+
+    const blocker = this.add.rectangle(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.5,
+    ).setInteractive({ useHandCursor: false });
+    blocker.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => { ev.stopPropagation(); });
+    blocker.on('pointerup',   (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => { ev.stopPropagation(); });
+    overlay.add(blocker);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0d1c, 0.97);
+    bg.fillRect(ox, oy, ow, oh);
+    bg.lineStyle(2, theme.color.ui.accent, 1);
+    bg.strokeRect(ox, oy, ow, oh);
+    overlay.add(bg);
+
+    overlay.add(this.add.text(ox + ow / 2, oy + 24, `Import to Slot ${slotNum}?`, {
+      fontFamily: 'monospace', fontSize: '18px',
+      color: theme.color.css.textAccent, fontStyle: 'bold',
+    }).setOrigin(0.5));
+
+    overlay.add(this.add.text(ox + ow / 2, oy + 56, `This will replace the contents of Slot ${slotNum}.`, {
+      fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textMuted,
+    }).setOrigin(0.5));
+
+    const yesBtn = this.add.text(ox + ow / 2 - 70, oy + 110, '[ YES ]', {
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textAccent,
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    yesBtn.on('pointerdown', () => this.confirmImport(raw, slotId, overlay));
+    overlay.add(yesBtn);
+
+    const noBtn = this.add.text(ox + ow / 2 + 70, oy + 110, '[ NO ]', {
+      fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textMuted,
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    noBtn.on('pointerdown', () => this.closeImportConfirm(overlay));
+    overlay.add(noBtn);
+
+    this.importOverlay = overlay;
+  }
+
+  private confirmImport(raw: string, slotId: SaveSlotId, overlay: Phaser.GameObjects.Container): void {
+    const data = importToSlot(slotId, raw);
+    if (!data) {
+      this.closeImportConfirm(overlay);
+      this.showStatus(
+        'This file is not a valid Architect save (bad format / corrupt / wrong version).',
+        true,
+      );
+      return;
+    }
+
+    // Reload in-memory progression from the freshly-written slot.
+    this.gameState?.progression?.loadFromSave();
+    eventBus.emit('progression:loaded');
+
+    this.closeImportConfirm(overlay);
+    this.showStatus('Save imported successfully!');
+    announce('Save imported successfully');
+  }
+
+  private closeImportConfirm(overlay: Phaser.GameObjects.Container): void {
+    overlay.destroy();
+    this.importOverlay = undefined;
+    this.importConfirmOpen = false;
+  }
+
   private goBack(): void {
     if (this.helpModalOpen) return;
+    if (this.importConfirmOpen) return;
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {
       if (this.callerScene === 'PauseScene') {

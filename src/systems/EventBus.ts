@@ -186,6 +186,14 @@ export interface GameEvents {
   'quiz:cooldown_expired': [infoId: string];
 
   /**
+   * Emitted after a save import completes successfully. Consumers such as
+   * `ElevatorScene`, `MenuScene`, or HUD sub-controllers should re-read
+   * progression state when this fires so their displays stay accurate
+   * without requiring a page reload.
+   */
+  'progression:loaded': [];
+
+  /**
    * Emitted at the start of `BootScene.preload()` to signal a new boot pass.
    * `MusicPlugin` clears its skip-set on this event so re-entering BootScene
    * after fixing a 404 gives assets a fresh chance to load.
