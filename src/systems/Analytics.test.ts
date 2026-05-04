@@ -97,7 +97,7 @@ describe('HttpProvider', () => {
     provider.destroy();
   });
 
-  it('beacon() uses sendBeacon when available', () => {
+  it('beacon() uses sendBeacon when available — sends Blob with application/json', () => {
     const mockBeacon = vi.fn(() => true);
     vi.stubGlobal('navigator', { sendBeacon: mockBeacon });
 
@@ -105,11 +105,12 @@ describe('HttpProvider', () => {
     provider.beacon('session:end', { durationMs: 5000 });
 
     expect(mockBeacon).toHaveBeenCalledOnce();
-    const call = mockBeacon.mock.calls[0] as unknown as [string, string];
-    const [url, body] = call;
+    const call = mockBeacon.mock.calls[0] as unknown as [string, Blob];
+    const [url, blob] = call;
     expect(url).toBe('https://example.com/collect');
-    const parsed = JSON.parse(body) as { clientId: string; events: Array<{ event: string }> };
-    expect(parsed.events[0]?.event).toBe('session:end');
+    // Must be a Blob with application/json type so the server sees the right content type.
+    expect(blob).toBeInstanceOf(Blob);
+    expect((blob as Blob).type).toBe('application/json');
 
     provider.destroy();
   });
@@ -339,4 +340,88 @@ describe('AnalyticsService', () => {
 
     service.unbind();
   });
+
+  it('emits session:start on the EventBus when consent is true', () => {
+    settingsStore.setAnalyticsConsent(true);
+    const sessionStartHandler = vi.fn();
+    eventBus.on('session:start', sessionStartHandler);
+
+    const sid = makeSessionId();
+    const service = new AnalyticsService(mockProvider, sid);
+    service.bind();
+
+    expect(sessionStartHandler).toHaveBeenCalledOnce();
+    expect(sessionStartHandler).toHaveBeenCalledWith(sid);
+
+    service.unbind();
+    eventBus.off('session:start', sessionStartHandler);
+  });
+
+  it('emits session:start on the EventBus even when consent is false', () => {
+    // session:start is an EventBus signal for other systems, not a captured event.
+    settingsStore.setAnalyticsConsent(false);
+    const sessionStartHandler = vi.fn();
+    eventBus.on('session:start', sessionStartHandler);
+
+    const sid = makeSessionId();
+    const service = new AnalyticsService(mockProvider, sid);
+    service.bind();
+
+    expect(sessionStartHandler).toHaveBeenCalledOnce();
+    // But nothing should be captured by the provider
+    expect(mockProvider.captureCalls).toHaveLength(0);
+
+    service.unbind();
+    eventBus.off('session:start', sessionStartHandler);
+  });
+
+  it('unload handler respects consent — no beacon when consent is false', () => {
+    settingsStore.setAnalyticsConsent(false);
+    const spyCapture = vi.spyOn(mockProvider, 'capture');
+    const spyFlush = vi.spyOn(mockProvider, 'flush');
+
+    const unloadHandlers: Array<() => void> = [];
+    vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
+      if (event === 'beforeunload' || event === 'pagehide') {
+        unloadHandlers.push(handler as () => void);
+      }
+    });
+
+    const service = new AnalyticsService(mockProvider, makeSessionId());
+    service.bind();
+
+    // Simulate tab close
+    for (const h of unloadHandlers) h();
+
+    expect(spyCapture).not.toHaveBeenCalled();
+    expect(spyFlush).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
+    service.unbind();
+  });
+
+  it('unload handler fires only once even if both beforeunload and pagehide fire', () => {
+    settingsStore.setAnalyticsConsent(true);
+
+    const unloadHandlers: Array<() => void> = [];
+    vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
+      if (event === 'beforeunload' || event === 'pagehide') {
+        unloadHandlers.push(handler as () => void);
+      }
+    });
+
+    const service = new AnalyticsService(mockProvider, makeSessionId());
+    service.bind();
+    mockProvider.captureCalls.length = 0; // clear session:start
+
+    // Fire both events (as browsers may do)
+    for (const h of unloadHandlers) h();
+
+    const sessionEndCalls = mockProvider.captureCalls.filter(([e]) => e === 'session:end');
+    expect(sessionEndCalls).toHaveLength(1);
+
+    vi.restoreAllMocks();
+    service.unbind();
+  });
 });
+

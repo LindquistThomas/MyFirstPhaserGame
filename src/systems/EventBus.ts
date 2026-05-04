@@ -201,8 +201,9 @@ export interface GameEvents {
   'quiz:completed': [payload: { infoId: string; score: number; total: number; passed: boolean; attemptNumber: number }];
 
   /**
-   * Emitted once per game session at the end of `BootScene.create()`.
-   * Used by analytics to assign timing to a distinct play session.
+   * Emitted once per game session from `AnalyticsService.bind()` immediately
+   * after bootstrapping (called from `BootScene.create()`).
+   * Used by analytics and any other system that needs to react to a new session.
    * `sessionId` is an opaque random ID (not tied to save-slot or player).
    */
   'session:start': [sessionId: string];

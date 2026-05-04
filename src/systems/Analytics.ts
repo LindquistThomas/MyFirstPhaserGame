@@ -7,8 +7,11 @@
  *   2. The player has explicitly enabled the "Send anonymous gameplay data"
  *      toggle in Settings (`SettingsStore.analyticsConsent === true`).
  *
- * When either condition is absent, `NoopProvider` is used and zero network
- * requests are made — verifiable via DevTools.
+ * When the endpoint is absent, `AnalyticsService` is never created (returns null
+ * from the factory) so no network path exists. When the endpoint is present but
+ * consent is off, the per-capture guard silences every event — no requests are
+ * made until the player opts in, and opting out mid-session takes effect
+ * immediately without a page reload.
  *
  * ## Privacy
  * Only anonymous, non-PII fields are ever forwarded: event names, floor IDs,
@@ -34,7 +37,7 @@ export interface AnalyticsProvider {
 }
 
 // ---------------------------------------------------------------------------
-// NoopProvider — used when consent or endpoint is absent
+// NoopProvider — used when endpoint is absent
 
 export class NoopProvider implements AnalyticsProvider {
   capture(_event: string, _props?: Record<string, unknown>): void {}
@@ -95,6 +98,7 @@ export class HttpProvider implements AnalyticsProvider {
   /**
    * Send a single event synchronously using `navigator.sendBeacon()`.
    * Preferred for `session:end` because it survives tab/window close.
+   * Uses a `Blob` with `application/json` so the content-type matches `flush()`.
    */
   beacon(event: string, props?: Record<string, unknown>): void {
     try {
@@ -103,7 +107,9 @@ export class HttpProvider implements AnalyticsProvider {
         events: [{ event, props, ts: Date.now() }],
       });
       if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-        navigator.sendBeacon(this.endpoint, body);
+        // Wrap in a Blob so the browser sends Content-Type: application/json
+        // instead of the default text/plain used for plain string arguments.
+        navigator.sendBeacon(this.endpoint, new Blob([body], { type: 'application/json' }));
       } else {
         // Fallback for environments without sendBeacon (e.g. tests).
         this.capture(event, props);
@@ -221,7 +227,14 @@ export class AnalyticsService {
     });
 
     // Session end — use sendBeacon for reliability on tab close.
+    // A one-shot guard ensures only the first of beforeunload/pagehide fires
+    // (browsers can dispatch both during the same navigation/close).
+    let unloadFired = false;
     this.boundOnUnload = (): void => {
+      if (unloadFired) return;
+      unloadFired = true;
+      // Consent is checked here too — no beacon when the player hasn't opted in.
+      if (!settingsStore.read().analyticsConsent) return;
       const durationMs = Date.now() - this.sessionStart;
       eventBus.emit('session:end', { durationMs });
       if (this.provider instanceof HttpProvider) {
@@ -235,7 +248,8 @@ export class AnalyticsService {
     window.addEventListener('beforeunload', this.boundOnUnload);
     window.addEventListener('pagehide', this.boundOnUnload);
 
-    // Session start event (captured immediately).
+    // Session start — emit on the EventBus and capture.
+    eventBus.emit('session:start', this.sessionId);
     this.capture('session:start', { sessionId: this.sessionId });
   }
 
@@ -264,8 +278,8 @@ export class AnalyticsService {
   }
 
   private capture(event: string, props: Record<string, unknown> = {}): void {
-    // Guard: re-check consent on every capture so toggling off mid-session
-    // immediately silences further events without requiring a restart.
+    // Guard: re-checked on every capture so toggling consent off mid-session
+    // immediately silences further events without requiring a page reload.
     if (!settingsStore.read().analyticsConsent) return;
     this.provider.capture(event, { ...props, sessionId: this.sessionId });
   }
@@ -280,13 +294,16 @@ declare const __ANALYTICS_ENDPOINT__: string | undefined;
  * Create and bind an `AnalyticsService` from the build-time environment.
  *
  * Returns the service instance (or null when the endpoint is absent) so
- * callers can store it for cleanup on hard resets.
+ * the caller can store it for cleanup on re-entry.
  *
  * Gate logic:
- *   - Endpoint absent → NoopProvider, no network requests possible.
- *   - Endpoint present + consent off → NoopProvider selected at bind-time,
- *     but consent is re-checked per-capture so toggling on later works.
- *   - Endpoint present + consent on → HttpProvider.
+ *   - Endpoint absent → returns null; no `AnalyticsService` or `HttpProvider`
+ *     is ever constructed, so there is no network path at all.
+ *   - Endpoint present → `HttpProvider` is constructed and `AnalyticsService`
+ *     is bound. Consent (`analyticsConsent`) is checked on every `capture()`
+ *     call and on the unload handler, so zero network requests are made until
+ *     the player explicitly opts in via Settings. Toggling consent off
+ *     mid-session silences immediately without a page reload.
  */
 export function createAnalyticsService(): AnalyticsService | null {
   // Vite replaces `import.meta.env.VITE_ANALYTICS_ENDPOINT` at build time.
@@ -311,3 +328,4 @@ export function createAnalyticsService(): AnalyticsService | null {
   service.bind();
   return service;
 }
+
