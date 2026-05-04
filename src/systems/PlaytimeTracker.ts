@@ -25,9 +25,13 @@ export interface PlaytimeSaveAdapter {
  *   plus an immediate flush on `flush()` / `dispose()`.
  *
  * ### Run timer
- * A "run" starts when `startRun()` is called (first-time lobby exit or after a
- * full reset). `recordClear()` compares the elapsed run time against
+ * A "run" starts when `startRun()` is called (new game or first-time-leaving-lobby).
+ * `recordClear()` compares the active elapsed run time (pauses excluded) against
  * `bestClearMs` and updates it when the new time is strictly faster.
+ *
+ * ### Persistence safety
+ * `_persist()` always reads the current save from the adapter before writing so
+ * it never rolls back progression changes made by `ProgressionSystem.persist()`.
  */
 export class PlaytimeTracker {
   /** Throttle interval for automatic persists (ms). */
@@ -40,8 +44,6 @@ export class PlaytimeTracker {
   private bestClearMs: number | undefined;
   private runStartedAt: number | undefined;
 
-  // ── save data snapshot (needed for full persist call) ─────────────────
-  private lastSaveData: SaveData | null = null;
   private readonly saveAdapter: PlaytimeSaveAdapter;
 
   // ── session accumulators ───────────────────────────────────────────────
@@ -56,6 +58,18 @@ export class PlaytimeTracker {
   /** Date.now() when persisted() was last called. */
   private lastFlushAt = 0;
 
+  // ── run-timer pause tracking ──────────────────────────────────────────
+  /**
+   * Total milliseconds the game was paused after `startRun()` was called.
+   * Excluded from `recordClear()` so the run timer reflects active playtime only.
+   */
+  private runPausedMs = 0;
+  /**
+   * `Date.now()` when the most recent pause started (while a run is active);
+   * `null` when not currently in a pause during a run.
+   */
+  private runPauseStartAt: number | null = null;
+
   constructor(adapter: PlaytimeSaveAdapter) {
     this.saveAdapter = adapter;
   }
@@ -65,13 +79,15 @@ export class PlaytimeTracker {
   /** Load persisted time data from the save. Call after the save slot is loaded. */
   loadFromSave(): void {
     const data = this.saveAdapter.load();
-    this.lastSaveData = data;
     if (!data) return;
     this.totalMs = data.playtimeMs ?? 0;
     this.floorMs = { ...(data.floorPlaytimeMs ?? {}) };
     this.firstClearMs = data.firstClearMs;
     this.bestClearMs = data.bestClearMs;
     this.runStartedAt = data.runStartedAt;
+    // runPausedMs is not persisted — reset on every load so stale pauses don't inflate the timer.
+    this.runPausedMs = 0;
+    this.runPauseStartAt = null;
   }
 
   /** Reset all accumulated time (called on new game). */
@@ -85,7 +101,9 @@ export class PlaytimeTracker {
     this.sessionFloorMs = 0;
     this.activeStartMs = null;
     this.currentFloor = null;
-    this.lastSaveData = null;
+    this.runPausedMs = 0;
+    this.runPauseStartAt = null;
+    this.lastFlushAt = 0;
   }
 
   // ── active/pause control ───────────────────────────────────────────────
@@ -94,6 +112,11 @@ export class PlaytimeTracker {
   resume(): void {
     if (this.activeStartMs !== null) return; // already running
     this.activeStartMs = Date.now();
+    // If a run is active and was paused, stop accumulating pause time.
+    if (this.runStartedAt !== undefined && this.runPauseStartAt !== null) {
+      this.runPausedMs += Date.now() - this.runPauseStartAt;
+      this.runPauseStartAt = null;
+    }
   }
 
   /**
@@ -106,6 +129,10 @@ export class PlaytimeTracker {
     this.activeStartMs = null;
     this.sessionTotalMs += delta;
     this.sessionFloorMs += delta;
+    // Begin accumulating run pause time (excluded from clear-time calculation).
+    if (this.runStartedAt !== undefined && this.runPauseStartAt === null) {
+      this.runPauseStartAt = Date.now();
+    }
   }
 
   /** Returns true when time is actively accumulating. */
@@ -120,9 +147,7 @@ export class PlaytimeTracker {
    * into `floorMs` and resets `sessionFloorMs`.
    */
   setFloor(floorId: FloorId): void {
-    // If the tracker is currently running, capture the active delta into the
-    // session accumulator before flushing the floor session.  Then restart
-    // the active-period clock so time doesn't get double-counted.
+    // Capture the active delta before switching so time doesn't get double-counted.
     this._captureActiveDelta();
     this._flushFloorSession();
     this.currentFloor = floorId;
@@ -132,22 +157,28 @@ export class PlaytimeTracker {
   // ── run timer ──────────────────────────────────────────────────────────
 
   /**
-   * Mark the start of a new run (first-time lobby exit or full save reset).
+   * Mark the start of a new run (new game or first-time-leaving-lobby).
    * No-op if a run is already in progress.
    */
   startRun(): void {
     if (this.runStartedAt !== undefined) return;
     this.runStartedAt = Date.now();
+    this.runPausedMs = 0;
+    this.runPauseStartAt = null;
   }
 
   /**
-   * Record a boss-defeat clear time. Computes elapsed from `runStartedAt`,
-   * sets `firstClearMs` (once only), and updates `bestClearMs` when the new
-   * time is strictly faster. Returns `true` when `bestClearMs` was updated.
+   * Record a boss-defeat clear time. Computes the active elapsed run time
+   * (pauses excluded), sets `firstClearMs` (once only), and updates
+   * `bestClearMs` when the new time is strictly faster.
+   * Returns `true` when `bestClearMs` was updated (new personal best).
+   * Returns `false` when there is no active run.
    */
   recordClear(): boolean {
     if (this.runStartedAt === undefined) return false;
-    const elapsed = Date.now() - this.runStartedAt;
+    // Include any currently-running pause period in the pause total.
+    const currentPauseMs = this.runPauseStartAt !== null ? Date.now() - this.runPauseStartAt : 0;
+    const elapsed = Date.now() - this.runStartedAt - this.runPausedMs - currentPauseMs;
     if (this.firstClearMs === undefined) {
       this.firstClearMs = elapsed;
     }
@@ -157,6 +188,8 @@ export class PlaytimeTracker {
     }
     // Clear the run-in-progress marker so the next run starts fresh.
     this.runStartedAt = undefined;
+    this.runPausedMs = 0;
+    this.runPauseStartAt = null;
     return isNewBest;
   }
 
@@ -189,10 +222,15 @@ export class PlaytimeTracker {
   /** First clear time in ms, or undefined when the boss has never been defeated. */
   getFirstClearMs(): number | undefined { return this.firstClearMs; }
 
-  /** Run elapsed time in ms (from `runStartedAt` to now), or 0 if no run active. */
+  /**
+   * Active elapsed run time in ms (pauses excluded), or 0 when no run is active.
+   * Capture this BEFORE calling `recordClear()` to get the time of the
+   * run that just finished.
+   */
   getRunElapsedMs(): number {
     if (this.runStartedAt === undefined) return 0;
-    return Date.now() - this.runStartedAt;
+    const currentPauseMs = this.runPauseStartAt !== null ? Date.now() - this.runPauseStartAt : 0;
+    return Date.now() - this.runStartedAt - this.runPausedMs - currentPauseMs;
   }
 
   // ── update / persist ───────────────────────────────────────────────────
@@ -267,30 +305,22 @@ export class PlaytimeTracker {
     this.sessionFloorMs = 0;
   }
 
+  /**
+   * Write playtime fields into the current save. Always loads fresh data from
+   * the adapter so we never roll back progression changes made by
+   * `ProgressionSystem.persist()` between tracker flushes.
+   * No-op when no save exists yet (e.g. new game before first AU collection).
+   */
   private _persist(): void {
-    if (!this.lastSaveData) return;
+    const current = this.saveAdapter.load();
+    if (!current) return; // No save yet — will write on next flush once progression creates one.
     this.saveAdapter.save({
-      ...this.lastSaveData,
+      ...current,
       playtimeMs: this.totalMs,
       floorPlaytimeMs: { ...this.floorMs },
       firstClearMs: this.firstClearMs,
       bestClearMs: this.bestClearMs,
       runStartedAt: this.runStartedAt,
     });
-    // Refresh snapshot so subsequent persists include any side-effects.
-    // If load() returns null (e.g., storage is temporarily unavailable after
-    // the write), retain the stale snapshot rather than losing it.  Callers
-    // that make external writes (e.g. ProgressionSystem.persist) should call
-    // syncSaveSnapshot() to keep the snapshot up to date.
-    this.lastSaveData = this.saveAdapter.load() ?? this.lastSaveData;
-  }
-
-  /**
-   * Sync `lastSaveData` with external changes (e.g. when ProgressionSystem
-   * calls persist() and updates the save). Call after any external save write.
-   */
-  syncSaveSnapshot(): void {
-    const data = this.saveAdapter.load();
-    if (data) this.lastSaveData = data;
   }
 }

@@ -56,6 +56,9 @@ export class GameStateManager {
     } else if (loadSave === false) {
       this.progression.reset();
       this.playtime.reset();
+      // A fresh save has no run-in-progress; start one immediately so playtime
+      // is tracked from the first moment the player enters the game world.
+      this.playtime.startRun();
     }
   }
 

@@ -158,6 +158,14 @@ export class BossArenaScene extends Phaser.Scene {
     this.scopedEvents.on('boss:phase_changed', this.onPhaseChanged);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
 
+    // Start playtime tracking for the boss floor.
+    const tracker = this.gameState.playtime;
+    tracker.setFloor(FLOORS.BOSS);
+    tracker.resume();
+    // Phaser automatically removes these listeners on shutdown.
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => tracker.pause(), this);
+    this.events.on(Phaser.Scenes.Events.RESUME, () => tracker.resume(), this);
+
     if (isFirstVisit) {
       // Freeze the arena until the player dismisses the intro card.
       this.isTransitioning = true;
@@ -346,6 +354,9 @@ export class BossArenaScene extends Phaser.Scene {
     }
 
     this.mugCountText?.setText(`Mugs: ${this.heldMugs}`);
+
+    // Throttled playtime persist.
+    this.gameState.playtime.update();
   }
 
   private spawnInitialMugPickups(): void {
@@ -606,11 +617,12 @@ export class BossArenaScene extends Phaser.Scene {
     this.progression.addAU(FLOORS.BOSS, 20);
     this.gameState.checkBossAchievements(true, noDamage);
 
-    // Record clear time and determine if this is a new best.
+    // Capture the run elapsed time BEFORE recordClear() clears runStartedAt,
+    // so we always display the time for THIS run (not just the best ever).
     const tracker = this.gameState.playtime;
+    const thisRunMs = tracker.getRunElapsedMs(); // 0 when no run was active
     const isNewBest = tracker.recordClear();
-    // `bestClearMs` reflects this run's time (just recorded above).
-    const thisClearMs = tracker.getBestClearMs();
+    const bestMs = tracker.getBestClearMs();
     tracker.flush();
 
     const overlay = this.add.graphics().setScrollFactor(0).setDepth(100);
@@ -626,15 +638,18 @@ export class BossArenaScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
     // Clear time display — only shown when a run was active.
-    if (thisClearMs !== undefined) {
-      const clearLabel = `Run time: ${this._formatMs(thisClearMs)}`;
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10, clearLabel, {
+    if (thisRunMs > 0) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10, `Run time: ${this._formatMs(thisRunMs)}`, {
         fontFamily: 'monospace', fontSize: '15px', color: '#aaddff',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
       if (isNewBest) {
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, '⭐ NEW BEST!', {
           fontFamily: 'monospace', fontSize: '17px', color: '#ffd700', fontStyle: 'bold',
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
+      } else if (bestMs !== undefined) {
+        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, `Best: ${this._formatMs(bestMs)}`, {
+          fontFamily: 'monospace', fontSize: '13px', color: '#888',
         }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
       }
     }
@@ -691,6 +706,9 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   private onShutdown(): void {
+    // Flush playtime before the scene is destroyed.
+    this.gameState.playtime.pause();
+    this.gameState.playtime.flush();
     // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.
     const promptHandler = this.promptPanel?.getData('keyHandler');
     if (promptHandler) this.input.keyboard?.off('keydown', promptHandler);

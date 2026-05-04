@@ -5,6 +5,10 @@ import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { FLOORS, GAME_WIDTH } from '../config/gameConfig';
 import { setPlayerSlot, setStorage, type KVStorage } from '../systems/SaveManager';
 
+vi.mock('../systems/MotionPreference', () => ({
+  isReducedMotion: vi.fn(() => false),
+}));
+
 vi.mock('phaser', () => {
   const keyCodes = new Proxy({}, { get: () => 0 });
   class ScenePlugin {
@@ -395,5 +399,92 @@ describe('HUD', () => {
 
     eventBus.emit('persistence:failed', { reason: 'quota' });
     expect(showSpy).toHaveBeenCalledWith(expect.stringContaining('Storage full'));
+  });
+});
+
+// ── HUD timer widget ────────────────────────────────────────────────────────
+
+describe('HUD — playtime timer widget', () => {
+  let progression: ProgressionSystem;
+  let scene: ReturnType<typeof makeScene> | undefined;
+
+  beforeEach(() => {
+    setPlayerSlot('hud-timer-test');
+    setStorage(memoryStorage());
+    progression = new ProgressionSystem();
+    progression.reset();
+    scene = undefined;
+  });
+
+  afterEach(() => {
+    scene?.events.emit('shutdown');
+  });
+
+  function makeTracker(floorMs = 0) {
+    return {
+      getFloorMs: vi.fn(() => floorMs),
+    };
+  }
+
+  it('creates a timer text element when playtime tracker is provided', () => {
+    scene = makeScene(false);
+    const tracker = makeTracker(0);
+    new HUD(scene as unknown as Phaser.Scene, progression, tracker as never);
+    // Timer text is created at x=8, y=14 with initial text '0:00'
+    const timerCall = scene.add.text.mock.calls.find(
+      ([x, y, text]: [number, number, string]) => x === 8 && y === 14 && text === '0:00',
+    );
+    expect(timerCall).toBeDefined();
+    // The timer text should be visible (not hidden) when a tracker is provided on wide viewport.
+    const timerText = scene.texts.find((t) => t.text === '0:00');
+    expect(timerText).toBeDefined();
+    if (!timerText) throw new Error('timer text not found');
+    // setVisible(true) or setVisible was not called with false on wide viewport.
+    const setVisibleCalls = (timerText.setVisible as ReturnType<typeof vi.fn>).mock.calls;
+    const lastCall = setVisibleCalls[setVisibleCalls.length - 1];
+    expect(lastCall?.[0]).not.toBe(false);
+  });
+
+  it('updates timer text on each update() call when tracker is provided', () => {
+    scene = makeScene(false);
+    const tracker = makeTracker(90_000); // 1 min 30 sec
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression, tracker as never);
+
+    hud.update();
+
+    // After update, the timer text has been updated from '0:00' to '1:30'.
+    // Find by checking texts that had setText called with '1:30'.
+    const timerText = scene.texts.find((t) =>
+      (t.setText as ReturnType<typeof vi.fn>).mock.calls.some(([s]) => s === '1:30'),
+    );
+    expect(timerText).toBeDefined();
+  });
+
+  it('timer text is created but hidden when no tracker is provided', () => {
+    scene = makeScene(false);
+    new HUD(scene as unknown as Phaser.Scene, progression);
+    // Timer text is still created (always), just hidden.
+    const timerText = scene.texts.find((t) => t.text === '0:00');
+    expect(timerText).toBeDefined();
+    if (!timerText) throw new Error('timer text not found');
+    expect(timerText.setVisible).toHaveBeenCalledWith(false);
+  });
+
+  it('hides timer text when scene is in compact size class', () => {
+    scene = makeScene(false);
+    const tracker = makeTracker(0);
+    new HUD(scene as unknown as Phaser.Scene, progression, tracker as never);
+
+    // Simulate compact resize
+    scene.scale.displaySize.width = 375;
+    const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (args: unknown[]) => args[0] === 'resize',
+    ) as [string, () => void] | undefined;
+    resizeCall![1]();
+
+    const timerText = scene.texts.find((t) => t.text === '0:00');
+    expect(timerText).toBeDefined();
+    if (!timerText) throw new Error('timer text not found');
+    expect(timerText.setVisible).toHaveBeenCalledWith(false);
   });
 });

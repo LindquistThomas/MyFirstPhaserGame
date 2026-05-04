@@ -215,6 +215,26 @@ describe('PlaytimeTracker — persist throttle', () => {
     expect(saveSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('flush() preserves progression fields written externally between flushes', () => {
+    // Simulate ProgressionSystem.persist() updating totalAU between tracker flushes.
+    const adapter = makeAdapter(makeSaveData({ totalAU: 5 }));
+    const tracker = new PlaytimeTracker(adapter);
+    tracker.loadFromSave();
+    tracker.resume();
+
+    // External write: progression saves with higher totalAU.
+    adapter.save(makeSaveData({ totalAU: 20, playtimeMs: 0 }));
+
+    vi.advanceTimersByTime(2000);
+    tracker.flush();
+
+    // The saved data must carry the latest progression value (totalAU=20),
+    // not the stale snapshot (totalAU=5) — _persist() always loads fresh.
+    expect(adapter.saved!.totalAU).toBe(20);
+    // And our playtime must be written too.
+    expect(adapter.saved!.playtimeMs).toBeGreaterThanOrEqual(2000);
+  });
+
   it('update() persists after FLUSH_INTERVAL_MS elapses', () => {
     const adapter = makeAdapter(makeSaveData());
     const saveSpy = vi.spyOn(adapter, 'save');
@@ -301,6 +321,32 @@ describe('PlaytimeTracker — run timer', () => {
     const tracker = new PlaytimeTracker(adapter);
     tracker.loadFromSave();
     expect(tracker.getRunElapsedMs()).toBe(0);
+  });
+
+  it('recordClear() excludes pause time from the run timer', () => {
+    const adapter = makeAdapter(makeSaveData());
+    const tracker = new PlaytimeTracker(adapter);
+    tracker.loadFromSave();
+
+    // Start a run, play for 3s, pause for 10s, play for 2s, then clear.
+    tracker.startRun();
+    tracker.resume();
+    vi.advanceTimersByTime(3000);
+    tracker.pause();                  // simulate pause menu / tab-hidden
+    vi.advanceTimersByTime(10_000);   // 10s not counted
+    tracker.resume();
+    vi.advanceTimersByTime(2000);
+
+    // Capture the elapsed before recordClear() resets runStartedAt.
+    const elapsed = tracker.getRunElapsedMs();
+    const isNewBest = tracker.recordClear();
+
+    // Active time ≈ 5s, NOT 15s.
+    expect(elapsed).toBeGreaterThanOrEqual(5000);
+    expect(elapsed).toBeLessThan(6500);
+    expect(isNewBest).toBe(true);
+    expect(tracker.getBestClearMs()).toBeGreaterThanOrEqual(5000);
+    expect(tracker.getBestClearMs()!).toBeLessThan(6500);
   });
 });
 

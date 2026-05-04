@@ -911,6 +911,11 @@ export class LevelScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.callElevatorButton.setVisible(false);
+    // When the player first leaves the lobby, start the run timer (no-op if
+    // already running from a new-game start or a previous session).
+    if (this.floorId === FLOORS.LOBBY) {
+      this.gameState.playtime.startRun();
+    }
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = {
       fromFloor: this.floorId,

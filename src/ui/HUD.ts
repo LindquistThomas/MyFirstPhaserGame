@@ -213,7 +213,7 @@ export class HUD {
     this.caffeineCtrl.update(this.scene.time.now);
 
     // Update floor timer.
-    if (this.playtime && this.timerText.visible) {
+    if (this.playtime !== null) {
       const floorMs = this.playtime.getFloorMs(floor);
       this.timerText.setText(formatPlaytime(floorMs));
     }

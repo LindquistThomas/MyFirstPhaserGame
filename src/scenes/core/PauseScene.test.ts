@@ -104,14 +104,24 @@ vi.mock('../../input', () => ({
   popContext: vi.fn(),
 }));
 
+vi.mock('../../systems/MotionPreference', () => ({
+  isReducedMotion: vi.fn(() => false),
+}));
+
 import { PauseScene } from './PauseScene';
 import { eventBus } from '../../systems/EventBus';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeScene(): PauseScene {
+function makeScene(gameState?: { playtime: unknown }): PauseScene {
   const scene = new PauseScene() as unknown as PauseScene;
+  // Provide a fake registry with optional gameState.
+  if (gameState) {
+    (scene as unknown as { registry: { get: (k: string) => unknown } }).registry = {
+      get: (k: string) => (k === 'gameState' ? gameState : null),
+    };
+  }
   // Call init to set parentKey.
   (scene as unknown as { init: (d: { parentKey: string }) => void }).init({ parentKey: 'PlatformTeamScene' });
   // Call create to build panel and register menu items.
@@ -214,6 +224,57 @@ describe('PauseScene', () => {
       expect(eventBus.emit).toHaveBeenCalledWith('music:stop');
       expect(scene.scene.stop).toHaveBeenCalledWith('PlatformTeamScene');
       expect(scene.scene.start).toHaveBeenCalledWith('MenuScene');
+    });
+  });
+
+  describe('playtime stats section', () => {
+    it('renders total playtime when gameState.playtime is provided', () => {
+      const mockTracker = {
+        getTotalMs: () => 75_000, // 1 minute 15 seconds
+        getAllFloorMs: () => ({}),
+      };
+      const scene = makeScene({ playtime: mockTracker });
+      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as [number, number, string, unknown][];
+      const labels = addTextCalls.map(([, , label]) => label as string);
+      const totalEntry = labels.find((l) => l.startsWith('Total:'));
+      expect(totalEntry).toBeDefined();
+      expect(totalEntry).toContain('1:15');
+    });
+
+    it('renders top-3 floor entries sorted by time descending', () => {
+      const mockTracker = {
+        getTotalMs: () => 60_000,
+        getAllFloorMs: () => ({
+          0: 10_000,  // lobby
+          1: 30_000,  // platform
+          2: 20_000,  // architecture
+          3: 5_000,   // finance
+        }),
+      };
+      const scene = makeScene({ playtime: mockTracker });
+      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as [number, number, string, unknown][];
+      const labels = addTextCalls.map(([, , label]) => label as string);
+      // At most 3 floor entries should appear (top 3 by time).
+      const floorEntries = labels.filter((l) => (l as string).includes('Floor'));
+      expect(floorEntries.length).toBeLessThanOrEqual(3);
+      // Floor 1 (30s) should appear before floor 2 (20s) before floor 0 (10s).
+      const indices = [1, 2, 0].map(
+        (id) => labels.findIndex((l) => l.startsWith(`Floor ${id}`)),
+      );
+      if (indices[0] !== undefined && indices[1] !== undefined) {
+        expect(indices[0]).toBeLessThan(indices[1]);
+      }
+      if (indices[1] !== undefined && indices[2] !== undefined) {
+        expect(indices[1]).toBeLessThan(indices[2]);
+      }
+    });
+
+    it('renders nothing when gameState is null', () => {
+      const scene = makeScene(); // no gameState
+      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as [number, number, string, unknown][];
+      const labels = addTextCalls.map(([, , label]) => label as string);
+      const totalEntry = labels.find((l) => l.startsWith('Total:'));
+      expect(totalEntry).toBeUndefined();
     });
   });
 });
