@@ -77,9 +77,9 @@ Scripts from `package.json`:
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:unit` | Vitest (pure logic; jsdom). |
 | `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`. |
-| `npm run test:e2e` | Playwright integration specs. |
+| `npm run test:e2e` | Playwright integration specs (excludes `@visual`). |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
-| `npm run test:visual:update` | Refresh visual snapshot PNGs. |
+| `npm run test:visual:update` | Run the `@visual` suite and refresh snapshot PNGs — the only script that exercises visual specs. To verify against existing baselines without updating, invoke `npx playwright test tests/visual.spec.ts --grep @visual` directly. |
 | `npm run preview` | Serve the production build locally (`vite preview`). |
 | `npm run test:unit:watch` | Vitest in watch mode. |
 | `npm run test:report` | Open the last Playwright HTML report. |
