@@ -325,7 +325,7 @@ describe('AnalyticsService', () => {
     service.unbind();
   });
 
-  it('produces zero network calls when consent is false — no-network-on-disabled', () => {
+  it('does not call capture() when consent is false — verified zero network requests', () => {
     settingsStore.setAnalyticsConsent(false);
     const spyCapture = vi.spyOn(mockProvider, 'capture');
     const service = new AnalyticsService(mockProvider, makeSessionId());

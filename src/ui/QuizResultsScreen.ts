@@ -37,7 +37,9 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   const perfect = score === total;
 
   saveQuizResult(infoId, score);
-  // Emit analytics event after persisting so attemptNumber is accurate.
+  // getQuizRecord is called after saveQuizResult so the record is guaranteed to exist.
+  // The fallback to 1 guards against unexpected storage failures where the write
+  // succeeded in-memory but the read cache is stale or storage is unavailable.
   const attemptNumber = getQuizRecord(infoId)?.attempts ?? 1;
   eventBus.emit('quiz:completed', { infoId, score, total, passed, attemptNumber });
 
