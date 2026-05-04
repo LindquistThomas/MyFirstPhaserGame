@@ -70,7 +70,7 @@ const MUG_PLATFORM_HEIGHT_ABOVE_GROUND = 300;
  * Boss arena scene — CEO Showdown.
  *
  * Standalone scene (extends Phaser.Scene directly — no LevelScene base).
- * AU gate: requires 25 AU. Three-phase hybrid fight:
+ * AU gate: requires 30 AU. Three-phase hybrid fight:
  *   - Throw mugs (K.X) to deal damage.
  *   - Answer architecture prompts during knowledge windows to disable hazards
  *     and earn the right to finish the boss (knowledge gate).
@@ -127,9 +127,9 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   create(): void {
-    // AU gate — needs 25 AU to enter
-    if (this.progression.getTotalAU() < 25) {
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'You need 25 AU to reach the Boardroom.', {
+    // AU gate — needs 30 AU to enter
+    if (this.progression.getTotalAU() < 30) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'You need 30 AU to reach the Boardroom.', {
         fontFamily: 'monospace', fontSize: '20px', color: '#ff4444',
       }).setOrigin(0.5);
       this.time.delayedCall(2500, () => this.scene.start('ElevatorScene'));
