@@ -7,7 +7,7 @@ Inspect the running game from tests — grab screenshots, jump to specific scene
 ## Commands
 
 ```powershell
-npm run test:e2e              # Run Playwright specs (headless)
+npm run test:e2e              # Run Playwright specs (headless; excludes @visual)
 npm run test:headed           # Visible browser (watch scene transitions)
 npm run test:ui               # Interactive Playwright UI (trace, timeline)
 npm run test:visual:update    # Refresh visual snapshot PNGs
