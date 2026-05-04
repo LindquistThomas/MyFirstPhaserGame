@@ -58,7 +58,7 @@ export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_floor2',        path: 'music/8bit-chiptune/bgm_action_2.mp3' },
   { key: 'music_platform',      path: 'music/retro-synth/shadow_operations-loop1.ogg' },
   { key: 'music_quiz',          path: 'music/retro-synth/hostile_territory-loop1.ogg' },
-  { key: 'music_executive',     path: 'music/boss/bossroom-battle-431358.mp3' },
+  { key: 'music_executive',     path: 'music/boss/bossroom-battle.ogg' },
   /**
    * Executive Suite rescue variants — triggered via `music:request` from
    * `RescueState` transitions in `ExecutiveSuiteScene`, not via `SCENE_MUSIC`.
