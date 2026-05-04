@@ -59,7 +59,7 @@ From `package.json`:
 | `npm run test:e2e` | Playwright integration specs (excludes `@visual`). |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:report` | Open the last Playwright HTML report. |
-| `npm run test:visual:update` | Refresh visual snapshot PNGs. |
+| `npm run test:visual:update` | Run the `@visual` suite and refresh snapshot PNGs — the only script that exercises visual specs. To verify against existing baselines without updating, invoke `npx playwright test tests/visual.spec.ts --grep @visual` directly. |
 | `npm test` | `test:unit && test:e2e`. |
 | `npm run test:all` | `npm run typecheck && npm run lint && npm run test:unit -- --coverage && npm run test:e2e` — opt-in, slow. |
 
