@@ -609,10 +609,8 @@ export class BossArenaScene extends Phaser.Scene {
     // Record clear time and determine if this is a new best.
     const tracker = this.gameState.playtime;
     const isNewBest = tracker.recordClear();
-    const bestMs = tracker.getBestClearMs();
-    const prevBestMs = isNewBest && tracker.getFirstClearMs() !== bestMs
-      ? undefined  // first-ever clear — no "previous best" to show
-      : (!isNewBest ? bestMs : undefined);
+    // `bestClearMs` reflects this run's time (just recorded above).
+    const thisClearMs = tracker.getBestClearMs();
     tracker.flush();
 
     const overlay = this.add.graphics().setScrollFactor(0).setDepth(100);
@@ -627,10 +625,9 @@ export class BossArenaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '18px', color: '#e0e0f0',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
-    // Clear time display
-    if (bestMs !== undefined) {
-      const runMs = tracker.getFirstClearMs() ?? bestMs;
-      const clearLabel = `Run time: ${this._formatMs(runMs)}`;
+    // Clear time display — only shown when a run was active.
+    if (thisClearMs !== undefined) {
+      const clearLabel = `Run time: ${this._formatMs(thisClearMs)}`;
       this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 10, clearLabel, {
         fontFamily: 'monospace', fontSize: '15px', color: '#aaddff',
       }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
@@ -638,10 +635,6 @@ export class BossArenaScene extends Phaser.Scene {
       if (isNewBest) {
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, '⭐ NEW BEST!', {
           fontFamily: 'monospace', fontSize: '17px', color: '#ffd700', fontStyle: 'bold',
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
-      } else if (prevBestMs !== undefined) {
-        this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, `Best: ${this._formatMs(prevBestMs)}`, {
-          fontFamily: 'monospace', fontSize: '13px', color: '#888',
         }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
       }
     }

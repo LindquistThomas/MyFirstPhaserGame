@@ -123,12 +123,7 @@ export class PlaytimeTracker {
     // If the tracker is currently running, capture the active delta into the
     // session accumulator before flushing the floor session.  Then restart
     // the active-period clock so time doesn't get double-counted.
-    if (this.activeStartMs !== null) {
-      const delta = Date.now() - this.activeStartMs;
-      this.sessionTotalMs += delta;
-      this.sessionFloorMs += delta;
-      this.activeStartMs = Date.now();
-    }
+    this._captureActiveDelta();
     this._flushFloorSession();
     this.currentFloor = floorId;
     this.sessionFloorMs = 0;
@@ -240,16 +235,24 @@ export class PlaytimeTracker {
   }
 
   /**
+   * Accumulate the current active-period delta into session counters and
+   * restart the active period so time does not get double-counted.
+   * No-op when the tracker is paused.
+   */
+  private _captureActiveDelta(): void {
+    if (this.activeStartMs === null) return;
+    const delta = Date.now() - this.activeStartMs;
+    this.sessionTotalMs += delta;
+    this.sessionFloorMs += delta;
+    this.activeStartMs = Date.now(); // restart the active period
+  }
+
+  /**
    * Push the current active-period delta into session accumulators, then
    * restart the active period (so the clock doesn't skip a beat).
    */
   private _commitSession(): void {
-    if (this.activeStartMs !== null) {
-      const delta = Date.now() - this.activeStartMs;
-      this.sessionTotalMs += delta;
-      this.sessionFloorMs += delta;
-      this.activeStartMs = Date.now(); // restart the active period
-    }
+    this._captureActiveDelta();
     // Merge session totals into persisted counters.
     this.totalMs += this.sessionTotalMs;
     this.sessionTotalMs = 0;
@@ -275,6 +278,10 @@ export class PlaytimeTracker {
       runStartedAt: this.runStartedAt,
     });
     // Refresh snapshot so subsequent persists include any side-effects.
+    // If load() returns null (e.g., storage is temporarily unavailable after
+    // the write), retain the stale snapshot rather than losing it.  Callers
+    // that make external writes (e.g. ProgressionSystem.persist) should call
+    // syncSaveSnapshot() to keep the snapshot up to date.
     this.lastSaveData = this.saveAdapter.load() ?? this.lastSaveData;
   }
 

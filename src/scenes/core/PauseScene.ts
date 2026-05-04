@@ -146,7 +146,7 @@ export class PauseScene extends Phaser.Scene {
     // Per-floor breakdown (top 3 floors sorted by time descending).
     const allFloors = tracker.getAllFloorMs();
     const sorted = Object.entries(allFloors)
-      .map(([k, ms]) => ({ floorId: Number(k), ms: ms ?? 0 }))
+      .map(([k, ms]) => ({ floorId: Number(k), ms: ms as number }))
       .filter((f) => f.ms > 0)
       .sort((a, b) => b.ms - a.ms)
       .slice(0, 3);

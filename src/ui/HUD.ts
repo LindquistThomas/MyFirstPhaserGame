@@ -219,7 +219,7 @@ export class HUD {
     }
   }
 
-  /** Whether the timer widget should be visible. Hidden on compact and when reduced-motion active. */
+  /** Whether the timer widget should be visible. Hidden on compact viewports and when the user prefers reduced motion (avoids a distracting animated counter). */
   private _isTimerVisible(): boolean {
     if (this.playtime === null) return false;
     if (this.sizeClass === 'compact') return false;

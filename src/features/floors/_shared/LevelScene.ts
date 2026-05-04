@@ -350,7 +350,8 @@ export class LevelScene extends Phaser.Scene {
     const tracker = this.gameState.playtime;
     tracker.setFloor(this.floorId);
     tracker.resume();
-    // Pause tracker when Phaser pauses the scene (PauseScene, tab hidden).
+    // Phaser automatically removes scene-event listeners added via `this.events.on`
+    // when the scene shuts down, so PAUSE and RESUME do not need explicit teardown.
     this.events.on(Phaser.Scenes.Events.PAUSE, () => tracker.pause(), this);
     this.events.on(Phaser.Scenes.Events.RESUME, () => tracker.resume(), this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {

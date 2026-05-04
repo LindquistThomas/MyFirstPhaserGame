@@ -276,8 +276,9 @@ describe('SaveManager — schema versioning & migration', () => {
 
   it.skip('load() returns null when a required migration entry is missing', () => {
     // This path only occurs when 0 < save.version < CURRENT_SAVE_VERSION and
-    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=2
-    // and both v0→v1 and v1→v2 migrations present, there is no constructible gap.
+    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=2,
+    // v0→v1 is a no-op (version stamp only) and v1→v2 adds playtime fields.
+    // No constructible gap exists since both entries are present in MIGRATIONS.
     //
     // Once a gap can be created, seed a save at the missing intermediate version,
     // call load(), and assert:
