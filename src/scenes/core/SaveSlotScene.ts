@@ -7,6 +7,7 @@ import {
   loadSlotInfo,
   clearSlot,
   setPlayerSlot,
+  getRecoveryReason,
 } from '../../systems/SaveManager';
 import type { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
@@ -183,7 +184,8 @@ export class SaveSlotScene extends Phaser.Scene {
   private maybeShowRecoveryDialog(): void {
     const recovered = this.slotInfos.find((info) => info.recovered);
     if (!recovered) return;
-    new SaveRecoveryDialog(this, recovered.slotId, 'parse');
+    const reason = getRecoveryReason(recovered.slotId);
+    new SaveRecoveryDialog(this, recovered.slotId, reason);
   }
 
   // -------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot, getRecoveryReason } from './SaveManager';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
@@ -974,5 +974,18 @@ describe('SaveManager — save recovery helpers', () => {
     loadSlotInfo('slot3');
     expect(store.store.get('architect_slot3_v1_corrupt')).toBe('BADDATA');
     expect(store.store.has('architect_slot3_v1')).toBe(false);
+  });
+
+  it('getRecoveryReason returns "parse" after corruption is detected', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    load();
+    expect(getRecoveryReason('slot1')).toBe('parse');
+  });
+
+  it('getRecoveryReason returns "parse" as default for a slot that was never recovered', () => {
+    setStorage(memoryStorage());
+    expect(getRecoveryReason('slot2')).toBe('parse');
   });
 });

@@ -49,11 +49,13 @@ vi.mock('./ModalBase', () => ({
 // ---------------------------------------------------------------------------
 const mockClearRecoveredSlot = vi.fn();
 const mockGetCorruptBackup = vi.fn((_id: string): string | null => null);
+const mockGetRecoveryReason = vi.fn((_id: string): string => 'parse');
 
 vi.mock('../systems/SaveManager', () => ({
   SAVE_SLOTS: ['slot1', 'slot2', 'slot3'],
   clearRecoveredSlot: (id: string) => mockClearRecoveredSlot(id),
   getCorruptBackup: (id: string) => mockGetCorruptBackup(id),
+  getRecoveryReason: (id: string) => mockGetRecoveryReason(id),
 }));
 
 // ---------------------------------------------------------------------------
@@ -131,6 +133,7 @@ describe('SaveRecoveryDialog', () => {
   beforeEach(() => {
     mockClearRecoveredSlot.mockClear();
     mockGetCorruptBackup.mockReturnValue(null);
+    mockGetRecoveryReason.mockReturnValue('parse');
   });
 
   afterEach(() => {
@@ -239,5 +242,59 @@ describe('SaveRecoveryDialog', () => {
     const scene = makeScene();
     new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
     expect(mockClearRecoveredSlot).not.toHaveBeenCalled();
+  });
+
+  it('triggerDownload creates an anchor element, sets href and download, and clicks it', () => {
+    const corruptData = '{"raw":"corrupt","version":99}';
+    mockGetCorruptBackup.mockReturnValue(corruptData);
+
+    // Stub URL and document APIs
+    const fakeUrl = 'blob:fake-url';
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(fakeUrl);
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const clickSpy = vi.fn();
+    const fakeAnchor = {
+      href: '',
+      download: '',
+      click: clickSpy,
+    };
+    const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(
+      fakeAnchor as unknown as HTMLElement,
+    );
+    const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockReturnValue(fakeAnchor as unknown as HTMLElement);
+    const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockReturnValue(fakeAnchor as unknown as HTMLElement);
+
+    const scene = makeScene();
+    new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
+
+    // Find and click the Download Backup button
+    const allCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls;
+    const dlBtnCallIdx = allCalls.findIndex((c) => (c[2] as string).includes('Download Backup'));
+    expect(dlBtnCallIdx).toBeGreaterThanOrEqual(0);
+
+    // Retrieve the pointerdown handler registered on the text mock and fire it
+    const dlTextMock = (scene.add.text as ReturnType<typeof vi.fn>).mock.results[dlBtnCallIdx]?.value as ReturnType<typeof makeText>;
+    const onCalls = (dlTextMock.on as ReturnType<typeof vi.fn>).mock.calls as [string, () => void][];
+    const pdHandler = onCalls.find((c) => c[0] === 'pointerdown')?.[1];
+    expect(pdHandler).toBeDefined();
+    pdHandler?.();
+
+    expect(createObjectURLSpy).toHaveBeenCalledOnce();
+    expect(createElementSpy).toHaveBeenCalledWith('a');
+    expect(fakeAnchor.href).toBe(fakeUrl);
+    // Filename should match architect-recovered-slot1-YYYYMMDD.json pattern
+    expect(fakeAnchor.download).toMatch(/^architect-recovered-slot1-\d{8}\.json$/);
+    expect(appendChildSpy).toHaveBeenCalledWith(fakeAnchor);
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(removeChildSpy).toHaveBeenCalledWith(fakeAnchor);
+    expect(revokeObjectURLSpy).toHaveBeenCalledWith(fakeUrl);
+
+    // Restore spies
+    createObjectURLSpy.mockRestore();
+    revokeObjectURLSpy.mockRestore();
+    createElementSpy.mockRestore();
+    appendChildSpy.mockRestore();
+    removeChildSpy.mockRestore();
   });
 });

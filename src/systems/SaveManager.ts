@@ -102,10 +102,11 @@ let unavailableEmitted = false;
 /**
  * Session-scoped record of slots whose previous save was found corrupt and
  * discarded. Cleared only when the page is reloaded (module-level state).
- * Key: slot id (e.g. 'slot1'). Value: the raw corrupt JSON string, used by
- * getCorruptBackup() to power the "Download backup" button in the recovery dialog.
+ * Key: slot id (e.g. 'slot1'). Value: `{ raw, reason }` where `raw` is the
+ * corrupt JSON string (for the Download Backup feature) and `reason` is the
+ * failure reason passed to `emitFailed`.
  */
-const recoveredSlots = new Map<string, string>();
+const recoveredSlots = new Map<string, { raw: string; reason: string }>();
 
 function getStorage(): KVStorage { return storage ?? (storage = getDefaultStorage()); }
 
@@ -192,19 +193,19 @@ function isValidSaveData(d: unknown): d is SaveData {
  * Records the slot in the session-scoped recoveredSlots map.
  */
 function discardCorrupt(raw: string): void {
-  discardCorruptForSlot(playerSlot, raw);
+  discardCorruptForSlot(playerSlot, raw, 'parse');
 }
 
 /**
  * Slot-agnostic variant of discardCorrupt used by loadSlotInfo, which reads
  * slots that may differ from the currently active playerSlot.
  */
-function discardCorruptForSlot(slotId: string, raw: string): void {
+function discardCorruptForSlot(slotId: string, raw: string, reason = 'parse'): void {
   const slotKey = `architect_${slotId}_v1`;
   const corruptKey = `${slotKey}_corrupt`;
   try { getStorage().setItem(corruptKey, raw); } catch { /* noop */ }
   try { getStorage().removeItem(slotKey); } catch { /* noop */ }
-  recoveredSlots.set(slotId, raw);
+  recoveredSlots.set(slotId, { raw, reason });
 }
 
 /**
@@ -213,7 +214,16 @@ function discardCorruptForSlot(slotId: string, raw: string): void {
  * to offer a "Download backup" file to the player.
  */
 export function getCorruptBackup(slotId: SaveSlotId): string | null {
-  return recoveredSlots.get(slotId) ?? null;
+  return recoveredSlots.get(slotId)?.raw ?? null;
+}
+
+/**
+ * Returns the failure reason stored when the corrupt save was discarded, or
+ * 'parse' as a safe default. Used by SaveRecoveryDialog to show a tailored
+ * human-readable explanation.
+ */
+export function getRecoveryReason(slotId: SaveSlotId): string {
+  return recoveredSlots.get(slotId)?.reason ?? 'parse';
 }
 
 /**
