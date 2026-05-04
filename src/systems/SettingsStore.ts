@@ -95,6 +95,14 @@ export interface SettingsData {
    * Defaults to `1` (100%). Supports up to 1.5 (150%) per WCAG 2.1 SC 1.4.4.
    */
   textScale: TextScale;
+  /**
+   * When true, anonymous gameplay telemetry is forwarded to the configured
+   * analytics endpoint. Requires `VITE_ANALYTICS_ENDPOINT` to also be set
+   * at build time — both conditions must be true before any request is made.
+   * Defaults to `false` (opt-in, never sent without explicit player consent).
+   * No PII is ever sent (no save data, quiz answers, or identifiable fields).
+   */
+  analyticsConsent: boolean;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -127,6 +135,7 @@ export function defaultSettings(): SettingsData {
     hapticsEnabled: true,
     colorBlindMode: 'off',
     textScale: 1,
+    analyticsConsent: false,
   };
 }
 
@@ -187,6 +196,7 @@ function parseSettings(raw: unknown): SettingsData {
     textScale: VALID_TEXT_SCALES.has(r['textScale'] as number)
       ? (r['textScale'] as TextScale)
       : defaults.textScale,
+    analyticsConsent: typeof r['analyticsConsent'] === 'boolean' ? r['analyticsConsent'] : defaults.analyticsConsent,
   };
 }
 
@@ -312,6 +322,10 @@ export const settingsStore = {
 
   setColorBlindMode(mode: ColorBlindMode): void {
     this.updateNonAudio((prev) => ({ ...prev, colorBlindMode: mode }));
+  },
+
+  setAnalyticsConsent(enabled: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, analyticsConsent: enabled }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

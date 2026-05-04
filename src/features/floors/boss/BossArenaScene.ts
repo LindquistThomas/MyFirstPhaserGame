@@ -621,6 +621,7 @@ export class BossArenaScene extends Phaser.Scene {
     // Award AU
     this.progression.addAU(FLOORS.BOSS, 20);
     this.gameState.checkBossAchievements(true, noDamage);
+    eventBus.emit('game:completed');
 
     // Capture the run elapsed time BEFORE recordClear() clears runStartedAt,
     // so we always display the time for THIS run (not just the best ever).

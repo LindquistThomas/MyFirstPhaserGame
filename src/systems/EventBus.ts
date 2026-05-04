@@ -141,6 +141,13 @@ export interface GameEvents {
   'progression:floor_unlocked': [floorId: FloorId];
 
   /**
+   * The player entered a floor scene. Emitted from `LevelScene.init()` on
+   * every floor visit (including revisits). Used by analytics to track which
+   * floors players explore and where they churn.
+   */
+  'progression:floor_entered': [floorId: FloorId];
+
+  /**
    * The player's total AU has crossed one of the explicit milestone thresholds
    * (5, 15, 30, 50, 75, 100, …).  Payload is the milestone value crossed.
    * Useful for screen-reader announcements and HUD celebrations.
@@ -185,6 +192,36 @@ export interface GameEvents {
    * Payload: the `infoId` of the quiz that was unlocked.
    */
   'quiz:cooldown_expired': [infoId: string];
+
+  /**
+   * A quiz attempt was completed (passed or failed).
+   * Emitted by `renderQuizResults` after the result is persisted.
+   * No PII — `infoId` is a content key (e.g. `'arch-principles'`), not a
+   * player identifier. Quiz answers are never included.
+   */
+  'quiz:completed': [payload: { infoId: string; score: number; total: number; passed: boolean; attemptNumber: number }];
+
+  /**
+   * Emitted once per game session from `AnalyticsService.bind()` immediately
+   * after bootstrapping (called from `BootScene.create()`).
+   * Used by analytics and any other system that needs to react to a new session.
+   * `sessionId` is an opaque random ID (not tied to save-slot or player).
+   */
+  'session:start': [sessionId: string];
+
+  /**
+   * Emitted when the browser tab is about to be closed or navigated away.
+   * Used by analytics to record session duration.
+   * Transport uses `navigator.sendBeacon()` so it survives tab close.
+   */
+  'session:end': [payload: { durationMs: number }];
+
+  /**
+   * Emitted when the player defeats the CEO boss and the game is completed.
+   * Distinct from `boss:defeated` (which fires mid-battle per-phase) — this
+   * fires only on the final win state.
+   */
+  'game:completed': [];
 
   /**
    * Emitted after a save import completes successfully. Consumers such as

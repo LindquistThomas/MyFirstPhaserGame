@@ -258,6 +258,12 @@ export class SettingsScene extends Phaser.Scene {
         set: (v) => settingsStore.setHideTutorials(v),
       },
       {
+        kind: 'toggle',
+        label: 'SEND ANALYTICS',
+        get: () => settingsStore.read().analyticsConsent,
+        set: (v) => settingsStore.setAnalyticsConsent(v),
+      },
+      {
         kind: 'action',
         label: '[ HOW TO PLAY ]',
         action: () => this.openHowToPlay(),

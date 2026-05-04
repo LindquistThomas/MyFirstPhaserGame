@@ -242,6 +242,8 @@ export class LevelScene extends Phaser.Scene {
     // player still needs several seconds to walk to any interactive element.
     preloadQuizFor(this.floorId).catch(() => { /* non-fatal; player will see no quiz badge */ });
     preloadInfoFor(this.floorId).catch(() => { /* non-fatal; info icon will be absent */ });
+    // Analytics: track floor visits (fires on every entry, including revisits).
+    eventBus.emit('progression:floor_entered', this.floorId);
   }
 
   create(): void {
