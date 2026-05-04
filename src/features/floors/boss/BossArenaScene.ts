@@ -75,7 +75,7 @@ const MUG_PLATFORM_HEIGHT_ABOVE_GROUND = 300;
  * Boss arena scene — CEO Showdown.
  *
  * Standalone scene (extends Phaser.Scene directly — no LevelScene base).
- * AU gate: requires 25 AU. Three-phase hybrid fight:
+ * AU gate: requires 30 AU. Three-phase hybrid fight:
  *   - Throw mugs (K.X) to deal damage.
  *   - Answer architecture prompts during knowledge windows to disable hazards
  *     and earn the right to finish the boss (knowledge gate).
