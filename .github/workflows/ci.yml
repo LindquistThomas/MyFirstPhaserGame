@@ -157,15 +157,6 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
-      - name: Upload screenshots
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: tests-screenshots-shard-${{ matrix.shard }}
-          path: tests/screenshots/
-          if-no-files-found: ignore
-          retention-days: 14
-
   # Stable fan-in job: branch protection requires THIS name, not individual
   # shard names.  Adding/removing shards never invalidates the required check.
   e2e-complete:
