@@ -16,7 +16,7 @@ import { isReducedMotion } from '../../../systems/MotionPreference';
 import { allKeyLabels } from '../../../input';
 
 /** Architecture quiz prompts used during knowledge windows. */
-interface BossPrompt {
+export interface BossPrompt {
   scenario: string;
   options: [string, string, string];
   /** Index (0-based) of the correct answer. */
@@ -24,7 +24,11 @@ interface BossPrompt {
   feedback: string;
 }
 
-const PROMPTS: BossPrompt[] = [
+/** AU required to enter the boss arena (used in create() gate check). */
+export const AU_GATE = 30;
+
+/** Exported for unit tests only — do not consume in scene code outside this file. */
+export const PROMPTS: BossPrompt[] = [
   {
     scenario: 'Your platform team wants to build everything in-house. Your product team needs to ship in 4 weeks. What do you advise?',
     options: ['Build in-house — full control', 'Buy a SaaS tool — ship now', 'Delay the product team'],
@@ -57,7 +61,8 @@ const PROMPTS: BossPrompt[] = [
   },
 ];
 
-const DIALOGUES = [
+/** Exported for unit tests only — do not consume in scene code outside this file. */
+export const DIALOGUES = [
   { lines: ['"Not bad."', '"You think faster than most."', '"We\'ll manage this together."'] },
   { lines: ['"Impressive."', '"You\'ve studied the elevator, I see."', '"We\'ll manage this together."'] },
   { lines: ['"Ha!"', '"You actually understand the trade-offs."', '"We\'ll manage this together."'] },
@@ -127,9 +132,9 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   create(): void {
-    // AU gate — needs 30 AU to enter
-    if (this.progression.getTotalAU() < 30) {
-      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'You need 30 AU to reach the Boardroom.', {
+    // AU gate — needs AU_GATE AU to enter
+    if (this.progression.getTotalAU() < AU_GATE) {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, `You need ${AU_GATE} AU to reach the Boardroom.`, {
         fontFamily: 'monospace', fontSize: '20px', color: '#ff4444',
       }).setOrigin(0.5);
       this.time.delayedCall(2500, () => this.scene.start('ElevatorScene'));
