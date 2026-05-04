@@ -605,6 +605,7 @@ export class BossArenaScene extends Phaser.Scene {
     // Award AU
     this.progression.addAU(FLOORS.BOSS, 20);
     this.gameState.checkBossAchievements(true, noDamage);
+    eventBus.emit('game:completed');
 
     const overlay = this.add.graphics().setScrollFactor(0).setDepth(100);
     overlay.fillStyle(0x000000, 0.7);

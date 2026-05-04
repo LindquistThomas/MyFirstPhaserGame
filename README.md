@@ -67,6 +67,7 @@ npm run build    # Production build → dist/
 | Variable | Default | Effect |
 |----------|---------|--------|
 | `VITE_EXPOSE_TEST_HOOKS` | `true` (unset) | Attaches `window.__game` and `window.__testHooks` to the browser global. Required by the Playwright E2E suite. Set to `false` to produce a security-hardened bundle where neither global is present. |
+| `VITE_ANALYTICS_ENDPOINT` | unset | URL of the analytics ingestion endpoint (e.g. `https://collect.example.com/events`). When unset, the analytics system is structurally disabled and **zero network requests are ever made**, regardless of the in-game toggle. When set, the player must also enable **Settings → Send analytics** before any data is forwarded. |
 
 Example — hardened build without test globals:
 
@@ -112,6 +113,17 @@ To install the Claude GitHub App on a personal account:
 ### Art Style
 
 128×128 pixel-art tiles, all sprites generated programmatically at runtime (zero external image assets).
+
+## Privacy
+
+When the **Send anonymous gameplay data** toggle is enabled in Settings *and* the game is deployed with a configured analytics endpoint (`VITE_ANALYTICS_ENDPOINT`), the game sends anonymous telemetry to help us understand the player progression funnel. The data collected is strictly limited to:
+
+- **Event names** — which floors were entered, when a quiz was passed or failed, which achievements were unlocked, when a session started and ended.
+- **Aggregate numbers** — AU totals at milestone thresholds (sampled every 25 AU), quiz scores (pass/fail, not individual answers).
+- **Timing** — session duration in milliseconds.
+- **An anonymous client ID** — a random UUID generated in your browser and stored locally under `architect_analytics_client_v1`. It is not linked to any account, IP address, or personal identifier.
+
+**What is never sent:** save-slot contents, quiz answers, floor names that could reveal content gating, or any data that could identify you. To disable analytics, turn off the toggle in Settings — no further requests will be made until you re-enable it. If no endpoint is configured (the default for self-hosted builds), analytics are structurally off regardless of the toggle.
 
 ## License
 

@@ -10,6 +10,7 @@ import { COLORS } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 import { isPersistenceAvailable } from '../../systems/PersistedStore';
+import { createAnalyticsService } from '../../systems/Analytics';
 
 /** Count of static assets that failed to load during this boot pass. */
 let _bootAssetErrorCount = 0;
@@ -138,6 +139,13 @@ export class BootScene extends Phaser.Scene {
     // `gameState` from the registry instead of constructing their own
     // ProgressionSystem or reaching into the singleton save managers.
     this.registry.set('gameState', new GameStateManager());
+
+    // Bootstrap opt-in analytics. createAnalyticsService() returns null when
+    // VITE_ANALYTICS_ENDPOINT is not set (structurally disabled). When set,
+    // consent is checked per-event so no request is made until the player
+    // explicitly opts in via Settings.
+    const analytics = createAnalyticsService();
+    if (analytics) this.registry.set('analytics', analytics);
 
     // Global M-key toggles audio mute from any scene or context.
     // Attached to window so it works regardless of which Phaser scene has

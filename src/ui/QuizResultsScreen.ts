@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FloorId } from '../config/gameConfig';
 import { QUIZ_REWARDS, QUIZ_PASS_THRESHOLD } from '../config/quiz';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
-import { saveQuizResult } from '../systems/QuizManager';
+import { saveQuizResult, getQuizRecord } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
 import { isReducedMotion } from '../systems/MotionPreference';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
@@ -37,6 +37,9 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   const perfect = score === total;
 
   saveQuizResult(infoId, score);
+  // Emit analytics event after persisting so attemptNumber is accurate.
+  const attemptNumber = getQuizRecord(infoId)?.attempts ?? 1;
+  eventBus.emit('quiz:completed', { infoId, score, total, passed, attemptNumber });
 
   let auAwarded = 0;
   if (passed && !alreadyPassed) {
