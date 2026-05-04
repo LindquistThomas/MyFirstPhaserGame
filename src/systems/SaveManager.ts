@@ -35,6 +35,13 @@ export interface SlotInfo {
   totalAU?: number;
   currentFloor?: FloorId;
   lastPlayedAt?: number;
+  /**
+   * True when the slot's previous save was corrupt and has been discarded this
+   * session. The slot behaves identically to an empty slot (selectability,
+   * fresh-save on entry) but the UI surfaces a "RECOVERED" badge and a
+   * recovery dialog so the player understands what happened.
+   */
+  recovered?: boolean;
 }
 
 
@@ -47,6 +54,16 @@ function validateFloorId(value: unknown): FloorId | undefined {
 
 /** Schema version written by this build. Increment when SaveData shape changes. */
 export const CURRENT_SAVE_VERSION = 1;
+
+/**
+ * Storage key pattern reference (keep in sync when changing the format):
+ *   Primary save  : architect_<slot>_v1         (e.g. architect_slot1_v1)
+ *   Forensic copy : architect_<slot>_v1_corrupt  (most-recent corrupt blob per slot)
+ *
+ * The forensic key is written by discardCorrupt() / discardCorruptForSlot()
+ * and is readable via getCorruptBackup(). One fixed key per slot; no timestamp
+ * suffix so it can always be found (latest corruption overwrites any previous one).
+ */
 
 /**
  * Migration functions keyed by source version. Each receives raw parsed data
@@ -82,6 +99,14 @@ let storage: KVStorage | null = null;
 let playerSlot = 'default';
 let unavailableEmitted = false;
 
+/**
+ * Session-scoped record of slots whose previous save was found corrupt and
+ * discarded. Cleared only when the page is reloaded (module-level state).
+ * Key: slot id (e.g. 'slot1'). Value: the raw corrupt JSON string, used by
+ * getCorruptBackup() to power the "Download backup" button in the recovery dialog.
+ */
+const recoveredSlots = new Map<string, string>();
+
 function getStorage(): KVStorage { return storage ?? (storage = getDefaultStorage()); }
 
 export function setStorage(s: KVStorage): void { storage = s; unavailableEmitted = false; }
@@ -101,7 +126,7 @@ type FailureReason = 'quota' | 'unavailable' | 'parse' | 'unknown';
 function emitFailed(reason: FailureReason, err?: unknown): void {
   const detail = err instanceof Error ? err.message : (err != null ? String(err) : undefined);
   console.warn('[SaveManager] persistence:failed', { key: key(), slot: playerSlot, reason, detail });
-  eventBus.emit('persistence:failed', { reason, detail });
+  eventBus.emit('persistence:failed', { reason, detail, slot: playerSlot });
 }
 
 /** Emits `persistence:failed` with reason `unavailable` the first time noop storage is detected. */
@@ -162,12 +187,50 @@ function isValidSaveData(d: unknown): d is SaveData {
 }
 
 /**
- * Stash a forensic copy of raw save data under a timestamped key and remove
+ * Stash a forensic copy of raw save data under a fixed per-slot key and remove
  * the corrupt primary key so the next boot gets a clean slot.
+ * Records the slot in the session-scoped recoveredSlots map.
  */
 function discardCorrupt(raw: string): void {
-  try { getStorage().setItem(`${key()}_corrupt_${Date.now()}`, raw); } catch { /* noop */ }
-  try { getStorage().removeItem(key()); } catch { /* noop */ }
+  discardCorruptForSlot(playerSlot, raw);
+}
+
+/**
+ * Slot-agnostic variant of discardCorrupt used by loadSlotInfo, which reads
+ * slots that may differ from the currently active playerSlot.
+ */
+function discardCorruptForSlot(slotId: string, raw: string): void {
+  const slotKey = `architect_${slotId}_v1`;
+  const corruptKey = `${slotKey}_corrupt`;
+  try { getStorage().setItem(corruptKey, raw); } catch { /* noop */ }
+  try { getStorage().removeItem(slotKey); } catch { /* noop */ }
+  recoveredSlots.set(slotId, raw);
+}
+
+/**
+ * Returns the raw corrupt JSON string stashed by discardCorrupt for the given
+ * slot during this session, or null if none exists. Used by SaveRecoveryDialog
+ * to offer a "Download backup" file to the player.
+ */
+export function getCorruptBackup(slotId: SaveSlotId): string | null {
+  return recoveredSlots.get(slotId) ?? null;
+}
+
+/**
+ * Returns true if the given slot had a corrupt save discarded this session.
+ * SaveSlotScene uses this to show a "RECOVERED" badge on the slot card.
+ */
+export function wasSlotRecovered(slotId: SaveSlotId): boolean {
+  return recoveredSlots.has(slotId);
+}
+
+/**
+ * Remove the recovered-slot sentinel for slotId.
+ * Call this when the player has dismissed the recovery dialog so the dialog
+ * does not reappear if SaveSlotScene is revisited in the same session.
+ */
+export function clearRecoveredSlot(slotId: SaveSlotId): void {
+  recoveredSlots.delete(slotId);
 }
 
 /**
@@ -231,18 +294,20 @@ export function clear(): void {
  * slot. Safe to call during the slot-picker UI before the player has chosen.
  * Returns `exists: false` for any slot whose data would be rejected by load()
  * (corrupt JSON, missing required fields, failed schema validation).
+ * When corrupt data is found, stashes a forensic copy and sets `recovered: true`.
  */
 export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
   checkUnavailable();
   const slotKey = `architect_${slotId}_v1`;
   let raw: string | null = null;
   try { raw = getStorage().getItem(slotKey); } catch { /* ignore */ }
-  if (!raw) return { slotId, exists: false };
+  if (!raw) return { slotId, exists: false, recovered: recoveredSlots.has(slotId) };
   const data = parseAndValidateSave(raw);
   if (!data) {
-    // Corrupt data — treat as absent so the slot picker shows "EMPTY" and
-    // SaveSlotScene won't pass loadSave:true to a slot that can't be loaded.
-    return { slotId, exists: false };
+    // Corrupt data — stash forensic copy, mark slot as recovered for this session,
+    // then remove the corrupt key so the slot picker treats it as empty.
+    discardCorruptForSlot(slotId, raw);
+    return { slotId, exists: false, recovered: true };
   }
   return {
     slotId,

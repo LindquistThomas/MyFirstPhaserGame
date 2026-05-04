@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot } from './SaveManager';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
@@ -822,9 +822,8 @@ describe('SaveManager — isValidSaveData schema validation', () => {
 
     // Original key removed so hasSave() is false
     expect(store.store.has('architect_test_v1')).toBe(false);
-    // A forensic key starting with 'architect_test_v1_corrupt_' should exist
-    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
-    expect(forensicKey).toBeDefined();
+    // Forensic copy stored under the fixed per-slot key (no timestamp suffix)
+    expect(store.store.has('architect_test_v1_corrupt')).toBe(true);
   });
 
   it('stores a forensic copy on JSON.parse failure (not just schema failure)', () => {
@@ -835,8 +834,7 @@ describe('SaveManager — isValidSaveData schema validation', () => {
     load();
 
     expect(store.store.has('architect_test_v1')).toBe(false);
-    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
-    expect(forensicKey).toBeDefined();
+    expect(store.store.has('architect_test_v1_corrupt')).toBe(true);
   });
 
   it('stores a forensic copy when version is invalid (non-integer)', () => {
@@ -847,7 +845,134 @@ describe('SaveManager — isValidSaveData schema validation', () => {
     load();
 
     expect(store.store.has('architect_test_v1')).toBe(false);
-    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
-    expect(forensicKey).toBeDefined();
+    expect(store.store.has('architect_test_v1_corrupt')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Save recovery: wasSlotRecovered / getCorruptBackup / clearRecoveredSlot
+// ---------------------------------------------------------------------------
+
+describe('SaveManager — save recovery helpers', () => {
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  beforeEach(() => {
+    setPlayerSlot('slot1');
+    warnSpy.mockClear();
+    eventBus.removeAllListeners();
+    // Clear any lingering recovered-slot state from previous tests.
+    clearRecoveredSlot('slot1');
+    clearRecoveredSlot('slot2');
+    clearRecoveredSlot('slot3');
+  });
+
+  afterEach(() => {
+    eventBus.removeAllListeners();
+  });
+
+  afterAll(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('wasSlotRecovered returns false for a healthy boot (no corruption)', () => {
+    const store = memoryStorage();
+    setStorage(store);
+    expect(wasSlotRecovered('slot1')).toBe(false);
+  });
+
+  it('wasSlotRecovered returns true after load() encounters a corrupt save', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{not json}');
+    setStorage(store);
+    load();
+    expect(wasSlotRecovered('slot1')).toBe(true);
+  });
+
+  it('getCorruptBackup returns the raw corrupt string after load() discards it', () => {
+    const raw = '{not json}';
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', raw);
+    setStorage(store);
+    load();
+    expect(getCorruptBackup('slot1')).toBe(raw);
+  });
+
+  it('getCorruptBackup returns null for a slot that was never recovered', () => {
+    setStorage(memoryStorage());
+    expect(getCorruptBackup('slot2')).toBeNull();
+  });
+
+  it('clearRecoveredSlot removes the recovery sentinel so dialog does not reappear', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{not json}');
+    setStorage(store);
+    load();
+    expect(wasSlotRecovered('slot1')).toBe(true);
+    clearRecoveredSlot('slot1');
+    expect(wasSlotRecovered('slot1')).toBe(false);
+  });
+
+  it('clearRecoveredSlot also clears getCorruptBackup', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    load();
+    clearRecoveredSlot('slot1');
+    expect(getCorruptBackup('slot1')).toBeNull();
+  });
+
+  it('wasSlotRecovered returns true when loadSlotInfo detects corruption', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot2_v1', '{corrupt}');
+    setStorage(store);
+    const info = loadSlotInfo('slot2');
+    expect(info.recovered).toBe(true);
+    expect(wasSlotRecovered('slot2')).toBe(true);
+  });
+
+  it('loadSlotInfo.recovered is false for a genuinely empty slot', () => {
+    setStorage(memoryStorage());
+    const info = loadSlotInfo('slot3');
+    expect(info.exists).toBe(false);
+    expect(info.recovered).toBe(false);
+  });
+
+  it('loadSlotInfo.recovered is true for a slot recovered via load() even after key is removed', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    // Simulate load() detecting corruption (sets playerSlot = 'slot1').
+    load();
+    // Now loadSlotInfo should see recovered=true even though the key is gone.
+    const info = loadSlotInfo('slot1');
+    expect(info.exists).toBe(false);
+    expect(info.recovered).toBe(true);
+  });
+
+  it('persistence:failed payload includes the slot id on parse failure', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+    load();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse', slot: 'slot1' }));
+  });
+
+  it('forensic copy is stored under the fixed _corrupt key (no timestamp)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', 'CORRUPT');
+    setStorage(store);
+    load();
+    expect(store.store.get('architect_slot1_v1_corrupt')).toBe('CORRUPT');
+  });
+
+  it('loadSlotInfo stashes forensic copy for non-active slot', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot3_v1', 'BADDATA');
+    setStorage(store);
+    loadSlotInfo('slot3');
+    expect(store.store.get('architect_slot3_v1_corrupt')).toBe('BADDATA');
+    expect(store.store.has('architect_slot3_v1')).toBe(false);
   });
 });

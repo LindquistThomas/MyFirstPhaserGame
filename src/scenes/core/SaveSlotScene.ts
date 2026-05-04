@@ -12,6 +12,7 @@ import type { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
+import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
 
 /**
  * Slot-picker screen.
@@ -53,6 +54,11 @@ export class SaveSlotScene extends Phaser.Scene {
     this.updateHighlight();
 
     this.cameras.main.fadeIn(300, 0, 0, 0);
+
+    // Show a one-shot recovery dialog if any slot had its corrupt save discarded.
+    // Shown AFTER the slot cards are drawn so the player can see the RECOVERED
+    // badge beneath the modal.
+    this.maybeShowRecoveryDialog();
   }
 
   // -------------------------------------------------------------------------
@@ -139,8 +145,10 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '11px', color: '#ff4466',
       }).setOrigin(0.5));
     } else {
-      container.add(this.add.text(w / 2, h / 2, 'EMPTY', {
-        fontFamily: 'monospace', fontSize: '20px', color: '#3a4460',
+      const badge = info.recovered ? 'RECOVERED' : 'EMPTY';
+      const badgeColor = info.recovered ? '#ffaa00' : '#3a4460';
+      container.add(this.add.text(w / 2, h / 2, badge, {
+        fontFamily: 'monospace', fontSize: '20px', color: badgeColor,
         fontStyle: 'bold',
       }).setOrigin(0.5));
     }
@@ -163,6 +171,19 @@ export class SaveSlotScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, '← → / A D: Select  |  Enter: Choose  |  X: Delete  |  Esc / B: Back', {
       fontFamily: 'monospace', fontSize: '13px', color: '#7a8aa3',
     }).setOrigin(0.5).setDepth(5);
+  }
+
+  /**
+   * If any slot had its corrupt save discarded this session, open a recovery
+   * dialog for the FIRST such slot. Subsequent slots will show the "RECOVERED"
+   * badge but the player must dismiss the dialog before seeing them.
+   * Single-shot per session: `SaveRecoveryDialog.onAfterClose` calls
+   * `clearRecoveredSlot` so revisiting this scene doesn't reopen the dialog.
+   */
+  private maybeShowRecoveryDialog(): void {
+    const recovered = this.slotInfos.find((info) => info.recovered);
+    if (!recovered) return;
+    new SaveRecoveryDialog(this, recovered.slotId, 'parse');
   }
 
   // -------------------------------------------------------------------------
