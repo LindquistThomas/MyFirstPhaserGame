@@ -22,7 +22,7 @@ src/
 │       └── types.ts          `QuizDefinition` + scoring constants.
 ├── features/                 Per-feature trees (floors + products).
 │   ├── floors/               One directory per floor — scene + content co-located.
-│       ├── index.ts          Barrel that re-exports every floor scene.
+│       ├── index.ts          Static barrel — re-exports the six eager floor scenes (platform, architecture, finance, product, customer, executive). Boss is lazy-only (see `lazySceneLoaders.ts`); lobby has no scene.
 │       ├── _shared/          Base class + manager collaborators used by every floor.
 │       │   ├── LevelScene.ts           Shared base scene (composition root).
 │       │   ├── LevelEnemySpawner.ts    Spawns + cleans up enemies.
