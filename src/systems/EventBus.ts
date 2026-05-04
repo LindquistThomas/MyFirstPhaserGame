@@ -153,8 +153,9 @@ export interface GameEvents {
    * Emitted at most once per `unavailable` session (noop storage detection),
    * on every quota error, on every JSON parse failure, and on other unknown
    * storage errors.
+   * `slot` is the save-slot id that was affected (e.g. `'slot1'`), if known.
    */
-  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string }];
+  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string; slot?: string }];
 
   /**
    * An achievement was just unlocked for the first time.

@@ -405,7 +405,7 @@ describe('MusicPlugin boot-failure skip-set', () => {
     // playOrLoad is NOT gated by _failedMusicKeys — the load is attempted
     expect(fakeScene.load.audio).toHaveBeenCalledWith(
       'music_menu',
-      expect.stringContaining('bgm_menu.mp3'),
+      expect.stringContaining('bgm_menu.ogg'),
     );
   });
 
