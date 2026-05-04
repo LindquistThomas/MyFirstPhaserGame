@@ -1,9 +1,10 @@
 /**
  * Unit tests for SaveRecoveryDialog.
  *
- * ModalBase is stubbed so the dialog can be constructed without a running
- * Phaser scene. SaveManager helpers (clearRecoveredSlot, getCorruptBackup)
- * are mocked to isolate dialog behaviour from storage state.
+ * ModalBase and ModalKeyboardNavigator are stubbed so the dialog can be
+ * constructed without a running Phaser scene. SaveManager helpers
+ * (clearRecoveredSlot, getCorruptBackup) are mocked to isolate dialog
+ * behaviour from storage state.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -45,6 +46,63 @@ vi.mock('./ModalBase', () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Stub ModalKeyboardNavigator + makeTextFocusable
+// ---------------------------------------------------------------------------
+vi.mock('./ModalKeyboardNavigator', () => {
+  class MockModalKeyboardNavigator {
+    private _scene: Record<string, unknown>;
+    private focusables: Array<{ focus(): void; blur(): void; activate(): void }> = [];
+    private focusIndex = -1;
+    private handlers: Array<{ action: string; handler: () => void }> = [];
+
+    constructor(scene: Record<string, unknown>) { this._scene = scene; }
+
+    add(f: { focus(): void; blur(): void; activate(): void }): number {
+      this.focusables.push(f); return this.focusables.length - 1;
+    }
+    size(): number { return this.focusables.length; }
+    currentIndex(): number { return this.focusIndex; }
+
+    setFocus(index: number): void {
+      if (index < 0 || index >= this.focusables.length) return;
+      this.focusables[this.focusIndex]?.blur();
+      this.focusIndex = index;
+      this.focusables[index]?.focus();
+    }
+
+    focusPrev(): void { this.setFocus((this.focusIndex - 1 + this.focusables.length) % this.focusables.length); }
+    focusNext(): void { this.setFocus((this.focusIndex + 1) % this.focusables.length); }
+    activateFocused(): void { this.focusables[this.focusIndex]?.activate(); }
+
+    bind(action: string, handler: () => void): void {
+      (this._scene.inputs as { on(a: string, h: () => void): void }).on(action, handler);
+      this.handlers.push({ action, handler });
+    }
+
+    destroy(): void {
+      for (const { action, handler } of this.handlers) {
+        (this._scene.inputs as { off(a: string, h: () => void): void }).off(action, handler);
+      }
+      this.handlers = [];
+    }
+  }
+
+  return {
+    ModalKeyboardNavigator: MockModalKeyboardNavigator,
+    makeTextFocusable: (
+      text: { setColor(c: string): void; emit(e: string): void },
+      normalColor: string,
+      focusColor: string,
+    ) => ({
+      focus: () => text.setColor(focusColor),
+      blur:  () => text.setColor(normalColor),
+      activate: () => text.emit('pointerdown'),
+      bounds: () => ({ x: 0, y: 0, width: 100, height: 30 }),
+    }),
+  };
+});
+
+// ---------------------------------------------------------------------------
 // Stub SaveManager helpers
 // ---------------------------------------------------------------------------
 const mockClearRecoveredSlot = vi.fn();
@@ -63,10 +121,33 @@ vi.mock('../systems/SaveManager', () => ({
 // ---------------------------------------------------------------------------
 
 function makeText() {
+  // Track registered event handlers so emit() can fire them.
+  const eventHandlers: Map<string, Array<() => void>> = new Map();
+
   const t: Record<string, ReturnType<typeof vi.fn>> = {};
-  for (const name of ['setOrigin', 'setScrollFactor', 'setInteractive', 'setColor', 'on']) {
+  for (const name of [
+    'setOrigin', 'setScrollFactor', 'setInteractive', 'setColor',
+    'setDepth', 'setVisible', 'setPosition', 'destroy',
+  ]) {
     t[name] = vi.fn().mockReturnThis();
   }
+
+  // getBounds returns a usable rect for ModalKeyboardNavigator arrow placement.
+  t['getBounds'] = vi.fn(() => ({ x: 0, y: 0, width: 100, height: 30 }));
+
+  // on() stores handlers AND is tracked as a vi.fn for assertions.
+  t['on'] = vi.fn((event: string, handler: () => void) => {
+    if (!eventHandlers.has(event)) eventHandlers.set(event, []);
+    eventHandlers.get(event)!.push(handler);
+    return t;
+  }) as ReturnType<typeof vi.fn>;
+
+  // emit() fires all stored handlers for the given event.
+  t['emit'] = vi.fn((event: string) => {
+    for (const h of eventHandlers.get(event) ?? []) h();
+    return t;
+  }) as ReturnType<typeof vi.fn>;
+
   return t;
 }
 
@@ -149,10 +230,17 @@ describe('SaveRecoveryDialog', () => {
     )).not.toThrow();
   });
 
-  it('registers a Confirm input handler on construction', () => {
+  it('registers a Confirm input handler on construction (via nav.bind)', () => {
     const scene = makeScene();
     new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
     expect(scene.inputs.on).toHaveBeenCalledWith('Confirm', expect.any(Function));
+  });
+
+  it('registers NavigateLeft and NavigateRight handlers on construction', () => {
+    const scene = makeScene();
+    new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
+    expect(scene.inputs.on).toHaveBeenCalledWith('NavigateLeft', expect.any(Function));
+    expect(scene.inputs.on).toHaveBeenCalledWith('NavigateRight', expect.any(Function));
   });
 
   it('calls clearRecoveredSlot with the slot id on close', () => {
@@ -179,17 +267,19 @@ describe('SaveRecoveryDialog', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('removes the Confirm handler in onBeforeClose', () => {
+  it('unregisters all nav handlers (including Confirm) on close via nav.destroy()', () => {
     const scene = makeScene();
     const dialog = new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
     dialog.close();
+    // nav.destroy() deregisters each bound action including Confirm
     expect(scene.inputs.off).toHaveBeenCalledWith('Confirm', expect.any(Function));
   });
 
-  it('Confirm key press triggers close and calls onDismiss', () => {
+  it('Confirm key press activates focused button (OK) and calls onDismiss', () => {
     const scene = makeScene();
     const onDismiss = vi.fn();
     new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse', onDismiss);
+    // Confirm activates nav.activateFocused() → okBtn.emit('pointerdown') → close()
     scene._fire('Confirm');
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
@@ -254,26 +344,27 @@ describe('SaveRecoveryDialog', () => {
     const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
     const clickSpy = vi.fn();
-    const fakeAnchor = {
-      href: '',
-      download: '',
-      click: clickSpy,
-    };
+    const fakeAnchor = { href: '', download: '', click: clickSpy };
     const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(
       fakeAnchor as unknown as HTMLElement,
     );
-    const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockReturnValue(fakeAnchor as unknown as HTMLElement);
-    const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockReturnValue(fakeAnchor as unknown as HTMLElement);
+    const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockReturnValue(
+      fakeAnchor as unknown as HTMLElement,
+    );
+    // Simulate the anchor being in the DOM so removeChild is called
+    vi.spyOn(document.body, 'contains').mockReturnValue(true);
+    const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockReturnValue(
+      fakeAnchor as unknown as HTMLElement,
+    );
 
     const scene = makeScene();
     new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
 
-    // Find and click the Download Backup button
+    // Find the Download Backup button and fire its pointerdown via the registered handler
     const allCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls;
     const dlBtnCallIdx = allCalls.findIndex((c) => (c[2] as string).includes('Download Backup'));
     expect(dlBtnCallIdx).toBeGreaterThanOrEqual(0);
 
-    // Retrieve the pointerdown handler registered on the text mock and fire it
     const dlTextMock = (scene.add.text as ReturnType<typeof vi.fn>).mock.results[dlBtnCallIdx]?.value as ReturnType<typeof makeText>;
     const onCalls = (dlTextMock.on as ReturnType<typeof vi.fn>).mock.calls as [string, () => void][];
     const pdHandler = onCalls.find((c) => c[0] === 'pointerdown')?.[1];
@@ -283,11 +374,11 @@ describe('SaveRecoveryDialog', () => {
     expect(createObjectURLSpy).toHaveBeenCalledOnce();
     expect(createElementSpy).toHaveBeenCalledWith('a');
     expect(fakeAnchor.href).toBe(fakeUrl);
-    // Filename should match architect-recovered-slot1-YYYYMMDD.json pattern
     expect(fakeAnchor.download).toMatch(/^architect-recovered-slot1-\d{8}\.json$/);
     expect(appendChildSpy).toHaveBeenCalledWith(fakeAnchor);
     expect(clickSpy).toHaveBeenCalledOnce();
     expect(removeChildSpy).toHaveBeenCalledWith(fakeAnchor);
+    // URL must always be revoked (try/finally)
     expect(revokeObjectURLSpy).toHaveBeenCalledWith(fakeUrl);
 
     // Restore spies
@@ -296,6 +387,41 @@ describe('SaveRecoveryDialog', () => {
     createElementSpy.mockRestore();
     appendChildSpy.mockRestore();
     removeChildSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it('revokeObjectURL is called even when removeChild throws (try/finally)', () => {
+    const corruptData = '{"v":1}';
+    mockGetCorruptBackup.mockReturnValue(corruptData);
+
+    const fakeUrl = 'blob:fake-url';
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(fakeUrl);
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+    const fakeAnchor = { href: '', download: '', click: vi.fn() };
+    vi.spyOn(document, 'createElement').mockReturnValue(fakeAnchor as unknown as HTMLElement);
+    vi.spyOn(document.body, 'appendChild').mockReturnValue(fakeAnchor as unknown as HTMLElement);
+    vi.spyOn(document.body, 'contains').mockReturnValue(true);
+    vi.spyOn(document.body, 'removeChild').mockImplementation(() => {
+      throw new Error('removeChild failed');
+    });
+
+    const scene = makeScene();
+    new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
+
+    const allCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls;
+    const dlBtnCallIdx = allCalls.findIndex((c) => (c[2] as string).includes('Download Backup'));
+    const dlTextMock = (scene.add.text as ReturnType<typeof vi.fn>).mock.results[dlBtnCallIdx]?.value as ReturnType<typeof makeText>;
+    const onCalls = (dlTextMock.on as ReturnType<typeof vi.fn>).mock.calls as [string, () => void][];
+    const pdHandler = onCalls.find((c) => c[0] === 'pointerdown')?.[1];
+
+    // removeChild throws inside the try block — URL should still be revoked by finally
+    expect(() => pdHandler?.()).not.toThrow();
+    expect(revokeObjectURLSpy).toHaveBeenCalledWith(fakeUrl);
+
+    vi.restoreAllMocks();
+    createObjectURLSpy.mockRestore();
+    revokeObjectURLSpy.mockRestore();
   });
 
   it('maps quota reason to a human-readable string about storage being full', () => {
@@ -318,11 +444,11 @@ describe('SaveRecoveryDialog', () => {
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
       throw new Error('Not supported in this context');
     });
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
     const scene = makeScene();
     new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
 
-    // Find the download button's pointerdown handler and fire it — should not throw
     const allCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls;
     const dlBtnCallIdx = allCalls.findIndex((c) => (c[2] as string).includes('Download Backup'));
     expect(dlBtnCallIdx).toBeGreaterThanOrEqual(0);
@@ -330,8 +456,35 @@ describe('SaveRecoveryDialog', () => {
     const dlTextMock = (scene.add.text as ReturnType<typeof vi.fn>).mock.results[dlBtnCallIdx]?.value as ReturnType<typeof makeText>;
     const onCalls = (dlTextMock.on as ReturnType<typeof vi.fn>).mock.calls as [string, () => void][];
     const pdHandler = onCalls.find((c) => c[0] === 'pointerdown')?.[1];
+    // createObjectURL throws → caught; URL is null so revokeObjectURL is NOT called
     expect(() => pdHandler?.()).not.toThrow();
+    expect(revokeObjectURLSpy).not.toHaveBeenCalled();
 
     createObjectURLSpy.mockRestore();
+    revokeObjectURLSpy.mockRestore();
+  });
+
+  it('NavigateRight switches focus from OK to Download Backup (when both exist)', () => {
+    mockGetCorruptBackup.mockReturnValue('{"v":1}');
+    const scene = makeScene();
+    const onDismiss = vi.fn();
+    new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse', onDismiss);
+
+    // Default focus is on OK (last button). NavigateRight wraps to Download Backup (first).
+    // Then Confirm activates Download Backup's pointerdown (which triggers download, not close).
+    // We just verify Confirm after navigate does NOT call onDismiss (focus is on dl button).
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:x');
+    vi.spyOn(document, 'createElement').mockReturnValue({ href: '', download: '', click: vi.fn() } as unknown as HTMLElement);
+    vi.spyOn(document.body, 'appendChild').mockReturnValue({} as unknown as HTMLElement);
+    vi.spyOn(document.body, 'contains').mockReturnValue(true);
+    vi.spyOn(document.body, 'removeChild').mockReturnValue({} as unknown as HTMLElement);
+
+    scene._fire('NavigateRight'); // moves focus: OK → Download Backup
+    scene._fire('Confirm');       // activates Download Backup → triggers download (not close)
+
+    expect(onDismiss).not.toHaveBeenCalled(); // focus was on Download, not OK
+    vi.restoreAllMocks();
+    revokeObjectURLSpy.mockRestore();
   });
 });

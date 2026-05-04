@@ -2,7 +2,8 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { theme } from '../style/theme';
 import { ModalBase } from './ModalBase';
-import { SAVE_SLOTS, type SaveSlotId, clearRecoveredSlot, getCorruptBackup } from '../systems/SaveManager';
+import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
+import { SAVE_SLOTS, type SaveSlotId, type FailureReason, clearRecoveredSlot, getCorruptBackup } from '../systems/SaveManager';
 
 /** Human-readable descriptions for each failure reason. */
 const REASON_TEXT: Record<string, string> = {
@@ -28,26 +29,25 @@ const REASON_TEXT: Record<string, string> = {
 export class SaveRecoveryDialog extends ModalBase {
   private readonly slotId: SaveSlotId;
   private readonly onDismiss: () => void;
-  private confirmHandler: (() => void) | null = null;
+  private nav!: ModalKeyboardNavigator;
 
   constructor(
     scene: Phaser.Scene,
     slotId: SaveSlotId,
-    reason: string,
+    reason: FailureReason,
     onDismiss: () => void = () => { /* no-op */ },
   ) {
     super(scene);
     this.slotId = slotId;
     this.onDismiss = onDismiss;
+    this.nav = new ModalKeyboardNavigator(scene);
     this.buildPanel(reason);
+    this.registerKeyboardNav();
     this.fadeIn();
   }
 
   protected override onBeforeClose(): void {
-    if (this.confirmHandler) {
-      this.scene.inputs.off('Confirm', this.confirmHandler);
-      this.confirmHandler = null;
-    }
+    this.nav.destroy();
   }
 
   protected override onAfterClose(): void {
@@ -55,7 +55,7 @@ export class SaveRecoveryDialog extends ModalBase {
     this.onDismiss();
   }
 
-  private buildPanel(reason: string): void {
+  private buildPanel(reason: FailureReason): void {
     const panelW = 560;
     const panelH = 300;
     const panelX = (GAME_WIDTH - panelW) / 2;
@@ -143,6 +143,7 @@ export class SaveRecoveryDialog extends ModalBase {
       dlBtn.on('pointerout',  () => dlBtn.setColor('#55ddff'));
       dlBtn.on('pointerdown', () => this.triggerDownload(slotNum, corruptData));
       this.container.add(dlBtn);
+      this.nav.add(makeTextFocusable(dlBtn, '#55ddff', '#ffffff'));
     }
 
     const okBtnX = corruptData !== null ? GAME_WIDTH / 2 + 80 : GAME_WIDTH / 2;
@@ -163,27 +164,44 @@ export class SaveRecoveryDialog extends ModalBase {
     okBtn.on('pointerout',  () => okBtn.setColor('#ffffff'));
     okBtn.on('pointerdown', () => this.close());
     this.container.add(okBtn);
+    this.nav.add(makeTextFocusable(okBtn, '#ffffff', '#55eeff'));
+  }
 
-    this.confirmHandler = () => this.close();
-    this.scene.inputs.on('Confirm', this.confirmHandler);
+  private registerKeyboardNav(): void {
+    // Left/right to move between Download Backup and OK; Confirm activates focused.
+    this.nav.bind('NavigateLeft',  () => this.nav.focusPrev());
+    this.nav.bind('NavigateRight', () => this.nav.focusNext());
+    this.nav.bind('Confirm',       () => this.nav.activateFocused());
+    // Default focus on the last button (OK — safe default, no accidental download).
+    this.nav.setFocus(this.nav.size() - 1);
   }
 
   private triggerDownload(slotNum: number, data: string): void {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const filename = `architect-recovered-slot${slotNum}-${date}.json`;
+    let url: string | null = null;
+    let anchor: HTMLAnchorElement | null = null;
     try {
       const blob = new Blob([data], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      url = URL.createObjectURL(blob);
+      anchor = document.createElement('a') as HTMLAnchorElement;
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      anchor = null; // mark as successfully removed
     } catch {
       /* If the download fails (e.g. sandboxed environment), silently ignore — the
          player can still dismiss via OK. */
+    } finally {
+      // Belt-and-suspenders: remove the anchor if it was appended but never removed
+      // (e.g. if removeChild threw above). Wrapped in its own try so a second failure
+      // here cannot suppress the critical URL revocation below.
+      if (anchor !== null && document.body.contains(anchor)) {
+        try { document.body.removeChild(anchor); } catch { /* noop */ }
+      }
+      if (url !== null) URL.revokeObjectURL(url);
     }
   }
 }

@@ -106,7 +106,7 @@ let unavailableEmitted = false;
  * corrupt JSON string (for the Download Backup feature) and `reason` is the
  * failure reason passed to `emitFailed`.
  */
-const recoveredSlots = new Map<string, { raw: string; reason: string }>();
+const recoveredSlots = new Map<string, { raw: string; reason: FailureReason }>();
 
 function getStorage(): KVStorage { return storage ?? (storage = getDefaultStorage()); }
 
@@ -122,7 +122,7 @@ function isQuotaError(err: unknown): boolean {
   return false;
 }
 
-type FailureReason = 'quota' | 'unavailable' | 'parse' | 'unknown';
+export type FailureReason = 'quota' | 'unavailable' | 'parse' | 'unknown';
 
 function emitFailed(reason: FailureReason, err?: unknown): void {
   const detail = err instanceof Error ? err.message : (err != null ? String(err) : undefined);
@@ -200,7 +200,7 @@ function discardCorrupt(raw: string): void {
  * Slot-agnostic variant of discardCorrupt used by loadSlotInfo, which reads
  * slots that may differ from the currently active playerSlot.
  */
-function discardCorruptForSlot(slotId: string, raw: string, reason = 'parse'): void {
+function discardCorruptForSlot(slotId: string, raw: string, reason: FailureReason = 'parse'): void {
   const slotKey = `architect_${slotId}_v1`;
   const corruptKey = `${slotKey}_corrupt`;
   try { getStorage().setItem(corruptKey, raw); } catch { /* noop */ }
@@ -222,7 +222,7 @@ export function getCorruptBackup(slotId: SaveSlotId): string | null {
  * 'parse' as a safe default. Used by SaveRecoveryDialog to show a tailored
  * human-readable explanation.
  */
-export function getRecoveryReason(slotId: SaveSlotId): string {
+export function getRecoveryReason(slotId: SaveSlotId): FailureReason {
   return recoveredSlots.get(slotId)?.reason ?? 'parse';
 }
 
