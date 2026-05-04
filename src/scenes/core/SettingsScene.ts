@@ -60,8 +60,16 @@ export class SettingsScene extends Phaser.Scene {
   private helpModalOpen = false;
   /** True while the import-confirm overlay is open; blocks settings nav. */
   private importConfirmOpen = false;
+  /** Currently focused button in the confirm overlay: 0 = YES, 1 = NO. */
+  private importConfirmIndex = 1; // default to "No" (safer default)
   /** Overlay container shown while the import-confirm dialog is active. */
   private importOverlay?: Phaser.GameObjects.Container;
+  /** [ YES ] button reference for keyboard highlight refresh. */
+  private importConfirmYesBtn?: Phaser.GameObjects.Text;
+  /** [ NO ] button reference for keyboard highlight refresh. */
+  private importConfirmNoBtn?: Phaser.GameObjects.Text;
+  /** Pending import data kept alive between openImportConfirm and confirmImport. */
+  private importConfirmData?: { raw: string; slotId: SaveSlotId };
   /** Inline status message shown after export/import actions. */
   private statusText?: Phaser.GameObjects.Text;
 
@@ -435,12 +443,22 @@ export class SettingsScene extends Phaser.Scene {
   }
 
   private move(delta: number): void {
+    if (this.importConfirmOpen) {
+      this.importConfirmIndex = (this.importConfirmIndex + delta + 2) % 2;
+      this.refreshImportConfirmHighlight();
+      return;
+    }
     const n = this.items.length;
     this.selectedIndex = (this.selectedIndex + delta + n) % n;
     this.refreshAll();
   }
 
   private adjust(delta: number): void {
+    if (this.importConfirmOpen) {
+      this.importConfirmIndex = (this.importConfirmIndex + (delta > 0 ? 1 : -1) + 2) % 2;
+      this.refreshImportConfirmHighlight();
+      return;
+    }
     const item = this.items[this.selectedIndex];
     if (!item) return;
 
@@ -460,7 +478,15 @@ export class SettingsScene extends Phaser.Scene {
 
   private activate(): void {
     if (this.helpModalOpen) return;
-    if (this.importConfirmOpen) return;
+    if (this.importConfirmOpen) {
+      if (this.importConfirmIndex === 0) {
+        const d = this.importConfirmData;
+        if (d && this.importOverlay) this.confirmImport(d.raw, d.slotId, this.importOverlay);
+      } else {
+        if (this.importOverlay) this.closeImportConfirm(this.importOverlay);
+      }
+      return;
+    }
     const item = this.items[this.selectedIndex];
     if (!item) return;
 
@@ -539,16 +565,20 @@ export class SettingsScene extends Phaser.Scene {
       this.statusText = undefined;
     }
     const color = isError ? '#ff6680' : '#44dd88';
-    this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 290, message, {
+    const text = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 290, message, {
       fontFamily: 'monospace',
       fontSize: '13px',
       color,
       wordWrap: { width: 580 },
       align: 'center',
     }).setOrigin(0.5).setDepth(20);
+    this.statusText = text;
 
+    // Only destroy if this specific text object is still the active one when
+    // the timer fires. This prevents a rapid second call from clearing the
+    // newer message when the first timer fires 4s after the first call.
     this.time.delayedCall(4000, () => {
-      if (this.statusText) { this.statusText.destroy(); this.statusText = undefined; }
+      if (this.statusText === text) { text.destroy(); this.statusText = undefined; }
     });
   }
 
@@ -560,7 +590,7 @@ export class SettingsScene extends Phaser.Scene {
   private exportSave(): void {
     if (this.importConfirmOpen) return;
 
-    // Derive current slot (best-effort matching via AU count)
+    // Resolve the active slot via the module-level playerSlot state.
     const slotId = this.activeSlotId();
     const json = exportSlot(slotId);
     if (!json) {
@@ -647,10 +677,14 @@ export class SettingsScene extends Phaser.Scene {
    * Show the import-confirm overlay.
    * On confirm: write the imported data and reload progression state.
    * On cancel: dismiss without touching storage.
+   * Supports both pointer clicks and keyboard (Confirm = Enter, Cancel = Esc,
+   * Left/Right/Up/Down = switch YES ↔ NO focus).
    */
   private openImportConfirm(raw: string, slotId: SaveSlotId, slotNum: number): void {
     if (this.importConfirmOpen) return;
     this.importConfirmOpen = true;
+    this.importConfirmIndex = 1; // default focus to "No" (safer)
+    this.importConfirmData = { raw, slotId };
 
     const ow = 440, oh = 160;
     const ox = (GAME_WIDTH - ow) / 2;
@@ -686,15 +720,25 @@ export class SettingsScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textAccent,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     yesBtn.on('pointerdown', () => this.confirmImport(raw, slotId, overlay));
+    yesBtn.on('pointerover', () => { this.importConfirmIndex = 0; this.refreshImportConfirmHighlight(); });
     overlay.add(yesBtn);
 
     const noBtn = this.add.text(ox + ow / 2 + 70, oy + 110, '[ NO ]', {
       fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textMuted,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     noBtn.on('pointerdown', () => this.closeImportConfirm(overlay));
+    noBtn.on('pointerover', () => { this.importConfirmIndex = 1; this.refreshImportConfirmHighlight(); });
     overlay.add(noBtn);
 
+    this.importConfirmYesBtn = yesBtn;
+    this.importConfirmNoBtn = noBtn;
     this.importOverlay = overlay;
+    this.refreshImportConfirmHighlight();
+  }
+
+  private refreshImportConfirmHighlight(): void {
+    this.importConfirmYesBtn?.setColor(this.importConfirmIndex === 0 ? '#ffffff' : theme.color.css.textAccent);
+    this.importConfirmNoBtn?.setColor(this.importConfirmIndex === 1 ? '#ffffff' : theme.color.css.textMuted);
   }
 
   private confirmImport(raw: string, slotId: SaveSlotId, overlay: Phaser.GameObjects.Container): void {
@@ -717,12 +761,18 @@ export class SettingsScene extends Phaser.Scene {
   private closeImportConfirm(overlay: Phaser.GameObjects.Container): void {
     overlay.destroy();
     this.importOverlay = undefined;
+    this.importConfirmYesBtn = undefined;
+    this.importConfirmNoBtn = undefined;
+    this.importConfirmData = undefined;
     this.importConfirmOpen = false;
   }
 
   private goBack(): void {
     if (this.helpModalOpen) return;
-    if (this.importConfirmOpen) return;
+    if (this.importConfirmOpen) {
+      if (this.importOverlay) this.closeImportConfirm(this.importOverlay);
+      return;
+    }
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => {
       if (this.callerScene === 'PauseScene') {

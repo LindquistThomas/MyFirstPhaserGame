@@ -62,6 +62,12 @@ test.describe('Save export / import', () => {
         return { ok: false, reason: 'missing exportedAt' };
       }
 
+      // Capture original values before clearing
+      const origTotalAU = (envelope.payload as { totalAU: number }).totalAU;
+      const origCurrentFloor = (envelope.payload as { currentFloor: number }).currentFloor;
+      const origUnlockedFloors = (envelope.payload as { unlockedFloors: number[] }).unlockedFloors;
+      const origOnboarding = (envelope.payload as { onboardingComplete?: boolean }).onboardingComplete;
+
       // Clear and re-import
       window.localStorage.removeItem('architect_slot1_v1');
       const data = importToSlot('slot1', json);
@@ -70,13 +76,29 @@ test.describe('Save export / import', () => {
       return {
         ok: true,
         totalAU: data.totalAU,
+        currentFloor: data.currentFloor,
+        unlockedFloors: data.unlockedFloors,
+        onboardingComplete: data.onboardingComplete,
         hasSlotKey: window.localStorage.getItem('architect_slot1_v1') !== null,
+        origTotalAU,
+        origCurrentFloor,
+        origUnlockedFloors,
+        origOnboarding,
       };
     });
 
     expect(result.ok).toBe(true);
-    expect((result as { totalAU?: number }).totalAU).toBe(37);
-    expect((result as { hasSlotKey?: boolean }).hasSlotKey).toBe(true);
+    type R = {
+      totalAU: number; currentFloor: number; unlockedFloors: number[];
+      onboardingComplete?: boolean; hasSlotKey: boolean;
+      origTotalAU: number; origCurrentFloor: number; origUnlockedFloors: number[]; origOnboarding?: boolean;
+    };
+    const r = result as unknown as R;
+    expect(r.totalAU).toBe(r.origTotalAU);
+    expect(r.currentFloor).toBe(r.origCurrentFloor);
+    expect(r.unlockedFloors).toEqual(r.origUnlockedFloors);
+    expect(r.onboardingComplete).toBe(r.origOnboarding);
+    expect(r.hasSlotKey).toBe(true);
     errors.assertClean();
   });
 
