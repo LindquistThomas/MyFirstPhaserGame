@@ -120,7 +120,7 @@ test.describe('Save export / import', () => {
     errors.assertClean();
   });
 
-  test('SettingsScene renders Export Save and Import Save buttons', async ({ page }) => {
+  test('SettingsScene contains Export Save and Import Save action items', async ({ page }) => {
     await seedFullProgressSave(page);
     const errors = attachErrorWatchers(page);
     await page.goto('/');
@@ -128,11 +128,21 @@ test.describe('Save export / import', () => {
 
     await navigateToSettings(page);
 
-    // Verify the scene is active (which means the buttons were registered in buildItems())
-    const isActive = await page.evaluate(() => {
-      return window.__game?.scene.isActive('SettingsScene') ?? false;
+    // Inspect the SettingsScene's items list to confirm both buttons are registered.
+    const hasExportItem = await page.evaluate(() => {
+      const g = window.__game;
+      if (!g) return false;
+      const scene = g.scene.getScenes(true).find(
+        (s) => s.sys.settings.key === 'SettingsScene',
+      ) as unknown as Record<string, unknown>;
+      if (!scene) return false;
+      const items = scene['items'] as Array<{ kind: string; label: string }> | undefined;
+      if (!Array.isArray(items)) return false;
+      const hasExport = items.some((i) => i.kind === 'action' && i.label.includes('EXPORT SAVE'));
+      const hasImport = items.some((i) => i.kind === 'action' && i.label.includes('IMPORT SAVE'));
+      return hasExport && hasImport;
     });
-    expect(isActive).toBe(true);
+    expect(hasExportItem).toBe(true);
     errors.assertClean();
   });
 });

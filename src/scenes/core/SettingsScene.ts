@@ -43,6 +43,10 @@ type SettingsItem =
   | { kind: 'cycle'; label: string; options: readonly string[]; get: () => string; set: (v: string) => void }
   | { kind: 'action'; label: string; action: () => void };
 
+/** User-visible error shown for any unrecognised or corrupt import file. */
+const IMPORT_ERROR_MESSAGE =
+  'This file is not a valid Architect save (bad format / corrupt / wrong version).';
+
 export class SettingsScene extends Phaser.Scene {
   private items: SettingsItem[] = [];
   private selectedIndex = 0;
@@ -611,20 +615,14 @@ export class SettingsScene extends Phaser.Scene {
         // Pre-validate before showing the confirm dialog so we fail fast.
         let envelope: unknown;
         try { envelope = JSON.parse(raw); } catch {
-          this.showStatus(
-            'This file is not a valid Architect save (bad format / corrupt / wrong version).',
-            true,
-          );
+          this.showStatus(IMPORT_ERROR_MESSAGE, true);
           return;
         }
         if (
           typeof envelope !== 'object' || envelope === null ||
           (envelope as Record<string, unknown>)['format'] !== SAVE_ENVELOPE_FORMAT
         ) {
-          this.showStatus(
-            'This file is not a valid Architect save (bad format / corrupt / wrong version).',
-            true,
-          );
+          this.showStatus(IMPORT_ERROR_MESSAGE, true);
           return;
         }
 
@@ -663,8 +661,9 @@ export class SettingsScene extends Phaser.Scene {
     const blocker = this.add.rectangle(
       GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.5,
     ).setInteractive({ useHandCursor: false });
-    blocker.on('pointerdown', (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => { ev.stopPropagation(); });
-    blocker.on('pointerup',   (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData) => { ev.stopPropagation(); });
+    const stopEvent = (_p: Phaser.Input.Pointer, _lx: number, _ly: number, ev: Phaser.Types.Input.EventData): void => { ev.stopPropagation(); };
+    blocker.on('pointerdown', stopEvent);
+    blocker.on('pointerup', stopEvent);
     overlay.add(blocker);
 
     const bg = this.add.graphics();
@@ -702,10 +701,7 @@ export class SettingsScene extends Phaser.Scene {
     const data = importToSlot(slotId, raw);
     if (!data) {
       this.closeImportConfirm(overlay);
-      this.showStatus(
-        'This file is not a valid Architect save (bad format / corrupt / wrong version).',
-        true,
-      );
+      this.showStatus(IMPORT_ERROR_MESSAGE, true);
       return;
     }
 
