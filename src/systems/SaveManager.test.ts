@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot, getRecoveryReason } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot, getRecoveryReason } from './SaveManager';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
@@ -1029,5 +1029,113 @@ describe('SaveManager — save recovery helpers', () => {
   it('getRecoveryReason returns "parse" as default for a slot that was never recovered', () => {
     setStorage(memoryStorage());
     expect(getRecoveryReason('slot2')).toBe('parse');
+  });
+});
+
+
+describe('SaveManager — exportSlot / importToSlot', () => {
+  const mem = memoryStorage();
+
+  beforeEach(() => {
+    setStorage(mem);
+    setPlayerSlot('slot1');
+    eventBus.removeAllListeners();
+  });
+
+  afterEach(() => {
+    // Clear the in-memory store between tests
+    mem.store.clear();
+    eventBus.removeAllListeners();
+  });
+
+  it('exportSlot returns null when slot is empty', () => {
+    expect(exportSlot('slot1')).toBeNull();
+  });
+
+  it('exportSlot produces a valid JSON envelope with the correct format', () => {
+    save(sample);
+    const json = exportSlot('slot1');
+    expect(json).not.toBeNull();
+    const envelope = JSON.parse(json!);
+    expect(envelope.format).toBe(SAVE_ENVELOPE_FORMAT);
+    expect(typeof envelope.exportedAt).toBe('string');
+    expect(envelope.payload.totalAU).toBe(sample.totalAU);
+    expect(envelope.payload.currentFloor).toBe(sample.currentFloor);
+  });
+
+  it('round-trip: export → clear storage → import → data restored exactly', () => {
+    save(sample);
+    const json = exportSlot('slot1')!;
+
+    // Wipe the slot
+    mem.store.clear();
+    expect(mem.store.has('architect_slot1_v1')).toBe(false);
+
+    // Import back
+    const restored = importToSlot('slot1', json);
+    expect(restored).not.toBeNull();
+    expect(restored!.totalAU).toBe(sample.totalAU);
+    expect(restored!.currentFloor).toBe(sample.currentFloor);
+    expect(restored!.unlockedFloors).toEqual(sample.unlockedFloors);
+
+    // Slot key in storage should now exist
+    expect(mem.store.has('architect_slot1_v1')).toBe(true);
+  });
+
+  it('importToSlot returns null for malformed JSON', () => {
+    expect(importToSlot('slot1', '{not valid json}')).toBeNull();
+  });
+
+  it('importToSlot returns null for a future / unknown format string', () => {
+    const badEnvelope = JSON.stringify({
+      format: 'architect-save-v2',
+      exportedAt: new Date().toISOString(),
+      payload: sample,
+    });
+    expect(importToSlot('slot1', badEnvelope)).toBeNull();
+  });
+
+  it('importToSlot returns null when payload is missing required fields', () => {
+    const badPayload = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: new Date().toISOString(),
+      payload: { totalAU: 5 }, // missing required fields
+    });
+    expect(importToSlot('slot1', badPayload)).toBeNull();
+  });
+
+  it('importToSlot runs MIGRATIONS on a v0 payload (cross-version safety)', () => {
+    // v0 saves had no 'version' field; the migration stamps it at version: 1.
+    const v0Payload = {
+      // no version field — treated as version 0
+      totalAU: 42,
+      floorAU: { 0: 42 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: { 0: [] },
+    };
+    const envelope = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: new Date().toISOString(),
+      payload: v0Payload,
+    });
+    const result = importToSlot('slot1', envelope);
+    expect(result).not.toBeNull();
+    expect(result!.totalAU).toBe(42);
+  });
+
+  it('importToSlot writes to the specified slot key, not the active playerSlot key', () => {
+    setPlayerSlot('slot2'); // active slot is slot2
+
+    const envelope = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: new Date().toISOString(),
+      payload: sample,
+    });
+    importToSlot('slot1', envelope); // write to slot1 explicitly
+
+    // slot1 should have the data; slot2 should remain empty
+    expect(mem.store.has('architect_slot1_v1')).toBe(true);
+    expect(mem.store.has('architect_slot2_v1')).toBe(false);
   });
 });
