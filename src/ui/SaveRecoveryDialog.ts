@@ -6,9 +6,10 @@ import { SAVE_SLOTS, type SaveSlotId, clearRecoveredSlot, getCorruptBackup } fro
 
 /** Human-readable descriptions for each failure reason. */
 const REASON_TEXT: Record<string, string> = {
-  parse: 'The save file could not be read (data was corrupt or used an incompatible format).',
-  quota: 'Your device\'s storage was full when the game tried to save.',
-  unknown: 'An unexpected error occurred while reading the save file.',
+  parse:       'The save file could not be read (data was corrupt or used an incompatible format).',
+  quota:       'Your device\'s storage was full when the game tried to save.',
+  unavailable: 'Browser storage is not available in this environment.',
+  unknown:     'An unexpected error occurred while reading the save file.',
 };
 
 /**

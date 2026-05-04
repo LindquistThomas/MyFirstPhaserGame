@@ -297,4 +297,41 @@ describe('SaveRecoveryDialog', () => {
     appendChildSpy.mockRestore();
     removeChildSpy.mockRestore();
   });
+
+  it('maps quota reason to a human-readable string about storage being full', () => {
+    const scene = makeScene();
+    new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'quota');
+    const allTextArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2] as string);
+    expect(allTextArgs.some((t) => t.includes('storage was full'))).toBe(true);
+  });
+
+  it('maps unavailable reason to a human-readable string about browser storage', () => {
+    const scene = makeScene();
+    new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'unavailable');
+    const allTextArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2] as string);
+    expect(allTextArgs.some((t) => t.includes('not available'))).toBe(true);
+  });
+
+  it('silently swallows errors if URL.createObjectURL throws during download', () => {
+    mockGetCorruptBackup.mockReturnValue('{"data":true}');
+
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation(() => {
+      throw new Error('Not supported in this context');
+    });
+
+    const scene = makeScene();
+    new SaveRecoveryDialog(scene as unknown as Phaser.Scene, 'slot1', 'parse');
+
+    // Find the download button's pointerdown handler and fire it — should not throw
+    const allCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls;
+    const dlBtnCallIdx = allCalls.findIndex((c) => (c[2] as string).includes('Download Backup'));
+    expect(dlBtnCallIdx).toBeGreaterThanOrEqual(0);
+
+    const dlTextMock = (scene.add.text as ReturnType<typeof vi.fn>).mock.results[dlBtnCallIdx]?.value as ReturnType<typeof makeText>;
+    const onCalls = (dlTextMock.on as ReturnType<typeof vi.fn>).mock.calls as [string, () => void][];
+    const pdHandler = onCalls.find((c) => c[0] === 'pointerdown')?.[1];
+    expect(() => pdHandler?.()).not.toThrow();
+
+    createObjectURLSpy.mockRestore();
+  });
 });

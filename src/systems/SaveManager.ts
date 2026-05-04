@@ -314,8 +314,9 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
   if (!raw) return { slotId, exists: false, recovered: recoveredSlots.has(slotId) };
   const data = parseAndValidateSave(raw);
   if (!data) {
-    // Corrupt data — stash forensic copy, mark slot as recovered for this session,
-    // then remove the corrupt key so the slot picker treats it as empty.
+    // Corrupt data — stash forensic copy (adds the `_corrupt` key), mark slot as
+    // recovered for this session, then remove the primary save key so the slot
+    // picker treats it as empty.
     discardCorruptForSlot(slotId, raw);
     return { slotId, exists: false, recovered: true };
   }
