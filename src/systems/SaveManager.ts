@@ -22,6 +22,16 @@ export interface SaveData {
   visitedFloors?: FloorId[];
   /** Unix ms timestamp of the last time this save was written. */
   lastPlayedAt?: number;
+  /** Total active playtime in milliseconds (pauses excluded). */
+  playtimeMs?: number;
+  /** Per-floor active playtime in milliseconds. */
+  floorPlaytimeMs?: Partial<Record<FloorId, number>>;
+  /** Milliseconds from run-start to first boss defeat (set once, never overwritten). */
+  firstClearMs?: number;
+  /** Best (shortest) run clear time in milliseconds across all runs. */
+  bestClearMs?: number;
+  /** Unix ms timestamp when the current run was started; absent when not in a run. */
+  runStartedAt?: number;
 }
 
 /** The three canonical slot IDs shown in the slot picker. */
@@ -46,7 +56,7 @@ function validateFloorId(value: unknown): FloorId | undefined {
 }
 
 /** Schema version written by this build. Increment when SaveData shape changes. */
-export const CURRENT_SAVE_VERSION = 1;
+export const CURRENT_SAVE_VERSION = 2;
 
 /**
  * Migration functions keyed by source version. Each receives raw parsed data
@@ -55,6 +65,9 @@ export const CURRENT_SAVE_VERSION = 1;
  *
  * v0 → v1: first versioned release; shape is unchanged — just stamps the
  * `version` field that was previously absent.
+ *
+ * v1 → v2: adds playtime fields (playtimeMs, floorPlaytimeMs) with zero
+ * defaults so loading old saves never results in `undefined`.
  *
  * To add a new save version:
  *   1. Bump CURRENT_SAVE_VERSION.
@@ -65,6 +78,7 @@ export const CURRENT_SAVE_VERSION = 1;
  */
 const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
   0: (d) => d,
+  1: (d) => ({ ...d, playtimeMs: 0, floorPlaytimeMs: {} }),
 };
 
 
@@ -158,6 +172,14 @@ function isValidSaveData(d: unknown): d is SaveData {
     if (!(o['visitedFloors'] as unknown[]).every((n) => typeof n === 'number')) return false;
   }
   if (o['lastPlayedAt'] !== undefined && typeof o['lastPlayedAt'] !== 'number') return false;
+  if (o['playtimeMs'] !== undefined && typeof o['playtimeMs'] !== 'number') return false;
+  if (o['floorPlaytimeMs'] !== undefined) {
+    if (typeof o['floorPlaytimeMs'] !== 'object' || o['floorPlaytimeMs'] === null || Array.isArray(o['floorPlaytimeMs'])) return false;
+    if (!Object.values(o['floorPlaytimeMs'] as object).every((v) => typeof v === 'number' && isFinite(v))) return false;
+  }
+  if (o['firstClearMs'] !== undefined && typeof o['firstClearMs'] !== 'number') return false;
+  if (o['bestClearMs'] !== undefined && typeof o['bestClearMs'] !== 'number') return false;
+  if (o['runStartedAt'] !== undefined && typeof o['runStartedAt'] !== 'number') return false;
   return true;
 }
 

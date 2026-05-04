@@ -4,6 +4,7 @@ import * as InfoDialogManager from './InfoDialogManager';
 import * as AchievementManager from './AchievementManager';
 import * as TouchHintStore from './TouchHintStore';
 import { ProgressionSystem } from './ProgressionSystem';
+import { PlaytimeTracker } from './PlaytimeTracker';
 import type { KVStorage } from './SaveManager';
 import { eventBus } from './EventBus';
 import { NON_SECRET_IDS, ACHIEVEMENT_MAP } from '../config/achievements';
@@ -24,6 +25,7 @@ import { FLOORS } from '../config/gameConfig';
  */
 export class GameStateManager {
   readonly progression: ProgressionSystem;
+  readonly playtime: PlaytimeTracker;
 
   private initialLoadApplied = false;
 
@@ -36,6 +38,7 @@ export class GameStateManager {
       TouchHintStore.setStorage(storage);
     }
     this.progression = new ProgressionSystem();
+    this.playtime = new PlaytimeTracker(SaveManager);
   }
 
   /**
@@ -47,8 +50,13 @@ export class GameStateManager {
   applyInitialLoad(loadSave?: boolean): void {
     if (this.initialLoadApplied) return;
     this.initialLoadApplied = true;
-    if (loadSave === true) this.progression.loadFromSave();
-    else if (loadSave === false) this.progression.reset();
+    if (loadSave === true) {
+      this.progression.loadFromSave();
+      this.playtime.loadFromSave();
+    } else if (loadSave === false) {
+      this.progression.reset();
+      this.playtime.reset();
+    }
   }
 
   hasSave(): boolean { return SaveManager.hasSave(); }
@@ -160,6 +168,7 @@ export class GameStateManager {
   /** Reset ALL persistent state including achievements and touch hint. */
   resetAll(): void {
     this.progression.reset();
+    this.playtime.reset();
     AchievementManager.resetAll();
     TouchHintStore.clearSeen();
     this.resetLoadState();

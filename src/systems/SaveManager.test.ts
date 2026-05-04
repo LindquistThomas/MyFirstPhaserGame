@@ -276,12 +276,53 @@ describe('SaveManager — schema versioning & migration', () => {
 
   it.skip('load() returns null when a required migration entry is missing', () => {
     // This path only occurs when 0 < save.version < CURRENT_SAVE_VERSION and
-    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=1
-    // there is no constructible version-gap case yet.
+    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=2
+    // and both v0→v1 and v1→v2 migrations present, there is no constructible gap.
     //
     // Once a gap can be created, seed a save at the missing intermediate version,
     // call load(), and assert:
     // expect(load()).toBeNull();
+  });
+
+  it('v1→v2 migration: loading a v1 save yields zeroed playtime fields', () => {
+    const store = memoryStorage();
+    const v1Save = {
+      version: 1,
+      totalAU: 5,
+      floorAU: { 0: 5 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: {},
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v1Save));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.playtimeMs).toBe(0);
+    expect(loaded?.floorPlaytimeMs).toEqual({});
+  });
+
+  it('v0→v2 migration (no version field): yields zeroed playtime fields', () => {
+    const store = memoryStorage();
+    const v0Save = {
+      totalAU: 3,
+      floorAU: { 0: 3 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: {},
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v0Save));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.playtimeMs).toBe(0);
+    expect(loaded?.floorPlaytimeMs).toEqual({});
+    // original fields preserved
+    expect(loaded?.totalAU).toBe(3);
   });
 
   it('load() returns null for a non-integer version field', () => {

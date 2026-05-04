@@ -13,6 +13,9 @@ vi.mock('phaser', () => {
       stop: vi.fn(),
       start: vi.fn(),
     };
+    registry = {
+      get: vi.fn(() => null),
+    };
     add = {
       rectangle: vi.fn(() => ({
         setScrollFactor: vi.fn().mockReturnThis(),
@@ -49,6 +52,21 @@ vi.mock('phaser', () => {
 vi.mock('../../config/gameConfig', () => ({
   GAME_WIDTH: 1280,
   GAME_HEIGHT: 720,
+}));
+
+vi.mock('../../config/levelData', () => ({
+  LEVEL_DATA: {},
+}));
+
+vi.mock('../../systems/GameStateManager', () => ({
+  GameStateManager: class {},
+}));
+
+vi.mock('../../ui/HUD', () => ({
+  formatPlaytime: (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  },
 }));
 
 vi.mock('../../systems/EventBus', () => ({
