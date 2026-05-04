@@ -7,11 +7,13 @@ import {
   loadSlotInfo,
   clearSlot,
   setPlayerSlot,
+  getRecoveryReason,
 } from '../../systems/SaveManager';
 import type { GameStateManager } from '../../systems/GameStateManager';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
+import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
 
 /**
  * Slot-picker screen.
@@ -34,6 +36,8 @@ export class SaveSlotScene extends Phaser.Scene {
   private confirmNo?: Phaser.GameObjects.Text;
   private confirmIndex = 0; // 0 = Yes, 1 = No
   private inConfirm = false;
+  /** True while the SaveRecoveryDialog is open; gates scene-level input handlers. */
+  private inRecoveryDialog = false;
 
   constructor() {
     super({ key: 'SaveSlotScene' });
@@ -53,6 +57,11 @@ export class SaveSlotScene extends Phaser.Scene {
     this.updateHighlight();
 
     this.cameras.main.fadeIn(300, 0, 0, 0);
+
+    // Show a one-shot recovery dialog if any slot had its corrupt save discarded.
+    // Shown AFTER the slot cards are drawn so the player can see the RECOVERED
+    // badge beneath the modal.
+    this.maybeShowRecoveryDialog();
   }
 
   // -------------------------------------------------------------------------
@@ -139,8 +148,10 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '11px', color: '#ff4466',
       }).setOrigin(0.5));
     } else {
-      container.add(this.add.text(w / 2, h / 2, 'EMPTY', {
-        fontFamily: 'monospace', fontSize: '20px', color: '#3a4460',
+      const badge = info.recovered ? 'RECOVERED' : 'EMPTY';
+      const badgeColor = info.recovered ? '#ffaa00' : '#3a4460';
+      container.add(this.add.text(w / 2, h / 2, badge, {
+        fontFamily: 'monospace', fontSize: '20px', color: badgeColor,
         fontStyle: 'bold',
       }).setOrigin(0.5));
     }
@@ -163,6 +174,27 @@ export class SaveSlotScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 50, '← → / A D: Select  |  Enter: Choose  |  X: Delete  |  Esc / B: Back', {
       fontFamily: 'monospace', fontSize: '13px', color: '#7a8aa3',
     }).setOrigin(0.5).setDepth(5);
+  }
+
+  /**
+   * If any slot had its corrupt save discarded this session, open a recovery
+   * dialog for the FIRST such slot. Subsequent slots will show the "RECOVERED"
+   * badge but the player must dismiss the dialog before seeing them.
+   * Single-shot per session: `SaveRecoveryDialog.onAfterClose` calls
+   * `clearRecoveredSlot` so revisiting this scene doesn't reopen the dialog.
+   *
+   * `inRecoveryDialog` gates scene-level Confirm/Cancel/navigate handlers while
+   * the modal is open so a single key press can't simultaneously close the dialog
+   * and activate a slot.
+   */
+  private maybeShowRecoveryDialog(): void {
+    const recovered = this.slotInfos.find((info) => info.recovered);
+    if (!recovered) return;
+    const reason = getRecoveryReason(recovered.slotId);
+    this.inRecoveryDialog = true;
+    new SaveRecoveryDialog(this, recovered.slotId, reason, () => {
+      this.inRecoveryDialog = false;
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -189,6 +221,7 @@ export class SaveSlotScene extends Phaser.Scene {
   }
 
   private navigate(delta: number): void {
+    if (this.inRecoveryDialog) return;
     if (this.inConfirm) {
       this.confirmIndex = (this.confirmIndex + delta + 2) % 2;
       this.refreshConfirmHighlight();
@@ -200,6 +233,7 @@ export class SaveSlotScene extends Phaser.Scene {
   }
 
   private confirmAction(): void {
+    if (this.inRecoveryDialog) return;
     if (this.inConfirm) {
       if (this.confirmIndex === 0) this.executeDelete();
       else this.closeConfirm();
@@ -231,6 +265,7 @@ export class SaveSlotScene extends Phaser.Scene {
   }
 
   private goBack(): void {
+    if (this.inRecoveryDialog) return;
     if (this.inConfirm) { this.closeConfirm(); return; }
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => this.scene.start('MenuScene'));

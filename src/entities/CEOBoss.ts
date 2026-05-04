@@ -12,7 +12,10 @@ export type BossPhase = 1 | 2 | 3;
  *   Phase 2 (HP 7–4)  — Faster patrol, throws briefcases every 4s.
  *   Phase 3 (HP 3–0)  — Max speed, briefcase every 2s, 3s dashes.
  *
- * Knowledge gate: HP cannot drop below 1 unless `phasePromptsAnsweredCorrectly > 0`.
+ * Knowledge gate (per-phase): only the final blow of each phase (HP → phase boundary or 0)
+ * is blocked while `phasePromptsAnsweredCorrectly === 0`. Normal damage above that threshold
+ * always goes through. `phasePromptsAnsweredCorrectly` resets to 0 on every phase transition,
+ * so the requirement must be satisfied independently in each phase.
  * `triggerDefeat()` plays the respectful handoff cutscene instead of a death animation.
  */
 export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
@@ -68,7 +71,8 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
    */
   takeDamage(ignoreKnowledgeGate = false): boolean {
     if (this.defeated || this.iFrameTimer > 0) return false;
-    // Knowledge gate: can't finish phase without at least one correct prompt.
+    // Knowledge gate (per-phase): blocks only the final blow (hp === 1 → 0 or phase boundary)
+    // until the player answers at least one prompt correctly this phase.
     if (!ignoreKnowledgeGate && this.hp <= 1 && this.phasePromptsAnsweredCorrectly === 0) {
       return false;
     }

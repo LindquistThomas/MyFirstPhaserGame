@@ -160,8 +160,9 @@ export interface GameEvents {
    * Emitted at most once per `unavailable` session (noop storage detection),
    * on every quota error, on every JSON parse failure, and on other unknown
    * storage errors.
+   * `slot` is the save-slot id that was affected (e.g. `'slot1'`), if known.
    */
-  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string }];
+  'persistence:failed': [payload: { reason: 'quota' | 'unavailable' | 'parse' | 'unknown'; detail?: string; slot?: string }];
 
   /**
    * An achievement was just unlocked for the first time.
@@ -221,6 +222,14 @@ export interface GameEvents {
    * fires only on the final win state.
    */
   'game:completed': [];
+
+  /**
+   * Emitted after a save import completes successfully. Consumers such as
+   * `ElevatorScene`, `MenuScene`, or HUD sub-controllers should re-read
+   * progression state when this fires so their displays stay accurate
+   * without requiring a page reload.
+   */
+  'progression:loaded': [];
 
   /**
    * Emitted at the start of `BootScene.preload()` to signal a new boot pass.
