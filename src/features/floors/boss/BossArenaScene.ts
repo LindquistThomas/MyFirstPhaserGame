@@ -25,7 +25,7 @@ export interface BossPrompt {
 }
 
 /** AU required to enter the boss arena (used in create() gate check). */
-export const AU_GATE = 25;
+export const AU_GATE = 30;
 
 /** Exported for unit tests only — do not consume in scene code outside this file. */
 export const PROMPTS: BossPrompt[] = [

@@ -94,8 +94,8 @@ describe('BossArenaScene — constructor smoke test', () => {
 // ── AU_GATE constant ──────────────────────────────────────────────────────────
 
 describe('BossArenaScene — AU_GATE', () => {
-  it('AU_GATE equals 25', () => {
-    expect(AU_GATE).toBe(25);
+  it('AU_GATE equals 30 (matches levelData.auRequired)', () => {
+    expect(AU_GATE).toBe(30);
   });
 });
 
