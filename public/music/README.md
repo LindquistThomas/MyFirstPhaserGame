@@ -30,7 +30,7 @@ Any code that needs to play or push a non-eager track imperatively must emit `mu
 | `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, and the Product sub-scenes (via `SCENE_MUSIC`) | Automatic |
 | `music_platform` | `retro-synth/shadow_operations-loop1.ogg` | `PlatformTeamScene` (via `SCENE_MUSIC`) | Automatic |
 | `music_quiz` | `retro-synth/hostile_territory-loop1.ogg` | `QuizDialog` on open (`music:request-push`); `QuizDialog` on close (`music:pop`) | Imperative |
-| `music_executive` | `boss/bossroom-battle-431358.mp3` | `ExecutiveSuiteScene` (via `SCENE_MUSIC`); also pre-loaded in its `preload()` to avoid any silence gap on first entry | Automatic + optional preload |
+| `music_executive` | `boss/bossroom-battle.ogg` | `ExecutiveSuiteScene` and `BossArenaScene` (via `SCENE_MUSIC`) | Automatic |
 
 ## Unused tracks present on disk
 
@@ -52,14 +52,14 @@ The following files are part of the library but are not currently referenced by 
 
 ## Encoding
 
-MP3 background tracks are re-encoded using **FFmpeg / libmp3lame**; the Vorbis OGG loops (including the menu track) use **libvorbis**. The two boss rescue-cue WAV files (`boss_tension.wav` / `boss_victory.wav`) are short procedural sounds kept at their original PCM quality and are not subject to the table below.
+MP3 background tracks are re-encoded using **FFmpeg / libmp3lame**; OGG tracks (menu, boss battle, and retro-synth loops) use **libvorbis**. The two boss rescue-cue WAV files (`boss_tension.wav` / `boss_victory.wav`) are short procedural sounds kept at their original PCM quality and are not subject to the table below.
 
 | Group | Bitrate | Channels | Sample rate | Re-encode command |
 | --- | --- | --- | --- | --- |
 | Menu track (`8bit-chiptune/bgm_menu.ogg`) | **64 kbps VBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -c:a libvorbis -b:a 64k -ac 1 -ar 44100 bgm_menu.ogg` |
 | 8-bit chiptune (`8bit-chiptune/*.mp3`) | **64 kbps CBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 64k -ar 44100 -ac 1 out.mp3` |
 | Elevator jazz (`elevator-jazz/*.mp3`) | **96 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 96k -ar 44100 -ac 2 out.mp3` |
-| Boss battle (`boss/*.mp3`) | **80 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 80k -ar 44100 -ac 2 out.mp3` |
+| Boss battle (`boss/bossroom-battle.ogg`) | **~28 kbps ABR** | mono | 22 050 Hz | `ffmpeg -i in.mp3 -ac 1 -ar 22050 -c:a libvorbis -b:a 28k -minrate 20k -maxrate 36k out.ogg` |
 | OGG loops (`retro-synth/*.ogg`) | **96 kbps CBR** | stereo | 48 000 Hz | `ffmpeg -i in.ogg -c:a libvorbis -b:a 96k -ac 2 -ar 48000 out.ogg` |
 
 > **Unused reserve tracks** (`8bit-chiptune/bgm_action_4.mp3`, `bgm_action_5.mp3`; `retro-synth/retro_synth.mp3`; `retro-synth/deadly_contracts-loop1.ogg` etc.) have not yet been re-encoded. Apply the matching group's command from the table above before activating any of them.
