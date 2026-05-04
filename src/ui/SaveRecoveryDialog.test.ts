@@ -65,13 +65,22 @@ vi.mock('./ModalKeyboardNavigator', () => {
 
     setFocus(index: number): void {
       if (index < 0 || index >= this.focusables.length) return;
-      this.focusables[this.focusIndex]?.blur();
+      if (this.focusIndex >= 0) this.focusables[this.focusIndex]!.blur();
       this.focusIndex = index;
-      this.focusables[index]?.focus();
+      this.focusables[index]!.focus();
     }
 
-    focusPrev(): void { this.setFocus((this.focusIndex - 1 + this.focusables.length) % this.focusables.length); }
-    focusNext(): void { this.setFocus((this.focusIndex + 1) % this.focusables.length); }
+    focusPrev(): void {
+      if (this.focusables.length === 0) return;
+      const next = this.focusIndex < 0
+        ? this.focusables.length - 1
+        : (this.focusIndex - 1 + this.focusables.length) % this.focusables.length;
+      this.setFocus(next);
+    }
+    focusNext(): void {
+      if (this.focusables.length === 0) return;
+      this.setFocus((this.focusIndex + 1) % this.focusables.length);
+    }
     activateFocused(): void { this.focusables[this.focusIndex]?.activate(); }
 
     bind(action: string, handler: () => void): void {
