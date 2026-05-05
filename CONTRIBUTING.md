@@ -128,6 +128,7 @@ contributor doesn't invent a third synonym.
 | `npm run test:headed`       | Playwright in headed mode                           |
 | `npm run test:ui`           | Playwright UI runner                                |
 | `npm run test:visual:update`| Refresh visual-regression snapshots                 |
+| `npm run size`              | Bundle-size budget gate (`scripts/check-size.cjs`); also runs in CI |
 
 ## Making Changes
 
