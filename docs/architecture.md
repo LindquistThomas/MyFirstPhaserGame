@@ -396,7 +396,7 @@ automatically.
 | `progression:floor_unlocked`| `floorId: FloorId`   | ProgressionSystem  | ElevatorScene, HUD, Analytics      |
 | `progression:floor_entered` | `floorId: FloorId`   | LevelScene         | Analytics                           |
 | `progression:au_milestone`  | `milestone: number`  | ProgressionSystem  | HUD, Analytics                     |
-| `progression:loaded`        | —                    | SettingsScene      | ElevatorScene, MenuScene, HUD      |
+| `progression:loaded`        | —                    | SettingsScene      | —                                  |
 
 #### `achievement:*` — achievements
 
