@@ -29,6 +29,19 @@ permissions:
   actions: write
 
 jobs:
+  # Diagnostic job — runs for every workflow_run event (no if-guard) so the
+  # actor.login value is always visible in the Actions log regardless of whether
+  # the approve job fires.  This makes it easy to confirm the exact login string
+  # used by a new bot identity without having to re-deploy a speculative fix.
+  debug-actor:
+    name: Log workflow_run actor (diagnostic)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print actor JSON
+        env:
+          ACTOR_JSON: ${{ toJSON(github.event.workflow_run.actor) }}
+        run: echo "$ACTOR_JSON"
+
   approve:
     name: Approve Copilot bot run
     runs-on: ubuntu-latest
@@ -36,9 +49,21 @@ jobs:
     # only when the head branch lives inside this repo (not an external fork).
     # The head-repository guard prevents auto-approving runs triggered by a
     # fork-based PR that happens to be opened by the same shared bot identity.
+    #
+    # Login values observed in practice:
+    #   • 'Copilot'               — GitHub REST API login for copilot-swe-agent
+    #                               (id 198982749); seen in pull_request.user and
+    #                               workflow_run.actor for Copilot coding-agent PRs.
+    #   • 'copilot-swe-agent[bot]' — [bot]-suffix form; may appear in some event
+    #                               contexts.
+    #   • 'github-copilot[bot]'  — legacy / alternate Copilot bot identity.
+    #
+    # The debug-actor job above logs the exact value seen in every run so this
+    # list can be updated if a new identity is encountered.
     if: >-
       github.event.workflow_run.head_repository.full_name == github.repository &&
       (
+        github.event.workflow_run.actor.login == 'Copilot' ||
         github.event.workflow_run.actor.login == 'copilot-swe-agent[bot]' ||
         github.event.workflow_run.actor.login == 'github-copilot[bot]'
       )
