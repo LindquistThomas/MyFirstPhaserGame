@@ -3,7 +3,7 @@ import { allKeyLabels } from '../../../input';
 import { Npc, type NpcConfig } from '../../../entities/Npc';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { eventBus } from '../../../systems/EventBus';
-import { DialogController } from '../../../ui/DialogController';
+import type { DialogController } from '../../../ui/DialogController';
 import { NpcDialog } from '../../../ui/NpcDialog';
 import type { LevelConfig } from './LevelScene';
 import type { FloorId } from '../../../config/gameConfig';

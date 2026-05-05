@@ -4,6 +4,19 @@ import { FLOORS } from '../../../config/gameConfig';
 
 const npcInstances: Array<{ id: string; displayName: string; topic: string; x: number; y: number; update: ReturnType<typeof vi.fn>; isPlayerNearby: ReturnType<typeof vi.fn> }> = [];
 
+vi.mock('phaser', () => {
+  const Phaser = {
+    Math: {
+      Distance: {
+        Between: (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x2 - x1, y2 - y1),
+      },
+    },
+  };
+  return { ...Phaser, default: Phaser };
+});
+
+vi.mock('../../../input', () => ({ allKeyLabels: () => 'Enter' }));
+
 vi.mock('../../../entities/Npc', () => ({
   Npc: class MockNpc {
     id: string;
