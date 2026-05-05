@@ -98,7 +98,10 @@ export interface SettingsData {
   textScale: TextScale;
   /** Optional BYOK LLM provider for NPC question generation. */
   llmProvider: LlmProvider;
-  /** Optional BYOK API key. Stored locally; never logged or sent anywhere except the chosen provider. */
+  /**
+   * Optional BYOK API key. Stored as plaintext localStorage because this is a
+   * static client-only game; SettingsScene warns users before saving it.
+   */
   llmApiKey: string;
 }
 

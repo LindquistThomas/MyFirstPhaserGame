@@ -18,6 +18,8 @@ type OpenAiResponse = { choices?: OpenAiChoice[] };
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_TEXT_LEN = 600;
+const OPENAI_CHAT_COMPLETIONS_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_NPC_MODEL = 'gpt-4o-mini';
 
 function sanitizeText(value: unknown, fallback: string, max = MAX_TEXT_LEN): string {
   if (typeof value !== 'string') return fallback;
@@ -76,7 +78,7 @@ async function fetchOpenAiQuestion(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetchFn('https://api.openai.com/v1/chat/completions', {
+    const response = await fetchFn(OPENAI_CHAT_COMPLETIONS_ENDPOINT, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -84,7 +86,7 @@ async function fetchOpenAiQuestion(
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: OPENAI_NPC_MODEL,
         temperature: 0.7,
         max_tokens: 450,
         response_format: { type: 'json_object' },

@@ -29,6 +29,8 @@ export class NpcDialog extends ModalBase {
     this.registerKeyboardBindings();
     this.showLoading();
     this.fadeIn();
+    // Reuse the existing quiz tension bed: NPC interactions are single-question
+    // architecture challenges and do not warrant another bundled music asset.
     eventBus.emit('music:request-push', 'music_quiz');
     void this.loadQuestion();
   }

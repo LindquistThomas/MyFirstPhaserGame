@@ -8,6 +8,9 @@ import { NpcDialog } from '../../../ui/NpcDialog';
 import type { LevelConfig } from './LevelScene';
 import type { FloorId } from '../../../config/gameConfig';
 
+const PROMPT_OFFSET_X = -86;
+const PROMPT_OFFSET_Y = -150;
+
 export interface LevelNpcManagerDeps {
   scene: Phaser.Scene;
   floorId: FloorId;
@@ -44,8 +47,8 @@ export class LevelNpcManager {
     if (!nearest) return false;
 
     this.deps.prompt?.setText(`Press ${allKeyLabels('Interact')} → Ask ${nearest.displayName}`).setPosition(
-      nearest.x - 86,
-      nearest.y - 150,
+      nearest.x + PROMPT_OFFSET_X,
+      nearest.y + PROMPT_OFFSET_Y,
     ).setVisible(true);
 
     if (this.deps.scene.inputs.justPressed('Interact') && !this.deps.dialogs.isOpen) {

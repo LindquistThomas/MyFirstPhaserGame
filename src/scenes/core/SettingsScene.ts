@@ -510,7 +510,7 @@ export class SettingsScene extends Phaser.Scene {
   private setLlmApiKey(): void {
     const current = settingsStore.read().llmApiKey;
     const next = window.prompt(
-      'Optional OpenAI API key for NPC questions. Stored locally in this browser.',
+      'Optional OpenAI API key for NPC questions. Stored as plaintext localStorage in this browser; do not use a sensitive shared key.',
       current ? '••••••••' : '',
     );
     if (next === null) return;
