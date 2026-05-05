@@ -391,10 +391,12 @@ automatically.
 
 #### `progression:*` — AU / floor progression
 
-| Event                       | Payload              | Emitters           | Consumers         |
-|-----------------------------|----------------------|--------------------|-------------------|
-| `progression:floor_unlocked`| `floorId: FloorId`   | ProgressionSystem  | ElevatorScene, HUD |
-| `progression:au_milestone`  | `milestone: number`  | ProgressionSystem  | HUD               |
+| Event                       | Payload              | Emitters           | Consumers                          |
+|-----------------------------|----------------------|--------------------|-------------------------------------|
+| `progression:floor_unlocked`| `floorId: FloorId`   | ProgressionSystem  | ElevatorScene, HUD, Analytics      |
+| `progression:floor_entered` | `floorId: FloorId`   | LevelScene         | Analytics                           |
+| `progression:au_milestone`  | `milestone: number`  | ProgressionSystem  | HUD, Analytics                     |
+| `progression:loaded`        | —                    | SettingsScene      | ElevatorScene, MenuScene, HUD      |
 
 #### `achievement:*` — achievements
 
@@ -416,9 +418,30 @@ automatically.
 
 #### `quiz:*` — quiz system
 
-| Event                  | Payload           | Emitters   | Consumers           |
-|------------------------|-------------------|------------|---------------------|
-| `quiz:cooldown_expired`| `infoId: string`  | QuizDialog | ariaLive (screen reader) |
+| Event                  | Payload                                                   | Emitters              | Consumers                |
+|------------------------|-----------------------------------------------------------|-----------------------|--------------------------|
+| `quiz:cooldown_expired`| `infoId: string`                                          | QuizDialog            | ariaLive (screen reader) |
+| `quiz:completed`       | `{ infoId; score; total; passed; attemptNumber }`         | QuizResultsScreen     | Analytics                |
+
+#### `session:*` — analytics session
+
+| Event           | Payload                       | Emitters         | Consumers |
+|-----------------|-------------------------------|------------------|-----------|
+| `session:start` | `sessionId: string`           | AnalyticsService | —         |
+| `session:end`   | `{ durationMs: number }`      | AnalyticsService | —         |
+
+#### `game:*` — run lifecycle
+
+| Event           | Payload | Emitters       | Consumers  |
+|-----------------|---------|----------------|------------|
+| `game:completed`| —       | BossArenaScene | Analytics  |
+
+#### `boot:*` — boot sequence
+
+| Event              | Payload                                       | Emitters  | Consumers               |
+|--------------------|-----------------------------------------------|-----------|-------------------------|
+| `boot:reset`       | —                                             | BootScene | MusicPlugin             |
+| `boot:asset-error` | `{ key: string; type: string; url: string }`  | BootScene | MusicPlugin             |
 
 ## Testing
 
