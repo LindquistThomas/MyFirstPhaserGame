@@ -22,7 +22,7 @@ src/
 │       └── types.ts          `QuizDefinition` + scoring constants.
 ├── features/                 Per-feature trees (floors + products).
 │   ├── floors/               One directory per floor — scene + content co-located.
-│       ├── index.ts          Barrel that re-exports every floor scene.
+│       ├── index.ts          Static barrel — re-exports six of eight floor scenes (platform, architecture, finance, product, customer, executive); all floor scenes are lazy-loaded at runtime via `lazySceneLoaders.ts`. Boss is registered directly there; lobby has no scene.
 │       ├── _shared/          Base class + manager collaborators used by every floor.
 │       │   ├── LevelScene.ts           Shared base scene (composition root).
 │       │   ├── LevelEnemySpawner.ts    Spawns + cleans up enemies.
@@ -437,7 +437,7 @@ automatically.
   `src/input/**` at 80%; `src/ui/**` at 65% (60% branches); `src/entities/**` at 60%;
   `src/scenes/**` at 20% (18% functions); `src/features/floors/**` at 17% (12% branches,
   13% functions). `src/plugins/**`, the procedural sprite/sound generator modules, and
-  `src/main.ts` are excluded entirely.
+  `src/main.ts` are among the excluded paths (see `vitest.config.ts` for the full exclusion list).
 
 ## Key design choices
 

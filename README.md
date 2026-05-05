@@ -90,6 +90,8 @@ npm run test:headed               # run with a visible browser
 npm run test:ui                   # interactive Playwright UI
 ```
 
+> **Note:** `npm run test:e2e` (and therefore `npm test` and `npm run test:all`) runs all Playwright specs **except** those tagged `@visual` (the visual-regression suite). To refresh visual baselines after intentional UI changes, use `npm run test:visual:update`. There is no first-class script that verifies visuals against existing baselines without updating them — invoke `npx playwright test tests/visual.spec.ts --grep @visual` directly if needed.
+
 After a run, view the HTML report with `npm run test:report`.
 
 `tests/a11y.spec.ts` runs WCAG 2.1 AA checks using `@axe-core/playwright` against the HTML layer of the game at key scenes (menu, settings, floor with HUD, reduced-motion, high-contrast mode). This gate runs as part of the E2E suite and fails CI if a change introduces an accessibility regression.
