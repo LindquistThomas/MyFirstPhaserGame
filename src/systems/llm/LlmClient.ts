@@ -18,8 +18,14 @@ type OpenAiResponse = { choices?: OpenAiChoice[] };
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_TEXT_LEN = 600;
-const OPENAI_CHAT_COMPLETIONS_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-const OPENAI_NPC_MODEL = 'gpt-4o-mini';
+export const OPENAI_CHAT_COMPLETIONS_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
+export const OPENAI_NPC_MODEL = 'gpt-4o-mini';
+/**
+ * Contract for NPC questions: exactly four choices keeps the dialog layout
+ * stable and matches existing quiz shortcuts (1–4); `correctIndex` is 0-based
+ * so it can be used directly with the returned options array.
+ */
+export const OPENAI_NPC_SYSTEM_PROMPT = 'Return only JSON for a software architecture multiple-choice question. Shape: {"question":"...","options":["...","...","...","..."],"correctIndex":0,"explanation":"..."}. Keep it concise and practical.';
 
 function sanitizeText(value: unknown, fallback: string, max = MAX_TEXT_LEN): string {
   if (typeof value !== 'string') return fallback;
@@ -93,7 +99,7 @@ async function fetchOpenAiQuestion(
         messages: [
           {
             role: 'system',
-            content: 'Return only JSON for a software architecture multiple-choice question. Shape: {"question":"...","options":["...","...","...","..."],"correctIndex":0,"explanation":"..."}. Keep it concise and practical.',
+            content: OPENAI_NPC_SYSTEM_PROMPT,
           },
           {
             role: 'user',

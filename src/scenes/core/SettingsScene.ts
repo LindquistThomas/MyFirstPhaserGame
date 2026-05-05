@@ -515,6 +515,10 @@ export class SettingsScene extends Phaser.Scene {
     );
     if (next === null) return;
     if (next === '••••••••') return;
+    if (next.trim().length > 0) {
+      const accepted = window.confirm('This key will be stored in plaintext localStorage and can be read by browser extensions or injected scripts. Continue?');
+      if (!accepted) return;
+    }
     settingsStore.setLlmApiKey(next);
     this.refreshAll();
   }

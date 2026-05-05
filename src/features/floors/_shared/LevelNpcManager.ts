@@ -42,22 +42,22 @@ export class LevelNpcManager {
 
   update(time: number, delta: number): boolean {
     for (const npc of this.npcs) npc.update(time, delta);
-    const nearest = this.findNearestNpc();
-    this.activeNpc = nearest;
-    if (!nearest) return false;
+    const nearestNpc = this.findNearestNpc();
+    this.activeNpc = nearestNpc;
+    if (!nearestNpc) return false;
 
-    this.deps.prompt?.setText(`Press ${allKeyLabels('Interact')} → Ask ${nearest.displayName}`).setPosition(
-      nearest.x + PROMPT_OFFSET_X,
-      nearest.y + PROMPT_OFFSET_Y,
+    this.deps.prompt?.setText(`Press ${allKeyLabels('Interact')} → Ask ${nearestNpc.displayName}`).setPosition(
+      nearestNpc.x + PROMPT_OFFSET_X,
+      nearestNpc.y + PROMPT_OFFSET_Y,
     ).setVisible(true);
 
     if (this.deps.scene.inputs.justPressed('Interact') && !this.deps.dialogs.isOpen) {
-      eventBus.emit('npc:interact', { npcId: nearest.id, npcName: nearest.displayName, topic: nearest.topic });
+      eventBus.emit('npc:interact', { npcId: nearestNpc.id, npcName: nearestNpc.displayName, topic: nearestNpc.topic });
       eventBus.emit('sfx:npc_greet');
       this.deps.dialogs.openCustom((onClose) => {
         new NpcDialog(this.deps.scene, {
-          npcName: nearest.displayName,
-          topic: nearest.topic,
+          npcName: nearestNpc.displayName,
+          topic: nearestNpc.topic,
           floorId: this.deps.floorId,
           progression: this.deps.progression,
           onClose,

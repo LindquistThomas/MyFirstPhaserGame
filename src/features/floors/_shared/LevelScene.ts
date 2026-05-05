@@ -867,6 +867,8 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
+    // Keep the single shared interaction prompt unambiguous: when an NPC prompt
+    // is visible, do not let the exit-door prompt overwrite it in the same frame.
     if (!npcPromptVisible) this.checkExitProximity();
   }
 
