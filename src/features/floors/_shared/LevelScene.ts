@@ -17,6 +17,7 @@ import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
 import { LevelFridgeManager } from './LevelFridgeManager';
+import { LevelNpcManager, type NpcConfig } from './LevelNpcManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { LevelRoomElevators } from './LevelRoomElevators';
 import { createLevelDialogs } from './LevelDialogBindings';
@@ -123,6 +124,8 @@ export interface LevelConfig {
     maxX?: number;
     speed?: number;
   }>;
+  /** Friendly NPCs that patrol locally and ask architecture questions on interaction. */
+  npcs?: NpcConfig[];
   /** Consumable — not persisted, respawns every scene entry. */
   coffees?: Array<{ x: number; y: number }>;
   /** Energy drink fridges — interact to open for a long caffeine buff; not persisted. */
@@ -185,6 +188,7 @@ export class LevelScene extends Phaser.Scene {
   private tokenMgr!: LevelTokenManager;
   private coffeeMgr!: LevelCoffeeManager;
   private fridgeMgr!: LevelFridgeManager;
+  private npcMgr!: LevelNpcManager;
   private zones!: LevelZoneSetup;
 
   /** Per-visit hit / checkpoint tracking. */
@@ -288,12 +292,22 @@ export class LevelScene extends Phaser.Scene {
       dialogs: this.buildDialogs(),
       gameState: this.gameState,
     });
+    this.npcMgr = new LevelNpcManager({
+      scene: this,
+      floorId: this.floorId,
+      progression: this.progression,
+      player: this.player,
+      platformGroup: this.platformGroup,
+      dialogs: this.dialogs,
+      prompt: this.interactPrompt,
+    });
 
     const cfg = this.getLevelConfig();
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
     this.coffeeMgr.spawn(cfg);
     this.fridgeMgr.spawn(cfg);
+    this.npcMgr.spawn(cfg);
     this.zones.create(cfg);
     this.spawnCheckpoints(cfg);
 
@@ -301,6 +315,7 @@ export class LevelScene extends Phaser.Scene {
     this.tokenMgr.wireColliders();
     this.enemySpawner.wireColliders();
     this.coffeeMgr.wireColliders();
+    this.npcMgr.wireColliders();
 
     const solidEnemies = this.enemySpawner.enemies.filter((e) => e.collidesWithLevel);
     for (const mp of this.movingPlatforms) {
@@ -828,6 +843,7 @@ export class LevelScene extends Phaser.Scene {
     this.roomElevators.update();
     for (const mp of this.movingPlatforms) mp.update();
     this.enemySpawner.update(_time, delta);
+    const npcPromptVisible = this.npcMgr.update(_time, delta);
     this.updateAtmosphericFx();
     this.updateDangerState(delta);
 
@@ -851,7 +867,7 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
-    this.checkExitProximity();
+    if (!npcPromptVisible) this.checkExitProximity();
   }
 
   /** Debug overlay hook: expose spatial zones for DebugPlugin to render. */

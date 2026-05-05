@@ -115,6 +115,20 @@ export class ArchitectureTeamScene extends defineFloorScene({
         { type: 'tech-debt-ghost', x: 700, y: 420, minX: 300, maxX: 1100, speed: 40 },
       ],
 
+      npcs: [
+        {
+          id: 'architecture-mentor',
+          name: 'Ada',
+          x: 390,
+          y: G,
+          minX: 330,
+          maxX: 460,
+          speed: 24,
+          topic: 'architecture basics',
+          tint: 0xffd6a5,
+        },
+      ],
+
       infoPoints: [
         {
           x: 230, y: G, contentId: 'architecture-team',

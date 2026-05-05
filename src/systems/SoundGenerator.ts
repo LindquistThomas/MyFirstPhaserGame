@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { loadWav } from './sounds/wav';
 import { generateFootstepSound } from './sounds/footsteps';
-import { generateInfoOpenSound, generateLinkClickSound } from './sounds/ui';
+import { generateInfoOpenSound, generateLinkClickSound, generateNpcGreetSound } from './sounds/ui';
 import { generateHitSound, generateStompSound, generateHeartbeatSound } from './sounds/combat';
 import {
   generateQuizCorrectSound,
@@ -61,6 +61,7 @@ export const SOUND_PHASES: readonly GeneratorPhase[] = [
       loadWav(s, 'quiz_fail', generateQuizFailSound());
       loadWav(s, 'info_open', generateInfoOpenSound());
       loadWav(s, 'link_click', generateLinkClickSound());
+      loadWav(s, 'npc_greet', generateNpcGreetSound());
       loadWav(s, 'floor_unlocked', generateFloorUnlockedSound());
     },
   },

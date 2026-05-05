@@ -136,6 +136,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:recover_au':        'recover_au',
   'sfx:coffee_sip':        'coffee_sip',
   'sfx:fridge_open':       'fridge_open',
+  'sfx:npc_greet':         'npc_greet',
   // Boss / hostage SFX
   'sfx:boss_hit':          'boss_hit',
   'sfx:boss_defeated':     'boss_defeated',

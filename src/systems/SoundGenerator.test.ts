@@ -6,6 +6,7 @@ vi.mock('./sounds/footsteps', () => ({ generateFootstepSound: vi.fn().mockReturn
 vi.mock('./sounds/ui', () => ({
   generateInfoOpenSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
   generateLinkClickSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
+  generateNpcGreetSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
 }));
 vi.mock('./sounds/combat', () => ({
   generateHitSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
@@ -67,8 +68,8 @@ describe('generateSounds', () => {
   it('calls loadWav for every sound key on the first invocation', () => {
     const scene = makeScene(false);
     generateSounds(scene as never);
-    // 5 movement + 7 UI + 3 combat + 3 env + 1 music + 10 boss = 29
-    expect(loadWav).toHaveBeenCalledTimes(29);
+    // 5 movement + 8 UI + 3 combat + 3 env + 1 music + 10 boss = 30
+    expect(loadWav).toHaveBeenCalledTimes(30);
   });
 
   it('skips all loadWav calls when audio is already cached', () => {
@@ -111,8 +112,8 @@ describe('SOUND_PHASES', () => {
     for (const phase of SOUND_PHASES) {
       phase.run(scene as never);
     }
-    // 5 movement + 7 UI + 3 combat + 3 env + 1 music + 10 boss = 29
-    expect(loadWav).toHaveBeenCalledTimes(29);
+    // 5 movement + 8 UI + 3 combat + 3 env + 1 music + 10 boss = 30
+    expect(loadWav).toHaveBeenCalledTimes(30);
   });
 
   it('phase labels are unique', () => {

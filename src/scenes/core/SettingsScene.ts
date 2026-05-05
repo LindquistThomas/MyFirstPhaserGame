@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../config/gameConfig';
 import { theme, getHighContrastCss } from '../../style/theme';
 import { settingsStore } from '../../systems/SettingsStore';
-import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode, TextScale } from '../../systems/SettingsStore';
+import type { MusicStyle, OnScreenControlsSetting, ColorBlindMode, TextScale, LlmProvider } from '../../systems/SettingsStore';
 import { getReducedMotionOverride, setReducedMotionOverride } from '../../systems/MotionPreference';
 import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
@@ -131,6 +131,17 @@ export class SettingsScene extends Phaser.Scene {
       1.5: '150%',
     };
 
+    const LLM_PROVIDER_OPTIONS = ['OFF', 'OPENAI'] as const;
+    type LlmProviderOption = typeof LLM_PROVIDER_OPTIONS[number];
+    const LLM_PROVIDER_VALUES: Record<LlmProviderOption, LlmProvider> = {
+      'OFF': 'none',
+      'OPENAI': 'openai',
+    };
+    const LLM_PROVIDER_LABELS: Record<LlmProvider, LlmProviderOption> = {
+      'none': 'OFF',
+      'openai': 'OPENAI',
+    };
+
     return [
       {
         kind: 'slider',
@@ -230,6 +241,20 @@ export class SettingsScene extends Phaser.Scene {
         label: 'HIDE TUTORIALS',
         get: () => settingsStore.read().hideTutorials,
         set: (v) => settingsStore.setHideTutorials(v),
+      },
+      {
+        kind: 'cycle',
+        label: 'NPC LLM',
+        options: LLM_PROVIDER_OPTIONS,
+        get: () => LLM_PROVIDER_LABELS[settingsStore.read().llmProvider] ?? LLM_PROVIDER_OPTIONS[0],
+        set: (v) => settingsStore.setLlmProvider(
+          LLM_PROVIDER_VALUES[v as LlmProviderOption] ?? LLM_PROVIDER_VALUES[LLM_PROVIDER_OPTIONS[0]],
+        ),
+      },
+      {
+        kind: 'action',
+        label: '[ SET LLM API KEY ]',
+        action: () => this.setLlmApiKey(),
       },
       {
         kind: 'action',
@@ -480,6 +505,18 @@ export class SettingsScene extends Phaser.Scene {
     // Use the "persist" variant so when the user dismisses the re-shown hint,
     // markSeen() fires and the hint won't auto-appear again next session.
     if (padEl) showTouchHintForcedWithPersist(padEl);
+  }
+
+  private setLlmApiKey(): void {
+    const current = settingsStore.read().llmApiKey;
+    const next = window.prompt(
+      'Optional OpenAI API key for NPC questions. Stored locally in this browser.',
+      current ? '••••••••' : '',
+    );
+    if (next === null) return;
+    if (next === '••••••••') return;
+    settingsStore.setLlmApiKey(next);
+    this.refreshAll();
   }
 
   private replayTutorial(): void {

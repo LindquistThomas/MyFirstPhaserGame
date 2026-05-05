@@ -119,6 +119,20 @@ export class PlatformTeamScene extends defineFloorScene({
         { x: 870, y: T3 },  // T3 Observability station — beside the monitoring desk
       ],
 
+      npcs: [
+        {
+          id: 'platform-sre',
+          name: 'Sigrid',
+          x: 520,
+          y: G,
+          minX: 430,
+          maxX: 590,
+          speed: 28,
+          topic: 'platform architecture',
+          tint: 0x9fd3ff,
+        },
+      ],
+
       infoPoints: [
         // Ground signpost. Default offsetY = -h/2 places the rect
         // directly above the anchor (y ≈ 632..832). No catwalk body sits
