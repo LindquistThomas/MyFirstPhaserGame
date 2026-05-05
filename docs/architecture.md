@@ -113,7 +113,7 @@ src/
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
-│   ├── GameStateManager.ts   Composition root — wraps the five persistent stores.
+│   ├── GameStateManager.ts   Composition root — owns ProgressionSystem + PlaytimeTracker; exposes facades over SaveManager, QuizManager, InfoDialogManager, AchievementManager, TouchHintStore.
 │   ├── ZoneManager.ts        Proximity zones; emits `zone:enter/exit`.
 │   ├── ProgressionSystem.ts  AU accumulation, floor unlocks, token dedupe.
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
@@ -127,6 +127,8 @@ src/
 │   ├── FloorHitState.ts      Per-floor hit / checkpoint tracking; pure (no Phaser/eventBus); 3-hit forced respawn threshold.
 │   ├── PersistedStore.ts     Generic JSON-backed key/value store factory.
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
+│   ├── PlaytimeTracker.ts    Total + per-floor active-playtime accumulator; persists via PlaytimeSaveAdapter (10 s flush throttle).
+│   ├── Analytics.ts          Opt-in analytics service. Gated on VITE_ANALYTICS_ENDPOINT (build) + SettingsStore.analyticsConsent (runtime). Stashed on scene.registry under "analytics" by BootScene.
 │   ├── sliderUtils.ts        Volume slider clamping utilities.
 │   ├── sceneLifecycle.ts     `createSceneLifecycle(scene)` — uniform teardown.
 │   ├── SpriteGenerator.ts    Composition root → `./sprites/` per-asset modules.
@@ -206,6 +208,7 @@ Use this to find the right file to edit for a given feature.
 | Audio                               | `systems/AudioManager.ts`, `systems/SoundGenerator.ts` (also generates procedural lullaby), `systems/sounds/*` |
 | Procedural sprites                  | `systems/SpriteGenerator.ts`, `systems/sprites/*.ts`                                   |
 | Theme tokens (colours + spacing)    | `style/theme.ts`                                                                       |
+| Analytics / playtime                | `systems/Analytics.ts`, `systems/PlaytimeTracker.ts`                                   |
 
 ## Data Flow
 
@@ -243,8 +246,8 @@ gone.
 
 `GameStateManager` (in `systems/GameStateManager.ts`) is constructed
 once in `BootScene.create()` and stashed in `scene.registry` under
-the key `gameState`. It owns the `ProgressionSystem` instance and
-exposes facades over the five module-level stores (`SaveManager`,
+the key `gameState`. It owns the `ProgressionSystem` and `PlaytimeTracker` instances and
+exposes facades over the five `*Manager`/`*Store` modules (`SaveManager`,
 `QuizManager`, `InfoDialogManager`, `AchievementManager`, `TouchHintStore`). Tests inject a fake `KVStorage`
 into the constructor to swap localStorage atomically.
 
@@ -479,7 +482,7 @@ automatically.
   monkey-patching `localStorage`. `GameStateManager` forwards that
   interface to the other four stores in its constructor.
 - **Single composition root for game state.** `GameStateManager` is
-  the only thing that knows how the five persistent stores fit
+  the only thing that knows how the persistent stores fit
   together. Scenes and UI read from it; tests replace it.
 - **Typed scene hand-off.** `NavigationContext` collects every
   cross-scene field in one optional-everything interface. No registry
