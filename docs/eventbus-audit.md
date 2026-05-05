@@ -4,8 +4,7 @@ Audit of direct `eventBus.on/once`, `window.addEventListener`, and
 `document.addEventListener` call sites inside scene files
 (`src/scenes/**/*Scene.ts`, `src/features/**/*Scene.ts`).
 
-Performed against commit history as of the branch
-`copilot/audit-raw-eventbus-calls`.
+Performed against `main` @ b85a1bd.
 
 ---
 
@@ -32,9 +31,9 @@ enforce this going forward (see **Prevention** section below).
 
 | File | Line | Event | Listener | Removal registered? | Verdict |
 |------|------|-------|----------|----------------------|---------|
-| `src/features/floors/_shared/LevelScene.ts` | 372 | `visibilitychange` | `onVisibilityChange` | `lc.add(() => document.removeEventListener(...))` on line 373 | ✅ clean |
-| `src/features/floors/executive/ExecutiveSuiteScene.ts` | 146 | `keydown` | `onEnter` | Removed on first `Enter` keypress (line 142) **and** via `this.events.once(SHUTDOWN, ...)` on line 149 | ✅ clean |
-| `src/scenes/core/BootScene.ts` | 116 | `keydown` | `onMuteHotkey` | Removed in `this.events.once('destroy', ...)` on line 117 — intentionally global: persists across scene transitions and is only removed on full game teardown | ✅ intentional |
+| `src/features/floors/_shared/LevelScene.ts` | 446 | `visibilitychange` | `onVisibilityChange` | `lc.add(() => document.removeEventListener(...))` on line 447 | ✅ clean |
+| `src/features/floors/_shared/LevelScene.ts` | 452 | `blur` | `launchPauseIfRunning` | `lc.add(() => window.removeEventListener(...))` on line 453 | ✅ clean |
+| `src/scenes/core/BootScene.ts` | 178 | `keydown` | `onMuteHotkey` | Removed in `this.events.once('destroy', ...)` on line 179 — intentionally global: persists across scene transitions and is only removed on full game teardown | ✅ intentional |
 | `src/scenes/core/ControlsScene.ts` | 372 | `keydown` | `this.captureListener` | `lifecycle.add(() => this.stopCapture())` in `setupNavigation()` (line 294) calls `stopCapture()` which removes the listener | ✅ clean |
 
 ### Notes on BootScene
@@ -45,7 +44,7 @@ lifetime.  `this.scene.start('MenuScene')` fires `shutdown` on BootScene
 immediately, so the listener must **not** be removed on `shutdown`.  The
 `_muteHotkeyInstalled` guard prevents double-registration if `create()` is
 ever entered a second time.  This pattern is documented in the inline comment
-at `BootScene.ts:103-105`.
+at `BootScene.ts:158-167`.
 
 ---
 
