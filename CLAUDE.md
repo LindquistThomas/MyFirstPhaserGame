@@ -144,7 +144,7 @@ Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' 
 
 ### Add music for a scene
 1. Put the file in `public/music/<style>/`.
-2. Add a `MusicAsset` entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with `key: 'music_<name>'` and `path: 'music/<file>'` (path is relative to `public/`). Set `eager: true` only if the track must be available before the menu renders (e.g. `music_menu`); otherwise `MusicPlugin` lazy-loads it on first scene entry.
+2. Add a `MusicAsset` entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with `key: 'music_<name>'` and `path: 'music/<file>'` (path is relative to `public/`). Set `eager: true` only if the track must be available at the very start of boot (currently no tracks need this); otherwise omit — `MusicPlugin` lazy-loads it on first scene entry.
 3. Add a `SceneKey → music_<name>` entry in `SCENE_MUSIC`. `MusicPlugin` handles playback — no scene code needed.
 
 ### Add an info card

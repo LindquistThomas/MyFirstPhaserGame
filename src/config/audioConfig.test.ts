@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS, DEFERRED_MUSIC_ASSETS } from './audioConfig';
 
+describe('audioConfig eager tracks', () => {
+  it('music_menu is not eager — BootScene must not block on the 638 KB menu BGM', () => {
+    const menuAsset = STATIC_MUSIC_ASSETS.find((a) => a.key === 'music_menu');
+    expect(menuAsset).toBeDefined();
+    expect(menuAsset?.eager).not.toBe(true);
+  });
+
+  it('no track in STATIC_MUSIC_ASSETS is eager — all tracks are lazy-loaded', () => {
+    const eagerAssets = STATIC_MUSIC_ASSETS.filter((a) => a.eager === true);
+    expect(eagerAssets).toHaveLength(0);
+  });
+});
+
 describe('audioConfig soundtrack listen mode', () => {
   it('exposes unique soundtrack keys for menu cycling', () => {
     const keys = SOUNDTRACK_PLAYLIST.map((track) => track.key);
