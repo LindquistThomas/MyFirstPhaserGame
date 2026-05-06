@@ -353,8 +353,8 @@ describe('MusicPlugin', () => {
       expect(spy).toHaveBeenCalledWith('music_elevator_jazz');
     });
 
-    it('emits music:play immediately for an eager (cached) track', () => {
-      // MenuScene → 'music_menu' (eager — will be pre-cached at boot)
+    it('emits music:play immediately when track is already cached', () => {
+      // MenuScene → 'music_menu' (simulate track already in Phaser cache)
       const { fakeScene } = mountPlugin('MenuScene', ['music_menu']);
 
       const spy = vi.fn();

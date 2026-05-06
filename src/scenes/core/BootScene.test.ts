@@ -66,10 +66,12 @@ vi.mock('phaser', () => {
 vi.mock('../../systems/SpriteGenerator', () => ({
   generateSprites: vi.fn(),
   SPRITE_PHASES: [],
+  BOOT_SPRITE_PHASES: [],
 }));
 vi.mock('../../systems/SoundGenerator', () => ({
   generateSounds: vi.fn(),
   SOUND_PHASES: [],
+  BATCHED_SOUND_PHASES: [],
 }));
 vi.mock('../../systems/AudioManager', () => ({
   AudioManager: class {
@@ -298,5 +300,32 @@ describe('BootScene loaderror handler', () => {
     expect(errorSpy).toHaveBeenCalledTimes(1);
 
     consoleSpy.mockRestore();
+  });
+});
+
+describe('BootScene — proceduralAssetsReady registry flag', () => {
+  afterEach(() => {
+    eventBus.removeAllListeners();
+  });
+
+  it('sets proceduralAssetsReady to false in create() before starting MenuScene', () => {
+    const scene = new BootScene();
+    scene.create();
+    // Verify false was written before true (if any). The flag starts false so
+    // MenuScene's warmup knows to run the deferred generation pass.
+    const calls = (scene.registry.set as ReturnType<typeof vi.fn>).mock.calls;
+    const readyEntry = calls.find((c: unknown[]) => c[0] === 'proceduralAssetsReady');
+    expect(readyEntry).toBeDefined();
+    expect(readyEntry?.[1]).toBe(false);
+  });
+
+  it('sets proceduralAssetsReady to false on BootScene re-entry', () => {
+    const scene = new BootScene();
+    scene.create();
+    (scene.registry.set as ReturnType<typeof vi.fn>).mockClear();
+    // Re-enter
+    scene.create();
+    expect(scene.registry.set).toHaveBeenCalledWith('proceduralAssetsReady', false);
+    (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
   });
 });

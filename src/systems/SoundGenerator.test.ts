@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateSounds, SOUND_PHASES } from './SoundGenerator';
+import { generateSounds, SOUND_PHASES, BATCHED_SOUND_PHASES } from './SoundGenerator';
 
 // Stub all sound generators so tests run without a real Phaser context.
 vi.mock('./sounds/footsteps', () => ({ generateFootstepSound: vi.fn().mockReturnValue(new ArrayBuffer(0)) }));
@@ -118,5 +118,47 @@ describe('SOUND_PHASES', () => {
   it('phase labels are unique', () => {
     const labels = SOUND_PHASES.map((p) => p.label);
     expect(new Set(labels).size).toBe(labels.length);
+  });
+});
+
+describe('BATCHED_SOUND_PHASES', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('has exactly two batches', () => {
+    expect(BATCHED_SOUND_PHASES).toHaveLength(2);
+  });
+
+  it('together cover all SOUND_PHASES entries', () => {
+    const scene = makeScene(false);
+    for (const batch of BATCHED_SOUND_PHASES) {
+      batch.run(scene as never);
+    }
+    // Running both batches must call loadWav the same number of times as all SOUND_PHASES combined.
+    expect(loadWav).toHaveBeenCalledTimes(29);
+  });
+
+  it('split point produces two non-empty batches that cover all phases', () => {
+    // Each batch must run at least one phase.
+    const scene = makeScene(false);
+    BATCHED_SOUND_PHASES[0].run(scene as never);
+    const afterBatch0 = (loadWav as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(afterBatch0).toBeGreaterThan(0);
+
+    vi.clearAllMocks();
+    BATCHED_SOUND_PHASES[1].run(scene as never);
+    const afterBatch1 = (loadWav as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(afterBatch1).toBeGreaterThan(0);
+
+    // Together they must account for all 29 loadWav calls.
+    expect(afterBatch0 + afterBatch1).toBe(29);
+  });
+
+  it('batch labels are non-empty strings', () => {
+    for (const batch of BATCHED_SOUND_PHASES) {
+      expect(typeof batch.label).toBe('string');
+      expect(batch.label.length).toBeGreaterThan(0);
+    }
   });
 });
