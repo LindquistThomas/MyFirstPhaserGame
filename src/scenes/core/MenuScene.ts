@@ -53,6 +53,13 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.fadeIn(800, 0, 0, 0);
     this.idlePreloadMusic();
 
+    const lc = createSceneLifecycle(this);
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'visible') this.idlePreloadMusic();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    lc.add(() => document.removeEventListener('visibilitychange', onVisibilityChange));
+
     // Dev-only diagnostic: show a red banner if any static boot asset failed to
     // load so broken CDN / missing file failures are impossible to miss locally.
     if (import.meta.env.DEV) {
@@ -87,14 +94,26 @@ export class MenuScene extends Phaser.Scene {
     const conn = (navigator as unknown as { connection?: NavigatorConnection }).connection;
     if (conn?.saveData) return;
     if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return;
+    if (document.visibilityState === 'hidden') return;
 
     const queue = STATIC_MUSIC_ASSETS.filter(
       (a) => !a.eager && !this.cache.audio.exists(a.key),
     );
     if (queue.length === 0) return;
 
-    for (const asset of queue) this.load.audio(asset.key, asset.path);
-    this.load.start();
+    // Load at most 2 tracks simultaneously: enough to stay ahead of playback
+    // without saturating the connection mid-session.
+    const CONCURRENCY = 2;
+    let cursor = 0;
+    const loadNext = (): void => {
+      if (cursor >= queue.length) return;
+      const asset = queue[cursor++];
+      if (!asset) return;
+      this.load.once(`filecomplete-audio-${asset.key}`, loadNext);
+      this.load.audio(asset.key, asset.path);
+      this.load.start();
+    };
+    for (let i = 0; i < CONCURRENCY; i++) loadNext();
   }
 
   private setupKeyboardNavigation(): void {

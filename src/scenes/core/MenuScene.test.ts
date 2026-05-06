@@ -37,7 +37,7 @@ vi.mock('phaser', () => {
     registry = { get: vi.fn() };
     textures = { exists: vi.fn(() => false) };
     cache = { audio: { exists: vi.fn(() => false) } };
-    load = { audio: vi.fn(), start: vi.fn() };
+    load = { audio: vi.fn(), start: vi.fn(), once: vi.fn() };
     constructor(_config: unknown) {}
   }
   return { default: { Scene }, Scene };
@@ -54,6 +54,7 @@ vi.mock('../../input', () => ({ pushContext: vi.fn(() => 0), popContext: vi.fn()
 vi.mock('../../systems/sceneLifecycle', () => ({
   createSceneLifecycle: vi.fn(() => ({ add: vi.fn(), bindInput: vi.fn() })),
 }));
+
 vi.mock('../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
@@ -61,6 +62,7 @@ vi.mock('../../systems/MotionPreference', () => ({
 import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { MenuScene } from './MenuScene';
 import * as MotionPreference from '../../systems/MotionPreference';
+import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,6 +85,9 @@ function makeScene(cachedKeys: string[] = []) {
     value: {
       audio: (k: string, _p: string) => { loadedKeys.push(k); },
       start: () => { loadStarted = true; },
+      // Immediately invoke filecomplete callbacks so the full chain runs
+      // synchronously in tests, making all queued tracks observable.
+      once: (_event: string, cb: () => void) => { cb(); },
     },
     configurable: true,
   });
@@ -132,7 +137,8 @@ describe('MenuScene.idlePreloadMusic', () => {
     setConnection(undefined);
     const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toEqual(nonEagerKeys);
+    expect(getLoadedKeys()).toHaveLength(nonEagerKeys.length);
+    expect(getLoadedKeys()).toEqual(expect.arrayContaining(nonEagerKeys));
     expect(isLoadStarted()).toBe(true);
   });
 
@@ -192,6 +198,87 @@ describe('MenuScene.idlePreloadMusic', () => {
     for (const k of eagerKeys) {
       expect(getLoadedKeys()).not.toContain(k);
     }
+  });
+});
+
+describe('MenuScene.idlePreloadMusic — visibility guard', () => {
+  let origVisibility: string;
+
+  beforeEach(() => {
+    origVisibility = document.visibilityState;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(document, 'visibilityState', {
+      value: origVisibility,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  it('skips when tab is hidden', () => {
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'hidden',
+      configurable: true,
+      writable: true,
+    });
+    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    scene.idlePreloadMusic();
+    expect(getLoadedKeys()).toHaveLength(0);
+    expect(isLoadStarted()).toBe(false);
+  });
+
+  it('loads normally when tab is visible', () => {
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+      writable: true,
+    });
+    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    scene.idlePreloadMusic();
+    expect(getLoadedKeys().length).toBeGreaterThan(0);
+    expect(isLoadStarted()).toBe(true);
+  });
+});
+
+describe('MenuScene.create — visibilitychange listener', () => {
+  let addSpy: ReturnType<typeof vi.spyOn>;
+  let removeSpy: ReturnType<typeof vi.spyOn>;
+  let shutdownFns: Array<() => void>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    addSpy = vi.spyOn(document, 'addEventListener');
+    removeSpy = vi.spyOn(document, 'removeEventListener');
+    shutdownFns = [];
+    vi.mocked(createSceneLifecycle).mockImplementation(() => ({
+      add: vi.fn((fn: () => void) => { shutdownFns.push(fn); }),
+      bindInput: vi.fn(),
+      bindEventBus: vi.fn(),
+      dispose: vi.fn(),
+    }));
+  });
+
+  afterEach(() => {
+    addSpy.mockRestore();
+    removeSpy.mockRestore();
+    vi.mocked(createSceneLifecycle).mockImplementation(
+      () => ({ add: vi.fn(), bindInput: vi.fn(), bindEventBus: vi.fn(), dispose: vi.fn() }),
+    );
+  });
+
+  it('registers a visibilitychange listener on create()', () => {
+    makeCreateScene();
+    expect(addSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+  });
+
+  it('unregisters the visibilitychange listener on scene shutdown', () => {
+    makeCreateScene();
+    const registeredFn = addSpy.mock.calls.find((c: Parameters<typeof document.addEventListener>) => c[0] === 'visibilitychange')?.[1];
+    expect(registeredFn).toBeDefined();
+    // Simulate scene shutdown by running all captured lifecycle teardown callbacks.
+    shutdownFns.forEach((fn) => fn());
+    expect(removeSpy).toHaveBeenCalledWith('visibilitychange', registeredFn);
   });
 });
 
