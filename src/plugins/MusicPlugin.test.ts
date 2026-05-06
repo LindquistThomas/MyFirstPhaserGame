@@ -484,7 +484,7 @@ describe('prefetchSceneMusic()', () => {
     prefetchSceneMusic(fakeScene as never, 'ExecutiveSuiteScene');
     expect(fakeScene.load.audio).toHaveBeenCalledWith(
       'music_executive',
-      expect.stringContaining('bossroom-battle-431358.mp3'),
+      expect.stringContaining('bossroom-battle.ogg'),
     );
     expect(fakeScene.load.start).toHaveBeenCalled();
   });
