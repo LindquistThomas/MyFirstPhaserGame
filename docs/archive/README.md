@@ -9,7 +9,7 @@ current state of the codebase, refer to `docs/architecture.md`.
 
 | Spec | Shipped feature |
 |------|-----------------|
-| [`issue-enemies-phase2.md`](./issue-enemies-phase2.md) | Enemies & obstacles — base `Enemy` class + per-floor subclasses (`src/entities/enemies/`); placement via `LevelConfig.enemies`. |
+| [`issue-enemies-phase2.md`](./issue-enemies-phase2.md) | Enemies & obstacles — base `Enemy` class (`src/entities/Enemy.ts`) + per-type subclasses under `src/entities/enemies/`; placement via `LevelConfig.enemies`. |
 | [`issue-audio-phase3.md`](./issue-audio-phase3.md) | Music & SFX — `SCENE_MUSIC` (`src/config/audioConfig.ts`), procedural SFX (`src/systems/SoundGenerator.ts`), `AudioManager` + `MusicPlugin`, settings via `SettingsStore`. |
 
 When archiving a new spec, add a row here with a one-line note on what
