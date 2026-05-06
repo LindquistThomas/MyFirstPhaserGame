@@ -33,7 +33,7 @@ export default defineConfig({
         'src/ui/**': { lines: 65, branches: 60, functions: 65, statements: 65 },
         'src/entities/**': { lines: 60, branches: 60, functions: 60, statements: 60 },
         'src/scenes/**': { lines: 20, branches: 20, functions: 18, statements: 20 },
-        'src/features/floors/**': { lines: 17, branches: 12, functions: 13, statements: 17 },
+        'src/features/floors/**': { lines: 50, branches: 40, functions: 45, statements: 50 },
       },
     },
   },
