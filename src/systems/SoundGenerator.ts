@@ -104,6 +104,37 @@ export const SOUND_PHASES: readonly GeneratorPhase[] = [
 ];
 
 /**
+ * SOUND_PHASES batched into two callbacks for the MenuScene deferred warmup.
+ *
+ * Reduces the scheduler overhead from 6 × `time.addEvent` calls to 2 yield
+ * points, cutting the total scheduling tax from ~36 ms to ~12 ms on
+ * low-end hardware. The two batches are roughly equal in total work:
+ *
+ *   Batch 1 (movement + UI + combat): jump, footsteps, quiz, info, combat SFX.
+ *   Batch 2 (environment + lullaby + boss): ambience, coffee, lullaby, boss SFX.
+ *
+ * Cache guard: check `cache.audio.exists('jump')` before running.
+ */
+export const BATCHED_SOUND_PHASES: readonly [GeneratorPhase, GeneratorPhase] = [
+  {
+    label: 'Initializing audio (1/2)',
+    run: (s) => {
+      SOUND_PHASES[0]!.run(s);
+      SOUND_PHASES[1]!.run(s);
+      SOUND_PHASES[2]!.run(s);
+    },
+  },
+  {
+    label: 'Initializing audio (2/2)',
+    run: (s) => {
+      SOUND_PHASES[3]!.run(s);
+      SOUND_PHASES[4]!.run(s);
+      SOUND_PHASES[5]!.run(s);
+    },
+  },
+];
+
+/**
  * Composition root for runtime audio generation.
  *
  * Every SFX is built procedurally so the game ships with zero SFX

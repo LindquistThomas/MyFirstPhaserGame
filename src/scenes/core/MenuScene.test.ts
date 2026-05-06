@@ -34,10 +34,10 @@ vi.mock('phaser', () => {
     };
     tweens = { add: vi.fn(), addCounter: vi.fn() };
     time = { addEvent: vi.fn(), delayedCall: vi.fn() };
-    registry = { get: vi.fn() };
+    registry = { get: vi.fn(), set: vi.fn() };
     textures = { exists: vi.fn(() => false) };
     cache = { audio: { exists: vi.fn(() => false) } };
-    load = { audio: vi.fn(), start: vi.fn() };
+    load = { audio: vi.fn(), start: vi.fn(), once: vi.fn() };
     constructor(_config: unknown) {}
   }
   return { default: { Scene }, Scene };
@@ -56,6 +56,15 @@ vi.mock('../../systems/sceneLifecycle', () => ({
 }));
 vi.mock('../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
+}));
+vi.mock('../../systems/SpriteGenerator', () => ({
+  DEFERRED_SPRITE_PHASES: [{ label: 'Deferred sprite', run: vi.fn() }],
+}));
+vi.mock('../../systems/SoundGenerator', () => ({
+  BATCHED_SOUND_PHASES: [
+    { label: 'Sound batch 1', run: vi.fn() },
+    { label: 'Sound batch 2', run: vi.fn() },
+  ],
 }));
 
 import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
@@ -216,5 +225,157 @@ describe('MenuScene.create — reduced-motion guards', () => {
     expect((scene.tweens.addCounter as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
     // initial elevator delayedCall
     expect((scene.time.delayedCall as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ── warmupDeferredAssets / proceduralAssetsReady ──────────────────────────────
+//
+// These tests verify the readiness signal: BootScene writes `false` and
+// MenuScene's warmup writes `true` once all deferred phases complete.
+// The Phaser mock's `time.addEvent` is synchronised in these tests so the
+// async callback chain runs inline, keeping assertions straightforward.
+
+describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () => {
+  /** Build a MenuScene instance wired for synchronous warmup execution. */
+  function makeWarmupScene({
+    tilesExist = false,
+    jumpExists = false,
+  }: { tilesExist?: boolean; jumpExists?: boolean } = {}) {
+    const loadOnceCallbacks: (() => void)[] = [];
+    const registryValues: Map<string, unknown> = new Map();
+
+    // Drive time.addEvent callbacks synchronously so the full warmup chain
+    // runs to completion inside the test without needing async utilities.
+    // Cast to unknown first to avoid TypeScript complaining about private methods.
+    type WarmupScene = {
+      warmupDeferredAssets: () => void;
+      registry: { get: (k: string) => unknown; set: (k: string, v: unknown) => void };
+      textures: { exists: (k: string) => boolean };
+      cache: { audio: { exists: (k: string) => boolean } };
+      load: { audio: (k: string, p: string) => void; start: ReturnType<typeof vi.fn>; once: (ev: string, cb: () => void) => void };
+      time: { addEvent: (cfg: { delay: number; callback: () => void }) => void; delayedCall: () => void };
+    };
+    const scene = new MenuScene() as unknown as WarmupScene;
+
+    Object.defineProperty(scene, 'textures', {
+      value: { exists: (k: string) => (k === 'tiles' ? tilesExist : false) },
+      configurable: true,
+    });
+    Object.defineProperty(scene, 'cache', {
+      value: { audio: { exists: (k: string) => (k === 'jump' ? jumpExists : false) } },
+      configurable: true,
+    });
+    Object.defineProperty(scene, 'registry', {
+      value: {
+        get: (k: string) => registryValues.get(k),
+        set: (k: string, v: unknown) => { registryValues.set(k, v); },
+      },
+      configurable: true,
+    });
+    Object.defineProperty(scene, 'load', {
+      value: {
+        audio: vi.fn(),
+        start: vi.fn(),
+        once: vi.fn((ev: string, cb: () => void) => {
+          if (ev === 'complete') loadOnceCallbacks.push(cb);
+        }),
+      },
+      configurable: true,
+    });
+    Object.defineProperty(scene, 'time', {
+      value: {
+        // Execute callbacks synchronously so tests don't need async utilities.
+        addEvent: vi.fn((cfg: { callback: () => void }) => cfg.callback()),
+        delayedCall: vi.fn(),
+      },
+      configurable: true,
+    });
+
+    return {
+      scene,
+      registryValues,
+      /** Trigger the load.once('complete') callback captured during warmup. */
+      fireLoadComplete: () => {
+        for (const cb of loadOnceCallbacks) cb();
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('sets proceduralAssetsReady=true immediately when all assets are cached', () => {
+    const { scene, registryValues, fireLoadComplete } = makeWarmupScene({
+      tilesExist: true,
+      jumpExists: true,
+    });
+    scene.warmupDeferredAssets();
+    vi.runAllTimers();
+
+    // No loader dance needed — both guards hit, flag set synchronously.
+    fireLoadComplete();
+    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+  });
+
+  it('sets proceduralAssetsReady=true after sprites-only warmup (sounds cached)', () => {
+    const { scene, registryValues } = makeWarmupScene({
+      tilesExist: false,
+      jumpExists: true,
+    });
+    scene.warmupDeferredAssets();
+    vi.runAllTimers();
+
+    // Deferred sprite phases run then sounds are skipped; flag set synchronously.
+    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+  });
+
+  it('sets proceduralAssetsReady=true after full warmup (no assets cached)', () => {
+    const { scene, registryValues, fireLoadComplete } = makeWarmupScene({
+      tilesExist: false,
+      jumpExists: false,
+    });
+    scene.warmupDeferredAssets();
+    vi.runAllTimers();
+
+    // Flag not set until load.once('complete') fires.
+    expect(registryValues.get('proceduralAssetsReady')).toBeUndefined();
+
+    fireLoadComplete();
+    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+  });
+
+  it('calls load.start() to decode queued audio blobs', () => {
+    const { scene } = makeWarmupScene({ tilesExist: false, jumpExists: false });
+    scene.warmupDeferredAssets();
+    vi.runAllTimers();
+
+    const loadStart = (scene.load.start as ReturnType<typeof vi.fn>);
+    expect(loadStart).toHaveBeenCalled();
+  });
+
+  it('schedules runDeferredAssets via setTimeout when requestIdleCallback is absent', () => {
+    // Temporarily hide rIC to test the fallback path.
+    const origRIC = (globalThis as Record<string, unknown>)['requestIdleCallback'];
+    delete (globalThis as Record<string, unknown>)['requestIdleCallback'];
+
+    const { scene, registryValues } = makeWarmupScene({
+      tilesExist: true,
+      jumpExists: true,
+    });
+    scene.warmupDeferredAssets();
+
+    // Nothing should have run yet — setTimeout is pending.
+    expect(registryValues.get('proceduralAssetsReady')).toBeUndefined();
+
+    vi.runAllTimers();
+    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+
+    (globalThis as Record<string, unknown>)['requestIdleCallback'] = origRIC;
   });
 });

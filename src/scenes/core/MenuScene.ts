@@ -5,6 +5,8 @@ import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
+import { DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import { BATCHED_SOUND_PHASES } from '../../systems/SoundGenerator';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
 
@@ -52,6 +54,7 @@ export class MenuScene extends Phaser.Scene {
     this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
     this.idlePreloadMusic();
+    this.warmupDeferredAssets();
 
     // Dev-only diagnostic: show a red banner if any static boot asset failed to
     // load so broken CDN / missing file failures are impossible to miss locally.
@@ -95,6 +98,81 @@ export class MenuScene extends Phaser.Scene {
 
     for (const asset of queue) this.load.audio(asset.key, asset.path);
     this.load.start();
+  }
+
+  /**
+   * Generate the procedural sprites and sounds that were intentionally
+   * omitted from BootScene to keep the initial black-screen time short.
+   *
+   * Runs after the menu's first paint via `requestIdleCallback` (or
+   * `setTimeout` on Safari which lacks rIC). The actual phase work is
+   * frame-yielded via `time.addEvent` so Phaser can render between batches.
+   *
+   * Pipeline:
+   *   1. DEFERRED_SPRITE_PHASES — tiles, tokens, elevator, enemies, boss, etc.
+   *      Each phase runs in its own frame tick (same budget as BootScene).
+   *   2. BATCHED_SOUND_PHASES (2 batches instead of 6) — queues WAV blobs.
+   *   3. `load.start()` decodes the blobs; `load.once('complete')` signals done.
+   *   4. `registry.set('proceduralAssetsReady', true)` — scenes that depend on
+   *      deferred keys (ElevatorScene, LevelScene, …) listen to the registry's
+   *      `changedata-proceduralAssetsReady` event to await this flag safely.
+   *
+   * All cache guards mirror BootScene's pattern so re-entry is idempotent.
+   */
+  warmupDeferredAssets(): void {
+    // Use requestIdleCallback when available (better for low-end devices that
+    // need the browser's scheduler to prioritise rendering over our work).
+    // Fall back to setTimeout(0) on Safari which ships without rIC.
+    const rIC = (typeof requestIdleCallback !== 'undefined')
+      ? requestIdleCallback.bind(globalThis)
+      : null;
+    const scheduleAfterPaint = rIC
+      ? (fn: () => void) => rIC(fn, { timeout: 500 })
+      : (fn: () => void) => setTimeout(fn, 0);
+
+    scheduleAfterPaint(() => { this.runDeferredAssets(); });
+  }
+
+  private runDeferredAssets(): void {
+    const spritePhases = this.textures.exists('tiles') ? [] : DEFERRED_SPRITE_PHASES;
+    let spriteIndex = 0;
+
+    const finishSprites = (): void => {
+      // All deferred sprites done — now handle sounds.
+      if (this.cache.audio.exists('jump')) {
+        // Sounds already cached (e.g. on scene re-entry); signal readiness.
+        this.registry.set('proceduralAssetsReady', true);
+        return;
+      }
+
+      // Run batched sound phases with one frame yield between them (≤2 total).
+      BATCHED_SOUND_PHASES[0].run(this);
+      this.time.addEvent({
+        delay: 0,
+        callback: () => {
+          BATCHED_SOUND_PHASES[1].run(this);
+          // Register completion handler before starting — safe because Phaser
+          // loader events are always async (emitted in a future game tick).
+          this.load.once('complete', () => {
+            this.registry.set('proceduralAssetsReady', true);
+          });
+          this.load.start();
+        },
+      });
+    };
+
+    const runNextSprite = (): void => {
+      if (spriteIndex >= spritePhases.length) {
+        finishSprites();
+        return;
+      }
+      const phase = spritePhases[spriteIndex]!;
+      phase.run(this);
+      spriteIndex++;
+      this.time.addEvent({ delay: 0, callback: runNextSprite });
+    };
+
+    this.time.addEvent({ delay: 0, callback: runNextSprite });
   }
 
   private setupKeyboardNavigation(): void {
