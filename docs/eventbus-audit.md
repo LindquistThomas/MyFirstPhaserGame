@@ -4,7 +4,8 @@ Audit of direct `eventBus.on/once`, `window.addEventListener`, and
 `document.addEventListener` call sites inside scene files
 (`src/scenes/**/*Scene.ts`, `src/features/**/*Scene.ts`).
 
-Performed against `main` @ b85a1bd.
+Last refreshed: 2026-05-06. Cross-checked against `main` @ `d75ee67`
+(see `git blame` for this line if you need a more recent baseline).
 
 ---
 

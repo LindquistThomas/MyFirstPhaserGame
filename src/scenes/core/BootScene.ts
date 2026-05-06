@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
-import { SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import { BOOT_SPRITE_PHASES } from '../../systems/SpriteGenerator';
 import type { GeneratorPhase } from '../../systems/SpriteGenerator';
-import { SOUND_PHASES } from '../../systems/SoundGenerator';
 import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
@@ -182,14 +181,21 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    // Build the generation pipeline: sounds first (their blobs need a loader
-    // run to be decoded into the cache), then sprites (synchronous canvas ops).
-    // Skip phases whose assets are already cached (e.g. on BootScene re-entry).
-    const soundCached = this.cache?.audio?.exists('jump') ?? false;
+    // Signal that procedural assets (tiles, enemies, sounds, etc.) are not yet
+    // ready. MenuScene.create() will run the deferred warmup and flip this to
+    // true once all phases complete. Scenes that need deferred keys can check
+    // registry.get('proceduralAssetsReady') or listen to the registry event
+    // 'changedata-proceduralAssetsReady' (see MenuScene.warmupDeferredAssets).
+    this.registry.set('proceduralAssetsReady', false);
+
+    // Build the generation pipeline: only the player sprite at boot so the
+    // MenuScene animated elevator cab has the best asset from the first frame.
+    // All other sprites and all sounds are deferred to MenuScene.create()
+    // (warmupDeferredAssets) where they run after first paint in idle time.
+    // Skip if assets are already cached (e.g. on BootScene re-entry).
     const spritesCached = this.textures?.exists('player') ?? false;
-    const soundPhases: readonly GeneratorPhase[] = soundCached ? [] : SOUND_PHASES;
-    const spritePhases: readonly GeneratorPhase[] = spritesCached ? [] : SPRITE_PHASES;
-    const total = soundPhases.length + spritePhases.length;
+    const spritePhases: readonly GeneratorPhase[] = spritesCached ? [] : BOOT_SPRITE_PHASES;
+    const total = spritePhases.length;
 
     // File loading accounts for the first 10% of the progress bar;
     // procedural generation phases fill the remaining 90%.
@@ -197,9 +203,8 @@ export class BootScene extends Phaser.Scene {
     const GEN_SHARE = 1 - FILE_SHARE;
 
     const finish = (): void => {
-      // Write the final error count now that all loading (including the second
-      // pass for procedurally-generated audio blobs) is complete, so MenuScene
-      // reads an accurate total rather than a snapshot taken mid-boot.
+      // Write the final error count now that all loading is complete,
+      // so MenuScene reads an accurate total rather than a mid-boot snapshot.
       this.registry.set('bootAssetErrors', _bootAssetErrorCount);
       this._destroyProgress();
       this.scene.start('MenuScene');
@@ -210,7 +215,7 @@ export class BootScene extends Phaser.Scene {
       return;
     }
 
-    // ── Phase 3: sprite generation (synchronous canvas ops, frame-yielding) ──
+    // Sprite generation (synchronous canvas ops, frame-yielding).
     let spriteIndex = 0;
     const runSpritePhases = (): void => {
       if (spriteIndex >= spritePhases.length) {
@@ -224,59 +229,13 @@ export class BootScene extends Phaser.Scene {
       if (import.meta.env.DEV && elapsed > 50) {
         console.warn(`[BootScene] Phase "${phase.label}" took ${elapsed.toFixed(1)} ms (>50 ms threshold)`);
       }
-      const completed = soundPhases.length + spriteIndex + 1;
-      const progress = FILE_SHARE + GEN_SHARE * (completed / total);
+      const progress = FILE_SHARE + GEN_SHARE * ((spriteIndex + 1) / total);
       this._updateProgress(progress, phase.label);
       spriteIndex++;
       this.time.addEvent({ delay: 0, callback: runSpritePhases });
     };
 
-    // ── Phase 2: start the loader for the queued audio blobs ──
-    // Sound phases queue files via loadWav → scene.load.audio. The main
-    // preload has already completed so the loader must be restarted explicitly.
-    const startGeneratedAudioLoad = (): void => {
-      // Remove the initial preload progress handler (0–10% scaling) so it
-      // does not fire again during this second loader run.
-      if (this._onFileProgress) {
-        this.load.off('progress', this._onFileProgress);
-        this._onFileProgress = null;
-      }
-
-      if (soundPhases.length === 0) {
-        // No audio was queued; skip straight to sprite generation.
-        this.time.addEvent({ delay: 0, callback: runSpritePhases });
-        return;
-      }
-
-      // Wait for the audio blobs to finish loading before running sprites.
-      this.load.once('complete', () => {
-        this.time.addEvent({ delay: 0, callback: runSpritePhases });
-      });
-
-      this.load.start();
-    };
-
-    // ── Phase 1: sound generation (queues blobs into the loader, frame-yielding) ──
-    let soundIndex = 0;
-    const runSoundPhases = (): void => {
-      if (soundIndex >= soundPhases.length) {
-        startGeneratedAudioLoad();
-        return;
-      }
-      const phase = soundPhases[soundIndex]!;
-      const t0 = performance.now();
-      phase.run(this);
-      const elapsed = performance.now() - t0;
-      if (import.meta.env.DEV && elapsed > 50) {
-        console.warn(`[BootScene] Phase "${phase.label}" took ${elapsed.toFixed(1)} ms (>50 ms threshold)`);
-      }
-      const progress = FILE_SHARE + GEN_SHARE * ((soundIndex + 1) / total);
-      this._updateProgress(progress, phase.label);
-      soundIndex++;
-      this.time.addEvent({ delay: 0, callback: runSoundPhases });
-    };
-
-    this.time.addEvent({ delay: 0, callback: runSoundPhases });
+    this.time.addEvent({ delay: 0, callback: runSpritePhases });
   }
 
   /** Update the progress bar and status text. `value` is in the range [0, 1]. */
