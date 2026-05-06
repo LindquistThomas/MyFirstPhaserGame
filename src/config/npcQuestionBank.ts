@@ -68,6 +68,33 @@ const QUESTION_BANK: Record<FloorId, readonly NpcQuestion[]> = {
       correctIndex: 0,
       explanation: 'Golden paths provide defaults that make the right thing easy without blocking exceptions.',
     },
+    {
+      id: 'platform-architecture-boundaries',
+      floorId: FLOORS.PLATFORM_TEAM,
+      topic: 'architecture basics',
+      question: 'What should guide the boundary between two deployable components?',
+      options: ['Shared ownership and change patterns', 'Alphabetical service names', 'The newest framework', 'Random folder size'],
+      correctIndex: 0,
+      explanation: 'Boundaries work best when they follow ownership, coupling, and how capabilities change over time.',
+    },
+    {
+      id: 'platform-architecture-quality',
+      floorId: FLOORS.PLATFORM_TEAM,
+      topic: 'architecture basics',
+      question: 'Why define quality attribute scenarios before choosing technology?',
+      options: ['They make constraints testable', 'They replace all user stories', 'They remove the need for monitoring', 'They guarantee zero cost'],
+      correctIndex: 0,
+      explanation: 'Quality scenarios turn vague needs like performance or reliability into concrete, testable targets.',
+    },
+    {
+      id: 'platform-architecture-adrs',
+      floorId: FLOORS.PLATFORM_TEAM,
+      topic: 'architecture basics',
+      question: 'What is the best reason to document a platform architecture decision?',
+      options: ['To capture context and trade-offs for future teams', 'To avoid implementation work', 'To make diagrams optional', 'To hide who decided'],
+      correctIndex: 0,
+      explanation: 'Decision records preserve the context and consequences that are otherwise lost after implementation.',
+    },
   ],
   [FLOORS.BUSINESS]: [
     {

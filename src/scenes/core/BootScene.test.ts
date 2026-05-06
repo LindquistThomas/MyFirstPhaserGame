@@ -16,7 +16,7 @@ vi.mock('phaser', () => {
         },
       };
     })();
-    registry = { set: vi.fn() };
+    registry = { set: vi.fn(), get: vi.fn(() => undefined), remove: vi.fn() };
     scene = { start: vi.fn() };
     cameras = { main: { width: 800, height: 600 } };
     add = {

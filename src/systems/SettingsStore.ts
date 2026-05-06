@@ -103,6 +103,14 @@ export interface SettingsData {
    * static client-only game; SettingsScene warns users before saving it.
    */
   llmApiKey: string;
+  /**
+   * When true, anonymous gameplay telemetry is forwarded to the configured
+   * analytics endpoint. Requires `VITE_ANALYTICS_ENDPOINT` to also be set
+   * at build time — both conditions must be true before any request is made.
+   * Defaults to `false` (opt-in, never sent without explicit player consent).
+   * No PII is ever sent (no save data, quiz answers, or identifiable fields).
+   */
+  analyticsConsent: boolean;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -138,6 +146,7 @@ export function defaultSettings(): SettingsData {
     textScale: 1,
     llmProvider: 'none',
     llmApiKey: '',
+    analyticsConsent: false,
   };
 }
 
@@ -202,6 +211,7 @@ function parseSettings(raw: unknown): SettingsData {
       ? (r['llmProvider'] as LlmProvider)
       : defaults.llmProvider,
     llmApiKey: typeof r['llmApiKey'] === 'string' ? r['llmApiKey'].slice(0, 256) : defaults.llmApiKey,
+    analyticsConsent: typeof r['analyticsConsent'] === 'boolean' ? r['analyticsConsent'] : defaults.analyticsConsent,
   };
 }
 
@@ -335,6 +345,10 @@ export const settingsStore = {
 
   setLlmApiKey(apiKey: string): void {
     this.updateNonAudio((prev) => ({ ...prev, llmApiKey: apiKey.trim().slice(0, 256) }));
+  },
+
+  setAnalyticsConsent(enabled: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, analyticsConsent: enabled }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */

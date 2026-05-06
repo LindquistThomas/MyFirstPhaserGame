@@ -206,6 +206,9 @@ export class LevelScene extends Phaser.Scene {
   /** Shadows tracked to each spawned enemy (same index as enemies[]). */
   private enemyShadows: Array<Phaser.GameObjects.Image | undefined> = [];
 
+  /** Tracks dialog open state across frames so we can pause/resume the playtime tracker. */
+  private wasDialogOpen = false;
+
   constructor(key: string, floorId: FloorId) {
     super({ key });
     this.floorId = floorId;
@@ -243,6 +246,8 @@ export class LevelScene extends Phaser.Scene {
     // player still needs several seconds to walk to any interactive element.
     preloadQuizFor(this.floorId).catch(() => { /* non-fatal; player will see no quiz badge */ });
     preloadInfoFor(this.floorId).catch(() => { /* non-fatal; info icon will be absent */ });
+    // Analytics: track floor visits (fires on every entry, including revisits).
+    eventBus.emit('progression:floor_entered', this.floorId);
   }
 
   create(): void {
@@ -357,6 +362,19 @@ export class LevelScene extends Phaser.Scene {
     this.createAtmosphericFx();
     this.setupPause();
     this.setupFloorUnlockCelebration();
+
+    // Start playtime tracking for this floor.
+    const tracker = this.gameState.playtime;
+    tracker.setFloor(this.floorId);
+    tracker.resume();
+    // Phaser automatically removes scene-event listeners added via `this.events.on`
+    // when the scene shuts down, so PAUSE and RESUME do not need explicit teardown.
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => tracker.pause(), this);
+    this.events.on(Phaser.Scenes.Events.RESUME, () => tracker.resume(), this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      tracker.pause();
+      tracker.flush();
+    }, this);
   }
 
   /**
@@ -748,7 +766,7 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- UI ---- */
   protected createUI(): void {
-    this.hud = new HUD(this, this.progression);
+    this.hud = new HUD(this, this.progression, this.gameState.playtime);
     this.callElevatorButton = new CallElevatorButton(this, () => this.returnToElevator());
     this.createDangerVignette();
   }
@@ -825,6 +843,17 @@ export class LevelScene extends Phaser.Scene {
 
     const infoPressed = this.inputs.justPressed('ToggleInfo');
 
+    // Pause/resume playtime tracker when dialogs open or close.
+    const dialogNowOpen = this.dialogs.isOpen;
+    if (dialogNowOpen !== this.wasDialogOpen) {
+      this.wasDialogOpen = dialogNowOpen;
+      if (dialogNowOpen) {
+        this.gameState.playtime.pause();
+      } else {
+        this.gameState.playtime.resume();
+      }
+    }
+
     // Keep the Player ticking while a dialog is open so it can react to
     // the `modal` input context (zeroing velocity, switching to `idle`).
     // Other gameplay systems (enemies, room-lifts, zones, exit-proximity)
@@ -846,6 +875,9 @@ export class LevelScene extends Phaser.Scene {
     const npcPromptVisible = this.npcMgr.update(_time, delta);
     this.updateAtmosphericFx();
     this.updateDangerState(delta);
+
+    // Call playtime tracker update (throttled persist).
+    this.gameState.playtime.update();
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     this.zones.update();
@@ -899,6 +931,11 @@ export class LevelScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.callElevatorButton.setVisible(false);
+    // When the player first leaves the lobby, start the run timer (no-op if
+    // already running from a new-game start or a previous session).
+    if (this.floorId === FLOORS.LOBBY) {
+      this.gameState.playtime.startRun();
+    }
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = {
       fromFloor: this.floorId,

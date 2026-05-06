@@ -22,7 +22,7 @@ src/
 │       └── types.ts          `QuizDefinition` + scoring constants.
 ├── features/                 Per-feature trees (floors + products).
 │   ├── floors/               One directory per floor — scene + content co-located.
-│       ├── index.ts          Barrel that re-exports every floor scene.
+│       ├── index.ts          Static barrel — re-exports six of eight floor scenes (platform, architecture, finance, product, customer, executive); all floor scenes are lazy-loaded at runtime via `lazySceneLoaders.ts`. Boss is registered directly there; lobby has no scene.
 │       ├── _shared/          Base class + manager collaborators used by every floor.
 │       │   ├── LevelScene.ts           Shared base scene (composition root).
 │       │   ├── LevelEnemySpawner.ts    Spawns + cleans up enemies.
@@ -113,7 +113,7 @@ src/
 │   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
-│   ├── GameStateManager.ts   Composition root — wraps the five persistent stores.
+│   ├── GameStateManager.ts   Composition root — owns ProgressionSystem + PlaytimeTracker; exposes facades over SaveManager, QuizManager, InfoDialogManager, AchievementManager, TouchHintStore.
 │   ├── ZoneManager.ts        Proximity zones; emits `zone:enter/exit`.
 │   ├── ProgressionSystem.ts  AU accumulation, floor unlocks, token dedupe.
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
@@ -127,6 +127,8 @@ src/
 │   ├── FloorHitState.ts      Per-floor hit / checkpoint tracking; pure (no Phaser/eventBus); 3-hit forced respawn threshold.
 │   ├── PersistedStore.ts     Generic JSON-backed key/value store factory.
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
+│   ├── PlaytimeTracker.ts    Total + per-floor active-playtime accumulator; persists via PlaytimeSaveAdapter (10 s flush throttle).
+│   ├── Analytics.ts          Opt-in analytics service. Gated on VITE_ANALYTICS_ENDPOINT (build) + SettingsStore.analyticsConsent (runtime). Stashed on scene.registry under "analytics" by BootScene.
 │   ├── sliderUtils.ts        Volume slider clamping utilities.
 │   ├── sceneLifecycle.ts     `createSceneLifecycle(scene)` — uniform teardown.
 │   ├── SpriteGenerator.ts    Composition root → `./sprites/` per-asset modules.
@@ -206,6 +208,7 @@ Use this to find the right file to edit for a given feature.
 | Audio                               | `systems/AudioManager.ts`, `systems/SoundGenerator.ts` (also generates procedural lullaby), `systems/sounds/*` |
 | Procedural sprites                  | `systems/SpriteGenerator.ts`, `systems/sprites/*.ts`                                   |
 | Theme tokens (colours + spacing)    | `style/theme.ts`                                                                       |
+| Analytics / playtime                | `systems/Analytics.ts`, `systems/PlaytimeTracker.ts`                                   |
 
 ## Data Flow
 
@@ -243,8 +246,8 @@ gone.
 
 `GameStateManager` (in `systems/GameStateManager.ts`) is constructed
 once in `BootScene.create()` and stashed in `scene.registry` under
-the key `gameState`. It owns the `ProgressionSystem` instance and
-exposes facades over the five module-level stores (`SaveManager`,
+the key `gameState`. It owns the `ProgressionSystem` and `PlaytimeTracker` instances and
+exposes facades over the five `*Manager`/`*Store` modules (`SaveManager`,
 `QuizManager`, `InfoDialogManager`, `AchievementManager`, `TouchHintStore`). Tests inject a fake `KVStorage`
 into the constructor to swap localStorage atomically.
 
@@ -344,6 +347,7 @@ automatically.
 | `sfx:recover_au`     | —       | Player (AU recovered)       | AudioManager |
 | `sfx:coffee_sip`     | —       | Coffee                      | AudioManager |
 | `sfx:fridge_open`    | —       | EnergyDrinkFridge           | AudioManager |
+| `sfx:npc_greet`      | —       | LevelNpcManager             | AudioManager |
 | `sfx:boss_hit`       | —       | CEOBoss                     | AudioManager |
 | `sfx:boss_defeated`  | —       | TerroristCommander          | AudioManager |
 | `sfx:boss_phase_2`   | —       | CEOBoss                     | AudioManager |
@@ -361,6 +365,14 @@ automatically.
 | Event                 | Payload       | Emitters | Consumers |
 |-----------------------|---------------|----------|-----------|
 | `checkpoint:activate` | `id: string`  | LevelScene, BossArenaScene | — |
+
+#### `npc:*` — NPC questions
+
+| Event                | Payload                                      | Emitters         | Consumers |
+|----------------------|----------------------------------------------|------------------|-----------|
+| `npc:interact`       | `{ npcId; npcName; topic }`                  | LevelNpcManager  | — |
+| `npc:answer:correct` | `{ npcName; questionId }`                    | NpcDialog        | — |
+| `npc:answer:wrong`   | `{ npcName; questionId }`                    | NpcDialog        | — |
 
 #### `boss:*` — boss lifecycle
 
@@ -391,10 +403,12 @@ automatically.
 
 #### `progression:*` — AU / floor progression
 
-| Event                       | Payload              | Emitters           | Consumers         |
-|-----------------------------|----------------------|--------------------|-------------------|
-| `progression:floor_unlocked`| `floorId: FloorId`   | ProgressionSystem  | ElevatorScene, HUD |
-| `progression:au_milestone`  | `milestone: number`  | ProgressionSystem  | HUD               |
+| Event                       | Payload              | Emitters           | Consumers                          |
+|-----------------------------|----------------------|--------------------|-------------------------------------|
+| `progression:floor_unlocked`| `floorId: FloorId`   | ProgressionSystem  | ElevatorScene, HUD, Analytics      |
+| `progression:floor_entered` | `floorId: FloorId`   | LevelScene         | Analytics                           |
+| `progression:au_milestone`  | `milestone: number`  | ProgressionSystem  | HUD, Analytics                     |
+| `progression:loaded`        | —                    | SettingsScene      | —                                  |
 
 #### `achievement:*` — achievements
 
@@ -416,9 +430,30 @@ automatically.
 
 #### `quiz:*` — quiz system
 
-| Event                  | Payload           | Emitters   | Consumers           |
-|------------------------|-------------------|------------|---------------------|
-| `quiz:cooldown_expired`| `infoId: string`  | QuizDialog | ariaLive (screen reader) |
+| Event                  | Payload                                                   | Emitters              | Consumers                |
+|------------------------|-----------------------------------------------------------|-----------------------|--------------------------|
+| `quiz:cooldown_expired`| `infoId: string`                                          | QuizDialog            | ariaLive (screen reader) |
+| `quiz:completed`       | `{ infoId; score; total; passed; attemptNumber }`         | QuizResultsScreen     | Analytics                |
+
+#### `session:*` — analytics session
+
+| Event           | Payload                       | Emitters         | Consumers |
+|-----------------|-------------------------------|------------------|-----------|
+| `session:start` | `sessionId: string`           | AnalyticsService | —         |
+| `session:end`   | `{ durationMs: number }`      | AnalyticsService | —         |
+
+#### `game:*` — run lifecycle
+
+| Event           | Payload | Emitters       | Consumers  |
+|-----------------|---------|----------------|------------|
+| `game:completed`| —       | BossArenaScene | Analytics  |
+
+#### `boot:*` — boot sequence
+
+| Event              | Payload                                       | Emitters  | Consumers               |
+|--------------------|-----------------------------------------------|-----------|-------------------------|
+| `boot:reset`       | —                                             | BootScene | MusicPlugin             |
+| `boot:asset-error` | `{ key: string; type: string; url: string }`  | BootScene | MusicPlugin             |
 
 ## Testing
 
@@ -434,9 +469,15 @@ automatically.
 - **Type safety** (`npm run build`) runs `tsc` strict before Vite
   bundles.
 - **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
-  `src/input/**` at 80%; `src/ui/**` at 65% (60% branches); `src/entities/**` at 60%.
-  `src/scenes/**`, `src/features/floors/**`, `src/plugins/**`, and the
-  procedural-generator modules remain excluded.
+  `src/input/**` at 80%; `src/ui/**` at 65% (60% branches);
+  `src/entities/**` at 60%; `src/scenes/**` at 20% (18% functions);
+  `src/features/floors/**` at 17% (12% branches, 13% functions).
+  `src/plugins/**`, `src/main.ts`, the procedural-generator modules
+  (`src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
+  `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`), and a
+  small list of UI files
+  (`src/ui/{ElevatorButtons,InfoDialog,InfoIcon,ModalBase,QuizDialog,QuizResultsScreen,ControlHintsOverlay,touchPrimary}.ts`)
+  are excluded entirely from coverage.
 
 ## Key design choices
 
@@ -450,7 +491,7 @@ automatically.
   monkey-patching `localStorage`. `GameStateManager` forwards that
   interface to the other four stores in its constructor.
 - **Single composition root for game state.** `GameStateManager` is
-  the only thing that knows how the five persistent stores fit
+  the only thing that knows how the persistent stores fit
   together. Scenes and UI read from it; tests replace it.
 - **Typed scene hand-off.** `NavigationContext` collects every
   cross-scene field in one optional-everything interface. No registry

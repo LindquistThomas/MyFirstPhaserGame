@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot, getRecoveryReason } from './SaveManager';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
@@ -276,12 +276,54 @@ describe('SaveManager — schema versioning & migration', () => {
 
   it.skip('load() returns null when a required migration entry is missing', () => {
     // This path only occurs when 0 < save.version < CURRENT_SAVE_VERSION and
-    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=1
-    // there is no constructible version-gap case yet.
+    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=2,
+    // v0→v1 is a no-op (version stamp only) and v1→v2 adds playtime fields.
+    // No constructible gap exists since both entries are present in MIGRATIONS.
     //
     // Once a gap can be created, seed a save at the missing intermediate version,
     // call load(), and assert:
     // expect(load()).toBeNull();
+  });
+
+  it('v1→v2 migration: loading a v1 save yields zeroed playtime fields', () => {
+    const store = memoryStorage();
+    const v1Save = {
+      version: 1,
+      totalAU: 5,
+      floorAU: { 0: 5 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: {},
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v1Save));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.playtimeMs).toBe(0);
+    expect(loaded?.floorPlaytimeMs).toEqual({});
+  });
+
+  it('v0→v2 migration (no version field): yields zeroed playtime fields', () => {
+    const store = memoryStorage();
+    const v0Save = {
+      totalAU: 3,
+      floorAU: { 0: 3 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: {},
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v0Save));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.playtimeMs).toBe(0);
+    expect(loaded?.floorPlaytimeMs).toEqual({});
+    // original fields preserved
+    expect(loaded?.totalAU).toBe(3);
   });
 
   it('load() returns null for a non-integer version field', () => {
@@ -822,9 +864,8 @@ describe('SaveManager — isValidSaveData schema validation', () => {
 
     // Original key removed so hasSave() is false
     expect(store.store.has('architect_test_v1')).toBe(false);
-    // A forensic key starting with 'architect_test_v1_corrupt_' should exist
-    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
-    expect(forensicKey).toBeDefined();
+    // Forensic copy stored under the fixed per-slot key (no timestamp suffix)
+    expect(store.store.has('architect_test_v1_corrupt')).toBe(true);
   });
 
   it('stores a forensic copy on JSON.parse failure (not just schema failure)', () => {
@@ -835,8 +876,7 @@ describe('SaveManager — isValidSaveData schema validation', () => {
     load();
 
     expect(store.store.has('architect_test_v1')).toBe(false);
-    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
-    expect(forensicKey).toBeDefined();
+    expect(store.store.has('architect_test_v1_corrupt')).toBe(true);
   });
 
   it('stores a forensic copy when version is invalid (non-integer)', () => {
@@ -847,7 +887,255 @@ describe('SaveManager — isValidSaveData schema validation', () => {
     load();
 
     expect(store.store.has('architect_test_v1')).toBe(false);
-    const forensicKey = [...store.store.keys()].find((k) => k.startsWith('architect_test_v1_corrupt_'));
-    expect(forensicKey).toBeDefined();
+    expect(store.store.has('architect_test_v1_corrupt')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Save recovery: wasSlotRecovered / getCorruptBackup / clearRecoveredSlot
+// ---------------------------------------------------------------------------
+
+describe('SaveManager — save recovery helpers', () => {
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+  beforeEach(() => {
+    setPlayerSlot('slot1');
+    warnSpy.mockClear();
+    eventBus.removeAllListeners();
+    // Clear any lingering recovered-slot state from previous tests.
+    clearRecoveredSlot('slot1');
+    clearRecoveredSlot('slot2');
+    clearRecoveredSlot('slot3');
+  });
+
+  afterEach(() => {
+    eventBus.removeAllListeners();
+  });
+
+  afterAll(() => {
+    warnSpy.mockRestore();
+  });
+
+  it('wasSlotRecovered returns false for a healthy boot (no corruption)', () => {
+    const store = memoryStorage();
+    setStorage(store);
+    expect(wasSlotRecovered('slot1')).toBe(false);
+  });
+
+  it('wasSlotRecovered returns true after load() encounters a corrupt save', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{not json}');
+    setStorage(store);
+    load();
+    expect(wasSlotRecovered('slot1')).toBe(true);
+  });
+
+  it('getCorruptBackup returns the raw corrupt string after load() discards it', () => {
+    const raw = '{not json}';
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', raw);
+    setStorage(store);
+    load();
+    expect(getCorruptBackup('slot1')).toBe(raw);
+  });
+
+  it('getCorruptBackup returns null for a slot that was never recovered', () => {
+    setStorage(memoryStorage());
+    expect(getCorruptBackup('slot2')).toBeNull();
+  });
+
+  it('clearRecoveredSlot removes the recovery sentinel so dialog does not reappear', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{not json}');
+    setStorage(store);
+    load();
+    expect(wasSlotRecovered('slot1')).toBe(true);
+    clearRecoveredSlot('slot1');
+    expect(wasSlotRecovered('slot1')).toBe(false);
+  });
+
+  it('clearRecoveredSlot also clears getCorruptBackup', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    load();
+    clearRecoveredSlot('slot1');
+    expect(getCorruptBackup('slot1')).toBeNull();
+  });
+
+  it('wasSlotRecovered returns true when loadSlotInfo detects corruption', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot2_v1', '{corrupt}');
+    setStorage(store);
+    const info = loadSlotInfo('slot2');
+    expect(info.recovered).toBe(true);
+    expect(wasSlotRecovered('slot2')).toBe(true);
+  });
+
+  it('loadSlotInfo.recovered is false for a genuinely empty slot', () => {
+    setStorage(memoryStorage());
+    const info = loadSlotInfo('slot3');
+    expect(info.exists).toBe(false);
+    expect(info.recovered).toBe(false);
+  });
+
+  it('loadSlotInfo.recovered is true for a slot recovered via load() even after key is removed', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    // Simulate load() detecting corruption (sets playerSlot = 'slot1').
+    load();
+    // Now loadSlotInfo should see recovered=true even though the key is gone.
+    const info = loadSlotInfo('slot1');
+    expect(info.exists).toBe(false);
+    expect(info.recovered).toBe(true);
+  });
+
+  it('persistence:failed payload includes the slot id on parse failure', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+    load();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse', slot: 'slot1' }));
+  });
+
+  it('forensic copy is stored under the fixed _corrupt key (no timestamp)', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', 'CORRUPT');
+    setStorage(store);
+    load();
+    expect(store.store.get('architect_slot1_v1_corrupt')).toBe('CORRUPT');
+  });
+
+  it('loadSlotInfo stashes forensic copy for non-active slot', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot3_v1', 'BADDATA');
+    setStorage(store);
+    loadSlotInfo('slot3');
+    expect(store.store.get('architect_slot3_v1_corrupt')).toBe('BADDATA');
+    expect(store.store.has('architect_slot3_v1')).toBe(false);
+  });
+
+  it('getRecoveryReason returns "parse" after corruption is detected', () => {
+    const store = memoryStorage();
+    store.store.set('architect_slot1_v1', '{bad}');
+    setStorage(store);
+    load();
+    expect(getRecoveryReason('slot1')).toBe('parse');
+  });
+
+  it('getRecoveryReason returns "parse" as default for a slot that was never recovered', () => {
+    setStorage(memoryStorage());
+    expect(getRecoveryReason('slot2')).toBe('parse');
+  });
+});
+
+
+describe('SaveManager — exportSlot / importToSlot', () => {
+  const mem = memoryStorage();
+
+  beforeEach(() => {
+    setStorage(mem);
+    setPlayerSlot('slot1');
+    eventBus.removeAllListeners();
+  });
+
+  afterEach(() => {
+    // Clear the in-memory store between tests
+    mem.store.clear();
+    eventBus.removeAllListeners();
+  });
+
+  it('exportSlot returns null when slot is empty', () => {
+    expect(exportSlot('slot1')).toBeNull();
+  });
+
+  it('exportSlot produces a valid JSON envelope with the correct format', () => {
+    save(sample);
+    const json = exportSlot('slot1');
+    expect(json).not.toBeNull();
+    const envelope = JSON.parse(json!);
+    expect(envelope.format).toBe(SAVE_ENVELOPE_FORMAT);
+    expect(typeof envelope.exportedAt).toBe('string');
+    expect(envelope.payload.totalAU).toBe(sample.totalAU);
+    expect(envelope.payload.currentFloor).toBe(sample.currentFloor);
+  });
+
+  it('round-trip: export → clear storage → import → data restored exactly', () => {
+    save(sample);
+    const json = exportSlot('slot1')!;
+
+    // Wipe the slot
+    mem.store.clear();
+    expect(mem.store.has('architect_slot1_v1')).toBe(false);
+
+    // Import back
+    const restored = importToSlot('slot1', json);
+    expect(restored).not.toBeNull();
+    expect(restored!.totalAU).toBe(sample.totalAU);
+    expect(restored!.currentFloor).toBe(sample.currentFloor);
+    expect(restored!.unlockedFloors).toEqual(sample.unlockedFloors);
+
+    // Slot key in storage should now exist
+    expect(mem.store.has('architect_slot1_v1')).toBe(true);
+  });
+
+  it('importToSlot returns null for malformed JSON', () => {
+    expect(importToSlot('slot1', '{not valid json}')).toBeNull();
+  });
+
+  it('importToSlot returns null for a future / unknown format string', () => {
+    const badEnvelope = JSON.stringify({
+      format: 'architect-save-v2',
+      exportedAt: new Date().toISOString(),
+      payload: sample,
+    });
+    expect(importToSlot('slot1', badEnvelope)).toBeNull();
+  });
+
+  it('importToSlot returns null when payload is missing required fields', () => {
+    const badPayload = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: new Date().toISOString(),
+      payload: { totalAU: 5 }, // missing required fields
+    });
+    expect(importToSlot('slot1', badPayload)).toBeNull();
+  });
+
+  it('importToSlot runs MIGRATIONS on a v0 payload (cross-version safety)', () => {
+    // v0 saves had no 'version' field; the migration stamps it at version: 1.
+    const v0Payload = {
+      // no version field — treated as version 0
+      totalAU: 42,
+      floorAU: { 0: 42 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: { 0: [] },
+    };
+    const envelope = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: new Date().toISOString(),
+      payload: v0Payload,
+    });
+    const result = importToSlot('slot1', envelope);
+    expect(result).not.toBeNull();
+    expect(result!.totalAU).toBe(42);
+  });
+
+  it('importToSlot writes to the specified slot key, not the active playerSlot key', () => {
+    setPlayerSlot('slot2'); // active slot is slot2
+
+    const envelope = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: new Date().toISOString(),
+      payload: sample,
+    });
+    importToSlot('slot1', envelope); // write to slot1 explicitly
+
+    // slot1 should have the data; slot2 should remain empty
+    expect(mem.store.has('architect_slot1_v1')).toBe(true);
+    expect(mem.store.has('architect_slot2_v1')).toBe(false);
   });
 });

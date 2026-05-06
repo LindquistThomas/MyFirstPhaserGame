@@ -4,6 +4,7 @@ import { SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConf
 import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { isReducedMotion } from '../../systems/MotionPreference';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
 
@@ -151,14 +152,16 @@ export class MenuScene extends Phaser.Scene {
     starGfx.destroy();
 
     // Twinkle by tweening the RT alpha — zero per-frame redraws.
-    this.tweens.add({
-      targets: starRT,
-      alpha: { from: 0.5, to: 1 },
-      duration: 2400,
-      ease: 'Sine.easeInOut',
-      yoyo: true,
-      repeat: -1,
-    });
+    if (!isReducedMotion()) {
+      this.tweens.add({
+        targets: starRT,
+        alpha: { from: 0.5, to: 1 },
+        duration: 2400,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
+    }
 
     // Soft moon — two circles drawn once, stays static.
     const moon = this.add.graphics().setDepth(0);
@@ -373,10 +376,10 @@ export class MenuScene extends Phaser.Scene {
         },
       });
     };
-    this.time.delayedCall(600, goNext);
+    if (!isReducedMotion()) {
+      this.time.delayedCall(600, goNext);
+    }
   }
-
-  /* ---- foreground UI ---- */
 
   private createTitlePanel(): void {
     const cx = 360;
@@ -407,10 +410,12 @@ export class MenuScene extends Phaser.Scene {
       .setShadow(0, 0, '#33ddff', 24, true, true).setDepth(TEXT_DEPTH);
 
     // Subtle title pulse (scale only the headline so the surrounding lines stay still).
-    this.tweens.add({
-      targets: headline, scale: 1.03, duration: 1800,
-      ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
-    });
+    if (!isReducedMotion()) {
+      this.tweens.add({
+        targets: headline, scale: 1.03, duration: 1800,
+        ease: 'Sine.easeInOut', yoyo: true, repeat: -1,
+      });
+    }
 
     // Glow color loop — interpolate the shadow hue between two cyan tones
     // on a 3 s yoyo so the title subtly breathes in colour as well as scale.
@@ -420,16 +425,18 @@ export class MenuScene extends Phaser.Scene {
       const c = (n: number) => Math.round(n).toString(16).padStart(2, '0');
       return `#${c(r)}${c(g)}${c(b)}`;
     };
-    this.tweens.addCounter({
-      from: 0, to: 1, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
-      onUpdate: (tw) => {
-        const t = tw.getValue() ?? 0;
-        const r = from.r + (to.r - from.r) * t;
-        const g = from.g + (to.g - from.g) * t;
-        const b = from.b + (to.b - from.b) * t;
-        headline.setShadow(0, 0, toHex(r, g, b), 24, true, true);
-      },
-    });
+    if (!isReducedMotion()) {
+      this.tweens.addCounter({
+        from: 0, to: 1, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+        onUpdate: (tw) => {
+          const t = tw.getValue() ?? 0;
+          const r = from.r + (to.r - from.r) * t;
+          const g = from.g + (to.g - from.g) * t;
+          const b = from.b + (to.b - from.b) * t;
+          headline.setShadow(0, 0, toHex(r, g, b), 24, true, true);
+        },
+      });
+    }
 
     this.add.text(cx, cy - 50, 'Ride the elevator. Translate between floors.', {
       fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',

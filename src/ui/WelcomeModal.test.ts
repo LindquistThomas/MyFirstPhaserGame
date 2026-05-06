@@ -257,7 +257,7 @@ describe('WelcomeModal', () => {
       (c) => typeof c[2] === 'string' && c[3]?.fontStyle === 'bold' && c[3]?.fontSize === '30px',
     );
     expect(titleCalls.length).toBe(1);
-    expect(titleCalls[0][2]).toBe('How to Play');
+    expect(titleCalls[0]![2]).toBe('How to Play');
   });
 
   it('source: first-run — renders "Welcome, Architect!" title', () => {
@@ -267,7 +267,7 @@ describe('WelcomeModal', () => {
       (c) => typeof c[2] === 'string' && c[3]?.fontStyle === 'bold' && c[3]?.fontSize === '30px',
     );
     expect(titleCalls.length).toBe(1);
-    expect(titleCalls[0][2]).toBe('Welcome, Architect!');
+    expect(titleCalls[0]![2]).toBe('Welcome, Architect!');
   });
 
   it('source: help — calls onComplete when modal is closed (caller manages side effects)', () => {

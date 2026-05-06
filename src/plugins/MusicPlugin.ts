@@ -155,3 +155,23 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
     this.systems?.events.off('start', this.onSceneStart, this);
   }
 }
+
+/**
+ * Prefetch the background music for a destination scene during the elevator
+ * ride. Call this immediately when the player commits to a floor so the
+ * download runs in parallel with the lazy scene import and the fade animation.
+ *
+ * Idempotent: returns early if the audio is already cached, the scene has no
+ * SCENE_MUSIC entry, or the asset catalog has no matching path.
+ * Errors are non-fatal — if the prefetch fails, MusicPlugin retries on scene
+ * create and a brief silent gap is still preferable to a crash.
+ */
+export function prefetchSceneMusic(scene: Phaser.Scene, sceneKey: string): void {
+  const musicKey = SCENE_MUSIC[sceneKey];
+  if (!musicKey) return;
+  if (scene.cache.audio.exists(musicKey)) return;
+  const path = MUSIC_PATH[musicKey];
+  if (!path) return;
+  scene.load.audio(musicKey, path);
+  scene.load.start();
+}

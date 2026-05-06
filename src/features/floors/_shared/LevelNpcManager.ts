@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { allKeyLabels } from '../../../input';
 import { Npc, type NpcConfig } from '../../../entities/Npc';
-import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import type { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { eventBus } from '../../../systems/EventBus';
 import type { DialogController } from '../../../ui/DialogController';
 import { NpcDialog } from '../../../ui/NpcDialog';

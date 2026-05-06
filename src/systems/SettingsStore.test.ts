@@ -83,6 +83,7 @@ describe('SettingsStore', () => {
         textScale: 1.3,
         llmProvider: 'openai',
         llmApiKey: 'sk-local-test',
+        analyticsConsent: true,
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -101,6 +102,7 @@ describe('SettingsStore', () => {
       expect(s.textScale).toBe(1.3);
       expect(s.llmProvider).toBe('openai');
       expect(s.llmApiKey).toBe('sk-local-test');
+      expect(s.analyticsConsent).toBe(true);
     });
 
     it('clamps masterVolume to 0-100 on parse', () => {
@@ -564,6 +566,49 @@ describe('SettingsStore', () => {
       settingsStore.setTextScale(1.3);
       expect(audioListener).not.toHaveBeenCalled();
       expect(settingsListener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('analyticsConsent', () => {
+    it('defaults to false', () => {
+      expect(settingsStore.read().analyticsConsent).toBe(false);
+    });
+
+    it('setAnalyticsConsent(true) persists the value', () => {
+      settingsStore.setAnalyticsConsent(true);
+      expect(settingsStore.read().analyticsConsent).toBe(true);
+    });
+
+    it('round-trips through storage', () => {
+      settingsStore.setAnalyticsConsent(true);
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().analyticsConsent).toBe(true);
+    });
+
+    it('falls back to false when the stored value is not a boolean', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ analyticsConsent: 'yes' }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().analyticsConsent).toBe(false);
+    });
+
+    it('falls back to false when field is missing', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ masterVolume: 50 }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().analyticsConsent).toBe(false);
+    });
+
+    it('does NOT emit audio:volume-changed when updating analyticsConsent', () => {
+      const listener = vi.fn();
+      eventBus.on('audio:volume-changed', listener);
+      settingsStore.setAnalyticsConsent(true);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('emits settings:changed when updating analyticsConsent', () => {
+      const listener = vi.fn();
+      eventBus.on('settings:changed', listener);
+      settingsStore.setAnalyticsConsent(true);
+      expect(listener).toHaveBeenCalledTimes(1);
     });
   });
 });

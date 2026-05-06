@@ -22,6 +22,16 @@ export interface SaveData {
   visitedFloors?: FloorId[];
   /** Unix ms timestamp of the last time this save was written. */
   lastPlayedAt?: number;
+  /** Total active playtime in milliseconds (pauses excluded). */
+  playtimeMs?: number;
+  /** Per-floor active playtime in milliseconds. */
+  floorPlaytimeMs?: Partial<Record<FloorId, number>>;
+  /** Milliseconds from run-start to first boss defeat (set once, never overwritten). */
+  firstClearMs?: number;
+  /** Best (shortest) run clear time in milliseconds across all runs. */
+  bestClearMs?: number;
+  /** Unix ms timestamp when the current run was started; absent when not in a run. */
+  runStartedAt?: number;
 }
 
 /** The three canonical slot IDs shown in the slot picker. */
@@ -35,6 +45,13 @@ export interface SlotInfo {
   totalAU?: number;
   currentFloor?: FloorId;
   lastPlayedAt?: number;
+  /**
+   * True when the slot's previous save was corrupt and has been discarded this
+   * session. The slot behaves identically to an empty slot (selectability,
+   * fresh-save on entry) but the UI surfaces a "RECOVERED" badge and a
+   * recovery dialog so the player understands what happened.
+   */
+  recovered?: boolean;
 }
 
 
@@ -46,7 +63,17 @@ function validateFloorId(value: unknown): FloorId | undefined {
 }
 
 /** Schema version written by this build. Increment when SaveData shape changes. */
-export const CURRENT_SAVE_VERSION = 1;
+export const CURRENT_SAVE_VERSION = 2;
+
+/**
+ * Storage key pattern reference (keep in sync when changing the format):
+ *   Primary save  : architect_<slot>_v1         (e.g. architect_slot1_v1)
+ *   Forensic copy : architect_<slot>_v1_corrupt  (most-recent corrupt blob per slot)
+ *
+ * The forensic key is written by discardCorrupt() / discardCorruptForSlot()
+ * and is readable via getCorruptBackup(). One fixed key per slot; no timestamp
+ * suffix so it can always be found (latest corruption overwrites any previous one).
+ */
 
 /**
  * Migration functions keyed by source version. Each receives raw parsed data
@@ -55,6 +82,9 @@ export const CURRENT_SAVE_VERSION = 1;
  *
  * v0 → v1: first versioned release; shape is unchanged — just stamps the
  * `version` field that was previously absent.
+ *
+ * v1 → v2: adds playtime fields (playtimeMs, floorPlaytimeMs) with zero
+ * defaults so loading old saves never results in `undefined`.
  *
  * To add a new save version:
  *   1. Bump CURRENT_SAVE_VERSION.
@@ -65,6 +95,7 @@ export const CURRENT_SAVE_VERSION = 1;
  */
 const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
   0: (d) => d,
+  1: (d) => ({ ...d, playtimeMs: 0, floorPlaytimeMs: {} }),
 };
 
 
@@ -82,10 +113,20 @@ let storage: KVStorage | null = null;
 let playerSlot = 'default';
 let unavailableEmitted = false;
 
+/**
+ * Session-scoped record of slots whose previous save was found corrupt and
+ * discarded. Cleared only when the page is reloaded (module-level state).
+ * Key: slot id (e.g. 'slot1'). Value: `{ raw, reason }` where `raw` is the
+ * corrupt JSON string (for the Download Backup feature) and `reason` is the
+ * failure reason passed to `emitFailed`.
+ */
+const recoveredSlots = new Map<string, { raw: string; reason: FailureReason }>();
+
 function getStorage(): KVStorage { return storage ?? (storage = getDefaultStorage()); }
 
 export function setStorage(s: KVStorage): void { storage = s; unavailableEmitted = false; }
 export function setPlayerSlot(slot: string): void { playerSlot = slot; }
+export function getPlayerSlot(): string { return playerSlot; }
 
 function key(): string { return `architect_${playerSlot}_v1`; }
 
@@ -96,12 +137,12 @@ function isQuotaError(err: unknown): boolean {
   return false;
 }
 
-type FailureReason = 'quota' | 'unavailable' | 'parse' | 'unknown';
+export type FailureReason = 'quota' | 'unavailable' | 'parse' | 'unknown';
 
 function emitFailed(reason: FailureReason, err?: unknown): void {
   const detail = err instanceof Error ? err.message : (err != null ? String(err) : undefined);
   console.warn('[SaveManager] persistence:failed', { key: key(), slot: playerSlot, reason, detail });
-  eventBus.emit('persistence:failed', { reason, detail });
+  eventBus.emit('persistence:failed', { reason, detail, slot: playerSlot });
 }
 
 /** Emits `persistence:failed` with reason `unavailable` the first time noop storage is detected. */
@@ -158,16 +199,71 @@ function isValidSaveData(d: unknown): d is SaveData {
     if (!(o['visitedFloors'] as unknown[]).every((n) => typeof n === 'number')) return false;
   }
   if (o['lastPlayedAt'] !== undefined && typeof o['lastPlayedAt'] !== 'number') return false;
+  if (o['playtimeMs'] !== undefined && typeof o['playtimeMs'] !== 'number') return false;
+  if (o['floorPlaytimeMs'] !== undefined) {
+    if (typeof o['floorPlaytimeMs'] !== 'object' || o['floorPlaytimeMs'] === null || Array.isArray(o['floorPlaytimeMs'])) return false;
+    if (!Object.values(o['floorPlaytimeMs'] as object).every((v) => typeof v === 'number' && isFinite(v))) return false;
+  }
+  if (o['firstClearMs'] !== undefined && typeof o['firstClearMs'] !== 'number') return false;
+  if (o['bestClearMs'] !== undefined && typeof o['bestClearMs'] !== 'number') return false;
+  if (o['runStartedAt'] !== undefined && typeof o['runStartedAt'] !== 'number') return false;
   return true;
 }
 
 /**
- * Stash a forensic copy of raw save data under a timestamped key and remove
+ * Stash a forensic copy of raw save data under a fixed per-slot key and remove
  * the corrupt primary key so the next boot gets a clean slot.
+ * Records the slot in the session-scoped recoveredSlots map.
  */
 function discardCorrupt(raw: string): void {
-  try { getStorage().setItem(`${key()}_corrupt_${Date.now()}`, raw); } catch { /* noop */ }
-  try { getStorage().removeItem(key()); } catch { /* noop */ }
+  discardCorruptForSlot(playerSlot, raw, 'parse');
+}
+
+/**
+ * Slot-agnostic variant of discardCorrupt used by loadSlotInfo, which reads
+ * slots that may differ from the currently active playerSlot.
+ */
+function discardCorruptForSlot(slotId: string, raw: string, reason: FailureReason = 'parse'): void {
+  const slotKey = `architect_${slotId}_v1`;
+  const corruptKey = `${slotKey}_corrupt`;
+  try { getStorage().setItem(corruptKey, raw); } catch { /* noop */ }
+  try { getStorage().removeItem(slotKey); } catch { /* noop */ }
+  recoveredSlots.set(slotId, { raw, reason });
+}
+
+/**
+ * Returns the raw corrupt JSON string stashed by discardCorrupt for the given
+ * slot during this session, or null if none exists. Used by SaveRecoveryDialog
+ * to offer a "Download backup" file to the player.
+ */
+export function getCorruptBackup(slotId: SaveSlotId): string | null {
+  return recoveredSlots.get(slotId)?.raw ?? null;
+}
+
+/**
+ * Returns the failure reason stored when the corrupt save was discarded, or
+ * 'parse' as a safe default. Used by SaveRecoveryDialog to show a tailored
+ * human-readable explanation.
+ */
+export function getRecoveryReason(slotId: SaveSlotId): FailureReason {
+  return recoveredSlots.get(slotId)?.reason ?? 'parse';
+}
+
+/**
+ * Returns true if the given slot had a corrupt save discarded this session.
+ * SaveSlotScene uses this to show a "RECOVERED" badge on the slot card.
+ */
+export function wasSlotRecovered(slotId: SaveSlotId): boolean {
+  return recoveredSlots.has(slotId);
+}
+
+/**
+ * Remove the recovered-slot sentinel for slotId.
+ * Call this when the player has dismissed the recovery dialog so the dialog
+ * does not reappear if SaveSlotScene is revisited in the same session.
+ */
+export function clearRecoveredSlot(slotId: SaveSlotId): void {
+  recoveredSlots.delete(slotId);
 }
 
 /**
@@ -175,7 +271,7 @@ function discardCorrupt(raw: string): void {
  * Returns the validated SaveData on success, or null if the data is invalid.
  * Has no side-effects: callers are responsible for cleanup and event emission.
  */
-function parseAndValidateSave(raw: string): SaveData | null {
+export function parseAndValidateSave(raw: string): SaveData | null {
   try {
     let data = JSON.parse(raw) as Record<string, unknown>;
     const rawVersion = data['version'];
@@ -231,18 +327,21 @@ export function clear(): void {
  * slot. Safe to call during the slot-picker UI before the player has chosen.
  * Returns `exists: false` for any slot whose data would be rejected by load()
  * (corrupt JSON, missing required fields, failed schema validation).
+ * When corrupt data is found, stashes a forensic copy and sets `recovered: true`.
  */
 export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
   checkUnavailable();
   const slotKey = `architect_${slotId}_v1`;
   let raw: string | null = null;
   try { raw = getStorage().getItem(slotKey); } catch { /* ignore */ }
-  if (!raw) return { slotId, exists: false };
+  if (!raw) return { slotId, exists: false, recovered: recoveredSlots.has(slotId) };
   const data = parseAndValidateSave(raw);
   if (!data) {
-    // Corrupt data — treat as absent so the slot picker shows "EMPTY" and
-    // SaveSlotScene won't pass loadSave:true to a slot that can't be loaded.
-    return { slotId, exists: false };
+    // Corrupt data — stash forensic copy (adds the `_corrupt` key), mark slot as
+    // recovered for this session, then remove the primary save key so the slot
+    // picker treats it as empty.
+    discardCorruptForSlot(slotId, raw);
+    return { slotId, exists: false, recovered: true };
   }
   return {
     slotId,
@@ -290,4 +389,73 @@ export function clearSlot(slotId: SaveSlotId): void {
     console.warn('[SaveManager] Failed to clear save slot', { slotId, slotKey, detail });
     eventBus.emit('persistence:failed', { reason: 'unknown' as const, detail });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Save export / import
+
+/** The fixed format string written to every exported envelope. */
+export const SAVE_ENVELOPE_FORMAT = 'architect-save-v1' as const;
+export type SaveEnvelopeFormat = typeof SAVE_ENVELOPE_FORMAT;
+
+/** Top-level wrapper around a save payload for cross-device transfer. */
+export interface SaveEnvelope {
+  format: SaveEnvelopeFormat;
+  exportedAt: string; // ISO 8601 timestamp
+  payload: SaveData;
+}
+
+/**
+ * Read the save for `slotId`, wrap it in a `SaveEnvelope`, and return it as
+ * a serialised JSON string. Returns `null` when the slot is empty or corrupt.
+ * Has no side-effects (does not change `playerSlot`).
+ */
+export function exportSlot(slotId: SaveSlotId): string | null {
+  checkUnavailable();
+  const slotKey = `architect_${slotId}_v1`;
+  let raw: string | null = null;
+  try { raw = getStorage().getItem(slotKey); } catch { return null; }
+  if (!raw) return null;
+  const data = parseAndValidateSave(raw);
+  if (!data) return null;
+  const envelope: SaveEnvelope = {
+    format: SAVE_ENVELOPE_FORMAT,
+    exportedAt: new Date().toISOString(),
+    payload: data,
+  };
+  return JSON.stringify(envelope, null, 2);
+}
+
+/**
+ * Parse and validate a JSON string as a `SaveEnvelope`, then write the
+ * embedded payload directly into `slotId` without changing `playerSlot`.
+ *
+ * Returns the validated `SaveData` on success so the caller can reload
+ * in-memory progression state. Returns `null` on any failure — the slot
+ * is left untouched.
+ *
+ * Validation rules:
+ *  - Must be valid JSON.
+ *  - `format` must equal `SAVE_ENVELOPE_FORMAT` (future formats are rejected).
+ *  - `payload` must pass `parseAndValidateSave()` (runs migrations).
+ */
+export function importToSlot(slotId: SaveSlotId, json: string): SaveData | null {
+  let envelope: unknown;
+  try { envelope = JSON.parse(json); } catch { return null; }
+  if (typeof envelope !== 'object' || envelope === null) return null;
+  const env = envelope as Record<string, unknown>;
+  if (env['format'] !== SAVE_ENVELOPE_FORMAT) return null;
+  if (typeof env['payload'] !== 'object' || env['payload'] === null) return null;
+  const payloadRaw = JSON.stringify(env['payload']);
+  const data = parseAndValidateSave(payloadRaw);
+  if (!data) return null;
+  checkUnavailable();
+  const slotKey = `architect_${slotId}_v1`;
+  try {
+    getStorage().setItem(slotKey, JSON.stringify(data));
+  } catch (err) {
+    emitFailed(isQuotaError(err) ? 'quota' : 'unknown', err);
+    return null;
+  }
+  return data;
 }

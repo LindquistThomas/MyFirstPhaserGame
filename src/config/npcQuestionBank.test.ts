@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FLOOR_IDS } from './gameConfig';
+import { FLOORS, FLOOR_IDS } from './gameConfig';
 import { getNpcQuestionsForFloor, getRandomNpcQuestion, NPC_QUESTION_BANK } from './npcQuestionBank';
 
 describe('npcQuestionBank', () => {
@@ -25,5 +25,10 @@ describe('npcQuestionBank', () => {
   it('falls back to floor pool when topic has no match', () => {
     const q = getRandomNpcQuestion(FLOOR_IDS[0]!, 'missing-topic');
     expect(getNpcQuestionsForFloor(FLOOR_IDS[0]!).map((candidate) => candidate.id)).toContain(q.id);
+  });
+
+  it('includes architecture basics questions on the shared Platform/Architecture floor', () => {
+    const questions = getNpcQuestionsForFloor(FLOORS.PLATFORM_TEAM);
+    expect(questions.filter((q) => q.topic === 'architecture basics').length).toBeGreaterThanOrEqual(3);
   });
 });

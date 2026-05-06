@@ -23,7 +23,7 @@ vi.mock('phaser', () => {
   return { ...phaser, default: phaser };
 });
 
-import { MusicPlugin, _failedMusicKeys } from './MusicPlugin';
+import { MusicPlugin, _failedMusicKeys, prefetchSceneMusic } from './MusicPlugin';
 import { eventBus } from '../systems/EventBus';
 
 // ── Fake scene helpers ──────────────────────────────────────────────────────
@@ -405,7 +405,7 @@ describe('MusicPlugin boot-failure skip-set', () => {
     // playOrLoad is NOT gated by _failedMusicKeys — the load is attempted
     expect(fakeScene.load.audio).toHaveBeenCalledWith(
       'music_menu',
-      expect.stringContaining('bgm_menu.mp3'),
+      expect.stringContaining('bgm_menu.ogg'),
     );
   });
 
@@ -445,5 +445,60 @@ describe('MusicPlugin boot-failure skip-set', () => {
 
     eventBus.emit('boot:reset');
     expect(_failedMusicKeys.has('music_menu')).toBe(false);
+  });
+});
+
+// ── prefetchSceneMusic tests ────────────────────────────────────────────────
+
+describe('prefetchSceneMusic()', () => {
+  beforeEach(() => {
+    eventBus.removeAllListeners();
+  });
+
+  it('queues destination music for loading when not cached', () => {
+    const { fakeScene } = mountPlugin('ElevatorScene');
+    prefetchSceneMusic(fakeScene as never, 'PlatformTeamScene');
+    expect(fakeScene.load.audio).toHaveBeenCalledWith(
+      'music_platform',
+      expect.stringContaining('shadow_operations-loop1.ogg'),
+    );
+    expect(fakeScene.load.start).toHaveBeenCalled();
+  });
+
+  it('is a no-op when the music key is already cached', () => {
+    const { fakeScene } = mountPlugin('ElevatorScene', ['music_platform']);
+    prefetchSceneMusic(fakeScene as never, 'PlatformTeamScene');
+    expect(fakeScene.load.audio).not.toHaveBeenCalled();
+    expect(fakeScene.load.start).not.toHaveBeenCalled();
+  });
+
+  it('is a no-op when the scene has no SCENE_MUSIC entry', () => {
+    const { fakeScene } = mountPlugin('ElevatorScene');
+    prefetchSceneMusic(fakeScene as never, 'UnknownSceneXyz');
+    expect(fakeScene.load.audio).not.toHaveBeenCalled();
+    expect(fakeScene.load.start).not.toHaveBeenCalled();
+  });
+
+  it('prefetches music_executive for ExecutiveSuiteScene', () => {
+    const { fakeScene } = mountPlugin('ElevatorScene');
+    prefetchSceneMusic(fakeScene as never, 'ExecutiveSuiteScene');
+    expect(fakeScene.load.audio).toHaveBeenCalledWith(
+      'music_executive',
+      expect.stringContaining('bossroom-battle-431358.mp3'),
+    );
+    expect(fakeScene.load.start).toHaveBeenCalled();
+  });
+
+  it('does not emit any music events — prefetch is load-only', () => {
+    const { fakeScene } = mountPlugin('ElevatorScene');
+    const playSpy = vi.fn();
+    const pushSpy = vi.fn();
+    eventBus.on('music:play', playSpy);
+    eventBus.on('music:push', pushSpy);
+
+    prefetchSceneMusic(fakeScene as never, 'PlatformTeamScene');
+
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
   });
 });

@@ -23,6 +23,7 @@ import { eventBus } from '../../systems/EventBus';
 import { LAZY_SCENE_LOADERS } from '../lazySceneLoaders';
 import { preloadQuizFor } from '../../config/quiz';
 import { preloadInfoFor } from '../../config/info';
+import { prefetchSceneMusic } from '../../plugins/MusicPlugin';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -571,6 +572,7 @@ export class ElevatorScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.progression.setCurrentFloor(FLOORS.PRODUCTS);
+    prefetchSceneMusic(this, door.sceneKey);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     void this.lazyStartScene(door.sceneKey);
   }
@@ -625,6 +627,7 @@ export class ElevatorScene extends Phaser.Scene {
     this.isTransitioning = true;
     this.progression.setCurrentFloor(floorId);
     const sceneKey = ElevatorFloorTransitionManager.resolveSceneKey(floorId, direction);
+    prefetchSceneMusic(this, sceneKey);
     this.cameras.main.fadeOut(500, 0, 0, 0);
     void this.lazyStartScene(sceneKey);
   }

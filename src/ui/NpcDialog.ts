@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, type FloorId } from '../config/gameConfig';
 import { type NpcQuestion } from '../config/npcQuestionBank';
 import { getNpcQuestion } from '../systems/llm/LlmClient';
-import { ProgressionSystem } from '../systems/ProgressionSystem';
+import type { ProgressionSystem } from '../systems/ProgressionSystem';
 import { eventBus } from '../systems/EventBus';
 import { theme } from '../style/theme';
 import { ModalBase } from './ModalBase';
