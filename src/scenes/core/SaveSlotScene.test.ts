@@ -158,7 +158,20 @@ describe('SaveSlotScene — save card floor display', () => {
     expect(labels).toContain('Floor: Platform Team');
   });
 
-  it('falls back to "Floor: Lobby" when currentFloor is undefined', () => {
+  it('shows "Floor: Lobby" for a slot on floor 0 (actual Lobby)', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return { slotId, exists: true, totalAU: 5, currentFloor: 0 as FloorId, lastPlayedAt: undefined };
+      }
+      return { slotId, exists: false };
+    });
+
+    const scene = buildScene();
+    const labels = getTextLabels(scene);
+    expect(labels).toContain('Floor: Lobby');
+  });
+
+  it('shows "Floor: —" when currentFloor is undefined (unknown/invalid floor)', () => {
     vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
       if (slotId === 'slot1') {
         return { slotId, exists: true, totalAU: 0, currentFloor: undefined, lastPlayedAt: undefined };
@@ -168,7 +181,7 @@ describe('SaveSlotScene — save card floor display', () => {
 
     const scene = buildScene();
     const labels = getTextLabels(scene);
-    expect(labels).toContain('Floor: Lobby');
+    expect(labels).toContain('Floor: —');
   });
 
   it('shows "NEW GAME" badge for an empty slot', () => {

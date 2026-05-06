@@ -135,7 +135,9 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '22px', color: '#33ff99',
       }).setOrigin(0.5));
 
-      const floorName = LEVEL_DATA[info.currentFloor ?? 0]?.name ?? 'Lobby';
+      const floorName = info.currentFloor !== undefined
+        ? (LEVEL_DATA[info.currentFloor]?.name ?? '—')
+        : '—';
 
       container.add(this.add.text(w / 2, 80, `Floor: ${floorName}`, {
         fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
