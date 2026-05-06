@@ -7,9 +7,10 @@ import { pushContext, popContext } from '../../input';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { formatPlaytime } from '../../ui/HUD';
 import { LEVEL_DATA } from '../../config/levelData';
+import { ControlsReferenceModal } from '../../ui/ControlsReferenceModal';
 
 const PANEL_WIDTH = 360;
-const PANEL_HEIGHT = 460;
+const PANEL_HEIGHT = 520;
 
 /**
  * Full-screen pause overlay launched as a sibling scene alongside any
@@ -26,19 +27,22 @@ export class PauseScene extends Phaser.Scene {
   private parentKey = '';
   private selectedIndex = 0;
   private menuItems: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
-  /** Active input lifecycle — disposed when Settings overlay opens, recreated on return. */
+  /** Active input lifecycle — disposed when Settings/Controls overlay opens, recreated on return. */
   private lc!: SceneLifecycle;
   private gameState!: GameStateManager;
+  /** When true, immediately open the Controls modal after create(). */
+  private showControlsOnCreate = false;
 
   constructor() {
     super({ key: 'PauseScene' });
   }
 
-  init(data: { parentKey: string }): void {
+  init(data: { parentKey: string; showControls?: boolean }): void {
     this.parentKey = data.parentKey;
     this.selectedIndex = 0;
     this.menuItems = [];
     this.gameState = this.registry.get('gameState') as GameStateManager;
+    this.showControlsOnCreate = data.showControls === true;
   }
 
   create(): void {
@@ -50,6 +54,12 @@ export class PauseScene extends Phaser.Scene {
     this.buildOverlay();
     this.buildPanel();
     this.setupKeyboard();
+
+    // If launched via the ShowControls hotkey, open the Controls modal immediately
+    // and close PauseScene automatically when the modal is dismissed.
+    if (this.showControlsOnCreate) {
+      this.openControlsModal(true);
+    }
   }
 
   private buildOverlay(): void {
@@ -102,8 +112,12 @@ export class PauseScene extends Phaser.Scene {
     const settingsBtn = this.makeButton('Settings', 0, -PANEL_HEIGHT / 2 + 180, () => this.openSettings());
     container.add(settingsBtn);
 
-    // Quit to Menu button (index 2)
-    const quitBtn = this.makeButton('Quit to Menu', 0, -PANEL_HEIGHT / 2 + 250, () => this.quitToMenu());
+    // Controls button (index 2)
+    const controlsBtn = this.makeButton('Controls', 0, -PANEL_HEIGHT / 2 + 250, () => this.openControlsModal());
+    container.add(controlsBtn);
+
+    // Quit to Menu button (index 3)
+    const quitBtn = this.makeButton('Quit to Menu', 0, -PANEL_HEIGHT / 2 + 320, () => this.quitToMenu());
     container.add(quitBtn);
 
     // Playtime stats
@@ -129,7 +143,7 @@ export class PauseScene extends Phaser.Scene {
     const tracker = this.gameState?.playtime;
     if (!tracker) return;
 
-    const statsY = -PANEL_HEIGHT / 2 + 306;
+    const statsY = -PANEL_HEIGHT / 2 + 400;
     const divider2 = this.add.graphics();
     divider2.lineStyle(1, theme.color.ui.border, 0.3);
     divider2.lineBetween(-PANEL_WIDTH / 2 + 24, statsY - 8, PANEL_WIDTH / 2 - 24, statsY - 8);
@@ -203,6 +217,8 @@ export class PauseScene extends Phaser.Scene {
     this.lc.bindInput('NavigateUp', () => this.moveSelection(-1));
     this.lc.bindInput('NavigateDown', () => this.moveSelection(1));
     this.lc.bindInput('Confirm', () => this.activateSelection());
+    // H in menu context opens the Controls modal.
+    this.lc.bindInput('ShowControls', () => this.openControlsModal());
   }
 
   private moveSelection(delta: number): void {
@@ -231,6 +247,28 @@ export class PauseScene extends Phaser.Scene {
     eventBus.emit('music:resume');
     this.scene.resume(this.parentKey);
     this.scene.stop();
+  }
+
+  /**
+   * Open the Controls reference modal.
+   *
+   * Disposes the menu keyboard lifecycle first so PauseScene's Cancel/Confirm
+   * bindings don't fire alongside the modal's own Cancel/Confirm bindings.
+   *
+   * @param autoResume When true (launched via ShowControls hotkey), closing the
+   *   modal automatically resumes gameplay.  When false (player clicked "Controls"
+   *   from the pause menu), PauseScene stays open and re-activates its keyboard.
+   */
+  private openControlsModal(autoResume = false): void {
+    this.lc.dispose();
+
+    new ControlsReferenceModal(this, () => {
+      if (autoResume) {
+        this.resumeGame();
+      } else {
+        this.setupKeyboard();
+      }
+    });
   }
 
   private openSettings(): void {

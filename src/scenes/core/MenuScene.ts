@@ -5,6 +5,7 @@ import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
+import { ControlsReferenceModal } from '../../ui/ControlsReferenceModal';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
 
@@ -104,6 +105,8 @@ export class MenuScene extends Phaser.Scene {
     lifecycle.bindInput('NavigateUp', () => this.moveSelection(-1));
     lifecycle.bindInput('NavigateDown', () => this.moveSelection(1));
     lifecycle.bindInput('Confirm', () => this.activateSelection());
+    // H in menu context opens the Controls reference modal.
+    lifecycle.bindInput('ShowControls', () => this.openControlsModal());
   }
 
   private moveSelection(delta: number): void {
@@ -458,7 +461,13 @@ export class MenuScene extends Phaser.Scene {
       this.soundtrackButton = soundtrackBtn;
     }
 
-    const settingsYOffset = 160;
+    const controlsYOffset = 160;
+    const controlsAction = () => this.openControlsModal();
+    const controlsBtn = this.makeButton(cx, cy + controlsYOffset, '[ CONTROLS ]', 20, controlsAction);
+    controlsBtn.setDepth(TEXT_DEPTH);
+    this.menuButtons.push({ btn: controlsBtn, action: controlsAction });
+
+    const settingsYOffset = 220;
     const settingsAction = () => this.openSettings();
     const settingsBtn = this.makeButton(cx, cy + settingsYOffset, '[ SETTINGS ]', 20, settingsAction);
     settingsBtn.setDepth(TEXT_DEPTH);
@@ -532,6 +541,10 @@ export class MenuScene extends Phaser.Scene {
   private openSlotPicker(): void {
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => this.scene.start('SaveSlotScene'));
+  }
+
+  private openControlsModal(): void {
+    new ControlsReferenceModal(this);
   }
 
   private openSettings(): void {

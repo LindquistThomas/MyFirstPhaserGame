@@ -28,6 +28,9 @@ const KEY_LABELS: Record<number, string> = {
   [K.FOUR]: '4',
   [K.B]: 'B',
   [K.C]: 'C',
+  [K.H]: 'H',
+  [K.ZERO]: '0',
+  [K.FIVE]: '5',
 };
 
 /** Label for a single key code (falls back to the raw code as a string). */

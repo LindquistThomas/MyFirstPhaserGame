@@ -58,6 +58,10 @@ vi.mock('../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
 
+vi.mock('../../ui/ControlsReferenceModal', () => ({
+  ControlsReferenceModal: vi.fn(),
+}));
+
 import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { MenuScene } from './MenuScene';
 import * as MotionPreference from '../../systems/MotionPreference';

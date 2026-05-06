@@ -426,6 +426,17 @@ export class LevelScene extends Phaser.Scene {
       }
     });
 
+    // ShowControls (H) pauses gameplay and immediately opens the Controls modal.
+    lc.bindInput('ShowControls', () => {
+      if (!this.isTransitioning && !this.dialogs.isOpen
+          && !this.scene.isActive('PauseScene')) {
+        this.scene.launch('PauseScene', {
+          parentKey: this.sys.settings.key,
+          showControls: true,
+        });
+      }
+    });
+
     // Shared guard: only launch PauseScene if the level is currently running
     // (not already paused and not in a transition).
     const launchPauseIfRunning = (): void => {
