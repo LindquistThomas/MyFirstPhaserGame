@@ -110,26 +110,39 @@ export const SOUND_PHASES: readonly GeneratorPhase[] = [
  * points, cutting the total scheduling tax from ~36 ms to ~12 ms on
  * low-end hardware. The two batches are roughly equal in total work:
  *
- *   Batch 1 (movement + UI + combat): jump, footsteps, quiz, info, combat SFX.
- *   Batch 2 (environment + lullaby + boss): ambience, coffee, lullaby, boss SFX.
+ *   Batch 1 (phases 0–2): movement, UI/quiz, combat SFX  (~15 sounds)
+ *   Batch 2 (phases 3–5): environment, lullaby, boss SFX (~14 sounds)
  *
  * Cache guard: check `cache.audio.exists('jump')` before running.
  */
+
+/**
+ * Index at which SOUND_PHASES is split into batch 1 vs batch 2.
+ * Must equal SOUND_PHASES.length / 2 (integer) so both batches get
+ * an equal number of phases.
+ */
+const SOUND_BATCH_SPLIT = SOUND_PHASES.length / 2;
+
+// Invariant: SOUND_PHASES must have exactly 6 entries (3 per batch).
+// If you add or remove a phase, update SOUND_BATCH_SPLIT and this comment.
+if (import.meta.env.DEV && SOUND_PHASES.length !== 6) {
+  throw new Error(
+    `[SoundGenerator] SOUND_PHASES has ${SOUND_PHASES.length} entries but BATCHED_SOUND_PHASES expects exactly 6. ` +
+    `If you added or removed phases, update SOUND_BATCH_SPLIT and its invariant check.`,
+  );
+}
+
 export const BATCHED_SOUND_PHASES: readonly [GeneratorPhase, GeneratorPhase] = [
   {
     label: 'Initializing audio (1/2)',
     run: (s) => {
-      SOUND_PHASES[0]!.run(s);
-      SOUND_PHASES[1]!.run(s);
-      SOUND_PHASES[2]!.run(s);
+      for (const phase of SOUND_PHASES.slice(0, SOUND_BATCH_SPLIT)) phase.run(s);
     },
   },
   {
     label: 'Initializing audio (2/2)',
     run: (s) => {
-      SOUND_PHASES[3]!.run(s);
-      SOUND_PHASES[4]!.run(s);
-      SOUND_PHASES[5]!.run(s);
+      for (const phase of SOUND_PHASES.slice(SOUND_BATCH_SPLIT)) phase.run(s);
     },
   },
 ];

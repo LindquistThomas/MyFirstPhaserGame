@@ -38,6 +38,14 @@ vi.mock('phaser', () => {
     textures = { exists: vi.fn(() => false) };
     cache = { audio: { exists: vi.fn(() => false) } };
     load = { audio: vi.fn(), start: vi.fn(), once: vi.fn() };
+    /** Simple events stub: once() stores handlers; emit() fires & removes them. */
+    events = (() => {
+      const handlers: Record<string, Array<() => void>> = {};
+      return {
+        once(ev: string, fn: () => void) { (handlers[ev] ??= []).push(fn); },
+        emit(ev: string) { const list = handlers[ev]?.splice(0) ?? []; for (const fn of list) fn(); },
+      };
+    })();
     constructor(_config: unknown) {}
   }
   return { default: { Scene }, Scene };
@@ -243,6 +251,7 @@ describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () =
   }: { tilesExist?: boolean; jumpExists?: boolean } = {}) {
     const loadOnceCallbacks: (() => void)[] = [];
     const registryValues: Map<string, unknown> = new Map();
+    const sceneEventHandlers: Record<string, Array<() => void>> = {};
 
     // Drive time.addEvent callbacks synchronously so the full warmup chain
     // runs to completion inside the test without needing async utilities.
@@ -254,6 +263,7 @@ describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () =
       cache: { audio: { exists: (k: string) => boolean } };
       load: { audio: (k: string, p: string) => void; start: ReturnType<typeof vi.fn>; once: (ev: string, cb: () => void) => void };
       time: { addEvent: (cfg: { delay: number; callback: () => void }) => void; delayedCall: () => void };
+      events: { once: (ev: string, fn: () => void) => void; emit: (ev: string) => void };
     };
     const scene = new MenuScene() as unknown as WarmupScene;
 
@@ -290,6 +300,18 @@ describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () =
       },
       configurable: true,
     });
+    Object.defineProperty(scene, 'events', {
+      value: {
+        once: vi.fn((ev: string, fn: () => void) => {
+          (sceneEventHandlers[ev] ??= []).push(fn);
+        }),
+        emit: vi.fn((ev: string) => {
+          const list = sceneEventHandlers[ev]?.splice(0) ?? [];
+          for (const fn of list) fn();
+        }),
+      },
+      configurable: true,
+    });
 
     return {
       scene,
@@ -297,6 +319,11 @@ describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () =
       /** Trigger the load.once('complete') callback captured during warmup. */
       fireLoadComplete: () => {
         for (const cb of loadOnceCallbacks) cb();
+      },
+      /** Simulate scene shutdown (e.g. scene.start('SaveSlotScene') called). */
+      fireShutdown: () => {
+        const list = sceneEventHandlers['shutdown']?.splice(0) ?? [];
+        for (const fn of list) fn();
       },
     };
   }
@@ -311,15 +338,14 @@ describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () =
   });
 
   it('sets proceduralAssetsReady=true immediately when all assets are cached', () => {
-    const { scene, registryValues, fireLoadComplete } = makeWarmupScene({
+    const { scene, registryValues } = makeWarmupScene({
       tilesExist: true,
       jumpExists: true,
     });
     scene.warmupDeferredAssets();
     vi.runAllTimers();
 
-    // No loader dance needed — both guards hit, flag set synchronously.
-    fireLoadComplete();
+    // Both cache guards hit — flag set synchronously, no loader dance needed.
     expect(registryValues.get('proceduralAssetsReady')).toBe(true);
   });
 
@@ -380,5 +406,84 @@ describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () =
     } finally {
       (globalThis as Record<string, unknown>)['requestIdleCallback'] = origRIC;
     }
+  });
+
+  // ── Shutdown safety ─────────────────────────────────────────────────────────
+  // The warmup pipeline uses browser timers (rIC/setTimeout) which outlive
+  // Phaser's scene lifecycle. These tests verify that a scene shutdown (e.g.
+  // player navigates to SaveSlotScene before warmup finishes) correctly:
+  //   1. Cancels the pending browser timer so it cannot fire on a dead scene.
+  //   2. Force-completes generation synchronously before the scene tears down.
+
+  it('force-completes sprites on shutdown before rIC fires (no assets cached)', () => {
+    const { scene, registryValues, fireLoadComplete, fireShutdown } = makeWarmupScene({
+      tilesExist: false,
+      jumpExists: false,
+    });
+
+    // warmupDeferredAssets queues the rIC but does NOT run it yet.
+    scene.warmupDeferredAssets();
+
+    // Simulate scene shutdown BEFORE the rIC/setTimeout fires.
+    fireShutdown();
+
+    // The force-complete path should have started the loader for sounds.
+    const loadStart = (scene.load.start as ReturnType<typeof vi.fn>);
+    expect(loadStart).toHaveBeenCalled();
+
+    // proceduralAssetsReady is set once the loader completes.
+    fireLoadComplete();
+    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+  });
+
+  it('force-completes immediately on shutdown when sounds are already cached', () => {
+    const { scene, registryValues, fireShutdown } = makeWarmupScene({
+      tilesExist: false,
+      jumpExists: true,
+    });
+    scene.warmupDeferredAssets();
+    fireShutdown();
+
+    // Sprites run synchronously + sounds cached → flag set without loader dance.
+    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+  });
+
+  it('does not run the rIC callback after scene shutdown', () => {
+    const { scene, registryValues, fireShutdown } = makeWarmupScene({
+      tilesExist: false,
+      jumpExists: false,
+    });
+    scene.warmupDeferredAssets();
+    fireShutdown();
+
+    // Clear the flag written by _forceCompleteWarmup to detect any re-run.
+    registryValues.clear();
+
+    // Fire any pending timers — the cancelled rIC/setTimeout must not re-run.
+    vi.runAllTimers();
+
+    // No second registry write should have occurred.
+    expect(registryValues.has('proceduralAssetsReady')).toBe(false);
+  });
+
+  it('skips force-complete on shutdown if warmup already finished normally', () => {
+    const { scene, registryValues, fireLoadComplete, fireShutdown } = makeWarmupScene({
+      tilesExist: false,
+      jumpExists: false,
+    });
+    scene.warmupDeferredAssets();
+
+    // Let the full pipeline run (sprites + sounds started).
+    vi.runAllTimers();
+    fireLoadComplete();
+    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+
+    // Now simulate shutdown (e.g. player navigates away after warmup completes).
+    const loadStart = (scene.load.start as ReturnType<typeof vi.fn>);
+    const callsBefore = (loadStart as ReturnType<typeof vi.fn>).mock.calls.length;
+    fireShutdown();
+
+    // load.start must NOT have been called a second time.
+    expect((loadStart as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsBefore);
   });
 });
