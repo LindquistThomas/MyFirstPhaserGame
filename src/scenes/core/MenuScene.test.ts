@@ -38,6 +38,7 @@ vi.mock('phaser', () => {
     textures = { exists: vi.fn(() => false) };
     cache = { audio: { exists: vi.fn(() => false) } };
     load = { audio: vi.fn(), start: vi.fn() };
+    scene = { key: 'MenuScene' };
     constructor(_config: unknown) {}
   }
   return { default: { Scene }, Scene };
@@ -58,7 +59,7 @@ vi.mock('../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
 
-import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
+import { SCENE_MUSIC, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { MenuScene } from './MenuScene';
 import * as MotionPreference from '../../systems/MotionPreference';
 
@@ -103,7 +104,12 @@ function makeCreateScene(): MenuScene {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-const nonEagerKeys = STATIC_MUSIC_ASSETS.filter((a) => !a.eager).map((a) => a.key);
+// idlePreloadMusic skips the scene's own SCENE_MUSIC track (handled by MusicPlugin)
+// and all eager tracks.
+const menuOwnTrack = SCENE_MUSIC['MenuScene'];
+const idlePreloadKeys = STATIC_MUSIC_ASSETS.filter(
+  (a) => !a.eager && a.key !== menuOwnTrack,
+).map((a) => a.key);
 
 describe('MenuScene.idlePreloadMusic', () => {
   let origConnection: unknown;
@@ -128,26 +134,33 @@ describe('MenuScene.idlePreloadMusic', () => {
     });
   }
 
-  it('queues all non-eager uncached tracks and starts the loader', () => {
+  it('queues all non-eager non-own-track uncached tracks and starts the loader', () => {
     setConnection(undefined);
     const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toEqual(nonEagerKeys);
+    expect(getLoadedKeys()).toEqual(idlePreloadKeys);
     expect(isLoadStarted()).toBe(true);
+  });
+
+  it("does not queue the scene's own SCENE_MUSIC track (MusicPlugin handles it)", () => {
+    setConnection(undefined);
+    const { scene, getLoadedKeys } = makeScene([]);
+    scene.idlePreloadMusic();
+    expect(getLoadedKeys()).not.toContain(menuOwnTrack);
   });
 
   it('skips tracks that are already cached', () => {
     setConnection(undefined);
-    const firstKey = nonEagerKeys[0]!;
+    const firstKey = idlePreloadKeys[0]!;
     const { scene, getLoadedKeys } = makeScene([firstKey]);
     scene.idlePreloadMusic();
     expect(getLoadedKeys()).not.toContain(firstKey);
-    expect(getLoadedKeys().length).toBe(nonEagerKeys.length - 1);
+    expect(getLoadedKeys().length).toBe(idlePreloadKeys.length - 1);
   });
 
-  it('does nothing when all non-eager tracks are cached', () => {
+  it('does nothing when all eligible tracks are cached', () => {
     setConnection(undefined);
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene(nonEagerKeys);
+    const { scene, getLoadedKeys, isLoadStarted } = makeScene(idlePreloadKeys);
     scene.idlePreloadMusic();
     expect(getLoadedKeys()).toHaveLength(0);
     expect(isLoadStarted()).toBe(false);

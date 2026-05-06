@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
-import { SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
+import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
@@ -75,9 +75,15 @@ export class MenuScene extends Phaser.Scene {
   }
 
   /**
-   * Background-preload all non-eager music tracks during the idle time the
-   * player spends on the menu. Eliminates first-entry stalls on subsequent
-   * scenes (elevator, floors, executive suite, quiz).
+   * Background-preload all non-eager music tracks (except the current scene's
+   * own track, which MusicPlugin handles via onSceneCreate → playOrLoad) during
+   * the idle time the player spends on the menu. Eliminates first-entry stalls
+   * on subsequent scenes (elevator, floors, executive suite, quiz).
+   *
+   * The current scene's SCENE_MUSIC key is intentionally excluded: MusicPlugin
+   * already calls playOrLoad() for it, which attaches a filecomplete listener
+   * before starting the loader. Queuing the same key here too would race with
+   * that path and potentially double-start the loader.
    *
    * Skipped automatically on metered or very slow connections so users on
    * limited data plans are not penalised.
@@ -88,8 +94,11 @@ export class MenuScene extends Phaser.Scene {
     if (conn?.saveData) return;
     if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return;
 
+    // Exclude the current scene's own background track — MusicPlugin.onSceneCreate()
+    // calls playOrLoad() for it, which owns the filecomplete→music:play wiring.
+    const ownTrack = SCENE_MUSIC[this.scene.key];
     const queue = STATIC_MUSIC_ASSETS.filter(
-      (a) => !a.eager && !this.cache.audio.exists(a.key),
+      (a) => !a.eager && a.key !== ownTrack && !this.cache.audio.exists(a.key),
     );
     if (queue.length === 0) return;
 

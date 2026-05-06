@@ -1,19 +1,22 @@
 # Music Assets
 
-Background music for the game lives in this directory as MP3 / OGG files organized by pack. Files are declared in `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` (the full catalog). All tracks are **lazy-loaded** the first time `MusicPlugin` needs to play them — `BootScene.preload()` no longer blocks on any audio download so the menu renders as fast as possible. Scene-to-track mapping is defined by `SCENE_MUSIC` in the same config file and applied automatically by `src/plugins/MusicPlugin.ts`.
+Background music for the game lives in this directory as MP3 / OGG files organized by pack. Files are declared in `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` (the full catalog). `BootScene.preload()` loads no music — every track is deferred so the menu renders as fast as possible. Tracks reach the Phaser cache via two background mechanisms described below. Scene-to-track mapping is defined by `SCENE_MUSIC` in the same config file and applied automatically by `src/plugins/MusicPlugin.ts`.
 
 SFX (jump, land, token collect, quiz feedback, info-card / link clicks, elevator cues, etc.) are **not** loaded from this directory — they are procedurally generated at runtime by `src/systems/SoundGenerator.ts`, which also generates the procedural lullaby track (no separate MusicGenerator module).
 
 ## Eager tracks (loaded at boot)
 
-No tracks are currently marked `eager: true`. `BootScene.preload()` loads no music — every track is lazy-loaded by `MusicPlugin` on first scene entry so time-to-interactive is minimised.
+No tracks are currently marked `eager: true`. `BootScene.preload()` loads no music — every track arrives via a background mechanism so time-to-interactive is minimised.
 
 ## Lazy-loaded tracks
 
-All tracks in `STATIC_MUSIC_ASSETS` are lazy-loaded on demand. There are two code paths:
+All tracks in `STATIC_MUSIC_ASSETS` are loaded in the background after first paint. There are three code paths:
 
-### Via SCENE_MUSIC (automatic)
-`MusicPlugin` intercepts the scene `create` lifecycle event, looks up the scene key in `SCENE_MUSIC`, and calls `playOrLoad()`. If the audio isn't cached yet, it queues a load on the scene's loader and emits `music:play` once the `filecomplete` event fires. Subsequent scene entries use the Phaser cache and play instantly.
+### Via SCENE_MUSIC (automatic — MusicPlugin)
+`MusicPlugin` intercepts the scene `create` lifecycle event, looks up the scene key in `SCENE_MUSIC`, and calls `playOrLoad()`. If the audio isn't cached yet, it queues a load on the scene's loader and emits `music:play` once the `filecomplete` event fires. Subsequent scene entries use the Phaser cache and play instantly. This path handles each scene's **own** background track and is the only path that wires up the `filecomplete→music:play` callback.
+
+### Via MenuScene.idlePreloadMusic() (background prefetch)
+`MenuScene.create()` calls `idlePreloadMusic()`, which proactively queues all non-eager, non-own-scene tracks and starts the loader during the idle time the player spends on the menu. This pre-warms the Phaser cache for subsequent scenes (elevator, floors, executive suite, quiz) so their `MusicPlugin` path hits the cache immediately and there is no audible gap on scene entry. Skipped automatically on `saveData` and `2g`/`slow-2g` connections. The scene's own SCENE_MUSIC track (`music_menu`) is intentionally excluded — that one is owned by `MusicPlugin.onSceneCreate()` via the path above.
 
 ### Via music:request / music:request-push (imperative call sites)
 Any code that needs to play or push a non-eager track imperatively must emit `music:request` (instead of `music:play`) or `music:request-push` (instead of `music:push`). `MusicPlugin` subscribes to these while the scene is active and performs the same load-then-play / load-then-push sequence.
