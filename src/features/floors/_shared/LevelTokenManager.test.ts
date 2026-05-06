@@ -12,10 +12,11 @@ vi.mock('phaser', () => {
   return { default: { Physics }, Physics };
 });
 
-// ---- Token stub — tracks instances created ----
+// ---- Token stub — tracks instances created, including the texture key ----
 interface MockTokenInstance {
   x: number;
   y: number;
+  textureKey: string;
   collect: ReturnType<typeof vi.fn>;
   getData(key: string): unknown;
   setData(key: string, value: unknown): void;
@@ -26,11 +27,13 @@ vi.mock('../../../entities/Token', () => ({
   Token: class MockToken {
     x: number;
     y: number;
+    textureKey: string;
     private _data: Map<string, unknown> = new Map();
     collect = vi.fn();
-    constructor(_scene: unknown, x: number, y: number) {
+    constructor(_scene: unknown, x: number, y: number, key: string) {
       this.x = x;
       this.y = y;
+      this.textureKey = key;
       createdTokens.push(this as unknown as MockTokenInstance);
     }
     getData(key: string): unknown { return this._data.get(key); }
@@ -64,9 +67,10 @@ function makeSaveAdapter(): SaveAdapter {
 /** Returns a minimal valid LevelConfig with the given token list. */
 function makeConfig(
   tokens: Array<{ x: number; y: number; index?: number }>,
+  floorId: import('../../../config/gameConfig').FloorId = FLOORS.PLATFORM_TEAM,
 ): LevelConfig {
   return {
-    floorId: FLOORS.PLATFORM_TEAM,
+    floorId,
     platforms: [],
     tokens,
     roomElevators: [],
@@ -85,8 +89,9 @@ function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLO
   };
   const droppedAUGroup = { add: vi.fn() };
 
-  // Capture overlap callbacks so we can invoke them in tests
-  const overlapCallbacks: Array<(player: unknown, obj: unknown) => void> = [];
+  // Capture overlap calls with their target (b) so tests can look up the
+  // correct callback by group reference rather than relying on array index.
+  const overlapCalls: Array<{ b: unknown; cb: (player: unknown, obj: unknown) => void }> = [];
 
   const scene = {
     physics: {
@@ -94,8 +99,8 @@ function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLO
         staticGroup: vi.fn(() => tokenGroup),
         group: vi.fn(() => droppedAUGroup),
         overlap: vi.fn(
-          (_a: unknown, _b: unknown, cb: (p: unknown, o: unknown) => void) => {
-            overlapCallbacks.push(cb);
+          (_a: unknown, b: unknown, cb: (p: unknown, o: unknown) => void) => {
+            overlapCalls.push({ b, cb });
           },
         ),
         collider: vi.fn(),
@@ -135,12 +140,20 @@ function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLO
     gameState: gameState as unknown as import('../../../systems/GameStateManager').GameStateManager,
   });
 
+  /** Retrieve the overlap callback registered for a specific group target. */
+  function getOverlapCb(target: unknown): (player: unknown, obj: unknown) => void {
+    const found = overlapCalls.find(c => c.b === target);
+    if (!found) throw new Error('No overlap registered for the given target');
+    return found.cb;
+  }
+
   return {
     mgr,
     tokenGroup,
     tokenGroupMembers,
     droppedAUGroup,
-    overlapCallbacks,
+    overlapCalls,
+    getOverlapCb,
     progression,
     checkAchievements,
     cameraFlash,
@@ -215,38 +228,36 @@ describe('LevelTokenManager — spawn()', () => {
 });
 
 describe('LevelTokenManager — tokenKey()', () => {
-  it('uses token_floor1 for PLATFORM_TEAM floor', () => {
+  it('passes token_floor1 to Token constructor for PLATFORM_TEAM floor', () => {
     createdTokens.length = 0;
     const { mgr } = makeHarness(FLOORS.PLATFORM_TEAM);
-    mgr.spawn(makeConfig([{ x: 100, y: 200 }]));
-    // Token was created → just verifying spawn path was reached
-    expect(createdTokens.length).toBe(1);
+    mgr.spawn(makeConfig([{ x: 100, y: 200 }], FLOORS.PLATFORM_TEAM));
+    expect(createdTokens[0]?.textureKey).toBe('token_floor1');
   });
 
-  it('uses token_floor2 for non-PLATFORM_TEAM floor', () => {
+  it('passes token_floor2 to Token constructor for non-PLATFORM_TEAM floor', () => {
     createdTokens.length = 0;
     const { mgr } = makeHarness(FLOORS.BUSINESS);
-    mgr.spawn(makeConfig([{ x: 100, y: 200 }]));
-    expect(createdTokens.length).toBe(1);
+    mgr.spawn(makeConfig([{ x: 100, y: 200 }], FLOORS.BUSINESS));
+    expect(createdTokens[0]?.textureKey).toBe('token_floor2');
   });
 });
 
 describe('LevelTokenManager — collection callback (via wireColliders overlap)', () => {
   it('increments auCollected when a token is collected', () => {
-    const { mgr, overlapCallbacks } = makeHarness();
+    const { mgr, getOverlapCb } = makeHarness();
     mgr.spawn(makeConfig([{ x: 100, y: 200 }]));
     mgr.wireColliders();
 
     const token = createdTokens[0]!;
     token.setData('tokenIndex', 0);
-    // First overlap callback is the token collect handler
-    overlapCallbacks[0]!({}, token);
+    getOverlapCb(mgr.tokenGroup)({}, token);
 
     expect(mgr.auCollected).toBe(1);
   });
 
   it('calls progression.collectAU with correct floorId and tokenIndex', () => {
-    const { mgr, overlapCallbacks, progression } = makeHarness();
+    const { mgr, getOverlapCb, progression } = makeHarness();
     const collectAUSpy = vi.spyOn(progression, 'collectAU');
 
     mgr.spawn(makeConfig([{ x: 100, y: 200, index: 3 }]));
@@ -254,57 +265,57 @@ describe('LevelTokenManager — collection callback (via wireColliders overlap)'
 
     const token = createdTokens[0]!;
     token.setData('tokenIndex', 3);
-    overlapCallbacks[0]!({}, token);
+    getOverlapCb(mgr.tokenGroup)({}, token);
 
     expect(collectAUSpy).toHaveBeenCalledWith(FLOORS.PLATFORM_TEAM, 3);
   });
 
   it('calls token.collect()', () => {
-    const { mgr, overlapCallbacks } = makeHarness();
+    const { mgr, getOverlapCb } = makeHarness();
     mgr.spawn(makeConfig([{ x: 100, y: 200 }]));
     mgr.wireColliders();
 
     const token = createdTokens[0]!;
     token.setData('tokenIndex', 0);
-    overlapCallbacks[0]!({}, token);
+    getOverlapCb(mgr.tokenGroup)({}, token);
 
     expect(token.collect).toHaveBeenCalledOnce();
   });
 
   it('calls camera.flash after collection', () => {
-    const { mgr, overlapCallbacks, cameraFlash } = makeHarness();
+    const { mgr, getOverlapCb, cameraFlash } = makeHarness();
     mgr.spawn(makeConfig([{ x: 100, y: 200 }]));
     mgr.wireColliders();
 
     const token = createdTokens[0]!;
     token.setData('tokenIndex', 0);
-    overlapCallbacks[0]!({}, token);
+    getOverlapCb(mgr.tokenGroup)({}, token);
 
     expect(cameraFlash).toHaveBeenCalledOnce();
   });
 
   it('calls gameState.checkAchievements after collection', () => {
-    const { mgr, overlapCallbacks, checkAchievements } = makeHarness();
+    const { mgr, getOverlapCb, checkAchievements } = makeHarness();
     mgr.spawn(makeConfig([{ x: 100, y: 200 }]));
     mgr.wireColliders();
 
     const token = createdTokens[0]!;
     token.setData('tokenIndex', 0);
-    overlapCallbacks[0]!({}, token);
+    getOverlapCb(mgr.tokenGroup)({}, token);
 
     expect(checkAchievements).toHaveBeenCalledOnce();
   });
 
   it('does not double-count the same token on duplicate overlap calls', () => {
-    const { mgr, overlapCallbacks, progression } = makeHarness();
+    const { mgr, getOverlapCb, progression } = makeHarness();
     mgr.spawn(makeConfig([{ x: 100, y: 200 }]));
     mgr.wireColliders();
 
     const token = createdTokens[0]!;
     token.setData('tokenIndex', 0);
-    overlapCallbacks[0]!({}, token);
+    getOverlapCb(mgr.tokenGroup)({}, token);
     // ProgressionSystem.collectAU dedupes by tokenIndex
-    overlapCallbacks[0]!({}, token);
+    getOverlapCb(mgr.tokenGroup)({}, token);
 
     expect(progression.getFloorAU(FLOORS.PLATFORM_TEAM)).toBe(1);
   });
@@ -312,40 +323,38 @@ describe('LevelTokenManager — collection callback (via wireColliders overlap)'
 
 describe('LevelTokenManager — recovered dropped-AU callback', () => {
   it('calls progression.addAU when a dropped AU is recovered', () => {
-    const { mgr, overlapCallbacks, progression } = makeHarness();
+    const { mgr, getOverlapCb, progression } = makeHarness();
     mgr.spawn(makeConfig([]));
     mgr.wireColliders();
 
     const addAUSpy = vi.spyOn(progression, 'addAU');
     const drop = { ready: true, collected: false, recover: vi.fn() };
-    // Third overlap callback is the drop-recovery handler (after player↔token, then droppedAU collider, then player↔drop)
-    // wireColliders sets: overlap(player, tokenGroup, onCollect), collider(droppedAU, platform), overlap(player, droppedAU, onRecoverDropped)
-    // so index 1 is onRecoverDropped (skip collider which doesn't use the callback slot)
-    overlapCallbacks[1]!({}, drop);
+    // Identify the recovery callback by the droppedAUGroup reference, not by index.
+    getOverlapCb(mgr.droppedAUGroup)({}, drop);
 
     expect(addAUSpy).toHaveBeenCalledWith(FLOORS.PLATFORM_TEAM, 1);
   });
 
   it('skips recovery when drop.ready is false', () => {
-    const { mgr, overlapCallbacks, progression } = makeHarness();
+    const { mgr, getOverlapCb, progression } = makeHarness();
     mgr.spawn(makeConfig([]));
     mgr.wireColliders();
 
     const addAUSpy = vi.spyOn(progression, 'addAU');
     const drop = { ready: false, collected: false, recover: vi.fn() };
-    overlapCallbacks[1]!({}, drop);
+    getOverlapCb(mgr.droppedAUGroup)({}, drop);
 
     expect(addAUSpy).not.toHaveBeenCalled();
   });
 
   it('skips recovery when drop.collected is true', () => {
-    const { mgr, overlapCallbacks, progression } = makeHarness();
+    const { mgr, getOverlapCb, progression } = makeHarness();
     mgr.spawn(makeConfig([]));
     mgr.wireColliders();
 
     const addAUSpy = vi.spyOn(progression, 'addAU');
     const drop = { ready: true, collected: true, recover: vi.fn() };
-    overlapCallbacks[1]!({}, drop);
+    getOverlapCb(mgr.droppedAUGroup)({}, drop);
 
     expect(addAUSpy).not.toHaveBeenCalled();
   });

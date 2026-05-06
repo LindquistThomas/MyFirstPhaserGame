@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { LevelConfig } from './LevelScene';
 import type * as Phaser from 'phaser';
 
@@ -87,6 +87,16 @@ import { eventBus } from '../../../systems/EventBus';
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
+// Collect scene-shutdown triggers from each harness so afterEach can flush
+// the createSceneLifecycle disposers and remove EventBus listeners, preventing
+// listener leaks between tests when content IDs are reused.
+const pendingShutdowns: Array<() => void> = [];
+
+afterEach(() => {
+  for (const s of pendingShutdowns) s();
+  pendingShutdowns.length = 0;
+});
+
 function makeSceneStub(): Phaser.Scene {
   const handlers: Map<string, (() => void)[]> = new Map();
   return {
@@ -133,6 +143,8 @@ function makeHarness(infoPoints: NonNullable<LevelConfig['infoPoints']> = []) {
   rectContains.mockClear();
 
   const scene = makeSceneStub();
+  const sceneHandlers = (scene as unknown as { _handlers: Map<string, (() => void)[]> })._handlers;
+
   const player = makePlayerStub();
   const dialogs = makeDialogsStub();
   const gameState = makeGameStateStub();
@@ -140,6 +152,12 @@ function makeHarness(infoPoints: NonNullable<LevelConfig['infoPoints']> = []) {
   const zoneSetup = new LevelZoneSetup({ scene, player, dialogs, gameState });
   const config = { infoPoints } as Pick<LevelConfig, 'infoPoints'>;
   zoneSetup.create(config as LevelConfig);
+
+  // Register shutdown handler so afterEach can flush createSceneLifecycle
+  // disposers and remove EventBus listeners, avoiding cross-test leaks.
+  pendingShutdowns.push(() => {
+    (sceneHandlers.get('shutdown') ?? []).forEach(fn => fn());
+  });
 
   return { zoneSetup, scene, player, dialogs, gameState };
 }
