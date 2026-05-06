@@ -183,8 +183,9 @@ export class BootScene extends Phaser.Scene {
 
     // Signal that procedural assets (tiles, enemies, sounds, etc.) are not yet
     // ready. MenuScene.create() will run the deferred warmup and flip this to
-    // true once all phases complete, allowing later scenes to safely check
-    // registry.get('proceduralAssetsReady') before accessing those keys.
+    // true once all phases complete. Scenes that need deferred keys can check
+    // registry.get('proceduralAssetsReady') or listen to the registry event
+    // 'changedata-proceduralAssetsReady' (see MenuScene.warmupDeferredAssets).
     this.registry.set('proceduralAssetsReady', false);
 
     // Build the generation pipeline: only the player sprite at boot so the

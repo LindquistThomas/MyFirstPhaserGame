@@ -361,21 +361,24 @@ describe('MenuScene.warmupDeferredAssets — proceduralAssetsReady signal', () =
 
   it('schedules runDeferredAssets via setTimeout when requestIdleCallback is absent', () => {
     // Temporarily hide rIC to test the fallback path.
+    // Use try/finally so the global is always restored even if assertions fail.
     const origRIC = (globalThis as Record<string, unknown>)['requestIdleCallback'];
     delete (globalThis as Record<string, unknown>)['requestIdleCallback'];
 
-    const { scene, registryValues } = makeWarmupScene({
-      tilesExist: true,
-      jumpExists: true,
-    });
-    scene.warmupDeferredAssets();
+    try {
+      const { scene, registryValues } = makeWarmupScene({
+        tilesExist: true,
+        jumpExists: true,
+      });
+      scene.warmupDeferredAssets();
 
-    // Nothing should have run yet — setTimeout is pending.
-    expect(registryValues.get('proceduralAssetsReady')).toBeUndefined();
+      // Nothing should have run yet — setTimeout is pending.
+      expect(registryValues.get('proceduralAssetsReady')).toBeUndefined();
 
-    vi.runAllTimers();
-    expect(registryValues.get('proceduralAssetsReady')).toBe(true);
-
-    (globalThis as Record<string, unknown>)['requestIdleCallback'] = origRIC;
+      vi.runAllTimers();
+      expect(registryValues.get('proceduralAssetsReady')).toBe(true);
+    } finally {
+      (globalThis as Record<string, unknown>)['requestIdleCallback'] = origRIC;
+    }
   });
 });
