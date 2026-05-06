@@ -570,7 +570,6 @@ export class ElevatorScene extends Phaser.Scene {
 
   private enterProductDoor(door: ProductDoor): void {
     if (this.isTransitioning) return;
-    this.isTransitioning = true;
     this.progression.setCurrentFloor(FLOORS.PRODUCTS);
     prefetchSceneMusic(this, door.sceneKey);
     this.cameras.main.fadeOut(500, 0, 0, 0);
@@ -624,7 +623,6 @@ export class ElevatorScene extends Phaser.Scene {
 
   private enterFloor(floorId: FloorId, direction: 'left' | 'right' = 'left'): void {
     if (this.isTransitioning) return;
-    this.isTransitioning = true;
     this.progression.setCurrentFloor(floorId);
     const sceneKey = ElevatorFloorTransitionManager.resolveSceneKey(floorId, direction);
     prefetchSceneMusic(this, sceneKey);
@@ -638,10 +636,19 @@ export class ElevatorScene extends Phaser.Scene {
    * has elapsed. The fetch and the fade run concurrently — on fast connections
    * there is no extra black-screen time beyond the animation itself.
    *
+   * Guards against concurrent invocations: if a transition is already in
+   * progress (e.g. the player mashes two floor buttons within a single frame),
+   * the later call is silently dropped so only the first-committed destination
+   * plays through. This prevents a late-arriving filecomplete event from a
+   * superseded prefetch from overriding the music of the winning scene.
+   *
    * On failure (e.g. network error) the fade is reversed so the player can
    * retry the transition.
    */
   private async lazyStartScene(sceneKey: string): Promise<void> {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+
     const fadeDelay = new Promise<void>((resolve) => {
       this.time.delayedCall(500, () => resolve());
     });
