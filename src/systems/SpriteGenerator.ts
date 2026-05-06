@@ -110,6 +110,25 @@ export const SPRITE_PHASES: readonly GeneratorPhase[] = [
 ];
 
 /**
+ * Phases required before MenuScene renders: only the player sprite,
+ * which is used by the animated elevator cab on the title screen
+ * (with a stick-figure fallback if absent).
+ *
+ * Run in BootScene so the menu has the best asset from the first frame.
+ */
+export const BOOT_SPRITE_PHASES: readonly GeneratorPhase[] = SPRITE_PHASES.slice(0, 2);
+
+/**
+ * Remaining sprite phases deferred to after the first menu paint.
+ * None of these are consumed before the player transitions from MenuScene
+ * to ElevatorScene, so they can be generated in the idle time while the
+ * menu is visible.
+ *
+ * Cache guard: check `textures.exists('tiles')` before running.
+ */
+export const DEFERRED_SPRITE_PHASES: readonly GeneratorPhase[] = SPRITE_PHASES.slice(2);
+
+/**
  * Composition root for runtime sprite generation.
  *
  * Every graphic asset is built procedurally so the game ships with zero

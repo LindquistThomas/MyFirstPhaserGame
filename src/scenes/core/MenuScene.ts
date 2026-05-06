@@ -5,6 +5,8 @@ import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
+import { DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import { BATCHED_SOUND_PHASES } from '../../systems/SoundGenerator';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
 
@@ -29,6 +31,22 @@ export class MenuScene extends Phaser.Scene {
   /** DOM banner element shown when browser storage is unavailable; null when absent. */
   private guestBannerEl: HTMLElement | null = null;
 
+  /**
+   * Handle returned by requestIdleCallback or setTimeout for the deferred-
+   * warmup kickoff; stored so it can be cancelled on scene shutdown/destroy.
+   */
+  private _warmupHandle: number | null = null;
+  /** Whether requestIdleCallback was used (vs setTimeout) for the warmup handle. */
+  private _warmupUseRIC = false;
+  /**
+   * True once the warmup pipeline has committed all work (sprites generated +
+   * loader started for audio). Prevents double-invocation if a shutdown handler
+   * and a rIC/setTimeout callback race each other.
+   */
+  private _warmupDone = false;
+  /** True once all DEFERRED_SPRITE_PHASES have been executed. */
+  private _spritesComplete = false;
+
   constructor() {
     super({ key: 'MenuScene' });
   }
@@ -52,6 +70,7 @@ export class MenuScene extends Phaser.Scene {
     this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
     this.idlePreloadMusic();
+    this.warmupDeferredAssets();
 
     const lc = createSceneLifecycle(this);
     const onVisibilityChange = (): void => {
@@ -123,6 +142,148 @@ export class MenuScene extends Phaser.Scene {
       this.load.start();
     };
     for (let i = 0; i < CONCURRENCY; i++) loadNext();
+  }
+
+  /**
+   * Generate the procedural sprites and sounds that were intentionally
+   * omitted from BootScene to keep the initial black-screen time short.
+   *
+   * Runs after the menu's first paint via `requestIdleCallback` (or
+   * `setTimeout` on Safari which lacks rIC). The actual phase work is
+   * frame-yielded via `time.addEvent` so Phaser can render between batches.
+   *
+   * Pipeline:
+   *   1. DEFERRED_SPRITE_PHASES — tiles, tokens, elevator, enemies, boss, etc.
+   *      Each phase runs in its own frame tick (same budget as BootScene).
+   *   2. BATCHED_SOUND_PHASES (2 batches instead of 6) — queues WAV blobs.
+   *   3. `load.start()` decodes the blobs; `load.once('complete')` signals done.
+   *   4. `registry.set('proceduralAssetsReady', true)` — scenes that depend on
+   *      deferred keys (ElevatorScene, LevelScene, …) listen to the registry's
+   *      `changedata-proceduralAssetsReady` event to await this flag safely.
+   *
+   * Shutdown safety: the rIC/setTimeout handle is stored and cancelled on scene
+   * shutdown/destroy so it cannot fire against a torn-down scene.  If the scene
+   * shuts down mid-pipeline (player navigated away before warmup finished), a
+   * synchronous force-complete runs so sprites and sounds are available before
+   * the next scene enters.
+   *
+   * All cache guards mirror BootScene's pattern so re-entry is idempotent.
+   */
+  warmupDeferredAssets(): void {
+    // Reset per-visit state (handles scene re-entry after Settings/etc.).
+    this._warmupDone = false;
+    this._spritesComplete = false;
+
+    this._warmupUseRIC = typeof requestIdleCallback !== 'undefined';
+    if (this._warmupUseRIC) {
+      this._warmupHandle = requestIdleCallback(() => {
+        this._warmupHandle = null;
+        if (!this._warmupDone) this.runDeferredAssets();
+      }, { timeout: 500 });
+    } else {
+      this._warmupHandle = setTimeout(() => {
+        this._warmupHandle = null;
+        if (!this._warmupDone) this.runDeferredAssets();
+      }, 0) as unknown as number;
+    }
+
+    // Cancel the pending browser timer and force-complete any remaining
+    // generation when the scene shuts down (player navigated away mid-warmup).
+    // The 'shutdown' event fires before Phaser resets the loader, so
+    // this.load.start() is still valid inside _forceCompleteWarmup().
+    this.events.once('shutdown', () => this._onWarmupShutdown());
+    // Also cancel on full scene destruction to avoid stale timer callbacks.
+    this.events.once('destroy', () => this._cancelWarmupHandle());
+  }
+
+  private _cancelWarmupHandle(): void {
+    if (this._warmupHandle === null) return;
+    if (this._warmupUseRIC && typeof cancelIdleCallback !== 'undefined') {
+      cancelIdleCallback(this._warmupHandle);
+    } else {
+      clearTimeout(this._warmupHandle);
+    }
+    this._warmupHandle = null;
+  }
+
+  private _onWarmupShutdown(): void {
+    this._cancelWarmupHandle();
+    if (!this._warmupDone) this._forceCompleteWarmup();
+  }
+
+  /**
+   * Force-complete the deferred warmup synchronously.
+   *
+   * Called from the 'shutdown' event handler so that sprites are available
+   * before the next scene starts. Sprite generation is pure canvas work and
+   * is safe to call at any time. Sound generation queues blob URLs into the
+   * Phaser loader; load.start() is called immediately because the 'shutdown'
+   * event fires before Phaser's sys.shutdown() resets the loader.
+   */
+  private _forceCompleteWarmup(): void {
+    this._warmupDone = true; // prevent re-entry from rIC/destroy paths
+
+    // Sprites: synchronous canvas ops that write to the shared TextureManager.
+    if (!this._spritesComplete) {
+      for (const phase of DEFERRED_SPRITE_PHASES) phase.run(this);
+      this._spritesComplete = true;
+    }
+
+    // Sounds: queue blobs + start loader.
+    if (!this.cache.audio.exists('jump')) {
+      for (const phase of BATCHED_SOUND_PHASES) phase.run(this);
+      this.load.once('complete', () => {
+        this.registry.set('proceduralAssetsReady', true);
+      });
+      this.load.start();
+    } else {
+      this.registry.set('proceduralAssetsReady', true);
+    }
+  }
+
+  private runDeferredAssets(): void {
+    const spritePhases = this.textures.exists('tiles') ? [] : DEFERRED_SPRITE_PHASES;
+    let spriteIndex = 0;
+
+    const finishSprites = (): void => {
+      this._spritesComplete = true;
+
+      // All deferred sprites done — now handle sounds.
+      if (this.cache.audio.exists('jump')) {
+        // Sounds already cached (e.g. on scene re-entry); signal readiness.
+        this._warmupDone = true;
+        this.registry.set('proceduralAssetsReady', true);
+        return;
+      }
+
+      // Run batched sound phases with one frame yield between them (≤2 total).
+      BATCHED_SOUND_PHASES[0].run(this);
+      this.time.addEvent({
+        delay: 0,
+        callback: () => {
+          if (this._warmupDone) return; // shutdown handler ran first
+          BATCHED_SOUND_PHASES[1].run(this);
+          this._warmupDone = true; // committed — prevent double-queuing on late shutdown
+          this.load.once('complete', () => {
+            this.registry.set('proceduralAssetsReady', true);
+          });
+          this.load.start();
+        },
+      });
+    };
+
+    const runNextSprite = (): void => {
+      if (spriteIndex >= spritePhases.length) {
+        finishSprites();
+        return;
+      }
+      const phase = spritePhases[spriteIndex]!;
+      phase.run(this);
+      spriteIndex++;
+      this.time.addEvent({ delay: 0, callback: runNextSprite });
+    };
+
+    this.time.addEvent({ delay: 0, callback: runNextSprite });
   }
 
   private setupKeyboardNavigation(): void {
