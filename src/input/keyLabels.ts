@@ -29,6 +29,8 @@ const KEY_LABELS: Record<number, string> = {
   [K.B]: 'B',
   [K.C]: 'C',
   [K.H]: 'H',
+  // ZERO and FIVE cover ElevatorCallFloor0 / ElevatorCallFloor5 so the modal
+  // can display readable labels instead of raw key codes.
   [K.ZERO]: '0',
   [K.FIVE]: '5',
 };

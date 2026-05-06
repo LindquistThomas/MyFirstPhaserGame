@@ -325,9 +325,9 @@ export class ControlsReferenceModal extends ModalBase {
   private openRebind(): void {
     // Close this modal first, then navigate to SettingsScene → ControlsScene.
     this.close();
-    this.scene.time?.delayedCall?.(180, () => {
-      this.scene.scene?.start?.('SettingsScene', {
-        from: this.scene.sys?.settings?.key ?? 'MenuScene',
+    this.scene.time.delayedCall(180, () => {
+      this.scene.scene.start('SettingsScene', {
+        from: this.scene.sys.settings.key,
       });
     });
   }

@@ -255,15 +255,15 @@ export class PauseScene extends Phaser.Scene {
    * Disposes the menu keyboard lifecycle first so PauseScene's Cancel/Confirm
    * bindings don't fire alongside the modal's own Cancel/Confirm bindings.
    *
-   * @param autoResume When true (launched via ShowControls hotkey), closing the
+   * @param resumeOnDismiss When true (launched via ShowControls hotkey), closing the
    *   modal automatically resumes gameplay.  When false (player clicked "Controls"
    *   from the pause menu), PauseScene stays open and re-activates its keyboard.
    */
-  private openControlsModal(autoResume = false): void {
+  private openControlsModal(resumeOnDismiss = false): void {
     this.lc.dispose();
 
     new ControlsReferenceModal(this, () => {
-      if (autoResume) {
+      if (resumeOnDismiss) {
         this.resumeGame();
       } else {
         this.setupKeyboard();
