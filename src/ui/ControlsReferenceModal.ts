@@ -73,9 +73,12 @@ type ListItem =
  */
 export class ControlsReferenceModal extends ModalBase {
   private readonly onClose: () => void;
+  private readonly onRebind: (() => void) | undefined;
 
   private confirmHandler: (() => void) | null = null;
   private readonly navHandlers: Array<{ action: GameAction; handler: () => void }> = [];
+  /** True when user clicked "Rebind..." — routes onAfterClose to onRebind instead of onClose. */
+  private rebindRequested = false;
 
   private scrollOffset = 0;
   private readonly listItems: ListItem[];
@@ -84,9 +87,14 @@ export class ControlsReferenceModal extends ModalBase {
   private highlightBar!: Phaser.GameObjects.Graphics;
   private scrollIndicator!: Phaser.GameObjects.Text;
 
-  constructor(scene: Phaser.Scene, onClose: () => void = () => { /* no-op */ }) {
+  constructor(
+    scene: Phaser.Scene,
+    onClose: () => void = () => { /* no-op */ },
+    onRebind?: () => void,
+  ) {
     super(scene);
     this.onClose = onClose;
+    this.onRebind = onRebind;
 
     // Build flat list of category headers + action rows.
     this.listItems = [];
@@ -97,10 +105,21 @@ export class ControlsReferenceModal extends ModalBase {
       }
     }
 
-    // Click-outside-to-close: the ModalBase dim overlay is always the first
-    // container child (documented: "first child so subclasses can rely on index 0").
+    // Click-outside-to-close: attach to the ModalBase dim overlay (always the
+    // first container child). Only close when the pointer is genuinely outside
+    // the panel — non-interactive panel elements would otherwise pass clicks
+    // through to the overlay and close the modal unexpectedly.
+    const panelX = (GAME_WIDTH - PANEL_W) / 2;
+    const panelY = (GAME_HEIGHT - PANEL_H) / 2;
     const baseOverlay = this.container.list?.[0] as Phaser.GameObjects.Rectangle | undefined;
-    baseOverlay?.on?.('pointerdown', () => this.close());
+    baseOverlay?.on?.('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (
+        pointer.x < panelX || pointer.x > panelX + PANEL_W ||
+        pointer.y < panelY || pointer.y > panelY + PANEL_H
+      ) {
+        this.close();
+      }
+    });
 
     this.buildPanel();
     this.setupHandlers();
@@ -120,7 +139,11 @@ export class ControlsReferenceModal extends ModalBase {
   }
 
   protected override onAfterClose(): void {
-    this.onClose();
+    if (this.rebindRequested && this.onRebind) {
+      this.onRebind();
+    } else {
+      this.onClose();
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -323,12 +346,10 @@ export class ControlsReferenceModal extends ModalBase {
   // Rebind navigation
 
   private openRebind(): void {
-    // Close this modal first, then navigate to SettingsScene → ControlsScene.
+    // Signal that the caller's onRebind handler should fire instead of onClose.
+    // The caller (PauseScene / MenuScene) is responsible for navigating to
+    // SettingsScene in a way that fits its own lifecycle (launch+hide vs. start).
+    this.rebindRequested = true;
     this.close();
-    this.scene.time.delayedCall(180, () => {
-      this.scene.scene.start('SettingsScene', {
-        from: this.scene.sys.settings.key,
-      });
-    });
   }
 }

@@ -333,4 +333,44 @@ describe('ControlsReferenceModal', () => {
       scene._fire('NavigateUp');
     }).not.toThrow();
   });
+
+  // ---- onRebind callback ----------------------------------------------------
+
+  it('calls onRebind (not onClose) when openRebind() is triggered', () => {
+    const scene = makeScene();
+    const onClose = vi.fn();
+    const onRebind = vi.fn();
+    const modal = new ControlsReferenceModal(
+      scene as unknown as Phaser.Scene,
+      onClose,
+      onRebind,
+    );
+    // Invoke openRebind() directly (same as user clicking "Rebind..." button).
+    (modal as unknown as { openRebind: () => void }).openRebind();
+    expect(onRebind).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('falls back to onClose when onRebind is not provided and rebind is triggered', () => {
+    const scene = makeScene();
+    const onClose = vi.fn();
+    const modal = new ControlsReferenceModal(scene as unknown as Phaser.Scene, onClose);
+    (modal as unknown as { openRebind: () => void }).openRebind();
+    // No onRebind provided — onClose should still fire (graceful fallback).
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Confirm press (normal close) still calls onClose and not onRebind', () => {
+    const scene = makeScene();
+    const onClose = vi.fn();
+    const onRebind = vi.fn();
+    new ControlsReferenceModal(
+      scene as unknown as Phaser.Scene,
+      onClose,
+      onRebind,
+    );
+    scene._fire('Confirm');
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onRebind).not.toHaveBeenCalled();
+  });
 });

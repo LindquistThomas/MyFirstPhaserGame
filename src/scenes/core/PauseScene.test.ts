@@ -195,7 +195,11 @@ describe('PauseScene', () => {
       vi.mocked(ControlsReferenceModal).mockClear();
       const scene = makeScene();
       (scene as unknown as { openControlsModal: () => void }).openControlsModal.call(scene);
-      expect(ControlsReferenceModal).toHaveBeenCalledWith(scene, expect.any(Function));
+      expect(ControlsReferenceModal).toHaveBeenCalledWith(
+        scene,
+        expect.any(Function),
+        expect.any(Function),
+      );
     });
   });
 

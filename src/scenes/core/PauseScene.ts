@@ -262,13 +262,20 @@ export class PauseScene extends Phaser.Scene {
   private openControlsModal(resumeOnDismiss = false): void {
     this.lc.dispose();
 
-    new ControlsReferenceModal(this, () => {
-      if (resumeOnDismiss) {
-        this.resumeGame();
-      } else {
-        this.setupKeyboard();
-      }
-    });
+    new ControlsReferenceModal(
+      this,
+      // onClose: normal dismiss — either resume gameplay or restore PauseScene keyboard.
+      () => {
+        if (resumeOnDismiss) {
+          this.resumeGame();
+        } else {
+          this.setupKeyboard();
+        }
+      },
+      // onRebind: user clicked "Rebind..." — open Settings using the same PauseScene
+      // flow (launch + hide) so the pause:settings-closed path works correctly.
+      () => { this.openSettings(); },
+    );
   }
 
   private openSettings(): void {

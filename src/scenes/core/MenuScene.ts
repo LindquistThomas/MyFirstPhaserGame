@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
 import { SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { createSceneLifecycle, type SceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
 import { ControlsReferenceModal } from '../../ui/ControlsReferenceModal';
 
@@ -29,6 +29,12 @@ export class MenuScene extends Phaser.Scene {
   private soundtrackIndex = -1;
   /** DOM banner element shown when browser storage is unavailable; null when absent. */
   private guestBannerEl: HTMLElement | null = null;
+  /**
+   * Active keyboard navigation lifecycle. Stored so it can be disposed before
+   * opening the Controls modal (prevents menu handlers from firing alongside
+   * the modal's modal-context bindings) and recreated when the modal closes.
+   */
+  private menuLc!: SceneLifecycle;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -100,13 +106,13 @@ export class MenuScene extends Phaser.Scene {
 
   private setupKeyboardNavigation(): void {
     const contextToken = pushContext('menu');
-    const lifecycle = createSceneLifecycle(this);
-    lifecycle.add(() => popContext(contextToken));
-    lifecycle.bindInput('NavigateUp', () => this.moveSelection(-1));
-    lifecycle.bindInput('NavigateDown', () => this.moveSelection(1));
-    lifecycle.bindInput('Confirm', () => this.activateSelection());
+    this.menuLc = createSceneLifecycle(this);
+    this.menuLc.add(() => popContext(contextToken));
+    this.menuLc.bindInput('NavigateUp', () => this.moveSelection(-1));
+    this.menuLc.bindInput('NavigateDown', () => this.moveSelection(1));
+    this.menuLc.bindInput('Confirm', () => this.activateSelection());
     // H in menu context opens the Controls reference modal.
-    lifecycle.bindInput('ShowControls', () => this.openControlsModal());
+    this.menuLc.bindInput('ShowControls', () => this.openControlsModal());
   }
 
   private moveSelection(delta: number): void {
@@ -544,7 +550,16 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private openControlsModal(): void {
-    new ControlsReferenceModal(this);
+    // Dispose menu keyboard handlers so NavigateUp/Down and Confirm don't fire
+    // behind the modal while it is open.
+    this.menuLc.dispose();
+    new ControlsReferenceModal(
+      this,
+      // onClose: modal closed normally — restore keyboard navigation.
+      () => { this.setupKeyboardNavigation(); },
+      // onRebind: user clicked "Rebind..." — navigate to SettingsScene.
+      () => { this.openSettings(); },
+    );
   }
 
   private openSettings(): void {
