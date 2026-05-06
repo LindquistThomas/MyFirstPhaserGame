@@ -38,6 +38,7 @@ vi.mock('phaser', () => {
     textures = { exists: vi.fn(() => false) };
     cache = { audio: { exists: vi.fn(() => false) } };
     load = { audio: vi.fn(), start: vi.fn(), once: vi.fn(), on: vi.fn(), off: vi.fn() };
+    scene = { key: 'MenuScene' };
     /** Simple events stub: once() stores handlers; emit() fires & removes them. */
     events = (() => {
       const handlers: Record<string, Array<() => void>> = {};
@@ -76,7 +77,7 @@ vi.mock('../../systems/SoundGenerator', () => ({
   ],
 }));
 
-import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
+import { SCENE_MUSIC, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { MenuScene } from './MenuScene';
 import * as MotionPreference from '../../systems/MotionPreference';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
@@ -133,7 +134,12 @@ function makeCreateScene(): MenuScene {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-const nonEagerKeys = STATIC_MUSIC_ASSETS.filter((a) => !a.eager).map((a) => a.key);
+// idlePreloadMusic skips the scene's own SCENE_MUSIC track (handled by MusicPlugin)
+// and all eager tracks.
+const menuOwnTrack = SCENE_MUSIC['MenuScene'];
+const idlePreloadKeys = STATIC_MUSIC_ASSETS.filter(
+  (a) => !a.eager && a.key !== menuOwnTrack,
+).map((a) => a.key);
 
 describe('MenuScene.idlePreloadMusic', () => {
   let origConnection: unknown;
@@ -158,27 +164,34 @@ describe('MenuScene.idlePreloadMusic', () => {
     });
   }
 
-  it('queues all non-eager uncached tracks and starts the loader', () => {
+  it('queues all non-eager non-own-track uncached tracks and starts the loader', () => {
     setConnection(undefined);
     const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toHaveLength(nonEagerKeys.length);
-    expect(getLoadedKeys()).toEqual(expect.arrayContaining(nonEagerKeys));
+    expect(getLoadedKeys()).toHaveLength(idlePreloadKeys.length);
+    expect(getLoadedKeys()).toEqual(expect.arrayContaining(idlePreloadKeys));
     expect(isLoadStarted()).toBe(true);
+  });
+
+  it("does not queue the scene's own SCENE_MUSIC track (MusicPlugin handles it)", () => {
+    setConnection(undefined);
+    const { scene, getLoadedKeys } = makeScene([]);
+    scene.idlePreloadMusic();
+    expect(getLoadedKeys()).not.toContain(menuOwnTrack);
   });
 
   it('skips tracks that are already cached', () => {
     setConnection(undefined);
-    const firstKey = nonEagerKeys[0]!;
+    const firstKey = idlePreloadKeys[0]!;
     const { scene, getLoadedKeys } = makeScene([firstKey]);
     scene.idlePreloadMusic();
     expect(getLoadedKeys()).not.toContain(firstKey);
-    expect(getLoadedKeys().length).toBe(nonEagerKeys.length - 1);
+    expect(getLoadedKeys().length).toBe(idlePreloadKeys.length - 1);
   });
 
-  it('does nothing when all non-eager tracks are cached', () => {
+  it('does nothing when all eligible tracks are cached', () => {
     setConnection(undefined);
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene(nonEagerKeys);
+    const { scene, getLoadedKeys, isLoadStarted } = makeScene(idlePreloadKeys);
     scene.idlePreloadMusic();
     expect(getLoadedKeys()).toHaveLength(0);
     expect(isLoadStarted()).toBe(false);
@@ -273,13 +286,13 @@ describe('MenuScene.idlePreloadMusic', () => {
     // The slot freed by the error should have caused the next track to load.
     expect(loadedKeys).toHaveLength(3);
     // All tracks eventually load after draining the queue via errors/completions.
-    const remaining = nonEagerKeys.length - 3;
+    const remaining = idlePreloadKeys.length - 3;
     for (let i = 0; i < remaining; i++) {
       const key = loadedKeys[loadedKeys.length - 1]!;
       const ev = `filecomplete-audio-${key}`;
       if (onceHandlers[ev]) onceHandlers[ev]!();
     }
-    expect(loadedKeys).toHaveLength(nonEagerKeys.length);
+    expect(loadedKeys).toHaveLength(idlePreloadKeys.length);
   });
 });
 
