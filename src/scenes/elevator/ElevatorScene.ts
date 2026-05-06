@@ -639,8 +639,8 @@ export class ElevatorScene extends Phaser.Scene {
    * Guards against concurrent invocations: if a transition is already in
    * progress (e.g. the player mashes two floor buttons within a single frame),
    * the later call is silently dropped so only the first-committed destination
-   * plays through. This prevents a late-arriving filecomplete event from a
-   * superseded prefetch from overriding the music of the winning scene.
+   * plays through. This prevents two parallel fades, duplicate scene loads,
+   * and redundant music prefetch network requests from racing each other.
    *
    * On failure (e.g. network error) the fade is reversed so the player can
    * retry the transition.
