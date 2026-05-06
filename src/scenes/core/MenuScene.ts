@@ -109,7 +109,16 @@ export class MenuScene extends Phaser.Scene {
       if (cursor >= queue.length) return;
       const asset = queue[cursor++];
       if (!asset) return;
-      this.load.once(`filecomplete-audio-${asset.key}`, loadNext);
+      const onError = (file: Phaser.Loader.File): void => {
+        if (file.key !== asset.key || file.type !== 'audio') return;
+        this.load.off('loaderror', onError);
+        loadNext();
+      };
+      this.load.once(`filecomplete-audio-${asset.key}`, () => {
+        this.load.off('loaderror', onError);
+        loadNext();
+      });
+      this.load.on('loaderror', onError);
       this.load.audio(asset.key, asset.path);
       this.load.start();
     };

@@ -37,7 +37,7 @@ vi.mock('phaser', () => {
     registry = { get: vi.fn() };
     textures = { exists: vi.fn(() => false) };
     cache = { audio: { exists: vi.fn(() => false) } };
-    load = { audio: vi.fn(), start: vi.fn(), once: vi.fn() };
+    load = { audio: vi.fn(), start: vi.fn(), once: vi.fn(), on: vi.fn(), off: vi.fn() };
     constructor(_config: unknown) {}
   }
   return { default: { Scene }, Scene };
@@ -73,7 +73,13 @@ function makeScene(cachedKeys: string[] = []) {
 
   const scene = new MenuScene() as unknown as {
     cache: { audio: { exists: (k: string) => boolean } };
-    load: { audio: (k: string, p: string) => void; start: () => void };
+    load: {
+      audio: (k: string, p: string) => void;
+      start: () => void;
+      once: (event: string, cb: () => void) => void;
+      on: (event: string, cb: (file: { key: string; type: string }) => void) => void;
+      off: (event: string, cb: unknown) => void;
+    };
     idlePreloadMusic: () => void;
   };
 
@@ -88,6 +94,8 @@ function makeScene(cachedKeys: string[] = []) {
       // Immediately invoke filecomplete callbacks so the full chain runs
       // synchronously in tests, making all queued tracks observable.
       once: (_event: string, cb: () => void) => { cb(); },
+      on: vi.fn(),
+      off: vi.fn(),
     },
     configurable: true,
   });
@@ -198,6 +206,63 @@ describe('MenuScene.idlePreloadMusic', () => {
     for (const k of eagerKeys) {
       expect(getLoadedKeys()).not.toContain(k);
     }
+  });
+
+  it('continues loading remaining tracks when one asset fails with loaderror', () => {
+    setConnection(undefined);
+    // Build a controllable loader stub: hold callbacks until manually fired.
+    const loadedKeys: string[] = [];
+    const onceHandlers: Record<string, () => void> = {};
+    const errorHandlers: Array<(file: { key: string; type: string }) => void> = [];
+
+    const scene = new MenuScene() as unknown as {
+      cache: { audio: { exists: (k: string) => boolean } };
+      load: {
+        audio: (k: string, p: string) => void;
+        start: () => void;
+        once: (event: string, cb: () => void) => void;
+        on: (event: string, cb: (file: { key: string; type: string }) => void) => void;
+        off: (event: string, cb: unknown) => void;
+      };
+      idlePreloadMusic: () => void;
+    };
+    Object.defineProperty(scene, 'cache', {
+      value: { audio: { exists: () => false } },
+      configurable: true,
+    });
+    Object.defineProperty(scene, 'load', {
+      value: {
+        audio: (k: string) => { loadedKeys.push(k); },
+        start: vi.fn(),
+        once: (event: string, cb: () => void) => { onceHandlers[event] = cb; },
+        on: (_event: string, cb: (file: { key: string; type: string }) => void) => {
+          errorHandlers.push(cb);
+        },
+        off: vi.fn(),
+      },
+      configurable: true,
+    });
+
+    scene.idlePreloadMusic();
+    // At this point only the first 2 slots have been loaded (CONCURRENCY = 2).
+    const firstKey = loadedKeys[0]!;
+    expect(loadedKeys).toHaveLength(2);
+
+    // Simulate a loaderror for the first track.
+    for (const handler of errorHandlers) {
+      handler({ key: firstKey, type: 'audio' });
+    }
+
+    // The slot freed by the error should have caused the next track to load.
+    expect(loadedKeys).toHaveLength(3);
+    // All tracks eventually load after draining the queue via errors/completions.
+    const remaining = nonEagerKeys.length - 3;
+    for (let i = 0; i < remaining; i++) {
+      const key = loadedKeys[loadedKeys.length - 1]!;
+      const ev = `filecomplete-audio-${key}`;
+      if (onceHandlers[ev]) onceHandlers[ev]!();
+    }
+    expect(loadedKeys).toHaveLength(nonEagerKeys.length);
   });
 });
 
