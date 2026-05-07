@@ -23,7 +23,7 @@ export class FinanceTeamScene extends defineFloorScene({
     const G = GAME_HEIGHT - TILE_SIZE;
     return {
       floorId: FLOORS.EXECUTIVE,
-      objective: 'Review finance trade-offs and return to the suite',
+      objective: 'Review finance tradeoffs and return to the suite',
       playerStart: { x: 150, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 
