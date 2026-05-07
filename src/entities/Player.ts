@@ -118,6 +118,7 @@ export class Player {
     this.scene.events.once('shutdown', this.destroyEmitters, this);
     this.scene.events.once('destroy', this.destroyEmitters, this);
     this.scene.events.once('shutdown', this.clearTransientTweens, this);
+    this.scene.events.once('destroy', this.destroyEmitters, this);
   }
 
   private createAnimations(): void {
@@ -598,6 +599,7 @@ export class Player {
 
   private clearTransientTweens(): void {
     this.clearHitFlashTween();
+    this.destroyEmitters();
   }
 
   private clearHitFlashTween(): void {
