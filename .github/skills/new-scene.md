@@ -81,7 +81,7 @@ export class NameScene extends Phaser.Scene {
 
 ## New floor variant
 
-Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts` and should usually export the result of `defineFloorScene({ key, floorId, returnSide, config })`:
+Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts` and should usually export the result of `defineFloorScene({ key, floorId, returnSide, config })`, where `returnSide` controls which side of the elevator the player respawns on when returning from the room:
 
 ```ts
 import { defineFloorScene } from '../_shared/defineFloorScene';
@@ -106,7 +106,7 @@ export const MyFloorTeamScene = defineFloorScene({
 });
 ```
 
-For the complex form (`extends defineFloorScene({ … })` with custom overrides), see `src/features/floors/_shared/defineFloorScene.ts:11-33`.
+For the complex form (`extends defineFloorScene({ … })` with custom overrides), see the usage examples in `src/features/floors/_shared/defineFloorScene.ts`.
 
 Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and add a lazy entry to `LOADERS` in `src/scenes/lazySceneLoaders.ts`:
 ```ts
