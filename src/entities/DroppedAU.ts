@@ -75,6 +75,7 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
     // Arm pickup after a short window to avoid instant re-collection.
     const armVersion = this.armVersion;
     this.scene.time.delayedCall(450, () => {
+      // Ignore delayed callbacks from older reset() cycles on pooled instances.
       if (this.armVersion === armVersion && this.active) this.ready = true;
     });
   }
