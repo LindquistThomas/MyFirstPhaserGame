@@ -4,7 +4,7 @@ import { eventBus } from '../systems/EventBus';
 import { activeContext } from '../input';
 import { CaffeineBuff } from '../systems/CaffeineBuff';
 import { isReducedMotion } from '../systems/MotionPreference';
-import { reducedDuration, shouldSkipTween } from '../systems/motionTween';
+import { shouldSkipTween } from '../systems/motionTween';
 
 // Air speed is NOT buffed — see AIR_HORIZONTAL_SPEED shaft-width invariant below.
 export const CAFFEINE_DURATION_MS = 6000;
@@ -397,7 +397,7 @@ export class Player {
       this.scene.tweens.add({
         targets: this.sprite,
         scaleY: { from: 0.92, to: 1 },
-        duration: reducedDuration(120, 50),
+        duration: 120,
         ease: 'Quad.easeOut',
       });
     }
@@ -551,7 +551,7 @@ export class Player {
       this.hitFlashTween = this.scene.tweens.add({
         targets: this.sprite,
         alpha: { from: 1, to: 0.3 },
-        duration: reducedDuration(90, 90),
+        duration: 90,
         yoyo: true,
         repeat: Math.floor(durationMs / 180),
         onComplete: () => this.sprite.setAlpha(1),
