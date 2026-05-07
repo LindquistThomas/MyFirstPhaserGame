@@ -400,6 +400,34 @@ describe('HUD', () => {
     eventBus.emit('persistence:failed', { reason: 'quota' });
     expect(showSpy).toHaveBeenCalledWith(expect.stringContaining('Storage full'));
   });
+
+  it('destroys subcontrollers and toast on shutdown', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression) as unknown as {
+      coinCtrl: { destroy: () => void };
+      progressCtrl: { destroy: () => void };
+      muteCtrl: { destroy: () => void };
+      caffeineCtrl: { destroy: () => void };
+      achievementCtrl: { destroy: () => void };
+      toast: { destroy: () => void };
+    };
+
+    const coinDestroy = vi.spyOn(hud.coinCtrl, 'destroy');
+    const progressDestroy = vi.spyOn(hud.progressCtrl, 'destroy');
+    const muteDestroy = vi.spyOn(hud.muteCtrl, 'destroy');
+    const caffeineDestroy = vi.spyOn(hud.caffeineCtrl, 'destroy');
+    const achievementDestroy = vi.spyOn(hud.achievementCtrl, 'destroy');
+    const toastDestroy = vi.spyOn(hud.toast, 'destroy');
+
+    scene.events.emit('shutdown');
+
+    expect(coinDestroy).toHaveBeenCalled();
+    expect(progressDestroy).toHaveBeenCalled();
+    expect(muteDestroy).toHaveBeenCalled();
+    expect(caffeineDestroy).toHaveBeenCalled();
+    expect(achievementDestroy).toHaveBeenCalled();
+    expect(toastDestroy).toHaveBeenCalled();
+  });
 });
 
 // ── HUD timer widget ────────────────────────────────────────────────────────
