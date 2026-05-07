@@ -143,6 +143,8 @@ describe('LevelFridgeManager emitter pooling', () => {
 
     expect(scene.add.particles).toHaveBeenCalledTimes(1);
     expect(emitter.emitParticleAt).toHaveBeenCalledTimes(2);
+    expect(createdFridges[0]?.open).toHaveBeenCalledTimes(1);
+    expect(createdFridges[1]?.open).toHaveBeenCalledTimes(1);
   });
 
   it('destroys pooled emitter on scene shutdown', () => {

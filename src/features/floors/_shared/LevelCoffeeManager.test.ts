@@ -113,6 +113,8 @@ describe('LevelCoffeeManager emitter pooling', () => {
 
     expect(scene.add.particles).toHaveBeenCalledTimes(1);
     expect(emitter.emitParticleAt).toHaveBeenCalledTimes(2);
+    expect(createdCoffees[0]?.collect).toHaveBeenCalledTimes(1);
+    expect(createdCoffees[1]?.collect).toHaveBeenCalledTimes(1);
   });
 
   it('destroys pooled emitter on scene shutdown', () => {
