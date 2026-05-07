@@ -105,7 +105,7 @@ export class Toast {
   }
 
   destroy(): void {
-    this.dismissTimer?.remove(false);
+    this.dismissTimer?.remove(true);
     this.dismissTimer = undefined;
     this.activeTween?.stop();
     this.activeTween = undefined;

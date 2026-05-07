@@ -580,6 +580,9 @@ export class Player {
   }
 
   destroy(): void {
+    if ('off' in this.scene.events) {
+      this.scene.events.off('shutdown', this.clearTransientTweens, this);
+    }
     this.clearTransientTweens();
     this.sprite.destroy();
   }
