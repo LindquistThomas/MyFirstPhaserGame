@@ -85,7 +85,7 @@ src/
 ├── scenes/                   Infrastructure scenes (non-floor).
 │   ├── NavigationContext.ts  Typed hand-off for `scene.start(key, ctx)`.
 │   ├── sceneRegistry.ts      EAGER_REGISTRY + validateSceneRegistry(); derives SCENE_REGISTRY.
-│   ├── lazySceneLoaders.ts   LAZY_SCENE_LOADERS map — loader thunks for floor/product/boss scenes.
+│   ├── lazySceneLoaders.ts   LOADERS array (internal) → LAZY_SCENE_LOADERS map (exported); loader thunks for floor/product/boss scenes. Edit LOADERS to register a new lazy scene.
 │   ├── core/
 │   │   ├── BootScene.ts      Generates every sprite + sound; creates `GameStateManager`.
 │   │   ├── MenuScene.ts      Title screen; new game / continue; save-slot UI.
@@ -504,5 +504,6 @@ automatically.
 - **Eager/lazy scene split.** Core/elevator scenes are bundled in the
   main chunk (`EAGER_REGISTRY` in `sceneRegistry.ts`); floor, product-room,
   and boss scenes are split into separate Vite chunks and fetched on demand
-  via `LAZY_SCENE_LOADERS` in `lazySceneLoaders.ts`. The elevator fade acts
-  as the loading screen.
+  via `LAZY_SCENE_LOADERS` in `lazySceneLoaders.ts` (built from the internal
+  `LOADERS` array — that is the edit target). The elevator fade acts as the
+  loading screen.
