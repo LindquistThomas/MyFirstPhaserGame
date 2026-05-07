@@ -46,7 +46,10 @@ vi.mock('../../../entities/DroppedAU', () => ({
   DroppedAU: class MockDroppedAU {
     ready = false;
     collected = false;
-    recover = vi.fn();
+    body = { enable: true };
+    recover = vi.fn((onComplete?: () => void) => {
+      onComplete?.();
+    });
   },
 }));
 
@@ -87,7 +90,7 @@ function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLO
   const tokenGroup = {
     add: vi.fn((token: MockTokenInstance) => { tokenGroupMembers.push(token); }),
   };
-  const droppedAUGroup = { add: vi.fn() };
+  const droppedAUGroup = { killAndHide: vi.fn() };
 
   // Capture overlap calls with their target (b) so tests can look up the
   // correct callback by group reference rather than relying on array index.
@@ -172,8 +175,13 @@ describe('LevelTokenManager — constructor', () => {
   });
 
   it('creates droppedAUGroup via physics.add.group()', () => {
-    const { mgr, droppedAUGroup } = makeHarness();
+    const { mgr, droppedAUGroup, scene } = makeHarness();
     expect(mgr.droppedAUGroup).toBe(droppedAUGroup);
+    expect(scene.physics.add.group).toHaveBeenCalledWith({
+      classType: expect.any(Function),
+      maxSize: 32,
+      runChildUpdate: true,
+    });
   });
 
   it('starts with auCollected = 0', () => {
@@ -323,16 +331,23 @@ describe('LevelTokenManager — collection callback (via wireColliders overlap)'
 
 describe('LevelTokenManager — recovered dropped-AU callback', () => {
   it('calls progression.addAU when a dropped AU is recovered', () => {
-    const { mgr, getOverlapCb, progression } = makeHarness();
+    const { mgr, getOverlapCb, progression, droppedAUGroup } = makeHarness();
     mgr.spawn(makeConfig([]));
     mgr.wireColliders();
 
     const addAUSpy = vi.spyOn(progression, 'addAU');
-    const drop = { ready: true, collected: false, recover: vi.fn() };
+    const drop = {
+      ready: true,
+      collected: false,
+      body: { enable: true },
+      recover: vi.fn((onComplete?: () => void) => onComplete?.()),
+    };
     // Identify the recovery callback by the droppedAUGroup reference, not by index.
     getOverlapCb(mgr.droppedAUGroup)({}, drop);
 
     expect(addAUSpy).toHaveBeenCalledWith(FLOORS.PLATFORM_TEAM, 1);
+    expect(droppedAUGroup.killAndHide).toHaveBeenCalledWith(drop);
+    expect(drop.body.enable).toBe(false);
   });
 
   it('skips recovery when drop.ready is false', () => {

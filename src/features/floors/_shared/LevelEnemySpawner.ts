@@ -7,7 +7,6 @@ import { ScopeCreep } from '../../../entities/enemies/ScopeCreep';
 import { ArchitectureAstronaut } from '../../../entities/enemies/ArchitectureAstronaut';
 import { TechDebtGhost } from '../../../entities/enemies/TechDebtGhost';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
-import { DroppedAU } from '../../../entities/DroppedAU';
 import { Player } from '../../../entities/Player';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { eventBus } from '../../../systems/EventBus';
@@ -118,13 +117,17 @@ export class LevelEnemySpawner {
     if (removed > 0) {
       const tokenKey = this.deps.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
       for (let i = 0; i < removed; i++) {
-        const d = new DroppedAU(
-          this.deps.scene,
+        const d = this.deps.droppedAUGroup.get(
+          this.deps.player.sprite.x,
+          this.deps.player.sprite.y - 20,
+          tokenKey,
+        ) as { reset: (x: number, y: number, textureKey: string) => void } | null;
+        if (!d) continue;
+        d.reset(
           this.deps.player.sprite.x,
           this.deps.player.sprite.y - 20,
           tokenKey,
         );
-        this.deps.droppedAUGroup.add(d);
       }
       eventBus.emit('sfx:drop_au');
     }
