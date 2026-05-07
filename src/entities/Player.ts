@@ -115,6 +115,8 @@ export class Player {
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.onAnimationFrame, this);
     this.createDustEmitter();
     this.createCaffeineEmitter();
+    this.scene.events.once('shutdown', this.destroyEmitters, this);
+    this.scene.events.once('destroy', this.destroyEmitters, this);
   }
 
   private createAnimations(): void {
@@ -481,6 +483,13 @@ export class Player {
       emitting: false,
     });
     this.caffeineSteam.setDepth(9);
+  }
+
+  private destroyEmitters(): void {
+    this.dustEmitter?.destroy();
+    this.dustEmitter = undefined;
+    this.caffeineSteam?.destroy();
+    this.caffeineSteam = undefined;
   }
 
   private tickCaffeine(): void {

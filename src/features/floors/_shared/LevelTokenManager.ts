@@ -6,6 +6,7 @@ import { Token } from '../../../entities/Token';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import type { LevelConfig } from './LevelScene';
 
 export interface TokenManagerDeps {
@@ -26,6 +27,7 @@ export interface TokenManagerDeps {
 export class LevelTokenManager {
   readonly tokenGroup: Phaser.Physics.Arcade.StaticGroup;
   readonly droppedAUGroup: Phaser.Physics.Arcade.Group;
+  private sparkleEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
 
   /** Running count of AU collected in the current room (UI-independent). */
   auCollected = 0;
@@ -33,6 +35,14 @@ export class LevelTokenManager {
   constructor(private readonly deps: TokenManagerDeps) {
     this.tokenGroup = deps.scene.physics.add.staticGroup();
     this.droppedAUGroup = deps.scene.physics.add.group({ classType: DroppedAU });
+    this.sparkleEmitter = this.createSparkleEmitter();
+    const destroyEmitter = (): void => {
+      const emitter = this.sparkleEmitter;
+      this.sparkleEmitter = undefined;
+      emitter?.destroy();
+    };
+    deps.scene.events.once('shutdown', destroyEmitter);
+    deps.scene.events.once('destroy', destroyEmitter);
   }
 
   spawn(config: LevelConfig): void {
@@ -95,9 +105,15 @@ export class LevelTokenManager {
   };
 
   private emitSparkle(x: number, y: number): void {
+    if (isReducedMotion()) return;
+    this.sparkleEmitter?.emitParticleAt(x, y, 10);
+  }
+
+  private createSparkleEmitter(): Phaser.GameObjects.Particles.ParticleEmitter | undefined {
     const scene = this.deps.scene;
-    if (!scene.textures.exists('particle')) return;
-    const emitter = scene.add.particles(x, y, 'particle', {
+    if (isReducedMotion()) return undefined;
+    if (!scene.textures.exists('particle')) return undefined;
+    const emitter = scene.add.particles(0, 0, 'particle', {
       speed: { min: 60, max: 180 },
       angle: { min: 0, max: 360 },
       scale: { start: 0.8, end: 0 },
@@ -108,7 +124,6 @@ export class LevelTokenManager {
       emitting: false,
     });
     emitter.setDepth(11);
-    emitter.explode(10);
-    scene.time.delayedCall(600, () => emitter.destroy());
+    return emitter;
   }
 }
