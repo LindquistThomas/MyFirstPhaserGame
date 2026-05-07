@@ -54,9 +54,9 @@ export class CoinCounterController {
     this.coinShine.fillRect(-1, -10, 2, 20);
     this.coinShine.setPosition(COIN_X - 14, COIN_Y).setAlpha(0);
     container.add(this.coinShine as unknown as Phaser.GameObjects.GameObject);
-    this.scheduleCoinShimmer();
     this.lifecycle = createSceneLifecycle(scene);
     this.lifecycle.add(() => this.destroy());
+    this.scheduleCoinShimmer();
 
     // AU label + counter — explicit resolution: 2 for maximum crispness on the
     // most-read HUD element (overrides the 1.5 global default).
@@ -147,6 +147,7 @@ export class CoinCounterController {
     this.shimmerDelay = undefined;
     this.shimmerLoop?.destroy();
     this.shimmerLoop = undefined;
+    // Test scene mocks may not implement killTweensOf.
     if ('killTweensOf' in this.scene.tweens) {
       this.scene.tweens.killTweensOf([this.coinIcon, this.coinShine]);
     }
