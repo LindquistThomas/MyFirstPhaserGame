@@ -30,13 +30,6 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDepth(5);
-
-    const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setCollideWorldBounds(true);
-    body.setBounce(0.4, 0.4);
-    body.setDragX(120);
-    body.setAllowGravity(true);
-
     this.reset(x, y, textureKey);
   }
 
@@ -53,6 +46,9 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.enable = true;
+    body.setCollideWorldBounds(true);
+    body.setBounce(0.4, 0.4);
+    body.setDragX(120);
     body.setAllowGravity(true);
 
     // Random outward burst — caller can override with setVelocity afterward.
@@ -73,9 +69,10 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
     });
 
     // Arm pickup after a short window to avoid instant re-collection.
+    // Capture current reset generation so delayed callbacks from older cycles
+    // on pooled instances do not arm the coin.
     const armVersion = this.armVersion;
     this.scene.time.delayedCall(450, () => {
-      // Ignore delayed callbacks from older reset() cycles on pooled instances.
       if (this.armVersion === armVersion && this.active) this.ready = true;
     });
   }

@@ -117,18 +117,17 @@ export class LevelEnemySpawner {
 
     if (removed > 0) {
       const tokenKey = this.deps.floorId === FLOORS.PLATFORM_TEAM ? 'token_floor1' : 'token_floor2';
+      const dropX = this.deps.player.sprite.x;
+      const dropY = this.deps.player.sprite.y - 20;
       for (let i = 0; i < removed; i++) {
+        // get(x,y,key) seeds newly created members; reset(...) re-inits reused ones.
         const d = this.deps.droppedAUGroup.get(
-          this.deps.player.sprite.x,
-          this.deps.player.sprite.y - 20,
+          dropX,
+          dropY,
           tokenKey,
         ) as DroppedAU | null;
         if (!d) continue;
-        d.reset(
-          this.deps.player.sprite.x,
-          this.deps.player.sprite.y - 20,
-          tokenKey,
-        );
+        d.reset(dropX, dropY, tokenKey);
       }
       eventBus.emit('sfx:drop_au');
     }
