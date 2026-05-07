@@ -23,7 +23,7 @@ export class ProductLeadershipScene extends defineFloorScene({
     const off = TOKEN_INDEX_OFFSET;
     return {
       floorId: FLOORS.BUSINESS,
-      objective: 'Collect AU and visit Product Leadership info',
+      objective: 'Collect AU and visit Product Leadership Info',
       playerStart: { x: 150, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 

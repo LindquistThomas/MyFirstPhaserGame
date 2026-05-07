@@ -51,7 +51,7 @@ export class ObjectiveBanner extends Phaser.GameObjects.Container {
   }
 
   update(): void {
-    this.refreshText();
+    this.refreshVisibility();
   }
 
   private refreshText(): void {

@@ -24,7 +24,7 @@ export class CustomerSuccessScene extends defineFloorScene({
     const off = TOKEN_INDEX_OFFSET;
     return {
       floorId: FLOORS.BUSINESS,
-      objective: 'Collect AU and check Customer Success insights',
+      objective: 'Collect AU and check Customer Success Insights',
       playerStart: { x: 1130, y: G - 100 },
       exitPosition: { x: 1200, y: G - 56 },
 
