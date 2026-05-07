@@ -6,6 +6,13 @@ vi.mock('phaser', () => {
   class Scene {
     constructor(_config: unknown) {}
   }
+  class Container {
+    constructor(_scene: unknown, _x: number, _y: number) {}
+    add(): this { return this; }
+    setDepth(): this { return this; }
+    setScrollFactor(): this { return this; }
+    setVisible(): this { return this; }
+  }
   const Physics = {
     Arcade: {
       Sprite: class ArcadeSprite {
@@ -14,7 +21,8 @@ vi.mock('phaser', () => {
       Events: { WORLD_BOUNDS: 'worldbounds' },
     },
   };
-  return { default: { Scene, Physics }, Scene, Physics };
+  const GameObjects = { Container };
+  return { default: { Scene, Physics, GameObjects }, Scene, Physics, GameObjects };
 });
 
 // ── Stub all heavy entity/system imports ─────────────────────────────────────

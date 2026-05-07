@@ -86,6 +86,7 @@ export class ProgressionSystem {
         eventBus.emit('progression:au_milestone', milestone);
       }
     }
+    eventBus.emit('progression:changed');
   }
 
   /**
@@ -106,6 +107,7 @@ export class ProgressionSystem {
     this.state.floorAU[floorId] = floorAvail - removed;
     this.state.totalAU = totalAvail - removed;
     this.persist();
+    eventBus.emit('progression:changed');
     return removed;
   }
 
@@ -174,8 +176,10 @@ export class ProgressionSystem {
   }
 
   setCurrentFloor(floorId: FloorId): void {
+    if (this.state.currentFloor === floorId) return;
     this.state.currentFloor = floorId;
     this.persist();
+    eventBus.emit('progression:changed');
   }
 
   getUnlockedFloors(): FloorId[] {
@@ -250,6 +254,7 @@ export class ProgressionSystem {
       visitedFloors: new Set<FloorId>((data.visitedFloors ?? []).filter(id => FLOOR_IDS.includes(id))),
     };
     this.checkUnlocks();
+    eventBus.emit('progression:changed');
     return true;
   }
 

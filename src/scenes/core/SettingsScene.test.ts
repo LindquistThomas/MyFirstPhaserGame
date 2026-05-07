@@ -93,6 +93,8 @@ vi.mock('../../systems/SettingsStore', () => ({
       hapticsEnabled: true,
       colorBlindMode: 'off',
       hideTutorials: false,
+      showObjectiveBanner: true,
+      analyticsConsent: false,
     })),
     setMasterVolume: vi.fn(),
     setMusicVolume: vi.fn(),
@@ -105,6 +107,8 @@ vi.mock('../../systems/SettingsStore', () => ({
     setHapticsEnabled: vi.fn(),
     setColorBlindMode: vi.fn(),
     setHideTutorials: vi.fn(),
+    setShowObjectiveBanner: vi.fn(),
+    setAnalyticsConsent: vi.fn(),
     setReducedMotion: vi.fn(),
   },
 }));
@@ -375,6 +379,14 @@ describe('SettingsScene accessibility items', () => {
   it('buildItems includes a HIGH CONTRAST toggle', () => {
     const scene = makeSettings('MenuScene');
     const idx = findItemIndex(scene, 'HIGH CONTRAST');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const item = (scene as unknown as PrivateScene).items[idx];
+    expect(item?.kind).toBe('toggle');
+  });
+
+  it('buildItems includes a SHOW OBJECTIVE toggle', () => {
+    const scene = makeSettings('MenuScene');
+    const idx = findItemIndex(scene, 'SHOW OBJECTIVE');
     expect(idx).toBeGreaterThanOrEqual(0);
     const item = (scene as unknown as PrivateScene).items[idx];
     expect(item?.kind).toBe('toggle');

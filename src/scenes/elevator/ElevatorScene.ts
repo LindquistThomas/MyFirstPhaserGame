@@ -24,6 +24,8 @@ import { LAZY_SCENE_LOADERS } from '../lazySceneLoaders';
 import { preloadQuizFor } from '../../config/quiz';
 import { preloadInfoFor } from '../../config/info';
 import { prefetchSceneMusic } from '../../plugins/MusicPlugin';
+import { LEVEL_DATA } from '../../config/levelData';
+import { ACHIEVEMENTS } from '../../config/achievements';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -304,7 +306,10 @@ export class ElevatorScene extends Phaser.Scene {
 
   /* ---- UI ---- */
   private createUI(): void {
-    this.hud = new HUD(this, this.progression);
+    this.hud = new HUD(this, this.progression, undefined, {
+      getObjectiveText: () => this.getElevatorObjective(),
+      isObjectiveHidden: () => (this.dialogs?.isOpen ?? false) || this.welcomeModalOpen,
+    });
 
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 30, '\u2191\u2193  Ride Elevator  |  0-5  Call Floor  |  ENTER  Call/Open  |  \u2190 \u2192  Walk  |  SPACE  Flip', {
       fontFamily: 'monospace', fontSize: '14px', color: '#8899aa',
@@ -693,6 +698,24 @@ export class ElevatorScene extends Phaser.Scene {
         return;
       }
     }
+  }
+
+  private getElevatorObjective(): string {
+    const totalAU = this.progression.getTotalAU();
+    const nextLocked = Object.values(LEVEL_DATA)
+      .filter((floor) => !this.progression.isFloorUnlocked(floor.id))
+      .sort((a, b) => a.auRequired - b.auRequired || a.floorNumber - b.floorNumber)[0];
+
+    if (!nextLocked) {
+      return `All floors unlocked — Achievements ${this.gameState.getUnlockedAchievementCount()}/${ACHIEVEMENTS.length}`;
+    }
+
+    const auNeeded = Math.max(0, nextLocked.auRequired - totalAU);
+    if (auNeeded > 0) {
+      return `Next floor: ${nextLocked.name} — needs ${auNeeded} AU`;
+    }
+
+    return `Press Up at floor ${nextLocked.floorNumber} (${nextLocked.name})`;
   }
 }
 
