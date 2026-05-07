@@ -7,6 +7,7 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
 import { DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
 import { BATCHED_SOUND_PHASES } from '../../systems/SoundGenerator';
+import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
 
@@ -25,6 +26,7 @@ export class MenuScene extends Phaser.Scene {
   private windowRects: Phaser.GameObjects.Rectangle[] = [];
   private menuButtons: Array<{ btn: Phaser.GameObjects.Text; action: () => void }> = [];
   private selectedIndex = 0;
+  private menuNavigator?: ButtonListNavigator;
   private soundtrackButton?: Phaser.GameObjects.Text;
   /** -1 so first playNextSoundtrack() wraps to index 0 (first track). */
   private soundtrackIndex = -1;
@@ -55,11 +57,14 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(0x05060f);
     this.menuButtons = [];
     this.selectedIndex = 0;
+    this.menuNavigator?.destroy();
+    this.menuNavigator = undefined;
 
     this.createStarfield();
     this.createSkylineBackdrop();
     this.createFeaturedBuilding();
     this.createTitlePanel();
+    this.setupButtonNavigator();
     this.createControlsFooter();
 
     if (this.registry.get('persistenceAvailable') === false) {
@@ -305,15 +310,13 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private moveSelection(delta: number): void {
-    if (this.menuButtons.length === 0) return;
-    const n = this.menuButtons.length;
-    this.selectedIndex = (this.selectedIndex + delta + n) % n;
-    this.updateSelection();
+    if (!this.menuNavigator) return;
+    if (delta > 0) this.menuNavigator.focusNext();
+    else this.menuNavigator.focusPrev();
   }
 
   private activateSelection(): void {
-    const entry = this.menuButtons[this.selectedIndex];
-    if (entry) entry.action();
+    this.menuNavigator?.activateFocused();
   }
 
   private updateSelection(): void {
@@ -324,6 +327,29 @@ export class MenuScene extends Phaser.Scene {
         entry.btn.setColor(COLORS.titleText).setScale(1.0);
       }
     });
+  }
+
+  private setupButtonNavigator(): void {
+    this.menuNavigator = new ButtonListNavigator(this, 13);
+    this.menuButtons.forEach(({ btn, action }, index) => {
+      this.menuNavigator?.add({
+        focus: () => {
+          this.selectedIndex = index;
+          this.updateSelection();
+        },
+        blur: () => undefined,
+        activate: action,
+        bounds: () =>
+          btn.getBounds?.()
+          ?? ({
+            x: Number.isFinite(btn.x) ? btn.x - 120 : 0,
+            y: Number.isFinite(btn.y) ? btn.y - 24 : 0,
+            width: 240,
+            height: 48,
+          } as Phaser.Geom.Rectangle),
+      });
+    });
+    this.menuNavigator.setFocus(this.selectedIndex);
   }
 
   /* ---- background layers ---- */
@@ -677,8 +703,7 @@ export class MenuScene extends Phaser.Scene {
     btn.on('pointerover', () => {
       const idx = this.menuButtons.findIndex((e) => e.btn === btn);
       if (idx >= 0) {
-        this.selectedIndex = idx;
-        this.updateSelection();
+        this.menuNavigator?.setFocus(idx);
       }
     });
     btn.on('pointerout', () => this.updateSelection());
