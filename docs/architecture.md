@@ -462,7 +462,7 @@ automatically.
 - **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
   `src/input/**` at 80%; `src/ui/**` at 65% (60% branches);
   `src/entities/**` at 60%; `src/scenes/**` at 20% (18% functions);
-  `src/features/floors/**` at 17% (12% branches, 13% functions).
+  `src/features/floors/**` at 50% (40% branches, 45% functions).
   `src/plugins/**`, `src/main.ts`, the procedural-generator modules
   (`src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
   `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`), and a
