@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createFakeScene, type FakeScene, type FakeSprite } from '../../tests/helpers/phaserMock';
 import type * as Phaser from 'phaser';
 import { eventBus } from '../systems/EventBus';
+import * as MotionPreference from '../systems/MotionPreference';
 
 vi.mock('phaser', () => {
   class Sprite {}
@@ -243,6 +244,24 @@ describe('Player', () => {
       scene.advanceTime(120);
       scene.runDelayedCalls();
       expect(player.getPlayerState()).toBe('grounded');
+    });
+
+    it('skips landing squash tween when reduced motion is enabled', () => {
+      const reducedMotionSpy = vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+      const tweenAdd = scene.tweens.add as ReturnType<typeof vi.fn>;
+
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      player.update(16.67);
+      scene.advanceTime(120);
+      player.update(16.67);
+
+      tweenAdd.mockClear();
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+
+      expect(tweenAdd).not.toHaveBeenCalled();
+      reducedMotionSpy.mockRestore();
     });
 
     it('grounded → flipping on jump input', () => {

@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { reducedDuration, shouldSkipTween } from '../systems/motionTween';
 
 /**
  * Base class for all enemies in the game.
@@ -67,12 +68,17 @@ export abstract class Enemy extends Phaser.Physics.Arcade.Sprite {
       if (!this.scene) return;
       this.clearTint();
     });
+    if (shouldSkipTween()) {
+      this.destroy();
+      return;
+    }
+
     this.scene.tweens.add({
       targets: this,
       scaleY: 0.2,
       scaleX: 1.3,
       alpha: 0,
-      duration: 220,
+      duration: reducedDuration(220, 50),
       ease: 'Quad.easeOut',
       onComplete: () => this.destroy(),
     });

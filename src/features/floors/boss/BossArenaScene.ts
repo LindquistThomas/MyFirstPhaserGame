@@ -13,6 +13,7 @@ import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
+import { reducedDuration } from '../../../systems/motionTween';
 import { allKeyLabels } from '../../../input';
 
 /** Architecture quiz prompts used during knowledge windows. */
@@ -529,12 +530,13 @@ export class BossArenaScene extends Phaser.Scene {
       }
     }
 
+    const reducedMotion = isReducedMotion();
     this.tweens.add({
       targets: toast,
       alpha: 0,
-      y: toast.y - 40,
-      duration: 2000,
-      delay: 1200,
+      y: reducedMotion ? toast.y : toast.y - 40,
+      duration: reducedDuration(2000, 100),
+      delay: reducedMotion ? 0 : 1200,
       onComplete: () => toast.destroy(),
     });
   }
@@ -546,12 +548,13 @@ export class BossArenaScene extends Phaser.Scene {
         color,
         backgroundColor: '#0a0a1a', padding: { x: 12, y: 6 },
       }).setOrigin(0.5).setScrollFactor(0).setDepth(80);
+      const reducedMotion = isReducedMotion();
       this.tweens.add({
         targets: toast,
         alpha: 0,
-        y: toast.y - 40,
-        duration: 2000,
-        delay: 1200,
+        y: reducedMotion ? toast.y : toast.y - 40,
+        duration: reducedDuration(2000, 100),
+        delay: reducedMotion ? 0 : 1200,
         onComplete: () => toast.destroy(),
       });
     });

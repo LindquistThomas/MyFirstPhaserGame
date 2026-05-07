@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { pushContext, popContext, type ContextToken } from '../input';
 import { theme } from '../style/theme';
+import { shouldSkipTween } from '../systems/motionTween';
 
 /**
  * Shared scaffolding for full-screen modal overlays (info + quiz dialogs).
@@ -59,7 +60,8 @@ export abstract class ModalBase {
 
   /** Call at end of subclass constructor once panel content is built. */
   protected fadeIn(duration = 200): void {
-    this.scene.tweens.add({ targets: this.container, alpha: 1, duration });
+    const tweenDuration = shouldSkipTween() ? 0 : duration;
+    this.scene.tweens.add({ targets: this.container, alpha: 1, duration: tweenDuration });
   }
 
   /** Hook for subclasses to release additional resources before the fade-out. */
@@ -79,8 +81,9 @@ export abstract class ModalBase {
     this.onBeforeClose();
     this.releaseInputAndShutdown();
 
+    const tweenDuration = shouldSkipTween() ? 0 : 150;
     this.scene.tweens.add({
-      targets: this.container, alpha: 0, duration: 150,
+      targets: this.container, alpha: 0, duration: tweenDuration,
       onComplete: () => {
         this.container.destroy();
         this.onAfterClose();
