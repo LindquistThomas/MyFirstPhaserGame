@@ -36,7 +36,8 @@ src/
 │       │   ├── floorPatterns.ts        Themed decorative patterns for scene backdrop.
 │       │   ├── sceneBackdrop.ts        Layered gradient/pattern/vignette background.
 │       │   ├── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
-│       │   └── coachHints.ts           First-visit per-floor toast hint copy.
+│       │   ├── coachHints.ts           First-visit per-floor toast hint copy.
+│       │   └── defineFloorScene.ts     Factory that builds a LevelScene subclass from declarative options (key, floorId, config, banner, decorations, returnSide). Used by every standard floor.
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
 │       ├── architecture/     Architecture Team — largest quiz pool.
@@ -110,7 +111,8 @@ src/
 │   │   ├── shaftWalls.ts                        Shaft structural drawing: walls, caps, rooftop props, machine room, dust motes, doors, cable, and LEDs.
 │   │   └── skyBackdrop.ts                       Screen-locked night-sky backdrop: gradient sky, moon with halo, and static starfield with slow twinklers.
 ├── style/                    Design tokens.
-│   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
+│   ├── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
+│   └── responsive.ts         Viewport helpers (FIT scaling, aspect-ratio queries).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
 │   ├── GameStateManager.ts   Composition root — owns ProgressionSystem + PlaytimeTracker; exposes facades over SaveManager, QuizManager, InfoDialogManager, AchievementManager, TouchHintStore.
