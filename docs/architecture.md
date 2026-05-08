@@ -164,6 +164,14 @@ src/
 │   ├── ControlHintsOverlay.ts  Transient key-hint chips shown on first lobby entry.
 │   ├── InteractiveDoor.ts    Door sprite toggling open texture on interaction range.
 │   ├── HUD.ts                AU counter, floor label.
+│   ├── hud/                  Per-HUD-feature controllers — one per feature.
+│   │   ├── AchievementBadgeController.ts  Toast badge for unlocked achievements.
+│   │   ├── CaffeineRingController.ts      Caffeine-buff ring overlay around AU counter.
+│   │   ├── CoinCounterController.ts       AU counter text + tween cues.
+│   │   ├── MuteIconController.ts          Musical-note mute toggle (pointerup → audio:toggle-mute).
+│   │   ├── ProgressStripController.ts     Floor-progress strip + sfx:floor_unlocked trigger.
+│   │   ├── colorUtils.ts                  Shared color helpers.
+│   │   └── testUtils.ts                   Test fixtures for hud controllers.
 │   ├── ElevatorButtons.ts    Touch controls for the elevator cab.
 │   ├── ElevatorPanel.ts      Floor-select panel inside the cab.
 │   ├── TouchHintOverlay.ts   First-run virtual-gamepad hint (gated by TouchHintStore).
