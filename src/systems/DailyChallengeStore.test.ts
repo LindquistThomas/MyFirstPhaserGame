@@ -28,5 +28,10 @@ describe('DailyChallengeStore', () => {
     DailyChallengeStore.recordResult('20260507', 95_000);
     DailyChallengeStore.recordResult('20260508', 100_000);
     expect(DailyChallengeStore.getCompletionStreakEndingAt('20260508')).toBe(3);
+    expect(DailyChallengeStore.hasCompletionStreakEndingAt('20260508', 3)).toBe(true);
+  });
+
+  it('returns empty recent results for invalid day count', () => {
+    expect(DailyChallengeStore.getRecentResults(0)).toEqual([]);
   });
 });

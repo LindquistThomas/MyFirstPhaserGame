@@ -44,6 +44,7 @@ export function recordResult(dateKey: string, runMs: number): boolean {
 }
 
 export function getRecentResults(days: number, now: Date = new Date()): Array<{ dateKey: string; runMs?: number }> {
+  if (!Number.isFinite(days) || days <= 0) return [];
   const dateKey = getUtcDateKey(now);
   const all = store.read();
   const out: Array<{ dateKey: string; runMs?: number }> = [];
@@ -63,6 +64,16 @@ export function getCompletionStreakEndingAt(dateKey: string): number {
     streak++;
   }
   return streak;
+}
+
+export function hasCompletionStreakEndingAt(dateKey: string, target: number): boolean {
+  if (target <= 0) return true;
+  const all = store.read();
+  for (let i = 0; i < target; i++) {
+    const key = shiftDateKeyUtc(dateKey, -i);
+    if (!all[key]) return false;
+  }
+  return true;
 }
 
 export function setStorage(storage: KVStorage): void {
