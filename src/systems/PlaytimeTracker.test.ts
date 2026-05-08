@@ -7,7 +7,7 @@ import type { SaveData } from './SaveManager';
 /** Minimal SaveData for test stubs. */
 function makeSaveData(overrides: Partial<SaveData> = {}): SaveData {
   return {
-    version: 2,
+    version: 3,
     totalAU: 0,
     floorAU: {},
     unlockedFloors: [0],
@@ -291,7 +291,7 @@ describe('PlaytimeTracker — run timer', () => {
   });
 
   it('recordClear() updates bestClearMs when new time is strictly faster', () => {
-    const adapter = makeAdapter(makeSaveData({ bestClearMs: 10_000, firstClearMs: 10_000 }));
+    const adapter = makeAdapter(makeSaveData({ bestRunMs: 10_000, firstClearMs: 10_000 }));
     const tracker = new PlaytimeTracker(adapter);
     tracker.loadFromSave();
 
@@ -304,7 +304,7 @@ describe('PlaytimeTracker — run timer', () => {
   });
 
   it('recordClear() does NOT update bestClearMs when new time is slower', () => {
-    const adapter = makeAdapter(makeSaveData({ bestClearMs: 3_000, firstClearMs: 3_000 }));
+    const adapter = makeAdapter(makeSaveData({ bestRunMs: 3_000, firstClearMs: 3_000 }));
     const tracker = new PlaytimeTracker(adapter);
     tracker.loadFromSave();
 
@@ -371,5 +371,56 @@ describe('PlaytimeTracker — reset', () => {
     expect(tracker.getBestClearMs()).toBeUndefined();
     expect(tracker.getRunElapsedMs()).toBe(0);
     expect(tracker.isRunning).toBe(false);
+  });
+});
+
+describe('PlaytimeTracker — floor PB comparator', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('sets floor PB when unset', () => {
+    const adapter = makeAdapter(makeSaveData());
+    const tracker = new PlaytimeTracker(adapter);
+    tracker.loadFromSave();
+    tracker.setFloor(FLOORS.PLATFORM_TEAM);
+    tracker.resume();
+    vi.advanceTimersByTime(1200);
+
+    const result = tracker.recordFloorBest(FLOORS.PLATFORM_TEAM);
+    expect(result.isNewBest).toBe(true);
+    expect(result.runMs).toBeGreaterThanOrEqual(1200);
+    expect(tracker.getBestFloorMs(FLOORS.PLATFORM_TEAM)).toBeGreaterThanOrEqual(1200);
+  });
+
+  it('updates floor PB only when strictly better (equal/worse are ignored)', () => {
+    const adapter = makeAdapter(makeSaveData({
+      bestFloorMs: { [FLOORS.PLATFORM_TEAM]: 1500 },
+      floorPlaytimeMs: { [FLOORS.PLATFORM_TEAM]: 10_000 },
+    }));
+    const tracker = new PlaytimeTracker(adapter);
+    tracker.loadFromSave();
+
+    tracker.setFloor(FLOORS.PLATFORM_TEAM);
+    tracker.resume();
+    vi.advanceTimersByTime(1500);
+    const equal = tracker.recordFloorBest(FLOORS.PLATFORM_TEAM);
+    expect(equal.isNewBest).toBe(false);
+    expect(tracker.getBestFloorMs(FLOORS.PLATFORM_TEAM)).toBe(1500);
+
+    tracker.setFloor(FLOORS.PLATFORM_TEAM);
+    vi.advanceTimersByTime(2200);
+    const slower = tracker.recordFloorBest(FLOORS.PLATFORM_TEAM);
+    expect(slower.isNewBest).toBe(false);
+    expect(tracker.getBestFloorMs(FLOORS.PLATFORM_TEAM)).toBe(1500);
+
+    tracker.setFloor(FLOORS.PLATFORM_TEAM);
+    vi.advanceTimersByTime(900);
+    const faster = tracker.recordFloorBest(FLOORS.PLATFORM_TEAM);
+    expect(faster.isNewBest).toBe(true);
+    expect(tracker.getBestFloorMs(FLOORS.PLATFORM_TEAM)).toBeLessThan(1500);
   });
 });

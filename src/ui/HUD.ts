@@ -14,7 +14,6 @@ import { ProgressStripController } from './hud/ProgressStripController';
 import { CaffeineRingController } from './hud/CaffeineRingController';
 import { AchievementBadgeController } from './hud/AchievementBadgeController';
 import { settingsStore } from '../systems/SettingsStore';
-import { isReducedMotion } from '../systems/MotionPreference';
 
 const HUD_HEIGHT = 44;
 
@@ -87,12 +86,11 @@ export class HUD {
     this.titleText.setVisible(this.sizeClass !== 'compact');
     container.add(this.titleText as unknown as Phaser.GameObjects.GameObject);
 
-    // Floor timer — small M:SS counter in the top-left corner.
-    // Hidden on compact viewports and when reduced-motion is active.
-    this.timerText = this.scene.add.text(8, 14, '0:00', {
+    // Run timer — small M:SS counter in the top-right corner.
+    this.timerText = this.scene.add.text(GAME_WIDTH - 10, 32, '0:00', {
       fontFamily: 'monospace', fontSize: '12px',
       color: theme.color.css.textMuted,
-    }).setOrigin(0, 0.5);
+    }).setOrigin(1, 0.5);
     this.timerText.setVisible(this._isTimerVisible());
     container.add(this.timerText as unknown as Phaser.GameObjects.GameObject);
 
@@ -212,17 +210,16 @@ export class HUD {
     this.progressCtrl.update(au, floor, floorChanged, auChanged, this.scene.time.now);
     this.caffeineCtrl.update(this.scene.time.now);
 
-    // Update floor timer.
+    // Update run timer.
     if (this.playtime !== null) {
-      const floorMs = this.playtime.getFloorMs(floor);
-      this.timerText.setText(formatPlaytime(floorMs));
+      const runMs = this.playtime.getRunElapsedMs();
+      this.timerText.setText(formatPlaytime(runMs));
     }
   }
 
-  /** Whether the timer widget should be visible. Hidden on compact viewports and when the user prefers reduced motion (avoids a distracting animated counter). */
+  /** Whether the timer widget should be visible. */
   private _isTimerVisible(): boolean {
     if (this.playtime === null) return false;
-    if (this.sizeClass === 'compact') return false;
-    return !isReducedMotion();
+    return settingsStore.read().showRunTimer;
   }
 }

@@ -93,6 +93,8 @@ vi.mock('../../systems/SettingsStore', () => ({
       hapticsEnabled: true,
       colorBlindMode: 'off',
       hideTutorials: false,
+      analyticsConsent: false,
+      showRunTimer: true,
     })),
     setMasterVolume: vi.fn(),
     setMusicVolume: vi.fn(),
@@ -106,6 +108,8 @@ vi.mock('../../systems/SettingsStore', () => ({
     setColorBlindMode: vi.fn(),
     setHideTutorials: vi.fn(),
     setReducedMotion: vi.fn(),
+    setAnalyticsConsent: vi.fn(),
+    setShowRunTimer: vi.fn(),
   },
 }));
 
@@ -450,5 +454,19 @@ describe('SettingsScene accessibility items', () => {
         `activating at scale=${scale}`,
       ).toHaveBeenCalledWith(expectedCall);
     }
+  });
+});
+
+describe('SettingsScene speedrun item', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('includes SHOW RUN TIMER toggle and flips setting on activate', () => {
+    const scene = makeSettings('MenuScene');
+    const idx = findItemIndex(scene, 'SHOW RUN TIMER');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    activateItem(scene, 'SHOW RUN TIMER');
+    expect(vi.mocked(SettingsStoreModule.settingsStore.setShowRunTimer)).toHaveBeenCalledWith(false);
   });
 });

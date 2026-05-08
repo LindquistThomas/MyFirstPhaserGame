@@ -285,7 +285,7 @@ describe('SaveManager — schema versioning & migration', () => {
     // expect(load()).toBeNull();
   });
 
-  it('v1→v2 migration: loading a v1 save yields zeroed playtime fields', () => {
+  it('v1→current migration: loading a v1 save yields zeroed playtime fields', () => {
     const store = memoryStorage();
     const v1Save = {
       version: 1,
@@ -305,7 +305,7 @@ describe('SaveManager — schema versioning & migration', () => {
     expect(loaded?.floorPlaytimeMs).toEqual({});
   });
 
-  it('v0→v2 migration (no version field): yields zeroed playtime fields', () => {
+  it('v0→current migration (no version field): yields zeroed playtime fields', () => {
     const store = memoryStorage();
     const v0Save = {
       totalAU: 3,
@@ -324,6 +324,27 @@ describe('SaveManager — schema versioning & migration', () => {
     expect(loaded?.floorPlaytimeMs).toEqual({});
     // original fields preserved
     expect(loaded?.totalAU).toBe(3);
+  });
+
+  it('v2→v3 migration adds PB fields defaulting to undefined', () => {
+    const store = memoryStorage();
+    const v2Save = {
+      version: 2,
+      totalAU: 11,
+      floorAU: { 0: 5, 1: 6 },
+      unlockedFloors: [0, 1],
+      currentFloor: 1,
+      collectedTokens: { 0: [0], 1: [0] },
+      playtimeMs: 1234,
+      floorPlaytimeMs: { 1: 1234 },
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v2Save));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded?.version).toBe(3);
+    expect(loaded?.bestRunMs).toBeUndefined();
+    expect(loaded?.bestFloorMs).toBeUndefined();
   });
 
   it('load() returns null for a non-integer version field', () => {
@@ -511,13 +532,14 @@ describe('SaveManager — multi-slot UI helpers', () => {
 
   it('loadSlotInfo returns exists:false with correct fields after saving', () => {
     setPlayerSlot('slot2');
-    save({ ...sample, totalAU: 42, currentFloor: 3, lastPlayedAt: 1234567890 });
+    save({ ...sample, totalAU: 42, currentFloor: 3, lastPlayedAt: 1234567890, bestRunMs: 61_000 });
 
     const info = loadSlotInfo('slot2');
     expect(info.exists).toBe(true);
     expect(info.totalAU).toBe(42);
     expect(info.currentFloor).toBe(3);
     expect(info.lastPlayedAt).toBe(1234567890);
+    expect(info.bestRunMs).toBe(61_000);
   });
 
   it('loadSlotInfo returns undefined currentFloor for an unrecognised floor ID', () => {

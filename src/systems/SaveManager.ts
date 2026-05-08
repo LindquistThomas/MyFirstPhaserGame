@@ -30,6 +30,10 @@ export interface SaveData {
   firstClearMs?: number;
   /** Best (shortest) run clear time in milliseconds across all runs. */
   bestClearMs?: number;
+  /** Best (shortest) run clear time in milliseconds across all runs (v3+ canonical field). */
+  bestRunMs?: number;
+  /** Best (shortest) per-floor completion time in milliseconds. */
+  bestFloorMs?: Partial<Record<FloorId, number>>;
   /** Unix ms timestamp when the current run was started; absent when not in a run. */
   runStartedAt?: number;
 }
@@ -44,6 +48,7 @@ export interface SlotInfo {
   exists: boolean;
   totalAU?: number;
   currentFloor?: FloorId;
+  bestRunMs?: number;
   lastPlayedAt?: number;
   /**
    * True when the slot's previous save was corrupt and has been discarded this
@@ -63,7 +68,7 @@ function validateFloorId(value: unknown): FloorId | undefined {
 }
 
 /** Schema version written by this build. Increment when SaveData shape changes. */
-export const CURRENT_SAVE_VERSION = 2;
+export const CURRENT_SAVE_VERSION = 3;
 
 /**
  * Storage key pattern reference (keep in sync when changing the format):
@@ -86,6 +91,8 @@ export const CURRENT_SAVE_VERSION = 2;
  * v1 → v2: adds playtime fields (playtimeMs, floorPlaytimeMs) with zero
  * defaults so loading old saves never results in `undefined`.
  *
+ * v2 → v3: adds speedrun PB fields (`bestRunMs`, `bestFloorMs`).
+ *
  * To add a new save version:
  *   1. Bump CURRENT_SAVE_VERSION.
  *   2. Add an entry to MIGRATIONS keyed by the OLD version:
@@ -96,6 +103,11 @@ export const CURRENT_SAVE_VERSION = 2;
 const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
   0: (d) => d,
   1: (d) => ({ ...d, playtimeMs: 0, floorPlaytimeMs: {} }),
+  2: (d) => ({
+    ...d,
+    bestRunMs: typeof d['bestClearMs'] === 'number' ? d['bestClearMs'] : undefined,
+    bestFloorMs: undefined,
+  }),
 };
 
 
@@ -206,6 +218,11 @@ function isValidSaveData(d: unknown): d is SaveData {
   }
   if (o['firstClearMs'] !== undefined && typeof o['firstClearMs'] !== 'number') return false;
   if (o['bestClearMs'] !== undefined && typeof o['bestClearMs'] !== 'number') return false;
+  if (o['bestRunMs'] !== undefined && typeof o['bestRunMs'] !== 'number') return false;
+  if (o['bestFloorMs'] !== undefined) {
+    if (typeof o['bestFloorMs'] !== 'object' || o['bestFloorMs'] === null || Array.isArray(o['bestFloorMs'])) return false;
+    if (!Object.values(o['bestFloorMs'] as object).every((v) => typeof v === 'number' && isFinite(v))) return false;
+  }
   if (o['runStartedAt'] !== undefined && typeof o['runStartedAt'] !== 'number') return false;
   return true;
 }
@@ -348,6 +365,7 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
     exists: true,
     totalAU: data.totalAU,
     currentFloor: validateFloorId(data.currentFloor),
+    bestRunMs: data.bestRunMs ?? data.bestClearMs,
     lastPlayedAt: data.lastPlayedAt,
   };
 }

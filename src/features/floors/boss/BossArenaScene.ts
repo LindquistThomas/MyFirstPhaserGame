@@ -650,6 +650,7 @@ export class BossArenaScene extends Phaser.Scene {
       }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
       if (isNewBest) {
+        this.mechHintToast.show(`⏱ New best run: ${this._formatMs(thisRunMs)}`);
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, '⭐ NEW BEST!', {
           fontFamily: 'monospace', fontSize: '17px', color: '#ffd700', fontStyle: 'bold',
         }).setOrigin(0.5).setScrollFactor(0).setDepth(101);

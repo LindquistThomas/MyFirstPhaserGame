@@ -16,6 +16,14 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
 import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
 
+/** Format ms as M:SS for slot-card speedrun PB summaries. */
+export function formatMs(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 /**
  * Slot-picker screen.
  *
@@ -145,6 +153,11 @@ export class SaveSlotScene extends Phaser.Scene {
 
       container.add(this.add.text(w / 2, 102, ts, {
         fontFamily: 'monospace', fontSize: '12px', color: '#5e6e85',
+      }).setOrigin(0.5));
+
+      const bestRunText = info.bestRunMs !== undefined ? formatMs(info.bestRunMs) : '—';
+      container.add(this.add.text(w / 2, 124, `Best run: ${bestRunText}`, {
+        fontFamily: 'monospace', fontSize: '12px', color: '#8bc5ff',
       }).setOrigin(0.5));
 
       // Delete hint
