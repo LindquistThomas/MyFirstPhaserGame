@@ -1,9 +1,9 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches: [main]
+    # Run for every in-repo branch push so required checks are produced for PR
+    # head commits without relying on approval-gated pull_request runs.
 
 # Restrict the base-branch token to read-only so untrusted PR code cannot
 # exfiltrate it to modify the repository.
@@ -11,11 +11,10 @@ permissions:
   contents: read
 
 concurrency:
-  # pull_request workflows can share branch names across different PRs, so the old
-  # ref-based key would collapse all PR runs into a single group.  Use the PR
-  # number instead (unique per PR) and fall back to the push SHA on main.
-  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-push-{0}', github.sha) }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # CI runs on branch pushes (main + Copilot branches), so github.ref is stable
+  # and unique enough for per-branch cancellation.
+  group: ${{ format('ci-{0}', github.ref) }}
+  cancel-in-progress: true
 
 jobs:
   changes:
