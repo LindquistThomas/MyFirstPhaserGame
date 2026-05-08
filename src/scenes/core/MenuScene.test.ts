@@ -68,7 +68,7 @@ vi.mock('../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
 vi.mock('../../systems/SpriteGenerator', () => ({
-  DEFERRED_SPRITE_PHASES: [{ label: 'Deferred sprite', run: vi.fn() }],
+  MENU_DEFERRED_SPRITE_PHASES: [{ label: 'Deferred sprite', run: vi.fn() }],
 }));
 vi.mock('../../systems/SoundGenerator', () => ({
   BATCHED_SOUND_PHASES: [
@@ -387,7 +387,9 @@ describe('MenuScene.create — reduced-motion guards', () => {
     const scene = makeCreateScene();
     expect((scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
     expect((scene.tweens.addCounter as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
-    expect((scene.time.delayedCall as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+    // Daily Challenge UI schedules a midnight refresh timer; reduced motion
+    // should still suppress animation-driven delayed calls.
+    expect((scene.time.delayedCall as ReturnType<typeof vi.fn>).mock.calls.length).toBeLessThanOrEqual(1);
   });
 
   it('creates all four animation tweens when isReducedMotion() is false', () => {

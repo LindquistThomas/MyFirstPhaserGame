@@ -116,6 +116,7 @@ export class Player {
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.onAnimationFrame, this);
     this.createDustEmitter();
     this.createCaffeineEmitter();
+    this.scene.events.once('shutdown', this.clearTransientTweens, this);
   }
 
   private createAnimations(): void {
@@ -545,7 +546,7 @@ export class Player {
     body.setAllowGravity(true);
     this.sprite.setVelocity(knockX, knockY);
 
-    this.hitFlashTween?.stop();
+    this.clearHitFlashTween();
     this.sprite.setAlpha(1);
     if (!shouldSkipTween()) {
       this.hitFlashTween = this.scene.tweens.add({
@@ -577,5 +578,22 @@ export class Player {
   /** Current FSM state. Intended for tests and debug tooling. */
   getPlayerState(): PlayerState {
     return this.playerState;
+  }
+
+  destroy(): void {
+    if ('off' in this.scene.events) {
+      this.scene.events.off('shutdown', this.clearTransientTweens, this);
+    }
+    this.clearTransientTweens();
+    this.sprite.destroy();
+  }
+
+  private clearTransientTweens(): void {
+    this.clearHitFlashTween();
+  }
+
+  private clearHitFlashTween(): void {
+    this.hitFlashTween?.stop();
+    this.hitFlashTween = undefined;
   }
 }

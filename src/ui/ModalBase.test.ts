@@ -44,7 +44,7 @@ function makeScene() {
       })),
     },
     tweens: {
-      add: vi.fn((cfg: Record<string, unknown>) => cfg),
+      add: vi.fn((cfg: Record<string, unknown>) => ({ ...cfg, stop: vi.fn() })),
     },
     inputs: { on: vi.fn(), off: vi.fn() },
     events: { once: vi.fn(), off: vi.fn() },

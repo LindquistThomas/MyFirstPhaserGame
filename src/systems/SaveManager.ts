@@ -63,6 +63,7 @@ function validateFloorId(value: unknown): FloorId | undefined {
 }
 
 /** Schema version written by this build. Increment when SaveData shape changes. */
+// IMPORTANT: when bumping this value, add MIGRATIONS[CURRENT_SAVE_VERSION - 1] first.
 export const CURRENT_SAVE_VERSION = 2;
 
 /**
@@ -93,7 +94,9 @@ export const CURRENT_SAVE_VERSION = 2;
  *   3. Update the SaveData type.
  *   4. Add a unit test for the migration in SaveManager.test.ts.
  */
-const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
+export type SaveMigrationMap = Record<number, (data: Record<string, unknown>) => Record<string, unknown>>;
+
+const MIGRATIONS: SaveMigrationMap = {
   0: (d) => d,
   1: (d) => ({ ...d, playtimeMs: 0, floorPlaytimeMs: {} }),
 };
@@ -266,12 +269,26 @@ export function clearRecoveredSlot(slotId: SaveSlotId): void {
   recoveredSlots.delete(slotId);
 }
 
+export function runMigrations(
+  data: Record<string, unknown>,
+  version: number,
+  migrations: SaveMigrationMap = MIGRATIONS,
+): { data: Record<string, unknown>; version: number } | null {
+  while (version < CURRENT_SAVE_VERSION) {
+    const migrate = migrations[version];
+    if (!migrate) return null;
+    data = migrate(data);
+    version++;
+  }
+  return { data, version };
+}
+
 /**
  * Parse and fully validate a raw save string (migrations + schema guard).
  * Returns the validated SaveData on success, or null if the data is invalid.
  * Has no side-effects: callers are responsible for cleanup and event emission.
  */
-export function parseAndValidateSave(raw: string): SaveData | null {
+export function parseAndValidateSave(raw: string, migrations: SaveMigrationMap = MIGRATIONS): SaveData | null {
   try {
     let data = JSON.parse(raw) as Record<string, unknown>;
     const rawVersion = data['version'];
@@ -280,12 +297,10 @@ export function parseAndValidateSave(raw: string): SaveData | null {
       if (!Number.isInteger(rawVersion) || rawVersion < 0) return null;
       version = rawVersion;
     }
-    while (version < CURRENT_SAVE_VERSION) {
-      const migrate = MIGRATIONS[version];
-      if (!migrate) return null;
-      data = migrate(data);
-      version++;
-    }
+    const migrated = runMigrations(data, version, migrations);
+    if (!migrated) return null;
+    data = migrated.data;
+    version = migrated.version;
     data['version'] = version;
     return isValidSaveData(data) ? data : null;
   } catch {
@@ -293,7 +308,12 @@ export function parseAndValidateSave(raw: string): SaveData | null {
   }
 }
 
-export function load(): SaveData | null {
+/**
+ * Load and validate the active slot.
+ * Returns `null` when the slot is empty, corrupt, or cannot be fully migrated
+ * to CURRENT_SAVE_VERSION (for example when a required migration step is missing).
+ */
+export function load(migrations: SaveMigrationMap = MIGRATIONS): SaveData | null {
   checkUnavailable();
   let raw: string | null;
   try {
@@ -304,7 +324,7 @@ export function load(): SaveData | null {
   }
   if (!raw) return null;
 
-  const validated = parseAndValidateSave(raw);
+  const validated = parseAndValidateSave(raw, migrations);
   if (!validated) {
     // Stash a forensic copy so the corruption can be diagnosed later, then
     // remove the bad key so the player gets a clean slot on next boot.

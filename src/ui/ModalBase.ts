@@ -21,6 +21,7 @@ export abstract class ModalBase {
   private cancelHandler: (() => void) | null = null;
   private contextToken: ContextToken | null = null;
   private shutdownHandler: (() => void) | null = null;
+  private activeTween: Phaser.Tweens.Tween | null = null;
   private destroyed = false;
 
   constructor(scene: Phaser.Scene) {
@@ -60,8 +61,16 @@ export abstract class ModalBase {
 
   /** Call at end of subclass constructor once panel content is built. */
   protected fadeIn(duration = 200): void {
+    this.activeTween?.stop();
     const tweenDuration = shouldSkipTween() ? 0 : duration;
-    this.scene.tweens.add({ targets: this.container, alpha: 1, duration: tweenDuration });
+    this.activeTween = this.scene.tweens.add({
+      targets: this.container,
+      alpha: 1,
+      duration: tweenDuration,
+      onComplete: () => {
+        this.activeTween = null;
+      },
+    });
   }
 
   /** Hook for subclasses to release additional resources before the fade-out. */
@@ -80,11 +89,14 @@ export abstract class ModalBase {
 
     this.onBeforeClose();
     this.releaseInputAndShutdown();
+    this.activeTween?.stop();
+    this.activeTween = null;
 
     const tweenDuration = shouldSkipTween() ? 0 : 150;
-    this.scene.tweens.add({
+    this.activeTween = this.scene.tweens.add({
       targets: this.container, alpha: 0, duration: tweenDuration,
       onComplete: () => {
+        this.activeTween = null;
         this.container.destroy();
         this.onAfterClose();
       },
@@ -96,6 +108,8 @@ export abstract class ModalBase {
     if (this.destroyed) return;
     this.destroyed = true;
 
+    this.activeTween?.stop();
+    this.activeTween = null;
     this.onBeforeClose();
     this.releaseInputAndShutdown();
     this.container.destroy();

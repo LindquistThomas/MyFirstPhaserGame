@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
 import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot, getRecoveryReason } from './SaveManager';
+import type { SaveMigrationMap } from './SaveManager';
 import { eventBus } from './EventBus';
 
 function memoryStorage(): KVStorage & { store: Map<string, string> } {
@@ -274,15 +275,33 @@ describe('SaveManager — schema versioning & migration', () => {
     expect(loaded?.version).toBe(99); // unchanged — higher than current
   });
 
-  it.skip('load() returns null when a required migration entry is missing', () => {
-    // This path only occurs when 0 < save.version < CURRENT_SAVE_VERSION and
-    // a migration step inside that range is missing. With CURRENT_SAVE_VERSION=2,
-    // v0→v1 is a no-op (version stamp only) and v1→v2 adds playtime fields.
-    // No constructible gap exists since both entries are present in MIGRATIONS.
-    //
-    // Once a gap can be created, seed a save at the missing intermediate version,
-    // call load(), and assert:
-    // expect(load()).toBeNull();
+  it('load() returns null when a required migration entry is missing', () => {
+    const store = memoryStorage();
+    const v1Save = {
+      version: 1,
+      totalAU: 5,
+      floorAU: { 0: 5 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: {},
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v1Save));
+    setStorage(store);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const incompleteMigrations: SaveMigrationMap = {
+      0: (d) => d,
+      // Missing 1 -> 2 migration on purpose.
+    };
+    try {
+      expect(load(incompleteMigrations)).toBeNull();
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[SaveManager] persistence:failed',
+        expect.objectContaining({ reason: 'parse', slot: 'test' }),
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('v1→v2 migration: loading a v1 save yields zeroed playtime fields', () => {
