@@ -17,6 +17,7 @@ export function getUtcDateKey(now: Date = new Date()): string {
 }
 
 export function dateKeyToSeed(dateKey: string): number {
+  if (!/^\d{8}$/.test(dateKey)) return 0;
   const parsed = Number.parseInt(dateKey, 10);
   return Number.isFinite(parsed) ? parsed >>> 0 : 0;
 }
@@ -78,4 +79,3 @@ export function shiftDateKeyUtc(dateKey: string, offsetDays: number): string {
   const shifted = new Date(Date.UTC(y, m - 1, d + offsetDays));
   return getUtcDateKey(shifted);
 }
-

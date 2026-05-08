@@ -32,7 +32,7 @@ import { preloadQuizFor } from '../../../config/quiz';
 import { preloadInfoFor } from '../../../config/info';
 import { applyDailyChallengeLayout } from './dailyChallengeLayout';
 import { getDailyState } from '../../../systems/DailyChallenge';
-import { getCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
+import { hasCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
@@ -828,6 +828,8 @@ export class LevelScene extends Phaser.Scene {
       this.resolvedLevelConfig = authored;
       return authored;
     }
+    // Mix the global day seed with floorId using the 32-bit golden-ratio hash
+    // constant so each floor gets a distinct deterministic stream.
     const seed = (daily.seed ^ (this.floorId * 0x9e3779b1)) >>> 0;
     this.resolvedLevelConfig = applyDailyChallengeLayout(authored, seed);
     return this.resolvedLevelConfig;
@@ -941,7 +943,7 @@ export class LevelScene extends Phaser.Scene {
       const runMs = this.gameState.playtime.getRunElapsedMs();
       if (runMs > 0) {
         recordResult(daily.dateKey, runMs);
-        if (getCompletionStreakEndingAt(daily.dateKey) >= 3) {
+        if (hasCompletionStreakEndingAt(daily.dateKey, 3)) {
           this.gameState.unlockAchievement('daily-streak-3');
         }
       }
