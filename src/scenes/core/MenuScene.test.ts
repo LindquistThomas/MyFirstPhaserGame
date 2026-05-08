@@ -68,7 +68,7 @@ vi.mock('../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
 vi.mock('../../systems/SpriteGenerator', () => ({
-  DEFERRED_SPRITE_PHASES: [{ label: 'Deferred sprite', run: vi.fn() }],
+  MENU_DEFERRED_SPRITE_PHASES: [{ label: 'Deferred sprite', run: vi.fn() }],
 }));
 vi.mock('../../systems/SoundGenerator', () => ({
   BATCHED_SOUND_PHASES: [

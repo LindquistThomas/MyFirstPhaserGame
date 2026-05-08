@@ -87,7 +87,7 @@ src/
 │   ├── sceneRegistry.ts      EAGER_REGISTRY + validateSceneRegistry(); derives SCENE_REGISTRY.
 │   ├── lazySceneLoaders.ts   LAZY_SCENE_LOADERS map — loader thunks for floor/product/boss scenes.
 │   ├── core/
-│   │   ├── BootScene.ts      Generates every sprite + sound; creates `GameStateManager`.
+│   │   ├── BootScene.ts      Loads eager files + player sprite, profiles boot phases in dev, creates `GameStateManager`.
 │   │   ├── MenuScene.ts      Title screen; new game / continue; save-slot UI.
 │   │   ├── PauseScene.ts     Pause overlay (resume / settings / quit).
 │   │   ├── SettingsScene.ts  Settings menu (audio, motion, controls).
@@ -219,8 +219,11 @@ BootScene  →  MenuScene  →  SaveSlotScene  →  ElevatorScene  ↔  Floor sc
                                                               ↘  product rooms (features/products/rooms/*)
 ```
 
-`BootScene` generates every sprite + sound once, creates the
-`GameStateManager`, and hands off to `MenuScene`. `SaveSlotScene` is
+`BootScene` loads eager static files, generates only the player sprite,
+creates the `GameStateManager`, and hands off to `MenuScene`. `MenuScene`
+warms up shared procedural assets after first paint. Boss/executive rescue
+sprites and selected SFX are generated lazily on first scene entry.
+`SaveSlotScene` is
 the slot picker — every new game and continue passes through it before
 reaching `ElevatorScene`. `ElevatorScene` is the central shaft; rides
 transition into the floor scenes in `features/floors/<floor>/` (each a
@@ -472,8 +475,10 @@ automatically.
 
 ## Key design choices
 
-- **Procedural assets.** No image files. `BootScene` generates every
-  sprite into Phaser's texture cache at startup.
+- **Procedural assets.** No image files. Boot keeps first paint fast by
+  generating only critical assets eagerly (player + shared SFX/music path)
+  and defers boss/rescue + coffee/fridge subsets via `ensure*` helpers in
+  `SpriteGenerator.ts` / `SoundGenerator.ts`.
 - **Event-driven coupling.** Systems don't hold references to each
   other; they publish and subscribe through `eventBus`. Audio is a
   pure subscriber.

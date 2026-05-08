@@ -5,7 +5,7 @@ import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
-import { DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import { MENU_DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
 import { BATCHED_SOUND_PHASES } from '../../systems/SoundGenerator';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
@@ -162,7 +162,7 @@ export class MenuScene extends Phaser.Scene {
    * frame-yielded via `time.addEvent` so Phaser can render between batches.
    *
    * Pipeline:
-   *   1. DEFERRED_SPRITE_PHASES — tiles, tokens, elevator, enemies, boss, etc.
+   *   1. MENU_DEFERRED_SPRITE_PHASES — tiles, tokens, elevator, enemies, etc.
    *      Each phase runs in its own frame tick (same budget as BootScene).
    *   2. BATCHED_SOUND_PHASES (2 batches instead of 6) — queues WAV blobs.
    *   3. `load.start()` decodes the blobs; `load.once('complete')` signals done.
@@ -234,7 +234,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Sprites: synchronous canvas ops that write to the shared TextureManager.
     if (!this._spritesComplete) {
-      for (const phase of DEFERRED_SPRITE_PHASES) phase.run(this);
+      for (const phase of MENU_DEFERRED_SPRITE_PHASES) phase.run(this);
       this._spritesComplete = true;
     }
 
@@ -251,7 +251,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private runDeferredAssets(): void {
-    const spritePhases = this.textures.exists('tiles') ? [] : DEFERRED_SPRITE_PHASES;
+    const spritePhases = this.textures.exists('tiles') ? [] : MENU_DEFERRED_SPRITE_PHASES;
     let spriteIndex = 0;
 
     const finishSprites = (): void => {
