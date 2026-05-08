@@ -59,8 +59,21 @@ async function expectSingleVirtualTapAction(page: import('@playwright/test').Pag
   await page.evaluate(() => {
     const jumpButton = document.querySelector<HTMLElement>('#virtual-pad [data-actions="Jump"]');
     if (!jumpButton) throw new Error('Virtual Jump button not found');
-    jumpButton.dispatchEvent(new Event('touchstart', { bubbles: true, cancelable: true }));
-    jumpButton.dispatchEvent(new Event('touchend', { bubbles: true, cancelable: true }));
+    const touch = new Touch({ identifier: Date.now(), target: jumpButton, clientX: 8, clientY: 8 });
+    jumpButton.dispatchEvent(new TouchEvent('touchstart', {
+      bubbles: true,
+      cancelable: true,
+      touches: [touch],
+      changedTouches: [touch],
+      targetTouches: [touch],
+    }));
+    jumpButton.dispatchEvent(new TouchEvent('touchend', {
+      bubbles: true,
+      cancelable: true,
+      touches: [],
+      changedTouches: [touch],
+      targetTouches: [],
+    }));
   });
 
   await page.waitForFunction(() => {

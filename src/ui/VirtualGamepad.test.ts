@@ -56,6 +56,8 @@ import * as EventBusModule from '../systems/EventBus';
 import * as SettingsStoreModule from '../systems/SettingsStore';
 import * as MotionPreference from '../systems/MotionPreference';
 
+const VIRTUAL_BUTTON_COUNT = 6;
+
 // Helpers -------------------------------------------------------------------
 
 function mockSetting(setting: 'auto' | 'always' | 'never', hapticsEnabled = true): void {
@@ -287,9 +289,9 @@ describe('initVirtualGamepad', () => {
     initVirtualGamepad();
     initVirtualGamepad();
 
-    expect(removeCounts.touchstart).toBe(6);
-    expect(removeCounts.touchend).toBe(6);
-    expect(removeCounts.touchcancel).toBe(6);
+    expect(removeCounts.touchstart).toBe(VIRTUAL_BUTTON_COUNT);
+    expect(removeCounts.touchend).toBe(VIRTUAL_BUTTON_COUNT);
+    expect(removeCounts.touchcancel).toBe(VIRTUAL_BUTTON_COUNT);
 
     _destroyVirtualGamepadForTests();
 
@@ -311,6 +313,7 @@ describe('initVirtualGamepad', () => {
     const removeTouchStarts = removeSpy.mock.calls.filter(([eventName]) => eventName === 'touchstart');
     expect(addTouchStarts.length).toBeGreaterThan(0);
     expect(removeTouchStarts.length).toBeGreaterThan(0);
+    // After second init(), one new reactive listener remains active until explicit teardown.
     expect(removeTouchStarts.length).toBe(addTouchStarts.length - 1);
 
     _destroyVirtualGamepadForTests();
