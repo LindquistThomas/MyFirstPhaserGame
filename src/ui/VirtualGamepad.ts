@@ -23,6 +23,7 @@ let reactiveDetected = false;
  * read on every vpad `touchstart` event.
  */
 let hapticsEnabled = true;
+const REACTIVE_TOUCH_LISTENER_OPTIONS: AddEventListenerOptions = { passive: true };
 // DOM listener audit:
 // - window: touchstart (reactive detection in registerReactiveDetection)
 // - each .vpad-btn: touchstart/touchend/touchcancel (buildPad)
@@ -66,6 +67,10 @@ function onTouchEnd(e: TouchEvent): void {
   }
 }
 
+/**
+ * Register one DOM event listener and enqueue its symmetric remove call so
+ * teardown can detach every listener exactly once.
+ */
 function bindDomListener(
   target: EventTarget,
   event: string,
@@ -76,12 +81,14 @@ function bindDomListener(
   padListenerDisposers.push(() => target.removeEventListener(event, listener, options));
 }
 
+/** Remove every button-level touch listener registered via {@link bindDomListener}. */
 function clearPadListeners(): void {
   while (padListenerDisposers.length > 0) {
     padListenerDisposers.pop()?.();
   }
 }
 
+/** Tear down all tracked virtual gamepad DOM listeners and remove the pad element. */
 function destroyVirtualGamepadInstance(): void {
   clearPadListeners();
   reactiveDetectionDispose?.();
@@ -233,7 +240,7 @@ export function applyVirtualGamepadVisibility(): void {
  * Separated from `initVirtualGamepad` so tests can call it independently.
  */
 export function registerReactiveDetection(): void {
-  if (reactiveDetected || reactiveDetectionDispose) return;
+  if (reactiveDetected || reactiveDetectionDispose !== null) return;
   const onFirstTouch = (): void => {
     if (reactiveDetected) return;
     reactiveDetected = true;
@@ -242,8 +249,8 @@ export function registerReactiveDetection(): void {
     eventBus.emit('input:touch_detected');
     applyVirtualGamepadVisibility();
   };
-  window.addEventListener('touchstart', onFirstTouch, { passive: true });
-  reactiveDetectionDispose = () => window.removeEventListener('touchstart', onFirstTouch, false);
+  window.addEventListener('touchstart', onFirstTouch, REACTIVE_TOUCH_LISTENER_OPTIONS);
+  reactiveDetectionDispose = () => window.removeEventListener('touchstart', onFirstTouch, REACTIVE_TOUCH_LISTENER_OPTIONS);
 }
 
 /**
