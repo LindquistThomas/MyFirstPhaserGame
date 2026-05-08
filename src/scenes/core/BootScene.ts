@@ -10,6 +10,7 @@ import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 import { isPersistenceAvailable } from '../../systems/PersistedStore';
 import { createAnalyticsService } from '../../systems/Analytics';
+import { setDailyState } from '../../systems/DailyChallenge';
 
 /** Count of static assets that failed to load during this boot pass. */
 let _bootAssetErrorCount = 0;
@@ -124,6 +125,7 @@ export class BootScene extends Phaser.Scene {
     migrateDefaultSlot();
     // Default active slot for the session (SaveSlotScene will override this).
     setPlayerSlot('slot1');
+    setDailyState(this.registry, null);
 
     // Probe storage availability at startup so every subsequent scene can
     // read `registry.get('persistenceAvailable')` to gate UI and toasts.

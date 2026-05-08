@@ -12,6 +12,7 @@ export type AchievementId =
   | 'info-1' | 'info-5' | 'info-all'
   | 'quiz-1' | 'quiz-5' | 'quiz-all'
   | 'tokens-10' | 'tokens-25'
+  | 'daily-streak-3'
   | 'boss-defeated' | 'boss-no-damage' | 'hostage-rescue'
   | 'grand-architect';
 
@@ -43,6 +44,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   // Token collection
   { id: 'tokens-10',  label: 'Token Collector',    description: 'Collect 10 tokens.' },
   { id: 'tokens-25',  label: 'Token Hoarder',      description: 'Collect 25 tokens.' },
+  // Secret daily challenge achievements
+  { id: 'daily-streak-3', label: 'Daily Cadence', description: 'Complete Daily Challenge 3 days in a row.', secret: true },
   // Secret boss / hostage achievements
   { id: 'boss-defeated',   label: 'Corner Office',    description: 'Defeat the CEO in the Boardroom.',                     secret: true },
   { id: 'boss-no-damage',  label: 'Untouchable',      description: 'Defeat the CEO without being hit.',                    secret: true },
