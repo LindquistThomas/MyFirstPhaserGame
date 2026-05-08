@@ -86,13 +86,6 @@ vi.mock('../../../systems/EventBus', () => ({
   eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn(), once: vi.fn() },
 }));
 
-// loadDeferredMusic is called in preload(), not getLevelConfig().
-// Stub it so the import resolves without side effects.
-vi.mock('../../../config/audioConfig', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../../config/audioConfig')>();
-  return { ...original, loadDeferredMusic: vi.fn() };
-});
-
 import { ExecutiveSuiteScene } from './ExecutiveSuiteScene';
 
 class TestableExecutiveSuiteScene extends ExecutiveSuiteScene {

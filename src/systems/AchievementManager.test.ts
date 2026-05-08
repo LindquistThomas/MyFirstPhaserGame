@@ -64,4 +64,9 @@ describe('AchievementManager', () => {
     AchievementManager.setStorage(storage);
     expect(AchievementManager.isUnlocked('quiz-1')).toBe(true);
   });
+
+  it('supports daily challenge achievement ids', () => {
+    expect(AchievementManager.unlock('daily-streak-3')).toBe(true);
+    expect(AchievementManager.isUnlocked('daily-streak-3')).toBe(true);
+  });
 });

@@ -16,6 +16,7 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
 import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
 import { formatPlaytime } from '../../ui/HUD';
+import { setDailyState } from '../../systems/DailyChallenge';
 
 /** Alias for slot-card speedrun PB formatting (milliseconds → M:SS). */
 export const formatMs = formatPlaytime;
@@ -267,6 +268,7 @@ export class SaveSlotScene extends Phaser.Scene {
 
   private activateSelected(): void {
     const slotId = SAVE_SLOTS[this.selectedIndex]!;
+    setDailyState(this.registry, null);
     setPlayerSlot(slotId);
     const info = this.slotInfos[this.selectedIndex]!;
     // Reset the initial-load guard so ElevatorScene re-applies the correct

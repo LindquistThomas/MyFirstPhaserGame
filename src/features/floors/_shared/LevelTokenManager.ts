@@ -32,7 +32,11 @@ export class LevelTokenManager {
 
   constructor(private readonly deps: TokenManagerDeps) {
     this.tokenGroup = deps.scene.physics.add.staticGroup();
-    this.droppedAUGroup = deps.scene.physics.add.group({ classType: DroppedAU });
+    this.droppedAUGroup = deps.scene.physics.add.group({
+      classType: DroppedAU,
+      maxSize: 32,
+      runChildUpdate: true,
+    });
   }
 
   spawn(config: LevelConfig): void {
@@ -89,7 +93,11 @@ export class LevelTokenManager {
   ): void => {
     const drop = dropObj as DroppedAU;
     if (!drop.ready || drop.collected) return;
-    drop.recover();
+    drop.recover(() => {
+      this.droppedAUGroup.killAndHide(drop);
+      const body = drop.body as Phaser.Physics.Arcade.Body | null;
+      if (body) body.enable = false;
+    });
     this.deps.progression.addAU(this.deps.floorId, 1);
     this.deps.gameState.checkAchievements();
   };

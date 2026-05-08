@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS, DEFERRED_MUSIC_ASSETS } from './audioConfig';
+import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from './audioConfig';
 
 describe('audioConfig eager tracks', () => {
-  it('music_menu is not eager — BootScene must not block on the 638 KB menu BGM', () => {
+  it('music_menu is eager so menu music is available immediately after boot', () => {
     const menuAsset = STATIC_MUSIC_ASSETS.find((a) => a.key === 'music_menu');
     expect(menuAsset).toBeDefined();
-    expect(menuAsset?.eager).not.toBe(true);
+    expect(menuAsset?.eager).toBe(true);
   });
 
-  it('no track in STATIC_MUSIC_ASSETS is eager — all tracks are lazy-loaded', () => {
+  it('only menu + elevator jazz are eager', () => {
     const eagerAssets = STATIC_MUSIC_ASSETS.filter((a) => a.eager === true);
-    expect(eagerAssets).toHaveLength(0);
+    expect(eagerAssets.map((a) => a.key).sort()).toEqual(['music_elevator_jazz', 'music_menu']);
   });
 });
 
@@ -30,7 +30,6 @@ describe('audioConfig soundtrack listen mode', () => {
   it('contains only known loaded music keys', () => {
     const knownKeys = new Set([
       ...STATIC_MUSIC_ASSETS.map((asset) => asset.key),
-      ...DEFERRED_MUSIC_ASSETS.map((asset) => asset.key),
       'music_lullaby',
     ]);
     for (const track of SOUNDTRACK_PLAYLIST) {

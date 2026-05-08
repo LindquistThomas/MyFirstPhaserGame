@@ -5,10 +5,27 @@ import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
-import { DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import { MENU_DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
 import { BATCHED_SOUND_PHASES } from '../../systems/SoundGenerator';
+import { setPlayerSlot, hasSave } from '../../systems/SaveManager';
+import type { GameStateManager } from '../../systems/GameStateManager';
+import type { NavigationContext } from '../NavigationContext';
+import {
+  formatDailyDateLabel,
+  getCurrentDailyState,
+  msUntilNextUtcMidnight,
+  setDailyState,
+} from '../../systems/DailyChallenge';
+import { getRecentResults, getResult } from '../../systems/DailyChallengeStore';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
+
+function formatDailyRun(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 /**
  * Title screen.
@@ -46,6 +63,9 @@ export class MenuScene extends Phaser.Scene {
   private _warmupDone = false;
   /** True once all DEFERRED_SPRITE_PHASES have been executed. */
   private _spritesComplete = false;
+  private dailyLabel?: Phaser.GameObjects.Text;
+  private dailyHistory?: Phaser.GameObjects.Text;
+  private dailyRefreshTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -98,6 +118,11 @@ export class MenuScene extends Phaser.Scene {
         ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
       }
     }
+
+    this.events.once('shutdown', () => {
+      this.dailyRefreshTimer?.remove(false);
+      this.dailyRefreshTimer = undefined;
+    });
   }
 
   /**
@@ -162,7 +187,7 @@ export class MenuScene extends Phaser.Scene {
    * frame-yielded via `time.addEvent` so Phaser can render between batches.
    *
    * Pipeline:
-   *   1. DEFERRED_SPRITE_PHASES — tiles, tokens, elevator, enemies, boss, etc.
+   *   1. MENU_DEFERRED_SPRITE_PHASES — tiles, tokens, elevator, enemies, etc.
    *      Each phase runs in its own frame tick (same budget as BootScene).
    *   2. BATCHED_SOUND_PHASES (2 batches instead of 6) — queues WAV blobs.
    *   3. `load.start()` decodes the blobs; `load.once('complete')` signals done.
@@ -234,7 +259,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Sprites: synchronous canvas ops that write to the shared TextureManager.
     if (!this._spritesComplete) {
-      for (const phase of DEFERRED_SPRITE_PHASES) phase.run(this);
+      for (const phase of MENU_DEFERRED_SPRITE_PHASES) phase.run(this);
       this._spritesComplete = true;
     }
 
@@ -251,7 +276,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private runDeferredAssets(): void {
-    const spritePhases = this.textures.exists('tiles') ? [] : DEFERRED_SPRITE_PHASES;
+    const spritePhases = this.textures.exists('tiles') ? [] : MENU_DEFERRED_SPRITE_PHASES;
     let spriteIndex = 0;
 
     const finishSprites = (): void => {
@@ -640,14 +665,33 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
     }).setOrigin(0.5).setDepth(TEXT_DEPTH);
 
-    // Start button — always leads to the slot picker
+    // Continue button — opens slot picker
     const startAction = () => this.openSlotPicker();
-    const btn = this.makeButton(cx, cy + 40, '[ SELECT SAVE SLOT ]', 24, startAction);
+    const btn = this.makeButton(cx, cy + 40, '[ CONTINUE ]', 24, startAction);
     btn.setDepth(TEXT_DEPTH);
     this.menuButtons.push({ btn, action: startAction });
 
+    const dailyAction = () => this.startDailyChallenge();
+    const dailyBtn = this.makeButton(cx, cy + 95, '[ DAILY CHALLENGE ]', 20, dailyAction);
+    dailyBtn.setDepth(TEXT_DEPTH);
+    this.menuButtons.push({ btn: dailyBtn, action: dailyAction });
+    this.dailyLabel = this.add.text(cx, cy + 122, '', {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: '#9fb1c8',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(TEXT_DEPTH);
+    this.dailyHistory = this.add.text(cx, cy + 196, '', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#6f829b',
+      align: 'center',
+      lineSpacing: 4,
+    }).setOrigin(0.5).setDepth(TEXT_DEPTH);
+    this.refreshDailyChallengeText();
+
     if (SOUNDTRACK_PLAYLIST.length > 0) {
-      const soundtrackYOffset = MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET;
+      const soundtrackYOffset = MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET + 90;
       const soundtrackY = cy + soundtrackYOffset;
       const soundtrackAction = () => this.playNextSoundtrack();
       const soundtrackBtn = this.makeButton(cx, soundtrackY, '[ SOUNDTRACK MODE ]', 20, soundtrackAction);
@@ -656,7 +700,7 @@ export class MenuScene extends Phaser.Scene {
       this.soundtrackButton = soundtrackBtn;
     }
 
-    const settingsYOffset = 160;
+    const settingsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 250 : 205;
     const settingsAction = () => this.openSettings();
     const settingsBtn = this.makeButton(cx, cy + settingsYOffset, '[ SETTINGS ]', 20, settingsAction);
     settingsBtn.setDepth(TEXT_DEPTH);
@@ -728,8 +772,37 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private openSlotPicker(): void {
+    setDailyState(this.registry, null);
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => this.scene.start('SaveSlotScene'));
+  }
+
+  private refreshDailyChallengeText(): void {
+    const state = getCurrentDailyState();
+    const best = getResult(state.dateKey)?.runMs;
+    const bestText = best !== undefined ? formatDailyRun(best) : '—';
+    this.dailyLabel?.setText(`${formatDailyDateLabel(state.dateKey)}  ·  Best: ${bestText}`);
+
+    const history = getRecentResults(7).map((entry) => {
+      const label = `${entry.dateKey.slice(4, 6)}-${entry.dateKey.slice(6, 8)}`;
+      return `${label}: ${entry.runMs !== undefined ? formatDailyRun(entry.runMs) : '—'}`;
+    });
+    this.dailyHistory?.setText(history.join('\n'));
+
+    this.dailyRefreshTimer?.remove(false);
+    this.dailyRefreshTimer = this.time.delayedCall(msUntilNextUtcMidnight() + 1000, () => {
+      this.refreshDailyChallengeText();
+    });
+  }
+
+  private startDailyChallenge(): void {
+    const state = getCurrentDailyState();
+    setDailyState(this.registry, state);
+    setPlayerSlot(state.slotId);
+    (this.registry.get('gameState') as GameStateManager).resetLoadState();
+    const ctx: NavigationContext = { loadSave: hasSave() };
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.time.delayedCall(300, () => this.scene.start('ElevatorScene', ctx));
   }
 
   private openSettings(): void {

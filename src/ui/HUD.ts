@@ -52,6 +52,7 @@ export class HUD {
   private lastFloor: FloorId | -1 = -1;
   private sizeClass: SizeClass = 'wide';
   private tokens: LayoutTokens = getLayoutTokens('wide');
+  private destroyed = false;
 
   constructor(scene: Phaser.Scene, progression: ProgressionSystem, playtime?: PlaytimeTracker) {
     this.scene = scene;
@@ -97,6 +98,7 @@ export class HUD {
     container.add(this.timerText as unknown as Phaser.GameObjects.GameObject);
 
     const lifecycle = createSceneLifecycle(this.scene);
+    lifecycle.add(() => this.destroy());
     lifecycle.bindEventBus('persistence:failed', (payload) => {
       // When the boot-time probe returned false the player has already been
       // told via the guest-mode banner. Suppress ALL persistence toasts for
@@ -223,5 +225,16 @@ export class HUD {
   private _isTimerVisible(): boolean {
     if (this.playtime === null) return false;
     return settingsStore.read().showRunTimer;
+  }
+
+  private destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.coinCtrl.destroy();
+    this.progressCtrl.destroy();
+    this.muteCtrl.destroy();
+    this.caffeineCtrl.destroy();
+    this.achievementCtrl.destroy();
+    this.toast.destroy();
   }
 }

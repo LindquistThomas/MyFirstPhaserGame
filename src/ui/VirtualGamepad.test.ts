@@ -48,12 +48,15 @@ import {
   initVirtualGamepad,
   updateVirtualGamepadContrast,
   _resetReactiveDetected,
+  _destroyVirtualGamepadForTests,
 } from './VirtualGamepad';
 import * as touchPrimary from './touchPrimary';
 import * as TouchHintOverlay from './TouchHintOverlay';
 import * as EventBusModule from '../systems/EventBus';
 import * as SettingsStoreModule from '../systems/SettingsStore';
 import * as MotionPreference from '../systems/MotionPreference';
+
+const VIRTUAL_BUTTON_COUNT = 6;
 
 // Helpers -------------------------------------------------------------------
 
@@ -219,8 +222,8 @@ describe('initVirtualGamepad', () => {
 
   afterEach(() => {
     document.getElementById('virtual-pad')?.remove();
-    // Drain the once-listener installed by initVirtualGamepad/registerReactiveDetection
-    // so it doesn't bleed into subsequent test files.
+    _destroyVirtualGamepadForTests();
+    // Drain any reactive touch listener so it doesn't bleed into subsequent tests.
     window.dispatchEvent(new Event('touchstart'));
     vi.restoreAllMocks();
   });
@@ -248,6 +251,74 @@ describe('initVirtualGamepad', () => {
     mockSetting('always');
     initVirtualGamepad();
     expect(getPad()?.classList.contains('active')).toBe(true);
+  });
+
+  it('tears down prior DOM listeners before re-init', () => {
+    mockSetting('always');
+    vi.mocked(touchPrimary.isTouchPrimary).mockReturnValue(true);
+
+    const addCounts = { touchstart: 0, touchend: 0, touchcancel: 0 };
+    const removeCounts = { touchstart: 0, touchend: 0, touchcancel: 0 };
+    const nativeAdd = EventTarget.prototype.addEventListener;
+    const nativeRemove = EventTarget.prototype.removeEventListener;
+    const addSpy = vi.spyOn(EventTarget.prototype, 'addEventListener');
+    const removeSpy = vi.spyOn(EventTarget.prototype, 'removeEventListener');
+    addSpy.mockImplementation(function (
+      this: EventTarget,
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | AddEventListenerOptions,
+    ): void {
+      if (this instanceof HTMLElement && this.classList.contains('vpad-btn') && type in addCounts) {
+        addCounts[type as keyof typeof addCounts] += 1;
+      }
+      return nativeAdd.call(this, type, listener, options);
+    });
+    removeSpy.mockImplementation(function (
+      this: EventTarget,
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | EventListenerOptions,
+    ): void {
+      if (this instanceof HTMLElement && this.classList.contains('vpad-btn') && type in removeCounts) {
+        removeCounts[type as keyof typeof removeCounts] += 1;
+      }
+      return nativeRemove.call(this, type, listener, options);
+    });
+
+    initVirtualGamepad();
+    initVirtualGamepad();
+
+    expect(removeCounts.touchstart).toBe(VIRTUAL_BUTTON_COUNT);
+    expect(removeCounts.touchend).toBe(VIRTUAL_BUTTON_COUNT);
+    expect(removeCounts.touchcancel).toBe(VIRTUAL_BUTTON_COUNT);
+
+    _destroyVirtualGamepadForTests();
+
+    expect(removeCounts.touchstart).toBe(addCounts.touchstart);
+    expect(removeCounts.touchend).toBe(addCounts.touchend);
+    expect(removeCounts.touchcancel).toBe(addCounts.touchcancel);
+  });
+
+  it('removes prior window touchstart listener before re-init', () => {
+    mockSetting('auto');
+    vi.mocked(touchPrimary.isTouchPrimary).mockReturnValue(false);
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+    initVirtualGamepad();
+    initVirtualGamepad();
+
+    const addTouchStarts = addSpy.mock.calls.filter(([eventName]) => eventName === 'touchstart');
+    const removeTouchStarts = removeSpy.mock.calls.filter(([eventName]) => eventName === 'touchstart');
+    expect(addTouchStarts.length).toBeGreaterThan(0);
+    expect(removeTouchStarts.length).toBeGreaterThan(0);
+    // After second init(), one new reactive listener remains active until explicit teardown.
+    expect(removeTouchStarts.length).toBe(addTouchStarts.length - 1);
+
+    _destroyVirtualGamepadForTests();
+    const finalRemoveTouchStarts = removeSpy.mock.calls.filter(([eventName]) => eventName === 'touchstart');
+    expect(finalRemoveTouchStarts.length).toBe(addTouchStarts.length);
   });
 });
 

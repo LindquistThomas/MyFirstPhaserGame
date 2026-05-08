@@ -157,8 +157,15 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
-  # Stable fan-in job: branch protection requires THIS name, not individual
-  # shard names.  Adding/removing shards never invalidates the required check.
+  # Stable fan-in job: branch protection on main should require THIS name, not
+  # individual shard names. Keep required checks aligned to:
+  # - Lint + typecheck + unit tests
+  # - Playwright E2E complete
+  # - Bundle size budget (optional)
+  # Remove stale per-shard branch-protection entries if they exist:
+  # - Playwright E2E (shard 1/2), Playwright E2E (shard 2/2)
+  # - Playwright E2E (shard 1/4) … (shard 4/4)
+  # Adding/removing shards must not invalidate required checks.
   e2e-complete:
     name: Playwright E2E complete
     needs: [changes, e2e]
