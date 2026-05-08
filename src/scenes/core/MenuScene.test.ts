@@ -387,7 +387,9 @@ describe('MenuScene.create — reduced-motion guards', () => {
     const scene = makeCreateScene();
     expect((scene.tweens.add as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
     expect((scene.tweens.addCounter as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
-    expect((scene.time.delayedCall as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(0);
+    // Daily Challenge UI schedules a midnight refresh timer; reduced motion
+    // should still suppress animation-driven delayed calls.
+    expect((scene.time.delayedCall as ReturnType<typeof vi.fn>).mock.calls.length).toBeLessThanOrEqual(1);
   });
 
   it('creates all four animation tweens when isReducedMotion() is false', () => {
