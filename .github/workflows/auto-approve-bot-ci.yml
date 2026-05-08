@@ -1,0 +1,89 @@
+name: Auto-approve bot CI
+
+# Runs on the BASE branch (not the PR fork), so it is not subject to the
+# "Fork pull request workflows from outside collaborators" approval gate.
+# When a trusted bot opens a PR, the main CI run is placed in
+# "Action required" state because the bot lacks write access.  This workflow
+# wakes up, verifies the actor is a known Copilot bot, and approves the
+# pending run automatically — equivalent to what an admin would click through
+# in the UI.
+#
+# Security notes:
+#   • The actor check uses github.event.workflow_run.actor.login, which is
+#     set by GitHub and cannot be spoofed by PR code.
+#   • The head-repository guard (head_repository.full_name == repository) pins
+#     approval to PRs whose head branch lives inside THIS repo (i.e. a branch
+#     push by the bot), not external forks.  Copilot coding-agent PRs are
+#     always from a branch on the base repo, so legitimate runs are unaffected
+#     while externally-forked PRs from the same bot identity are excluded.
+#   • The token scope is limited to `actions: write`; all other permissions
+#     default to none / read.
+#   • Only the specific bot logins listed in the `if` condition are approved.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [requested]
+
+permissions:
+  actions: write
+
+jobs:
+  # Diagnostic job — runs for every workflow_run event (no if-guard) so the
+  # actor.login / actor.id values are always visible in the Actions log
+  # regardless of whether the approve job fires.  This makes it easy to confirm
+  # the exact identity used by a new bot without re-deploying a speculative fix.
+  debug-actor:
+    name: Log workflow_run actor (diagnostic)
+    runs-on: ubuntu-latest
+    # Read-only token: this job only logs metadata, so it does not need the
+    # workflow-level actions:write permission.
+    permissions: {}
+    steps:
+      - name: Print actor JSON
+        env:
+          ACTOR_JSON: ${{ toJSON(github.event.workflow_run.actor) }}
+        run: echo "$ACTOR_JSON"
+
+  approve:
+    name: Approve Copilot bot run
+    runs-on: ubuntu-latest
+    # Only approve runs from the known Copilot coding-agent identity AND
+    # only when the head branch lives inside this repo (not an external fork).
+    # The head-repository guard prevents auto-approving runs triggered by a
+    # fork-based PR that happens to be opened by the same shared bot identity.
+    #
+    # Primary gate: actor.id — stable numeric identifier that won't change
+    # even if GitHub renames the displayed login again.
+    #   • 198982749 — Copilot coding-agent (copilot-swe-agent / 'Copilot')
+    #
+    # Secondary gate: actor.login — kept as belt-and-suspenders for
+    # the alternate [bot]-suffix form that may appear in some event contexts,
+    # and to catch any future Copilot identity before its id is confirmed.
+    #   • 'Copilot'               — login seen in workflow_run.actor for
+    #                               coding-agent PRs (id 198982749).
+    #   • 'copilot-swe-agent[bot]' — [bot]-suffix form; may appear in some
+    #                               event contexts.
+    #   • 'github-copilot[bot]'  — legacy / alternate Copilot bot identity.
+    #
+    # The debug-actor job above logs the full actor payload for every run so
+    # this list can be updated if a new identity is encountered.
+    if: >-
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      (
+        github.event.workflow_run.actor.id == 198982749 ||
+        github.event.workflow_run.actor.login == 'Copilot' ||
+        github.event.workflow_run.actor.login == 'copilot-swe-agent[bot]' ||
+        github.event.workflow_run.actor.login == 'github-copilot[bot]'
+      )
+    steps:
+      - name: Approve pending workflow run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${REPO}/actions/runs/${RUN_ID}/approve"
