@@ -137,6 +137,17 @@ describe('Player', () => {
     expect(setVelocity).not.toHaveBeenCalled();
   });
 
+  it('destroy() stops and clears hit-flash tween', () => {
+    player.takeHit(100, -200, 1000);
+    const tween = (player as unknown as { hitFlashTween?: { stop: ReturnType<typeof vi.fn> } }).hitFlashTween;
+    expect(tween).toBeDefined();
+
+    player.destroy();
+
+    expect(tween?.stop).toHaveBeenCalledTimes(1);
+    expect((player as unknown as { hitFlashTween?: unknown }).hitFlashTween).toBeUndefined();
+  });
+
   it('getIsFlipping clears once the player touches the ground again', () => {
     scene.inputs.justPressed = () => true;
     sprite.body.blocked.down = true;

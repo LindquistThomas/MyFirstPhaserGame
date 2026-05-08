@@ -47,12 +47,14 @@ The CI `size-budget` job (`npm run size`) runs `scripts/check-size.cjs` after ev
 | `dist/assets/index-*.js` (app chunk, gzipped) | 150 KB | App logic; well under today's size. |
 | `dist/assets/phaser-*.js` (engine chunk, gzipped) | 400 KB | Phaser 3.90 gzips to ~330 KB; guards against accidental engine duplication. |
 | Total `dist/` excluding `dist/music/**` (gzipped) | 700 KB | JS + HTML payload, minus streamed audio. |
-| Eager music assets (raw, from `STATIC_MUSIC_ASSETS`) | 2 MB | First-load audio; currently ~830 KB. |
+| Eager music assets (raw, from `STATIC_MUSIC_ASSETS`) | 700 KB | First-load audio; currently 0 KB (no tracks marked `eager: true`). Headroom for one ~640 KB OGG. |
 | **Total music assets** (raw, all `dist/music/**`) | **6.5 MB** | Guards against audio bloat; ~6.0 MB today after orphan cleanup. |
 
 In addition to size budgets, the check fails if any audio file in `dist/music/` is **not declared** in `STATIC_MUSIC_ASSETS` (`src/config/audioConfig.ts`). This prevents orphaned tracks from accumulating unnoticed.
 
 If a PR genuinely needs more weight, raise the appropriate limit in `scripts/check-size.cjs` with a comment explaining why.
+
+If Copilot-authored PR checks are stuck in `action_required`, see [docs/ci-approval-policy.md](docs/ci-approval-policy.md).
 
 ## Development
 

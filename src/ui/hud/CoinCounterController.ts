@@ -4,6 +4,7 @@ import type { LayoutTokens } from '../../style/responsive';
 import type { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { settingsStore } from '../../systems/SettingsStore';
 import { lighten } from './colorUtils';
+import { createSceneLifecycle, type SceneLifecycle } from '../../systems/sceneLifecycle';
 
 const COIN_X = 26;
 const COIN_Y = 22;
@@ -20,6 +21,9 @@ export class CoinCounterController {
   private readonly scene: Phaser.Scene;
   private readonly coinIcon: Phaser.GameObjects.Graphics;
   private readonly coinShine: Phaser.GameObjects.Graphics;
+  private readonly lifecycle: SceneLifecycle;
+  private shimmerDelay?: Phaser.Time.TimerEvent;
+  private shimmerLoop?: Phaser.Time.TimerEvent;
 
   constructor(
     scene: Phaser.Scene,
@@ -50,6 +54,8 @@ export class CoinCounterController {
     this.coinShine.fillRect(-1, -10, 2, 20);
     this.coinShine.setPosition(COIN_X - 14, COIN_Y).setAlpha(0);
     container.add(this.coinShine as unknown as Phaser.GameObjects.GameObject);
+    this.lifecycle = createSceneLifecycle(scene);
+    this.lifecycle.add(() => this.destroy());
     this.scheduleCoinShimmer();
 
     // AU label + counter — explicit resolution: 2 for maximum crispness on the
@@ -84,8 +90,8 @@ export class CoinCounterController {
         onComplete: () => this.coinShine.setAlpha(0),
       });
     };
-    this.scene.time.delayedCall(3000, fire);
-    this.scene.time.addEvent({ delay: 6000, loop: true, callback: fire });
+    this.shimmerDelay = this.scene.time.delayedCall(3000, fire);
+    this.shimmerLoop = this.scene.time.addEvent({ delay: 6000, loop: true, callback: fire });
   }
 
   /** Punch coin + float "+N" on AU gain. */
@@ -134,5 +140,16 @@ export class CoinCounterController {
   /** Update font size when the viewport size class changes. */
   relayout(tokens: LayoutTokens): void {
     this.auText.setStyle({ fontSize: tokens.hudFontAU });
+  }
+
+  destroy(): void {
+    this.shimmerDelay?.destroy();
+    this.shimmerDelay = undefined;
+    this.shimmerLoop?.destroy();
+    this.shimmerLoop = undefined;
+    // Test scene mocks may not implement killTweensOf.
+    if ('killTweensOf' in this.scene.tweens) {
+      this.scene.tweens.killTweensOf([this.coinIcon, this.coinShine]);
+    }
   }
 }

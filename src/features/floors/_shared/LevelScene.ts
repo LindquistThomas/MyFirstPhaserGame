@@ -3,7 +3,6 @@ import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS, FloorId } from '../../../co
 import { LEVEL_DATA, FloorData } from '../../../config/levelData';
 import { Player } from '../../../entities/Player';
 import { Enemy } from '../../../entities/Enemy';
-import { DroppedAU } from '../../../entities/DroppedAU';
 import { Checkpoint } from '../../../entities/Checkpoint';
 import { HUD } from '../../../ui/HUD';
 import { DialogController } from '../../../ui/DialogController';
@@ -31,6 +30,9 @@ import { settingsStore } from '../../../systems/SettingsStore';
 import { getCoachHint } from './coachHints';
 import { preloadQuizFor } from '../../../config/quiz';
 import { preloadInfoFor } from '../../../config/info';
+import { applyDailyChallengeLayout } from './dailyChallengeLayout';
+import { getDailyState } from '../../../systems/DailyChallenge';
+import { hasCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
@@ -204,6 +206,8 @@ export class LevelScene extends Phaser.Scene {
 
   /** Tracks dialog open state across frames so we can pause/resume the playtime tracker. */
   private wasDialogOpen = false;
+  /** Immutable per-scene level config (daily overrides resolved once in create()). */
+  private resolvedLevelConfig?: LevelConfig;
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
@@ -234,6 +238,7 @@ export class LevelScene extends Phaser.Scene {
     this.floorData = LEVEL_DATA[this.floorId];
     this.isTransitioning = false;
     this.movingPlatforms = [];
+    this.resolvedLevelConfig = undefined;
     this.floorHazard.reset();
     this.heartbeatElapsed = 0;
     // Kick off lazy-load of this floor's quiz and info content so the data is
@@ -294,7 +299,7 @@ export class LevelScene extends Phaser.Scene {
       gameState: this.gameState,
     });
 
-    const cfg = this.getLevelConfig();
+    const cfg = this.getResolvedLevelConfig();
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
     this.coffeeMgr.spawn(cfg);
@@ -586,7 +591,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- platforms ---- */
   protected createPlatforms(): void {
     this.platformGroup = this.physics.add.staticGroup();
-    const config = this.getLevelConfig();
+    const config = this.getResolvedLevelConfig();
     this.buildPlatforms(config);
     this.buildCatwalks(config);
   }
@@ -667,7 +672,7 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- moving platforms ---- */
   protected createMovingPlatforms(): void {
-    const config = this.getLevelConfig();
+    const config = this.getResolvedLevelConfig();
     if (!config.movingPlatforms?.length) return;
     for (const cfg of config.movingPlatforms) {
       this.movingPlatforms.push(new MovingPlatform(this, cfg));
@@ -713,7 +718,7 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- exit ---- */
   protected createExit(): void {
-    const c = this.getLevelConfig();
+    const c = this.getResolvedLevelConfig();
     this.exitDoor = this.add.image(c.exitPosition.x, c.exitPosition.y, 'door_exit').setDepth(4);
     // Clickable/tappable — mouse and touch users can hit the door
     // directly instead of having to press Enter while standing next
@@ -738,7 +743,7 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- player ---- */
   protected createPlayer(): void {
-    const c = this.getLevelConfig();
+    const c = this.getResolvedLevelConfig();
     this.player = new Player(this, c.playerStart.x, c.playerStart.y);
     this.player.sprite.setCollideWorldBounds(true);
 
@@ -813,6 +818,21 @@ export class LevelScene extends Phaser.Scene {
       exitPosition: { x: 120, y: GAME_HEIGHT - 180 },
       playerStart: { x: 120, y: GAME_HEIGHT - 200 },
     };
+  }
+
+  protected getResolvedLevelConfig(): LevelConfig {
+    if (this.resolvedLevelConfig) return this.resolvedLevelConfig;
+    const authored = this.getLevelConfig();
+    const daily = getDailyState(this.registry);
+    if (!daily) {
+      this.resolvedLevelConfig = authored;
+      return authored;
+    }
+    // Mix the global day seed with floorId using the 32-bit golden-ratio hash
+    // constant so each floor gets a distinct deterministic stream.
+    const seed = (daily.seed ^ (this.floorId * 0x9e3779b1)) >>> 0;
+    this.resolvedLevelConfig = applyDailyChallengeLayout(authored, seed);
+    return this.resolvedLevelConfig;
   }
 
   /* ---- update loop ---- */
@@ -918,6 +938,16 @@ export class LevelScene extends Phaser.Scene {
     if (this.floorId === FLOORS.LOBBY) {
       this.gameState.playtime.startRun();
     }
+    const daily = getDailyState(this.registry);
+    if (daily && this.floorId !== FLOORS.LOBBY) {
+      const runMs = this.gameState.playtime.getRunElapsedMs();
+      if (runMs > 0) {
+        recordResult(daily.dateKey, runMs);
+        if (hasCompletionStreakEndingAt(daily.dateKey, 3)) {
+          this.gameState.unlockAchievement('daily-streak-3');
+        }
+      }
+    }
     this.cameras.main.fadeOut(500, 0, 0, 0);
     const ctx: NavigationContext = {
       fromFloor: this.floorId,
@@ -965,7 +995,7 @@ export class LevelScene extends Phaser.Scene {
     if (this.isTransitioning) return;
 
     const cp = this.floorHazard.getCheckpointPos();
-    const target = cp ?? this.getLevelConfig().playerStart;
+    const target = cp ?? this.getResolvedLevelConfig().playerStart;
 
     this.floorHazard.reset();
     this.heartbeatElapsed = 0;

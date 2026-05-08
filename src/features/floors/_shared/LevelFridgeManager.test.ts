@@ -98,6 +98,8 @@ function makeHarness(options?: { hasParticleTexture?: boolean; justPressed?: boo
       particles: vi.fn(() => emitter),
     },
     textures: { exists: vi.fn(() => options?.hasParticleTexture ?? false) },
+    cache: { audio: { exists: vi.fn(() => true) } },
+    load: { start: vi.fn() },
     events: {
       once: vi.fn((event: string, cb: () => void) => {
         if (!sceneEventHandlers[event]) sceneEventHandlers[event] = [];

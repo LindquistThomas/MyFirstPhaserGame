@@ -47,12 +47,11 @@ export interface MusicAsset {
  * `music:push`) so that `MusicPlugin` can ensure the asset is cached
  * before `AudioManager` attempts playback.
  *
- * Replaces the former separate `STATIC_MUSIC_ASSETS` / `DEFERRED_MUSIC_ASSETS`
- * split — `BootScene` now filters by `eager === true`.
+ * `BootScene` filters this catalog by `eager === true`.
  */
 export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
-  { key: 'music_menu',          path: 'music/8bit-chiptune/bgm_menu.ogg' },
-  { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.mp3' },
+  { key: 'music_menu',          path: 'music/8bit-chiptune/bgm_menu.ogg', eager: true },
+  { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.mp3', eager: true },
   { key: 'music_elevator_ride', path: 'music/8bit-chiptune/bgm_action_3.mp3' },
   { key: 'music_floor1',        path: 'music/8bit-chiptune/bgm_action_1.mp3' },
   { key: 'music_floor2',        path: 'music/8bit-chiptune/bgm_action_2.mp3' },
@@ -69,34 +68,6 @@ export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_executive_tension',    path: 'music/boss/boss_tension.wav' },
   { key: 'music_executive_victory',    path: 'music/boss/boss_victory.wav' },
 ];
-
-/**
- * Backward-compat view: assets that are NOT eager (formerly DEFERRED_MUSIC_ASSETS).
- * Prefer reading `STATIC_MUSIC_ASSETS` and filtering by `!eager` in new code.
- */
-export const DEFERRED_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = STATIC_MUSIC_ASSETS.filter(
-  (a) => !a.eager,
-);
-
-/**
- * @deprecated Use the automatic lazy-loading in `MusicPlugin` instead.
- *
- * Queue a music asset for load on a scene's loader. Safe to call from
- * `preload()` on every scene entry — Phaser skips audio keys that are
- * already cached, so subsequent visits don't re-download.
- *
- * This helper is no longer needed now that `MusicPlugin` lazy-loads on
- * first play, but is kept so existing call-sites don't break.
- */
-export function loadDeferredMusic(
-  scene: { load: { audio: (key: string, url: string) => unknown }; cache: { audio: { exists: (key: string) => boolean } } },
-  key: string,
-): void {
-  if (scene.cache.audio.exists(key)) return;
-  const asset = STATIC_MUSIC_ASSETS.find((a) => a.key === key);
-  if (!asset) return;
-  scene.load.audio(asset.key, asset.path);
-}
 
 export interface SoundtrackTrack {
   key: string;

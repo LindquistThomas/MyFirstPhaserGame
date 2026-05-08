@@ -103,4 +103,12 @@ export class Toast {
   getMessage(): string {
     return this.label.text;
   }
+
+  destroy(): void {
+    this.dismissTimer?.remove(true);
+    this.dismissTimer = undefined;
+    this.activeTween?.stop();
+    this.activeTween = undefined;
+    this.container.destroy();
+  }
 }

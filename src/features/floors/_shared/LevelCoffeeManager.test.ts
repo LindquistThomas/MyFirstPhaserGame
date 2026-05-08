@@ -71,6 +71,8 @@ function makeHarness(options?: { hasParticleTexture?: boolean }) {
       },
     },
     textures: { exists: vi.fn(() => options?.hasParticleTexture ?? false) },
+    cache: { audio: { exists: vi.fn(() => true) } },
+    load: { start: vi.fn() },
     add: {
       particles: vi.fn(() => emitter),
     },
