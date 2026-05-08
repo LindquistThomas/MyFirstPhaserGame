@@ -184,6 +184,9 @@ function ensureSoundPhases(
 ): void {
   if (requiredAudioKeys.every((key) => scene.cache.audio.exists(key))) return;
   for (const phase of phases) phase.run(scene);
+  // Audio buffers are queued into Phaser's Loader and decoded asynchronously,
+  // so lazy sound generation must explicitly kick the loader. Sprite generation
+  // writes textures directly into TextureManager and needs no loader start.
   scene.load.start();
 }
 

@@ -282,7 +282,7 @@ export class BootScene extends Phaser.Scene {
 
   private _scheduleNextFrame(callback: () => void): void {
     if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => callback());
+      requestAnimationFrame(callback);
       return;
     }
     this.time.addEvent({ delay: 0, callback });
