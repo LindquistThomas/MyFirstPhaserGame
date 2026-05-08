@@ -6,7 +6,7 @@ import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
 import { FinanceTeamScene } from '../finance/FinanceTeamScene';
 import { InteractiveDoor } from '../../../ui/InteractiveDoor';
-import { loadDeferredMusic } from '../../../config/audioConfig';
+import { STATIC_MUSIC_ASSETS } from '../../../config/audioConfig';
 import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
 import { PistolProjectile } from '../../../entities/PistolProjectile';
@@ -85,11 +85,18 @@ export class ExecutiveSuiteScene extends defineFloorScene({
     // ready by the time create() runs (avoids a brief silence on first
     // entry). MusicPlugin's lazy-loading is the fallback for scenes without
     // an explicit preload step.
-    loadDeferredMusic(this, 'music_executive');
+    this.preloadSceneMusic('music_executive');
     // Pre-load rescue music variants so the crossfade is instant.
     // If either file is missing the fallback (music_executive) keeps playing.
-    loadDeferredMusic(this, 'music_executive_tension');
-    loadDeferredMusic(this, 'music_executive_victory');
+    this.preloadSceneMusic('music_executive_tension');
+    this.preloadSceneMusic('music_executive_victory');
+  }
+
+  private preloadSceneMusic(key: string): void {
+    if (this.cache.audio.exists(key)) return;
+    const asset = STATIC_MUSIC_ASSETS.find((musicAsset) => musicAsset.key === key);
+    if (!asset) return;
+    this.load.audio(asset.key, asset.path);
   }
 
   override init(data?: { fromDoor?: string }): void {
