@@ -103,11 +103,16 @@ export const CURRENT_SAVE_VERSION = 3;
 const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
   0: (d) => d,
   1: (d) => ({ ...d, playtimeMs: 0, floorPlaytimeMs: {} }),
-  2: (d) => ({
-    ...d,
-    bestRunMs: typeof d['bestClearMs'] === 'number' ? d['bestClearMs'] : undefined,
-    bestFloorMs: undefined,
-  }),
+  2: (d) => {
+    const { bestClearMs, ...rest } = d;
+    return {
+      ...rest,
+      bestRunMs: typeof bestClearMs === 'number' ? bestClearMs : undefined,
+      bestFloorMs: (typeof d['bestFloorMs'] === 'object' && d['bestFloorMs'] !== null && !Array.isArray(d['bestFloorMs']))
+        ? d['bestFloorMs']
+        : undefined,
+    };
+  },
 };
 
 
@@ -365,7 +370,7 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
     exists: true,
     totalAU: data.totalAU,
     currentFloor: validateFloorId(data.currentFloor),
-    bestRunMs: data.bestRunMs ?? data.bestClearMs,
+    bestRunMs: data.bestRunMs,
     lastPlayedAt: data.lastPlayedAt,
   };
 }

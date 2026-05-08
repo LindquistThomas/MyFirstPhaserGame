@@ -165,13 +165,14 @@ export class PlaytimeTracker {
   /**
    * Compare the current floor-visit time to the stored PB for this floor.
    * Returns the visit duration and whether a new PB was set.
+   * Returns `runMs: null` when `floorId` is not the currently tracked floor.
    */
-  recordFloorBest(floorId: FloorId): { isNewBest: boolean; runMs: number } {
-    if (this.currentFloor !== floorId) return { isNewBest: false, runMs: 0 };
+  recordFloorBest(floorId: FloorId): { isNewBest: boolean; runMs: number | null } {
+    if (this.currentFloor !== floorId) return { isNewBest: false, runMs: null };
     this._captureActiveDelta();
     const floorTotal = (this.floorMs[floorId] ?? 0) + this.sessionFloorMs;
     const runMs = Math.max(0, floorTotal - this.floorSegmentStartMs);
-    if (runMs <= 0) return { isNewBest: false, runMs };
+    if (runMs === 0) return { isNewBest: false, runMs };
     const prevBest = this.bestFloorMs[floorId];
     const isNewBest = prevBest === undefined || runMs < prevBest;
     if (isNewBest) this.bestFloorMs[floorId] = runMs;
@@ -263,6 +264,17 @@ export class PlaytimeTracker {
   // ── update / persist ───────────────────────────────────────────────────
 
   /**
+   * Test-only helper for deterministic floor-PB scenarios.
+   * Seeds the in-memory floor-visit timer state without touching Date.now().
+   */
+  setTestFloorVisit(floorId: FloorId, elapsedMs: number): void {
+    this.currentFloor = floorId;
+    this.floorSegmentStartMs = 0;
+    this.floorMs[floorId] = 0;
+    this.sessionFloorMs = Math.max(0, elapsedMs);
+  }
+
+  /**
    * Called every game-loop frame. Only flushes to storage every
    * `FLUSH_INTERVAL_MS` milliseconds to avoid excess I/O.
    */
@@ -346,7 +358,6 @@ export class PlaytimeTracker {
       playtimeMs: this.totalMs,
       floorPlaytimeMs: { ...this.floorMs },
       firstClearMs: this.firstClearMs,
-      bestClearMs: this.bestRunMs,
       bestRunMs: this.bestRunMs,
       bestFloorMs: { ...this.bestFloorMs },
       runStartedAt: this.runStartedAt,

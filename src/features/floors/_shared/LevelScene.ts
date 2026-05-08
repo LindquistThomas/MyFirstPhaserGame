@@ -915,7 +915,7 @@ export class LevelScene extends Phaser.Scene {
     this.callElevatorButton.setVisible(false);
     if (this.floorId !== FLOORS.LOBBY) {
       const floorBest = this.gameState.playtime.recordFloorBest(this.floorId);
-      if (floorBest.isNewBest) {
+      if (floorBest.isNewBest && floorBest.runMs !== null) {
         this.hud.showToast(`⏱ New best for ${this.floorData.name}: ${formatPlaytime(floorBest.runMs)}`);
       }
     }

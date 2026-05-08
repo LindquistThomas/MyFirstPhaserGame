@@ -36,21 +36,12 @@ test.describe('Speedrun PB persistence', () => {
         .find((s) => s.sys.settings.key === 'PlatformTeamScene') as unknown as Record<string, unknown>;
       if (!floor) throw new Error('PlatformTeamScene not active');
 
-      // Force deterministic "fast" floor time without waiting in real-time.
-      const originalNow = Date.now;
-      let now = 100_000;
-      Date.now = () => now;
-      try {
-        const gameState = (floor['registry'] as { get: (k: string) => unknown }).get('gameState') as {
-          playtime: { setFloor: (id: number) => void; resume: () => void };
-        };
-        gameState.playtime.setFloor(1);
-        gameState.playtime.resume();
-        now += 1_500;
-        (floor['returnToElevator'] as () => void)();
-      } finally {
-        Date.now = originalNow;
-      }
+      // Force deterministic "fast" floor time via direct tracker test hooks.
+      const gameState = (floor['registry'] as { get: (k: string) => unknown }).get('gameState') as {
+        playtime: { setTestFloorVisit: (floorId: number, elapsedMs: number) => void };
+      };
+      gameState.playtime.setTestFloorVisit(1, 1_500);
+      (floor['returnToElevator'] as () => void)();
     });
 
     await waitForScene(page, 'ElevatorScene');

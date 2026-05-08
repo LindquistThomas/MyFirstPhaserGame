@@ -16,6 +16,7 @@ import { AchievementBadgeController } from './hud/AchievementBadgeController';
 import { settingsStore } from '../systems/SettingsStore';
 
 const HUD_HEIGHT = 44;
+const RUN_TIMER_Y = 32;
 
 /** Format milliseconds as M:SS (e.g. 125 300 ms → "2:05"). */
 export function formatPlaytime(ms: number): string {
@@ -87,7 +88,8 @@ export class HUD {
     container.add(this.titleText as unknown as Phaser.GameObjects.GameObject);
 
     // Run timer — small M:SS counter in the top-right corner.
-    this.timerText = this.scene.add.text(GAME_WIDTH - 10, 32, '0:00', {
+    // Visibility is controlled by SettingsStore.showRunTimer.
+    this.timerText = this.scene.add.text(GAME_WIDTH - 10, RUN_TIMER_Y, '0:00', {
       fontFamily: 'monospace', fontSize: '12px',
       color: theme.color.css.textMuted,
     }).setOrigin(1, 0.5);
