@@ -354,8 +354,8 @@ automatically.
 | `sfx:mug_throw`      | —       | Player (mug projectile)     | AudioManager |
 | `sfx:briefcase_throw`| —       | CEOBoss                     | AudioManager |
 | `sfx:item_pickup`    | —       | MissionItem                 | AudioManager |
-| `sfx:bomb_disarm`    | —       | MissionItem                 | AudioManager |
-| `sfx:hostage_freed`  | —       | MissionItem                 | AudioManager |
+| `sfx:bomb_disarm`    | —       | ExecutiveSuiteScene         | AudioManager |
+| `sfx:hostage_freed`  | —       | ExecutiveSuiteScene         | AudioManager |
 | `sfx:pistol_shot`    | —       | CEOBoss (pistol)            | AudioManager |
 | `sfx:floor_unlocked` | —       | ProgressStripController (HUD) | AudioManager |
 
