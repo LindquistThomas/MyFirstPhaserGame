@@ -23,14 +23,29 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
 
   /** Set to true once collected to guard against duplicate callbacks. */
   public collected = false;
+  private armVersion = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, textureKey: string = 'token_floor1') {
     super(scene, x, y, textureKey);
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDepth(5);
+    this.reset(x, y, textureKey);
+  }
+
+  public reset(x: number, y: number, textureKey: string = 'token_floor1'): void {
+    this.armVersion++;
+    this.ready = false;
+    this.collected = false;
+    this.setActive(true);
+    this.setVisible(true);
+    this.setAlpha(1);
+    this.setScale(1);
+    this.setTexture(textureKey);
+    this.setPosition(x, y);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
+    body.enable = true;
     body.setCollideWorldBounds(true);
     body.setBounce(0.4, 0.4);
     body.setDragX(120);
@@ -41,8 +56,9 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
     const speed = Phaser.Math.Between(180, 320);
     this.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
 
+    this.scene.tweens.killTweensOf(this);
     // Subtle pulse so the player notices scattered coins.
-    scene.tweens.add({
+    this.scene.tweens.add({
       targets: this,
       scaleX: 1.15,
       scaleY: 1.15,
@@ -53,11 +69,16 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
     });
 
     // Arm pickup after a short window to avoid instant re-collection.
-    scene.time.delayedCall(450, () => { this.ready = true; });
+    // Capture current reset generation so delayed callbacks from older cycles
+    // on pooled instances do not arm the coin.
+    const armVersion = this.armVersion;
+    this.scene.time.delayedCall(450, () => {
+      if (this.armVersion === armVersion && this.active) this.ready = true;
+    });
   }
 
   /** Re-award AU on pickup. Safe to call multiple times. */
-  recover(): void {
+  recover(onComplete?: () => void): void {
     if (this.collected) return;
     this.collected = true;
     const body = this.body as Phaser.Physics.Arcade.Body | null;
@@ -71,7 +92,7 @@ export class DroppedAU extends Phaser.Physics.Arcade.Sprite {
       scaleY: 1.5,
       duration: 250,
       ease: 'Power2',
-      onComplete: () => this.destroy(),
+      onComplete,
     });
   }
 }

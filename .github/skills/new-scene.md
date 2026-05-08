@@ -81,32 +81,32 @@ export class NameScene extends Phaser.Scene {
 
 ## New floor variant
 
-Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts`, extend `LevelScene`, and declare their content as a `LevelConfig`:
+Floors live under `src/features/floors/<floor>/<Name>TeamScene.ts` and should usually export the result of `defineFloorScene({ key, floorId, returnSide, config })`, where `returnSide` controls which side of the elevator the player respawns on when returning from the room:
 
 ```ts
-import { LevelScene, LevelConfig } from '../_shared/LevelScene';
+import { defineFloorScene } from '../_shared/defineFloorScene';
 import { FLOORS } from '../../../config/gameConfig';
 
-export class MyFloorTeamScene extends LevelScene {
-  constructor() {
-    super('MyFloorTeamScene', FLOORS.MY_FLOOR);
-  }
-
-  protected override getLevelConfig(): LevelConfig {
-    return {
-      floorId: FLOORS.MY_FLOOR,
-      platforms: [/* … */],
-      tokens:    [/* … */],
-      roomElevators: [],
-      playerStart: { x: 120, y: 700 },
-      exitPosition: { x: 80, y: 700 },
-      enemies:   [{ type: 'slime', x: 400, y: 700, minX: 300, maxX: 600, speed: 60 }],
-      infoPoints:[{ contentId: 'my-info-card', x: 800, y: 700,
-                    zone: { shape: 'circle', radius: 120 } }],
-    };
-  }
-}
+// Simple form — const export, no extra hooks.
+export const MyFloorTeamScene = defineFloorScene({
+  key: 'MyFloorTeamScene',
+  floorId: FLOORS.MY_FLOOR,
+  returnSide: 'left',
+  config: {
+    floorId: FLOORS.MY_FLOOR,
+    playerStart: { x: 120, y: 700 },
+    exitPosition: { x: 80, y: 700 },
+    platforms: [/* … */],
+    tokens:    [/* … */],
+    roomElevators: [],
+    enemies:   [{ type: 'slime', x: 400, y: 700 }],
+    infoPoints:[{ contentId: 'my-info-card', x: 800, y: 700,
+                  zone: { shape: 'circle', radius: 120 } }],
+  },
+});
 ```
+
+For the complex form (`extends defineFloorScene({ … })` with custom overrides), see the usage examples in `src/features/floors/_shared/defineFloorScene.ts`.
 
 Then add a `LEVEL_DATA` entry in `src/config/levelData.ts` (unlock cost, label, theme) and add a lazy entry to `LOADERS` in `src/scenes/lazySceneLoaders.ts`:
 ```ts

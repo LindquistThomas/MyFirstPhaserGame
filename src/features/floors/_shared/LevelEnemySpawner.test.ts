@@ -56,9 +56,14 @@ vi.mock('../../../entities/enemies/TerroristCommander', () => ({
 }));
 
 // DroppedAU referenced by applyHit
+const droppedAUConstructorSpy = vi.fn();
 vi.mock('../../../entities/DroppedAU', () => ({
   DroppedAU: class MockDroppedAU {
-    constructor() {}
+    active = true;
+    reset = vi.fn();
+    constructor() {
+      droppedAUConstructorSpy();
+    }
   },
 }));
 
@@ -71,6 +76,7 @@ vi.mock('../../../systems/MotionPreference', () => ({
 }));
 
 import { LevelEnemySpawner } from './LevelEnemySpawner';
+import { DroppedAU } from '../../../entities/DroppedAU';
 import { ProgressionSystem, type SaveAdapter } from '../../../systems/ProgressionSystem';
 import type { SaveData } from '../../../systems/SaveManager';
 
@@ -118,7 +124,25 @@ function makeHarness() {
   const cameraShake = vi.fn();
   const camera = { shake: cameraShake };
   const platformGroup = {};
-  const droppedAUGroup = { add: vi.fn() };
+  const droppedAUPool: Array<{ active: boolean; reset: ReturnType<typeof vi.fn> }> = [];
+  const droppedAUGroup = {
+    get: vi.fn(() => {
+      const inactive = droppedAUPool.find((drop) => !drop.active);
+      if (inactive) {
+        inactive.active = true;
+        return inactive;
+      }
+      if (droppedAUPool.length >= 32) return null;
+      const Ctor = DroppedAU as unknown as new () => { active: boolean; reset: ReturnType<typeof vi.fn> };
+      const created = new Ctor();
+      created.active = true;
+      droppedAUPool.push(created);
+      return created;
+    }),
+    killAndHide: vi.fn((drop: { active: boolean }) => {
+      drop.active = false;
+    }),
+  };
 
   const spawner = new LevelEnemySpawner({
     scene,
@@ -130,7 +154,7 @@ function makeHarness() {
     camera: camera as unknown as Phaser.Cameras.Scene2D.Camera,
   });
 
-  return { spawner, overlapCallbacks, colliderArgs, player, camera, progression };
+  return { spawner, overlapCallbacks, colliderArgs, player, camera, progression, droppedAUGroup, droppedAUPool };
 }
 
 function enemyEntry(
@@ -160,6 +184,7 @@ function makeConfig(
 
 describe('LevelEnemySpawner — spawn()', () => {
   beforeEach(() => {
+    droppedAUConstructorSpy.mockClear();
     lastCreated.type = '';
     lastCreated.x = 0;
     lastCreated.y = 0;
@@ -226,6 +251,39 @@ describe('LevelEnemySpawner — spawn()', () => {
     const { spawner } = makeHarness();
     spawner.spawn(makeConfig([enemyEntry('slime'), enemyEntry('bot'), enemyEntry('scope-creep')]));
     expect(spawner.enemies).toHaveLength(3);
+  });
+});
+
+describe('LevelEnemySpawner — dropped AU pooling', () => {
+  beforeEach(() => {
+    droppedAUConstructorSpy.mockClear();
+  });
+
+  it('uses group.get() and reset() when dropping AU after a hit', () => {
+    const { spawner, progression, droppedAUGroup } = makeHarness();
+    progression.addAU(FLOORS.PLATFORM_TEAM, 3);
+    const enemy = { hitCost: 3, knockbackX: 200, knockbackY: -300, x: 100 };
+
+    (spawner as unknown as { applyHit: (enemyObj: unknown) => void }).applyHit(enemy);
+
+    expect(droppedAUGroup.get).toHaveBeenCalledTimes(3);
+    const createdDrops = droppedAUGroup.get.mock.results
+      .map((result: { value: unknown }) => result.value)
+      .filter((value: unknown): value is { reset: ReturnType<typeof vi.fn> } => value !== null);
+    for (const drop of createdDrops) {
+      expect(drop.reset).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('caps constructor allocations to the pool max size during 100 drops', () => {
+    const { spawner, progression, droppedAUPool } = makeHarness();
+    progression.addAU(FLOORS.PLATFORM_TEAM, 100);
+    const enemy = { hitCost: 100, knockbackX: 200, knockbackY: -300, x: 100 };
+
+    (spawner as unknown as { applyHit: (enemyObj: unknown) => void }).applyHit(enemy);
+
+    expect(droppedAUPool).toHaveLength(32);
+    expect(droppedAUConstructorSpy).toHaveBeenCalledTimes(32);
   });
 });
 

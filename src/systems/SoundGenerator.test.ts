@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateSounds, SOUND_PHASES, BATCHED_SOUND_PHASES } from './SoundGenerator';
+import {
+  generateSounds,
+  SOUND_PHASES,
+  BATCHED_SOUND_PHASES,
+  ensureCoffeeFridgeSounds,
+  ensureBossRescueSounds,
+} from './SoundGenerator';
 
 // Stub all sound generators so tests run without a real Phaser context.
 vi.mock('./sounds/footsteps', () => ({ generateFootstepSound: vi.fn().mockReturnValue(new ArrayBuffer(0)) }));
@@ -56,6 +62,9 @@ function makeScene(audioCached: boolean) {
         exists: vi.fn().mockReturnValue(audioCached),
       },
     },
+    load: {
+      start: vi.fn(),
+    },
   };
 }
 
@@ -67,8 +76,8 @@ describe('generateSounds', () => {
   it('calls loadWav for every sound key on the first invocation', () => {
     const scene = makeScene(false);
     generateSounds(scene as never);
-    // 5 movement + 7 UI + 3 combat + 3 env + 1 music + 10 boss = 29
-    expect(loadWav).toHaveBeenCalledTimes(29);
+    // 5 movement + 7 UI + 3 combat + 1 env + 1 music + 10 boss = 27
+    expect(loadWav).toHaveBeenCalledTimes(27);
   });
 
   it('skips all loadWav calls when audio is already cached', () => {
@@ -111,8 +120,8 @@ describe('SOUND_PHASES', () => {
     for (const phase of SOUND_PHASES) {
       phase.run(scene as never);
     }
-    // 5 movement + 7 UI + 3 combat + 3 env + 1 music + 10 boss = 29
-    expect(loadWav).toHaveBeenCalledTimes(29);
+    // 5 movement + 7 UI + 3 combat + 1 env + 1 music + 10 boss = 27
+    expect(loadWav).toHaveBeenCalledTimes(27);
   });
 
   it('phase labels are unique', () => {
@@ -135,8 +144,8 @@ describe('BATCHED_SOUND_PHASES', () => {
     for (const batch of BATCHED_SOUND_PHASES) {
       batch.run(scene as never);
     }
-    // Running both batches must call loadWav the same number of times as all SOUND_PHASES combined.
-    expect(loadWav).toHaveBeenCalledTimes(29);
+    // Running both batches must call loadWav for the eager subset only.
+    expect(loadWav).toHaveBeenCalledTimes(17);
   });
 
   it('split point produces two non-empty batches that cover all phases', () => {
@@ -151,8 +160,8 @@ describe('BATCHED_SOUND_PHASES', () => {
     const afterBatch1 = (loadWav as ReturnType<typeof vi.fn>).mock.calls.length;
     expect(afterBatch1).toBeGreaterThan(0);
 
-    // Together they must account for all 29 loadWav calls.
-    expect(afterBatch0 + afterBatch1).toBe(29);
+    // Together they must account for all 17 eager loadWav calls.
+    expect(afterBatch0 + afterBatch1).toBe(17);
   });
 
   it('batch labels are non-empty strings', () => {
@@ -160,5 +169,25 @@ describe('BATCHED_SOUND_PHASES', () => {
       expect(typeof batch.label).toBe('string');
       expect(batch.label.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('lazy ensure helpers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('ensureCoffeeFridgeSounds queues sounds and starts loader when missing', () => {
+    const scene = makeScene(false);
+    ensureCoffeeFridgeSounds(scene as never);
+    expect(loadWav).toHaveBeenCalledTimes(2);
+    expect(scene.load.start).toHaveBeenCalledTimes(1);
+  });
+
+  it('ensureBossRescueSounds no-ops when boss/rescue keys already cached', () => {
+    const scene = makeScene(true);
+    ensureBossRescueSounds(scene as never);
+    expect(loadWav).not.toHaveBeenCalled();
+    expect(scene.load.start).not.toHaveBeenCalled();
   });
 });

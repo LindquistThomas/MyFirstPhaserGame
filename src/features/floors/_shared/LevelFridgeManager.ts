@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { EnergyDrinkFridge, ENERGY_DRINK_DURATION_MS } from '../../../entities/EnergyDrinkFridge';
 import { Player } from '../../../entities/Player';
 import { eventBus } from '../../../systems/EventBus';
+import { ensureCoffeeFridgeSounds } from '../../../systems/SoundGenerator';
 import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
 import type { LevelConfig } from './LevelScene';
@@ -50,6 +51,7 @@ export class LevelFridgeManager {
 
   spawn(config: LevelConfig): void {
     if (!config.fridges?.length) return;
+    ensureCoffeeFridgeSounds(this.deps.scene);
     for (const f of config.fridges) {
       this.fridges.push(new EnergyDrinkFridge(this.deps.scene, f.x, f.y));
     }
