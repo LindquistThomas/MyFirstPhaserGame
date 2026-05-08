@@ -54,7 +54,7 @@ In addition to size budgets, the check fails if any audio file in `dist/music/` 
 
 If a PR genuinely needs more weight, raise the appropriate limit in `scripts/check-size.cjs` with a comment explaining why.
 
-If Copilot-authored PR checks are stuck in `action_required`, see `docs/ci-approval-policy.md`.
+If Copilot-authored PR checks are stuck in `action_required`, see [docs/ci-approval-policy.md](docs/ci-approval-policy.md).
 
 ## Development
 
