@@ -76,8 +76,6 @@ export const SOUND_PHASES: readonly GeneratorPhase[] = [
     label: 'Initializing audio (environment)',
     run: (s) => {
       loadWav(s, 'ambience_datacenter', generateDatacenterAmbience());
-      loadWav(s, 'coffee_sip', generateCoffeeSipSound());
-      loadWav(s, 'fridge_open', generateFridgeOpenSound());
     },
   },
   {
@@ -103,6 +101,38 @@ export const SOUND_PHASES: readonly GeneratorPhase[] = [
   },
 ];
 
+/** Sounds that are safe to warm up globally in MenuScene. */
+export const MENU_EAGER_SOUND_PHASES: readonly GeneratorPhase[] = SOUND_PHASES.slice(0, 5);
+
+/** Lazy subset: generated only in scenes that can consume coffee/fridge interactions. */
+export const COFFEE_FRIDGE_SOUND_PHASES: readonly GeneratorPhase[] = [
+  {
+    label: 'Initializing audio (consumables)',
+    run: (s) => {
+      loadWav(s, 'coffee_sip', generateCoffeeSipSound());
+      loadWav(s, 'fridge_open', generateFridgeOpenSound());
+    },
+  },
+];
+
+/** Lazy subset: generated only for executive rescue + boss fight flows. */
+export const BOSS_RESCUE_SOUND_PHASES: readonly GeneratorPhase[] = [
+  {
+    label: 'Initializing audio (boss/rescue)',
+    run: (s) => {
+      loadWav(s, 'boss_hit',        generateBossHitSound());
+      loadWav(s, 'boss_defeated',   generateBossDefeatedSound());
+      loadWav(s, 'mug_throw',       generateMugThrowSound());
+      loadWav(s, 'boss_phase_2',    generateBossPhase2Sound());
+      loadWav(s, 'boss_phase_3',    generateBossPhase3Sound());
+      loadWav(s, 'briefcase_throw', generateBriefcaseThrowSound());
+      loadWav(s, 'bomb_disarm',     generateBombDisarmSound());
+      loadWav(s, 'hostage_freed',   generateHostageFreedSound());
+      loadWav(s, 'pistol_shot',     generatePistolShotSound());
+    },
+  },
+];
+
 /**
  * SOUND_PHASES batched into two callbacks for the MenuScene deferred warmup.
  *
@@ -110,24 +140,24 @@ export const SOUND_PHASES: readonly GeneratorPhase[] = [
  * points, cutting the total scheduling tax from ~36 ms to ~12 ms on
  * low-end hardware. The two batches are roughly equal in total work:
  *
- *   Batch 1 (phases 0–2): movement, UI/quiz, combat SFX  (~15 sounds)
- *   Batch 2 (phases 3–5): environment, lullaby, boss SFX (~14 sounds)
+ *   Batch 1 (phases 0–2): movement, UI/quiz, combat SFX
+ *   Batch 2 (phases 3–4): ambience + lullaby
  *
  * Cache guard: check `cache.audio.exists('jump')` before running.
  */
 
 /**
  * Index at which SOUND_PHASES is split into batch 1 vs batch 2.
- * Must equal SOUND_PHASES.length / 2 (integer) so both batches get
+ * Must equal MENU_EAGER_SOUND_PHASES.length / 2 (integer) so both batches get
  * an equal number of phases.
  */
-const SOUND_BATCH_SPLIT = SOUND_PHASES.length / 2;
+const SOUND_BATCH_SPLIT = Math.ceil(MENU_EAGER_SOUND_PHASES.length / 2);
 
-// Invariant: SOUND_PHASES must have exactly 6 entries (3 per batch).
+// Invariant: menu eager phases must have exactly 5 entries.
 // If you add or remove a phase, update SOUND_BATCH_SPLIT and this comment.
-if (import.meta.env.DEV && SOUND_PHASES.length !== 6) {
+if (import.meta.env.DEV && MENU_EAGER_SOUND_PHASES.length !== 5) {
   throw new Error(
-    `[SoundGenerator] SOUND_PHASES has ${SOUND_PHASES.length} entries but BATCHED_SOUND_PHASES expects exactly 6. ` +
+    `[SoundGenerator] MENU_EAGER_SOUND_PHASES has ${MENU_EAGER_SOUND_PHASES.length} entries but BATCHED_SOUND_PHASES expects exactly 5. ` +
     `If you added or removed phases, update SOUND_BATCH_SPLIT and its invariant check.`,
   );
 }
@@ -136,16 +166,38 @@ export const BATCHED_SOUND_PHASES: readonly [GeneratorPhase, GeneratorPhase] = [
   {
     label: 'Initializing audio (1/2)',
     run: (s) => {
-      for (const phase of SOUND_PHASES.slice(0, SOUND_BATCH_SPLIT)) phase.run(s);
+      for (const phase of MENU_EAGER_SOUND_PHASES.slice(0, SOUND_BATCH_SPLIT)) phase.run(s);
     },
   },
   {
     label: 'Initializing audio (2/2)',
     run: (s) => {
-      for (const phase of SOUND_PHASES.slice(SOUND_BATCH_SPLIT)) phase.run(s);
+      for (const phase of MENU_EAGER_SOUND_PHASES.slice(SOUND_BATCH_SPLIT)) phase.run(s);
     },
   },
 ];
+
+function ensureSoundPhases(
+  scene: Phaser.Scene,
+  phases: readonly GeneratorPhase[],
+  requiredAudioKeys: readonly string[],
+): void {
+  if (requiredAudioKeys.every((key) => scene.cache.audio.exists(key))) return;
+  for (const phase of phases) phase.run(scene);
+  scene.load.start();
+}
+
+export function ensureCoffeeFridgeSounds(scene: Phaser.Scene): void {
+  ensureSoundPhases(scene, COFFEE_FRIDGE_SOUND_PHASES, ['coffee_sip', 'fridge_open']);
+}
+
+export function ensureBossRescueSounds(scene: Phaser.Scene): void {
+  ensureSoundPhases(
+    scene,
+    BOSS_RESCUE_SOUND_PHASES,
+    ['boss_hit', 'boss_defeated', 'mug_throw', 'boss_phase_2', 'boss_phase_3', 'briefcase_throw', 'bomb_disarm', 'hostage_freed', 'pistol_shot'],
+  );
+}
 
 /**
  * Composition root for runtime audio generation.

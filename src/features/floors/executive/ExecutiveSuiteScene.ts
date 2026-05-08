@@ -12,6 +12,8 @@ import { TerroristCommander } from '../../../entities/enemies/TerroristCommander
 import { PistolProjectile } from '../../../entities/PistolProjectile';
 import { eventBus } from '../../../systems/EventBus';
 import { BombDisarmDialog } from '../../../ui/BombDisarmDialog';
+import { ensureExecutiveRescueSprites } from '../../../systems/SpriteGenerator';
+import { ensureBossRescueSounds } from '../../../systems/SoundGenerator';
 
 /**
  * Floor 4 — Executive Suite (penthouse).
@@ -106,6 +108,8 @@ export class ExecutiveSuiteScene extends defineFloorScene({
 
   override create(): void {
     super.create();
+    ensureExecutiveRescueSprites(this);
+    ensureBossRescueSounds(this);
 
     // Stagger-desync alpha pulse on tokens so they don't all breathe in
     // lockstep. Token already owns a y-bob + scale pulse; this is a

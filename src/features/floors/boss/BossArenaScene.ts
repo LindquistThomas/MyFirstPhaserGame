@@ -14,6 +14,8 @@ import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { allKeyLabels } from '../../../input';
+import { ensureBossArenaSprites } from '../../../systems/SpriteGenerator';
+import { ensureBossRescueSounds } from '../../../systems/SoundGenerator';
 
 /** Architecture quiz prompts used during knowledge windows. */
 export interface BossPrompt {
@@ -143,6 +145,8 @@ export class BossArenaScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor(0x0a0a0a);
     this.physics.world.setBounds(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    ensureBossArenaSprites(this);
+    ensureBossRescueSounds(this);
 
     this.buildArena();
     this.spawnPlayer();
