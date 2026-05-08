@@ -369,6 +369,18 @@ describe('ProgressionSystem — isFirstVisit / resetVisitedFloors', () => {
 });
 
 describe('ProgressionSystem — loadFromSave floor ID sanitisation', () => {
+  it('returns false and keeps default state when adapter load() returns null', () => {
+    const adapter: SaveAdapter = { load: () => null, save: () => {}, clear: () => {} };
+    const p = new ProgressionSystem(adapter);
+
+    expect(() => p.loadFromSave()).not.toThrow();
+    expect(p.loadFromSave()).toBe(false);
+    expect(p.getTotalAU()).toBe(0);
+    expect(p.getCurrentFloor()).toBe(FLOORS.LOBBY);
+    expect(p.isFloorUnlocked(FLOORS.LOBBY)).toBe(true);
+    expect(p.isFloorUnlocked(FLOORS.BUSINESS)).toBe(false);
+  });
+
   it('falls back to FLOORS.LOBBY when currentFloor is an unknown ID', () => {
     const corrupt = {
       version: 1,

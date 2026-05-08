@@ -23,10 +23,20 @@ let reactiveDetected = false;
  * read on every vpad `touchstart` event.
  */
 let hapticsEnabled = true;
+const REACTIVE_TOUCH_LISTENER_OPTIONS: AddEventListenerOptions = { passive: true };
+// DOM listener audit:
+// - window: touchstart (reactive detection in registerReactiveDetection)
+// - each .vpad-btn: touchstart/touchend/touchcancel (buildPad)
+// All are registered through bindDomListener or tracked by reactiveDetectionDispose.
+let reactiveDetectionDispose: (() => void) | null = null;
+const padListenerDisposers: Array<() => void> = [];
+let activeVirtualGamepadInstance: { destroy: () => void } | null = null;
 
 /** Reset the session flag — test seam only. */
 export function _resetReactiveDetected(): void {
   reactiveDetected = false;
+  reactiveDetectionDispose?.();
+  reactiveDetectionDispose = null;
 }
 
 /**
@@ -55,6 +65,35 @@ function onTouchEnd(e: TouchEvent): void {
   for (const action of actionsOf(btn)) {
     setVirtualButton(action, false);
   }
+}
+
+/**
+ * Register one DOM event listener and enqueue its symmetric remove call so
+ * teardown can detach every listener exactly once.
+ */
+function bindDomListener(
+  target: EventTarget,
+  event: string,
+  listener: EventListener,
+  options?: boolean | AddEventListenerOptions,
+): void {
+  target.addEventListener(event, listener, options);
+  padListenerDisposers.push(() => target.removeEventListener(event, listener, options));
+}
+
+/** Remove every button-level touch listener registered via {@link bindDomListener}. */
+function clearPadListeners(): void {
+  while (padListenerDisposers.length > 0) {
+    padListenerDisposers.pop()?.();
+  }
+}
+
+/** Tear down all tracked virtual gamepad DOM listeners and remove the pad element. */
+function destroyVirtualGamepadInstance(): void {
+  clearPadListeners();
+  reactiveDetectionDispose?.();
+  reactiveDetectionDispose = null;
+  document.getElementById('virtual-pad')?.remove();
 }
 
 /**
@@ -96,9 +135,9 @@ function buildPad(): HTMLElement {
   pad.classList.toggle('vpad-high-contrast', settingsStore.read().highContrast);
 
   pad.querySelectorAll('.vpad-btn').forEach((btn) => {
-    btn.addEventListener('touchstart', onTouchStart as EventListener, { passive: false });
-    btn.addEventListener('touchend', onTouchEnd as EventListener, { passive: false });
-    btn.addEventListener('touchcancel', onTouchEnd as EventListener, { passive: false });
+    bindDomListener(btn, 'touchstart', onTouchStart as EventListener, { passive: false });
+    bindDomListener(btn, 'touchend', onTouchEnd as EventListener, { passive: false });
+    bindDomListener(btn, 'touchcancel', onTouchEnd as EventListener, { passive: false });
   });
 
   return pad;
@@ -201,17 +240,17 @@ export function applyVirtualGamepadVisibility(): void {
  * Separated from `initVirtualGamepad` so tests can call it independently.
  */
 export function registerReactiveDetection(): void {
-  if (reactiveDetected) return;
-  window.addEventListener(
-    'touchstart',
-    () => {
-      if (reactiveDetected) return;
-      reactiveDetected = true;
-      eventBus.emit('input:touch_detected');
-      applyVirtualGamepadVisibility();
-    },
-    { once: true, passive: true },
-  );
+  if (reactiveDetected || reactiveDetectionDispose !== null) return;
+  const onFirstTouch = (): void => {
+    if (reactiveDetected) return;
+    reactiveDetected = true;
+    reactiveDetectionDispose?.();
+    reactiveDetectionDispose = null;
+    eventBus.emit('input:touch_detected');
+    applyVirtualGamepadVisibility();
+  };
+  window.addEventListener('touchstart', onFirstTouch, REACTIVE_TOUCH_LISTENER_OPTIONS);
+  reactiveDetectionDispose = () => window.removeEventListener('touchstart', onFirstTouch, REACTIVE_TOUCH_LISTENER_OPTIONS);
 }
 
 /**
@@ -250,6 +289,8 @@ function _syncHapticsFromStore(): void {
  * repeated boot) — `buildPad()` is guarded by an id check.
  */
 export function initVirtualGamepad(): void {
+  activeVirtualGamepadInstance?.destroy();
+  activeVirtualGamepadInstance = { destroy: destroyVirtualGamepadInstance };
   registerReactiveDetection();
 
   // Re-apply visibility whenever any non-audio setting changes (the handler
@@ -265,6 +306,12 @@ export function initVirtualGamepad(): void {
   applyVirtualGamepadVisibility();
   // Apply high-contrast at startup so a persisted setting takes effect immediately.
   applyHighContrastToDocument(settingsStore.read().highContrast);
+}
+
+/** @internal Test seam for lifecycle teardown assertions. */
+export function _destroyVirtualGamepadForTests(): void {
+  activeVirtualGamepadInstance?.destroy();
+  activeVirtualGamepadInstance = null;
 }
 
 /**
