@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateSprites, SPRITE_PHASES } from './SpriteGenerator';
+import {
+  generateSprites,
+  SPRITE_PHASES,
+  ensureBossArenaSprites,
+  ensureExecutiveRescueSprites,
+} from './SpriteGenerator';
 
 // Mock all sub-generators so tests run without a real Phaser context.
 vi.mock('./sprites/player', () => ({
@@ -255,5 +260,33 @@ describe('SPRITE_PHASES', () => {
 
     bossC!.run(scene as never);
     expect(generateBossSpritesC).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('lazy sprite ensure helpers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stubCanvasContext();
+  });
+
+  it('ensureBossArenaSprites generates boss combat textures only when missing', () => {
+    const scene = makeScene(false);
+    ensureBossArenaSprites(scene as never);
+    expect(generateBossSpritesA).toHaveBeenCalledTimes(1);
+    expect(generateBossSpritesB).not.toHaveBeenCalled();
+    expect(generateMissionItemSprites).not.toHaveBeenCalled();
+  });
+
+  it('ensureExecutiveRescueSprites no-ops when rescue textures are already cached', () => {
+    const scene = {
+      textures: {
+        exists: vi.fn().mockReturnValue(true),
+        addSpriteSheet: vi.fn(),
+      },
+    };
+    ensureExecutiveRescueSprites(scene as never);
+    expect(generateBossSpritesB).not.toHaveBeenCalled();
+    expect(generateBossSpritesC).not.toHaveBeenCalled();
+    expect(generateMissionItemSprites).not.toHaveBeenCalled();
   });
 });
