@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { Coffee } from '../../../entities/Coffee';
 import { Player } from '../../../entities/Player';
 import { eventBus } from '../../../systems/EventBus';
+import { ensureCoffeeFridgeSounds } from '../../../systems/SoundGenerator';
 import type { LevelConfig } from './LevelScene';
 
 export interface CoffeeManagerDeps {
@@ -20,6 +21,7 @@ export class LevelCoffeeManager {
   spawn(config: LevelConfig): void {
     const coffees = config.coffees;
     if (!coffees?.length) return;
+    ensureCoffeeFridgeSounds(this.deps.scene);
     for (const c of coffees) {
       const mug = new Coffee(this.deps.scene, c.x, c.y);
       this.coffeeGroup.add(mug);

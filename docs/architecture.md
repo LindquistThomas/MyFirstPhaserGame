@@ -36,7 +36,8 @@ src/
 │       │   ├── floorPatterns.ts        Themed decorative patterns for scene backdrop.
 │       │   ├── sceneBackdrop.ts        Layered gradient/pattern/vignette background.
 │       │   ├── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
-│       │   └── coachHints.ts           First-visit per-floor toast hint copy.
+│       │   ├── coachHints.ts           First-visit per-floor toast hint copy.
+│       │   └── defineFloorScene.ts     Factory that builds a LevelScene subclass from declarative options (key, floorId, config, banner, decorations, returnSide). Used by every standard floor.
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
 │       ├── architecture/     Architecture Team — largest quiz pool.
@@ -85,9 +86,9 @@ src/
 ├── scenes/                   Infrastructure scenes (non-floor).
 │   ├── NavigationContext.ts  Typed hand-off for `scene.start(key, ctx)`.
 │   ├── sceneRegistry.ts      EAGER_REGISTRY + validateSceneRegistry(); derives SCENE_REGISTRY.
-│   ├── lazySceneLoaders.ts   LAZY_SCENE_LOADERS map — loader thunks for floor/product/boss scenes.
+│   ├── lazySceneLoaders.ts   LOADERS array (internal) → LAZY_SCENE_LOADERS map (exported); loader thunks for floor/product/boss scenes. Edit LOADERS to register a new lazy scene.
 │   ├── core/
-│   │   ├── BootScene.ts      Generates every sprite + sound; creates `GameStateManager`.
+│   │   ├── BootScene.ts      Loads eager files + player sprite, profiles boot phases in dev, creates `GameStateManager`.
 │   │   ├── MenuScene.ts      Title screen; new game / continue; save-slot UI.
 │   │   ├── PauseScene.ts     Pause overlay (resume / settings / quit).
 │   │   ├── SettingsScene.ts  Settings menu (audio, motion, controls).
@@ -110,7 +111,8 @@ src/
 │   │   ├── shaftWalls.ts                        Shaft structural drawing: walls, caps, rooftop props, machine room, dust motes, doors, cable, and LEDs.
 │   │   └── skyBackdrop.ts                       Screen-locked night-sky backdrop: gradient sky, moon with halo, and static starfield with slow twinklers.
 ├── style/                    Design tokens.
-│   └── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
+│   ├── theme.ts              Central colour + spacing tokens (numeric + CSS strings).
+│   └── responsive.ts         Viewport helpers (FIT scaling, aspect-ratio queries).
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
 │   ├── GameStateManager.ts   Composition root — owns ProgressionSystem + PlaytimeTracker; exposes facades over SaveManager, QuizManager, InfoDialogManager, AchievementManager, TouchHintStore.
@@ -164,6 +166,14 @@ src/
 │   ├── ControlHintsOverlay.ts  Transient key-hint chips shown on first lobby entry.
 │   ├── InteractiveDoor.ts    Door sprite toggling open texture on interaction range.
 │   ├── HUD.ts                AU counter, floor label.
+│   ├── hud/                  Per-HUD-feature controllers — one per feature.
+│   │   ├── AchievementBadgeController.ts  Toast badge for unlocked achievements.
+│   │   ├── CaffeineRingController.ts      Caffeine-buff ring overlay around AU counter.
+│   │   ├── CoinCounterController.ts       AU counter text + tween cues.
+│   │   ├── MuteIconController.ts          Musical-note mute toggle (pointerup → audio:toggle-mute).
+│   │   ├── ProgressStripController.ts     Floor-progress strip + sfx:floor_unlocked trigger.
+│   │   ├── colorUtils.ts                  Shared color helpers.
+│   │   └── testUtils.ts                   Test fixtures for hud controllers.
 │   ├── ElevatorButtons.ts    Touch controls for the elevator cab.
 │   ├── ElevatorPanel.ts      Floor-select panel inside the cab.
 │   ├── TouchHintOverlay.ts   First-run virtual-gamepad hint (gated by TouchHintStore).
@@ -219,8 +229,11 @@ BootScene  →  MenuScene  →  SaveSlotScene  →  ElevatorScene  ↔  Floor sc
                                                               ↘  product rooms (features/products/rooms/*)
 ```
 
-`BootScene` generates every sprite + sound once, creates the
-`GameStateManager`, and hands off to `MenuScene`. `SaveSlotScene` is
+`BootScene` loads eager static files, generates only the player sprite,
+creates the `GameStateManager`, and hands off to `MenuScene`. `MenuScene`
+warms up shared procedural assets after first paint. Boss/executive rescue
+sprites and selected SFX are generated lazily on first scene entry.
+`SaveSlotScene` is
 the slot picker — every new game and continue passes through it before
 reaching `ElevatorScene`. `ElevatorScene` is the central shaft; rides
 transition into the floor scenes in `features/floors/<floor>/` (each a
@@ -355,8 +368,8 @@ automatically.
 | `sfx:mug_throw`      | —       | Player (mug projectile)     | AudioManager |
 | `sfx:briefcase_throw`| —       | CEOBoss                     | AudioManager |
 | `sfx:item_pickup`    | —       | MissionItem                 | AudioManager |
-| `sfx:bomb_disarm`    | —       | MissionItem                 | AudioManager |
-| `sfx:hostage_freed`  | —       | MissionItem                 | AudioManager |
+| `sfx:bomb_disarm`    | —       | ExecutiveSuiteScene         | AudioManager |
+| `sfx:hostage_freed`  | —       | ExecutiveSuiteScene         | AudioManager |
 | `sfx:pistol_shot`    | —       | CEOBoss (pistol)            | AudioManager |
 | `sfx:floor_unlocked` | —       | ProgressStripController (HUD) | AudioManager |
 
@@ -471,7 +484,7 @@ automatically.
 - **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
   `src/input/**` at 80%; `src/ui/**` at 65% (60% branches);
   `src/entities/**` at 60%; `src/scenes/**` at 20% (18% functions);
-  `src/features/floors/**` at 17% (12% branches, 13% functions).
+  `src/features/floors/**` at 50% (40% branches, 45% functions).
   `src/plugins/**`, `src/main.ts`, the procedural-generator modules
   (`src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
   `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`), and a
@@ -481,8 +494,10 @@ automatically.
 
 ## Key design choices
 
-- **Procedural assets.** No image files. `BootScene` generates every
-  sprite into Phaser's texture cache at startup.
+- **Procedural assets.** No image files. Boot keeps first paint fast by
+  generating only critical assets eagerly (player + shared SFX/music path)
+  and defers boss/rescue + coffee/fridge subsets via `ensure*` helpers in
+  `SpriteGenerator.ts` / `SoundGenerator.ts`.
 - **Event-driven coupling.** Systems don't hold references to each
   other; they publish and subscribe through `eventBus`. Audio is a
   pure subscriber.
@@ -513,5 +528,6 @@ automatically.
 - **Eager/lazy scene split.** Core/elevator scenes are bundled in the
   main chunk (`EAGER_REGISTRY` in `sceneRegistry.ts`); floor, product-room,
   and boss scenes are split into separate Vite chunks and fetched on demand
-  via `LAZY_SCENE_LOADERS` in `lazySceneLoaders.ts`. The elevator fade acts
-  as the loading screen.
+  via `LAZY_SCENE_LOADERS` in `lazySceneLoaders.ts` (built from the internal
+  `LOADERS` array — that is the edit target). The elevator fade acts as the
+  loading screen.

@@ -22,6 +22,12 @@ vi.mock('phaser', () => {
     y: number;
     body = makeFakeBody();
     depth = 0;
+    active = true;
+    visible = true;
+    alpha = 1;
+    scaleX = 1;
+    scaleY = 1;
+    texture = { key: 'token_floor1' };
 
     constructor(scene: unknown, x: number, y: number) {
       this.scene = scene;
@@ -31,6 +37,12 @@ vi.mock('phaser', () => {
 
     setDepth(depth: number) { this.depth = depth; return this; }
     setVelocity(x: number, y: number) { this.body.velocity.x = x; this.body.velocity.y = y; return this; }
+    setActive(active: boolean) { this.active = active; return this; }
+    setVisible(visible: boolean) { this.visible = visible; return this; }
+    setAlpha(alpha: number) { this.alpha = alpha; return this; }
+    setScale(x: number, y = x) { this.scaleX = x; this.scaleY = y; return this; }
+    setTexture(key: string) { this.texture.key = key; return this; }
+    setPosition(x: number, y: number) { this.x = x; this.y = y; return this; }
     destroy() { /* no-op */ }
   }
 
@@ -76,11 +88,10 @@ describe('DroppedAU', () => {
     expect(dropped.ready).toBe(true);
   });
 
-  it('recover() emits SFX, disables body, and destroys after collection tween', () => {
+  it('recover() emits SFX and disables body', () => {
     const { scene, dropped } = makeDroppedAU();
     const recovered = vi.fn();
     eventBus.on('sfx:recover_au', recovered);
-    const destroy = vi.spyOn(dropped as unknown as { destroy: () => void }, 'destroy');
 
     dropped.recover();
 
@@ -92,8 +103,24 @@ describe('DroppedAU', () => {
     const lastResult = addTween.mock.results[addTween.mock.results.length - 1];
     const tween = lastResult?.value as { onComplete?: () => void } | undefined;
     expect(tween).toBeDefined();
-    tween?.onComplete?.();
-    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('reset() re-enables the pickup and restores visual state', () => {
+    const { scene, dropped } = makeDroppedAU();
+    dropped.recover();
+
+    dropped.reset(220, 330, 'token_floor2');
+
+    expect((dropped.body as { enable: boolean }).enable).toBe(true);
+    expect(dropped.collected).toBe(false);
+    expect(dropped.ready).toBe(false);
+    expect(dropped.alpha).toBe(1);
+    expect(dropped.scaleX).toBe(1);
+    expect(dropped.scaleY).toBe(1);
+    expect(dropped.texture.key).toBe('token_floor2');
+    expect(dropped.x).toBe(220);
+    expect(dropped.y).toBe(330);
+    expect(scene.tweens.killTweensOf).toHaveBeenCalledWith(dropped);
   });
 
   it('recover() is idempotent', () => {

@@ -92,22 +92,113 @@ const [_playerPhase1, _playerPhase2] = buildPlayerPhases();
  * Heavy generators (player, enemies, boss) are split across multiple
  * phases so no single phase exceeds the ~20 ms per-tick budget.
  */
+const PHASE_TILES_PLATFORMS: GeneratorPhase =
+  { label: 'Drawing tiles & platforms', run: (s) => { generateTileSprites(s); generateMovingPlatformSprite(s); } };
+const PHASE_TOKENS: GeneratorPhase = { label: 'Drawing tokens', run: generateAUTokenSprites };
+const PHASE_ELEVATOR: GeneratorPhase =
+  { label: 'Drawing elevator', run: (s) => { generateElevatorSprites(s); generateRoomElevatorSprite(s); } };
+const PHASE_DOORS_PROPS: GeneratorPhase =
+  { label: 'Drawing doors & props', run: (s) => { generateDoorSprites(s); generateInfoBoardSprite(s); generateLobbyPropSprites(s); } };
+const PHASE_ENVIRONMENT: GeneratorPhase =
+  { label: 'Drawing environment', run: (s) => { generateParticleSprite(s); generatePlantSprites(s); generateInfraSprites(s); } };
+const PHASE_ENEMIES_A: GeneratorPhase = { label: 'Drawing enemies (1/2)', run: generateEnemySpritesA };
+const PHASE_ENEMIES_B: GeneratorPhase = { label: 'Drawing enemies (2/2)', run: generateEnemySpritesB };
+const PHASE_BOSS_A: GeneratorPhase = { label: 'Drawing boss (1/3)', run: generateBossSpritesA };
+const PHASE_BOSS_B: GeneratorPhase = { label: 'Drawing boss (2/3)', run: generateBossSpritesB };
+const PHASE_BOSS_C: GeneratorPhase = { label: 'Drawing boss (3/3)', run: generateBossSpritesC };
+const PHASE_CHARACTERS: GeneratorPhase =
+  { label: 'Drawing characters', run: (s) => { generateGeirSprite(s); generateReceptionistSprite(s); generateRubberDuckSprite(s); } };
+const PHASE_CONSUMABLES: GeneratorPhase =
+  { label: 'Drawing consumables', run: (s) => { generateCoffeeSprites(s); generateEnergyDrinkFridgeSprites(s); } };
+const PHASE_MISSION_ITEMS: GeneratorPhase =
+  { label: 'Drawing mission items', run: generateMissionItemSprites };
+
 export const SPRITE_PHASES: readonly GeneratorPhase[] = [
   _playerPhase1,
   _playerPhase2,
-  { label: 'Drawing tiles & platforms', run: (s) => { generateTileSprites(s); generateMovingPlatformSprite(s); } },
-  { label: 'Drawing tokens', run: generateAUTokenSprites },
-  { label: 'Drawing elevator', run: (s) => { generateElevatorSprites(s); generateRoomElevatorSprite(s); } },
-  { label: 'Drawing doors & props', run: (s) => { generateDoorSprites(s); generateInfoBoardSprite(s); generateLobbyPropSprites(s); } },
-  { label: 'Drawing environment', run: (s) => { generateParticleSprite(s); generatePlantSprites(s); generateInfraSprites(s); } },
-  { label: 'Drawing enemies (1/2)', run: generateEnemySpritesA },
-  { label: 'Drawing enemies (2/2)', run: generateEnemySpritesB },
-  { label: 'Drawing boss (1/3)', run: generateBossSpritesA },
-  { label: 'Drawing boss (2/3)', run: generateBossSpritesB },
-  { label: 'Drawing boss (3/3)', run: generateBossSpritesC },
-  { label: 'Drawing characters', run: (s) => { generateGeirSprite(s); generateReceptionistSprite(s); generateRubberDuckSprite(s); } },
-  { label: 'Drawing items', run: (s) => { generateCoffeeSprites(s); generateEnergyDrinkFridgeSprites(s); generateMissionItemSprites(s); } },
+  PHASE_TILES_PLATFORMS,
+  PHASE_TOKENS,
+  PHASE_ELEVATOR,
+  PHASE_DOORS_PROPS,
+  PHASE_ENVIRONMENT,
+  PHASE_ENEMIES_A,
+  PHASE_ENEMIES_B,
+  PHASE_BOSS_A,
+  PHASE_BOSS_B,
+  PHASE_BOSS_C,
+  PHASE_CHARACTERS,
+  PHASE_CONSUMABLES,
+  PHASE_MISSION_ITEMS,
 ];
+
+/**
+ * Phases required before MenuScene renders: only the player sprite,
+ * which is used by the animated elevator cab on the title screen
+ * (with a stick-figure fallback if absent).
+ *
+ * Run in BootScene so the menu has the best asset from the first frame.
+ */
+export const BOOT_SPRITE_PHASES: readonly GeneratorPhase[] = SPRITE_PHASES.slice(0, 2);
+
+/**
+ * Remaining sprite phases deferred to after the first menu paint.
+ * None of these are consumed before the player transitions from MenuScene
+ * to ElevatorScene, so they can be generated in the idle time while the
+ * menu is visible.
+ *
+ * Cache guard: check `textures.exists('tiles')` before running.
+ */
+export const DEFERRED_SPRITE_PHASES: readonly GeneratorPhase[] = SPRITE_PHASES.slice(2);
+
+/**
+ * Deferred phases used by MenuScene warmup (safe for all scenes).
+ *
+ * Boss and executive-rescue textures are intentionally excluded so non-boss
+ * playthroughs do not pay the generation cost at first paint.
+ */
+export const MENU_DEFERRED_SPRITE_PHASES: readonly GeneratorPhase[] = [
+  PHASE_TILES_PLATFORMS,
+  PHASE_TOKENS,
+  PHASE_ELEVATOR,
+  PHASE_DOORS_PROPS,
+  PHASE_ENVIRONMENT,
+  PHASE_ENEMIES_A,
+  PHASE_ENEMIES_B,
+  PHASE_CHARACTERS,
+  PHASE_CONSUMABLES,
+];
+
+/** Lazy set for BossArenaScene-specific textures. */
+export const BOSS_ARENA_SPRITE_PHASES: readonly GeneratorPhase[] = [PHASE_BOSS_A];
+/** Lazy set for ExecutiveSuite rescue textures. */
+export const EXECUTIVE_RESCUE_SPRITE_PHASES: readonly GeneratorPhase[] = [
+  PHASE_BOSS_B,
+  PHASE_BOSS_C,
+  PHASE_MISSION_ITEMS,
+];
+
+function ensureSpritePhases(
+  scene: Phaser.Scene,
+  phases: readonly GeneratorPhase[],
+  requiredTextureKeys: readonly string[],
+): void {
+  if (requiredTextureKeys.every((key) => scene.textures.exists(key))) return;
+  for (const phase of phases) {
+    phase.run(scene);
+  }
+}
+
+export function ensureBossArenaSprites(scene: Phaser.Scene): void {
+  ensureSpritePhases(scene, BOSS_ARENA_SPRITE_PHASES, ['boss_ceo', 'mug_projectile', 'briefcase_projectile']);
+}
+
+export function ensureExecutiveRescueSprites(scene: Phaser.Scene): void {
+  ensureSpritePhases(
+    scene,
+    EXECUTIVE_RESCUE_SPRITE_PHASES,
+    ['enemy_terrorist', 'door_sanctum_locked', 'door_sanctum_open', 'item_pistol', 'item_keycard', 'item_bomb_code', 'bomb_device'],
+  );
+}
 
 /**
  * Composition root for runtime sprite generation.

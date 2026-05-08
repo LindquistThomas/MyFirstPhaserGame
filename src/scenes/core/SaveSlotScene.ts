@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
+import { LEVEL_DATA } from '../../config/levelData';
 import {
   SAVE_SLOTS,
   SaveSlotId,
@@ -14,12 +15,13 @@ import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
 import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
+import { setDailyState } from '../../systems/DailyChallenge';
 
 /**
  * Slot-picker screen.
  *
  * Shows three save-slot cards (slot1 / slot2 / slot3). Each card displays
- * total AU, current floor, and last-played timestamp — or "EMPTY" when the
+ * total AU, the floor name, and last-played timestamp — or "NEW GAME" when the
  * slot has no save. Keyboard / pointer navigation lets the player:
  *   - Select a slot → switches playerSlot and starts a new or continued game.
  *   - Press Delete (X key) on a filled slot → delete-confirmation overlay.
@@ -126,7 +128,6 @@ export class SaveSlotScene extends Phaser.Scene {
 
     if (info.exists) {
       const au = info.totalAU ?? 0;
-      const floor = info.currentFloor ?? 0;
       const ts = info.lastPlayedAt
         ? new Date(info.lastPlayedAt).toLocaleDateString()
         : '—';
@@ -135,7 +136,11 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '22px', color: '#33ff99',
       }).setOrigin(0.5));
 
-      container.add(this.add.text(w / 2, 80, `Floor ${floor}`, {
+      const floorName = info.currentFloor !== undefined
+        ? (LEVEL_DATA[info.currentFloor]?.name ?? '—')
+        : '—';
+
+      container.add(this.add.text(w / 2, 80, `Floor: ${floorName}`, {
         fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
       }).setOrigin(0.5));
 
@@ -148,7 +153,7 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '11px', color: '#ff4466',
       }).setOrigin(0.5));
     } else {
-      const badge = info.recovered ? 'RECOVERED' : 'EMPTY';
+      const badge = info.recovered ? 'RECOVERED' : 'NEW GAME';
       const badgeColor = info.recovered ? '#ffaa00' : '#3a4460';
       container.add(this.add.text(w / 2, h / 2, badge, {
         fontFamily: 'monospace', fontSize: '20px', color: badgeColor,
@@ -254,6 +259,7 @@ export class SaveSlotScene extends Phaser.Scene {
 
   private activateSelected(): void {
     const slotId = SAVE_SLOTS[this.selectedIndex]!;
+    setDailyState(this.registry, null);
     setPlayerSlot(slotId);
     const info = this.slotInfos[this.selectedIndex]!;
     // Reset the initial-load guard so ElevatorScene re-applies the correct

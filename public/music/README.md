@@ -1,30 +1,35 @@
 # Music Assets
 
-Background music for the game lives in this directory as MP3 / OGG files organized by pack. Files are declared in `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` (the full catalog). `BootScene.preload()` loads only entries tagged `eager: true` (currently just the menu track); everything else is **lazy-loaded** the first time `MusicPlugin` needs to play it. Scene-to-track mapping is defined by `SCENE_MUSIC` in the same config file and applied automatically by `src/plugins/MusicPlugin.ts`.
+Background music for the game lives in this directory as MP3 / OGG files organized by pack. Files are declared in `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` (the full catalog). `BootScene.preload()` eagerly loads only `music_menu` and `music_elevator_jazz`; all other tracks are deferred so the menu renders fast while first-visited scenes still avoid silence. Tracks reach the Phaser cache via the mechanisms described below. Scene-to-track mapping is defined by `SCENE_MUSIC` in the same config file and applied automatically by `src/plugins/MusicPlugin.ts`.
 
 SFX (jump, land, token collect, quiz feedback, info-card / link clicks, elevator cues, etc.) are **not** loaded from this directory — they are procedurally generated at runtime by `src/systems/SoundGenerator.ts`, which also generates the procedural lullaby track (no separate MusicGenerator module).
 
 ## Eager tracks (loaded at boot)
 
-Only these tracks are loaded before the menu renders:
+Tracks marked `eager: true`:
 
-| Asset key | File | Used by |
-| --- | --- | --- |
-| `music_menu` | `8bit-chiptune/bgm_menu.ogg` | `MenuScene` (via `SCENE_MUSIC`) |
+- `music_menu` (`8bit-chiptune/bgm_menu.ogg`)
+- `music_elevator_jazz` (`elevator-jazz/elevator_jazz.mp3`)
+
+All other tracks arrive via background mechanisms so time-to-interactive stays low.
 
 ## Lazy-loaded tracks
 
-All other tracks in `STATIC_MUSIC_ASSETS` are lazy-loaded on demand. There are two code paths:
+All tracks in `STATIC_MUSIC_ASSETS` are loaded in the background after first paint. There are three code paths:
 
-### Via SCENE_MUSIC (automatic)
-`MusicPlugin` intercepts the scene `create` lifecycle event, looks up the scene key in `SCENE_MUSIC`, and calls `playOrLoad()`. If the audio isn't cached yet, it queues a load on the scene's loader and emits `music:play` once the `filecomplete` event fires. Subsequent scene entries use the Phaser cache and play instantly.
+### Via SCENE_MUSIC (automatic — MusicPlugin)
+`MusicPlugin` intercepts the scene `create` lifecycle event, looks up the scene key in `SCENE_MUSIC`, and calls `playOrLoad()`. If the audio isn't cached yet, it queues a load on the scene's loader and emits `music:play` once the `filecomplete` event fires. Subsequent scene entries use the Phaser cache and play instantly. This path handles each scene's **own** background track and is the only path that wires up the `filecomplete→music:play` callback.
+
+### Via MenuScene.idlePreloadMusic() (background prefetch)
+`MenuScene.create()` calls `idlePreloadMusic()`, which proactively queues all non-eager, non-own-scene tracks and starts the loader during the idle time the player spends on the menu. This pre-warms the Phaser cache for floor/quiz/executive tracks so their `MusicPlugin` path hits the cache immediately. Skipped automatically on `saveData` and `2g`/`slow-2g` connections.
 
 ### Via music:request / music:request-push (imperative call sites)
 Any code that needs to play or push a non-eager track imperatively must emit `music:request` (instead of `music:play`) or `music:request-push` (instead of `music:push`). `MusicPlugin` subscribes to these while the scene is active and performs the same load-then-play / load-then-push sequence.
 
 | Asset key | File | Used by | Load path |
 | --- | --- | --- | --- |
-| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` (via `SCENE_MUSIC`); `ElevatorController` on elevator stop (`music:request`) | Automatic + imperative |
+| `music_menu` | `8bit-chiptune/bgm_menu.ogg` | `MenuScene` (via `SCENE_MUSIC`) | Eager boot load + automatic |
+| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` (via `SCENE_MUSIC`); `ElevatorController` on elevator stop (`music:request`) | Eager boot load + automatic + imperative |
 | `music_elevator_ride` | `8bit-chiptune/bgm_action_3.mp3` | `ElevatorController` on elevator start (`music:request`) | Imperative |
 | `music_floor1` | `8bit-chiptune/bgm_action_1.mp3` | `ArchitectureTeamScene` (via `SCENE_MUSIC`) | Automatic |
 | `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, and the Product sub-scenes (via `SCENE_MUSIC`) | Automatic |

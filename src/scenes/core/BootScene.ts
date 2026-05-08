@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
-import { SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import { BOOT_SPRITE_PHASES } from '../../systems/SpriteGenerator';
 import type { GeneratorPhase } from '../../systems/SpriteGenerator';
-import { SOUND_PHASES } from '../../systems/SoundGenerator';
 import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
@@ -11,9 +10,13 @@ import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 import { isPersistenceAvailable } from '../../systems/PersistedStore';
 import { createAnalyticsService } from '../../systems/Analytics';
+import { setDailyState } from '../../systems/DailyChallenge';
 
 /** Count of static assets that failed to load during this boot pass. */
 let _bootAssetErrorCount = 0;
+/** Ensure dev profiling logs only once per full page load. */
+let _bootPerfLogged = false;
+const BOOT_HEAVY_PHASE_MS = 16;
 
 export class BootScene extends Phaser.Scene {
   // Guard: window listener is installed once per instance and removed only
@@ -37,12 +40,15 @@ export class BootScene extends Phaser.Scene {
   // Named reference to the loaderror handler so re-entering preload() replaces
   // it rather than accumulating a second copy on the loader.
   private _onLoaderError: ((file: { key: string; type: string; src: string }) => void) | null = null;
+  private _devProfileBoot = false;
 
   constructor() {
     super({ key: 'BootScene' });
   }
 
   preload(): void {
+    this._devProfileBoot = import.meta.env.DEV && import.meta.env.MODE !== 'test' && !_bootPerfLogged;
+    this._devMark('boot:file-load:start');
     // Reset per-boot-pass error counter and signal a fresh boot to any
     // listeners that maintain boot-derived state (e.g. MusicPlugin's skip-set).
     _bootAssetErrorCount = 0;
@@ -120,11 +126,13 @@ export class BootScene extends Phaser.Scene {
   }
 
   create(): void {
+    this._devMeasure('boot:file-load', 'boot:file-load:start');
     // Migrate legacy 'default' slot → slot1 on first launch.
     // Must happen before GameStateManager is constructed (it may call hasSave()).
     migrateDefaultSlot();
     // Default active slot for the session (SaveSlotScene will override this).
     setPlayerSlot('slot1');
+    setDailyState(this.registry, null);
 
     // Probe storage availability at startup so every subsequent scene can
     // read `registry.get('persistenceAvailable')` to gate UI and toasts.
@@ -182,14 +190,21 @@ export class BootScene extends Phaser.Scene {
       });
     }
 
-    // Build the generation pipeline: sounds first (their blobs need a loader
-    // run to be decoded into the cache), then sprites (synchronous canvas ops).
-    // Skip phases whose assets are already cached (e.g. on BootScene re-entry).
-    const soundCached = this.cache?.audio?.exists('jump') ?? false;
+    // Signal that procedural assets (tiles, enemies, sounds, etc.) are not yet
+    // ready. MenuScene.create() will run the deferred warmup and flip this to
+    // true once all phases complete. Scenes that need deferred keys can check
+    // registry.get('proceduralAssetsReady') or listen to the registry event
+    // 'changedata-proceduralAssetsReady' (see MenuScene.warmupDeferredAssets).
+    this.registry.set('proceduralAssetsReady', false);
+
+    // Build the generation pipeline: only the player sprite at boot so the
+    // MenuScene animated elevator cab has the best asset from the first frame.
+    // All other sprites and all sounds are deferred to MenuScene.create()
+    // (warmupDeferredAssets) where they run after first paint in idle time.
+    // Skip if assets are already cached (e.g. on BootScene re-entry).
     const spritesCached = this.textures?.exists('player') ?? false;
-    const soundPhases: readonly GeneratorPhase[] = soundCached ? [] : SOUND_PHASES;
-    const spritePhases: readonly GeneratorPhase[] = spritesCached ? [] : SPRITE_PHASES;
-    const total = soundPhases.length + spritePhases.length;
+    const spritePhases: readonly GeneratorPhase[] = spritesCached ? [] : BOOT_SPRITE_PHASES;
+    const total = spritePhases.length;
 
     // File loading accounts for the first 10% of the progress bar;
     // procedural generation phases fill the remaining 90%.
@@ -197,9 +212,11 @@ export class BootScene extends Phaser.Scene {
     const GEN_SHARE = 1 - FILE_SHARE;
 
     const finish = (): void => {
-      // Write the final error count now that all loading (including the second
-      // pass for procedurally-generated audio blobs) is complete, so MenuScene
-      // reads an accurate total rather than a snapshot taken mid-boot.
+      this._devMark('boot:create:end');
+      this._devMeasure('boot:create:total', 'boot:create:start', 'boot:create:end');
+      _bootPerfLogged = _bootPerfLogged || this._devProfileBoot;
+      // Write the final error count now that all loading is complete,
+      // so MenuScene reads an accurate total rather than a mid-boot snapshot.
       this.registry.set('bootAssetErrors', _bootAssetErrorCount);
       this._destroyProgress();
       this.scene.start('MenuScene');
@@ -210,73 +227,34 @@ export class BootScene extends Phaser.Scene {
       return;
     }
 
-    // ── Phase 3: sprite generation (synchronous canvas ops, frame-yielding) ──
+    this._devMark('boot:create:start');
+
+    // Sprite generation (synchronous canvas ops, frame-yielding for heavy phases).
     let spriteIndex = 0;
     const runSpritePhases = (): void => {
-      if (spriteIndex >= spritePhases.length) {
-        finish();
-        return;
+      while (spriteIndex < spritePhases.length) {
+        const phase = spritePhases[spriteIndex]!;
+        const measureName = `boot:phase:${phase.label}`;
+        this._devMark(`${measureName}:start`);
+        const t0 = performance.now();
+        phase.run(this);
+        const elapsed = performance.now() - t0;
+        this._devMark(`${measureName}:end`);
+        this._devMeasure(measureName, `${measureName}:start`, `${measureName}:end`);
+
+        const progress = FILE_SHARE + GEN_SHARE * ((spriteIndex + 1) / total);
+        this._updateProgress(progress, phase.label);
+        spriteIndex++;
+
+        if (elapsed > BOOT_HEAVY_PHASE_MS) {
+          this._scheduleNextFrame(runSpritePhases);
+          return;
+        }
       }
-      const phase = spritePhases[spriteIndex]!;
-      const t0 = performance.now();
-      phase.run(this);
-      const elapsed = performance.now() - t0;
-      if (import.meta.env.DEV && elapsed > 50) {
-        console.warn(`[BootScene] Phase "${phase.label}" took ${elapsed.toFixed(1)} ms (>50 ms threshold)`);
-      }
-      const completed = soundPhases.length + spriteIndex + 1;
-      const progress = FILE_SHARE + GEN_SHARE * (completed / total);
-      this._updateProgress(progress, phase.label);
-      spriteIndex++;
-      this.time.addEvent({ delay: 0, callback: runSpritePhases });
+      finish();
     };
 
-    // ── Phase 2: start the loader for the queued audio blobs ──
-    // Sound phases queue files via loadWav → scene.load.audio. The main
-    // preload has already completed so the loader must be restarted explicitly.
-    const startGeneratedAudioLoad = (): void => {
-      // Remove the initial preload progress handler (0–10% scaling) so it
-      // does not fire again during this second loader run.
-      if (this._onFileProgress) {
-        this.load.off('progress', this._onFileProgress);
-        this._onFileProgress = null;
-      }
-
-      if (soundPhases.length === 0) {
-        // No audio was queued; skip straight to sprite generation.
-        this.time.addEvent({ delay: 0, callback: runSpritePhases });
-        return;
-      }
-
-      // Wait for the audio blobs to finish loading before running sprites.
-      this.load.once('complete', () => {
-        this.time.addEvent({ delay: 0, callback: runSpritePhases });
-      });
-
-      this.load.start();
-    };
-
-    // ── Phase 1: sound generation (queues blobs into the loader, frame-yielding) ──
-    let soundIndex = 0;
-    const runSoundPhases = (): void => {
-      if (soundIndex >= soundPhases.length) {
-        startGeneratedAudioLoad();
-        return;
-      }
-      const phase = soundPhases[soundIndex]!;
-      const t0 = performance.now();
-      phase.run(this);
-      const elapsed = performance.now() - t0;
-      if (import.meta.env.DEV && elapsed > 50) {
-        console.warn(`[BootScene] Phase "${phase.label}" took ${elapsed.toFixed(1)} ms (>50 ms threshold)`);
-      }
-      const progress = FILE_SHARE + GEN_SHARE * ((soundIndex + 1) / total);
-      this._updateProgress(progress, phase.label);
-      soundIndex++;
-      this.time.addEvent({ delay: 0, callback: runSoundPhases });
-    };
-
-    this.time.addEvent({ delay: 0, callback: runSoundPhases });
+    this._scheduleNextFrame(runSpritePhases);
   }
 
   /** Update the progress bar and status text. `value` is in the range [0, 1]. */
@@ -300,5 +278,37 @@ export class BootScene extends Phaser.Scene {
     this._progressBox = null;
     this._loadingText = null;
     this._percentText = null;
+  }
+
+  private _scheduleNextFrame(callback: () => void): void {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(callback);
+      return;
+    }
+    this.time.addEvent({ delay: 0, callback });
+  }
+
+  private _devMark(name: string): void {
+    if (!this._devProfileBoot) return;
+    performance.mark(name);
+  }
+
+  private _devMeasure(name: string, startMark: string, endMark?: string): void {
+    if (!this._devProfileBoot) return;
+    try {
+      if (endMark) performance.measure(name, startMark, endMark);
+      else performance.measure(name, startMark);
+      const entries = performance.getEntriesByName(name, 'measure');
+      const duration = entries[entries.length - 1]?.duration;
+      if (typeof duration === 'number') {
+        console.info(`[BootScene][perf] ${name}: ${duration.toFixed(1)} ms`);
+      }
+    } catch {
+      // Marks are dev-only diagnostics; ignore if missing in test/mocks.
+    } finally {
+      performance.clearMarks(startMark);
+      if (endMark) performance.clearMarks(endMark);
+      performance.clearMeasures(name);
+    }
   }
 }

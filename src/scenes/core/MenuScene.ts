@@ -1,12 +1,31 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
-import { SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
+import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
+import { MENU_DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
+import { BATCHED_SOUND_PHASES } from '../../systems/SoundGenerator';
+import { setPlayerSlot, hasSave } from '../../systems/SaveManager';
+import type { GameStateManager } from '../../systems/GameStateManager';
+import type { NavigationContext } from '../NavigationContext';
+import {
+  formatDailyDateLabel,
+  getCurrentDailyState,
+  msUntilNextUtcMidnight,
+  setDailyState,
+} from '../../systems/DailyChallenge';
+import { getRecentResults, getResult } from '../../systems/DailyChallengeStore';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
+
+function formatDailyRun(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 /**
  * Title screen.
@@ -28,6 +47,25 @@ export class MenuScene extends Phaser.Scene {
   private soundtrackIndex = -1;
   /** DOM banner element shown when browser storage is unavailable; null when absent. */
   private guestBannerEl: HTMLElement | null = null;
+
+  /**
+   * Handle returned by requestIdleCallback or setTimeout for the deferred-
+   * warmup kickoff; stored so it can be cancelled on scene shutdown/destroy.
+   */
+  private _warmupHandle: number | null = null;
+  /** Whether requestIdleCallback was used (vs setTimeout) for the warmup handle. */
+  private _warmupUseRIC = false;
+  /**
+   * True once the warmup pipeline has committed all work (sprites generated +
+   * loader started for audio). Prevents double-invocation if a shutdown handler
+   * and a rIC/setTimeout callback race each other.
+   */
+  private _warmupDone = false;
+  /** True once all DEFERRED_SPRITE_PHASES have been executed. */
+  private _spritesComplete = false;
+  private dailyLabel?: Phaser.GameObjects.Text;
+  private dailyHistory?: Phaser.GameObjects.Text;
+  private dailyRefreshTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super({ key: 'MenuScene' });
@@ -52,6 +90,14 @@ export class MenuScene extends Phaser.Scene {
     this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
     this.idlePreloadMusic();
+    this.warmupDeferredAssets();
+
+    const lc = createSceneLifecycle(this);
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'visible') this.idlePreloadMusic();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    lc.add(() => document.removeEventListener('visibilitychange', onVisibilityChange));
 
     // Dev-only diagnostic: show a red banner if any static boot asset failed to
     // load so broken CDN / missing file failures are impossible to miss locally.
@@ -72,12 +118,23 @@ export class MenuScene extends Phaser.Scene {
         ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
       }
     }
+
+    this.events.once('shutdown', () => {
+      this.dailyRefreshTimer?.remove(false);
+      this.dailyRefreshTimer = undefined;
+    });
   }
 
   /**
-   * Background-preload all non-eager music tracks during the idle time the
-   * player spends on the menu. Eliminates first-entry stalls on subsequent
-   * scenes (elevator, floors, executive suite, quiz).
+   * Background-preload all non-eager music tracks (except the current scene's
+   * own track, which MusicPlugin handles via onSceneCreate → playOrLoad) during
+   * the idle time the player spends on the menu. Eliminates first-entry stalls
+   * on subsequent scenes (elevator, floors, executive suite, quiz).
+   *
+   * The current scene's SCENE_MUSIC key is intentionally excluded: MusicPlugin
+   * already calls playOrLoad() for it, which attaches a filecomplete listener
+   * before starting the loader. Queuing the same key here too would race with
+   * that path and potentially double-start the loader.
    *
    * Skipped automatically on metered or very slow connections so users on
    * limited data plans are not penalised.
@@ -87,14 +144,180 @@ export class MenuScene extends Phaser.Scene {
     const conn = (navigator as unknown as { connection?: NavigatorConnection }).connection;
     if (conn?.saveData) return;
     if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return;
+    if (document.visibilityState === 'hidden') return;
 
+    // Exclude the current scene's own background track — MusicPlugin.onSceneCreate()
+    // calls playOrLoad() for it, which owns the filecomplete→music:play wiring.
+    const ownTrack = SCENE_MUSIC[this.scene.key];
     const queue = STATIC_MUSIC_ASSETS.filter(
-      (a) => !a.eager && !this.cache.audio.exists(a.key),
+      (a) => !a.eager && a.key !== ownTrack && !this.cache.audio.exists(a.key),
     );
     if (queue.length === 0) return;
 
-    for (const asset of queue) this.load.audio(asset.key, asset.path);
-    this.load.start();
+    // Load at most 2 tracks simultaneously: enough to stay ahead of playback
+    // without saturating the connection mid-session.
+    const CONCURRENCY = 2;
+    let cursor = 0;
+    const loadNext = (): void => {
+      if (cursor >= queue.length) return;
+      const asset = queue[cursor++];
+      if (!asset) return;
+      const onError = (file: Phaser.Loader.File): void => {
+        if (file.key !== asset.key || file.type !== 'audio') return;
+        this.load.off('loaderror', onError);
+        loadNext();
+      };
+      this.load.once(`filecomplete-audio-${asset.key}`, () => {
+        this.load.off('loaderror', onError);
+        loadNext();
+      });
+      this.load.on('loaderror', onError);
+      this.load.audio(asset.key, asset.path);
+      this.load.start();
+    };
+    for (let i = 0; i < CONCURRENCY; i++) loadNext();
+  }
+
+  /**
+   * Generate the procedural sprites and sounds that were intentionally
+   * omitted from BootScene to keep the initial black-screen time short.
+   *
+   * Runs after the menu's first paint via `requestIdleCallback` (or
+   * `setTimeout` on Safari which lacks rIC). The actual phase work is
+   * frame-yielded via `time.addEvent` so Phaser can render between batches.
+   *
+   * Pipeline:
+   *   1. MENU_DEFERRED_SPRITE_PHASES — tiles, tokens, elevator, enemies, etc.
+   *      Each phase runs in its own frame tick (same budget as BootScene).
+   *   2. BATCHED_SOUND_PHASES (2 batches instead of 6) — queues WAV blobs.
+   *   3. `load.start()` decodes the blobs; `load.once('complete')` signals done.
+   *   4. `registry.set('proceduralAssetsReady', true)` — scenes that depend on
+   *      deferred keys (ElevatorScene, LevelScene, …) listen to the registry's
+   *      `changedata-proceduralAssetsReady` event to await this flag safely.
+   *
+   * Shutdown safety: the rIC/setTimeout handle is stored and cancelled on scene
+   * shutdown/destroy so it cannot fire against a torn-down scene.  If the scene
+   * shuts down mid-pipeline (player navigated away before warmup finished), a
+   * synchronous force-complete runs so sprites and sounds are available before
+   * the next scene enters.
+   *
+   * All cache guards mirror BootScene's pattern so re-entry is idempotent.
+   */
+  warmupDeferredAssets(): void {
+    // Reset per-visit state (handles scene re-entry after Settings/etc.).
+    this._warmupDone = false;
+    this._spritesComplete = false;
+
+    this._warmupUseRIC = typeof requestIdleCallback !== 'undefined';
+    if (this._warmupUseRIC) {
+      this._warmupHandle = requestIdleCallback(() => {
+        this._warmupHandle = null;
+        if (!this._warmupDone) this.runDeferredAssets();
+      }, { timeout: 500 });
+    } else {
+      this._warmupHandle = setTimeout(() => {
+        this._warmupHandle = null;
+        if (!this._warmupDone) this.runDeferredAssets();
+      }, 0) as unknown as number;
+    }
+
+    // Cancel the pending browser timer and force-complete any remaining
+    // generation when the scene shuts down (player navigated away mid-warmup).
+    // The 'shutdown' event fires before Phaser resets the loader, so
+    // this.load.start() is still valid inside _forceCompleteWarmup().
+    this.events.once('shutdown', () => this._onWarmupShutdown());
+    // Also cancel on full scene destruction to avoid stale timer callbacks.
+    this.events.once('destroy', () => this._cancelWarmupHandle());
+  }
+
+  private _cancelWarmupHandle(): void {
+    if (this._warmupHandle === null) return;
+    if (this._warmupUseRIC && typeof cancelIdleCallback !== 'undefined') {
+      cancelIdleCallback(this._warmupHandle);
+    } else {
+      clearTimeout(this._warmupHandle);
+    }
+    this._warmupHandle = null;
+  }
+
+  private _onWarmupShutdown(): void {
+    this._cancelWarmupHandle();
+    if (!this._warmupDone) this._forceCompleteWarmup();
+  }
+
+  /**
+   * Force-complete the deferred warmup synchronously.
+   *
+   * Called from the 'shutdown' event handler so that sprites are available
+   * before the next scene starts. Sprite generation is pure canvas work and
+   * is safe to call at any time. Sound generation queues blob URLs into the
+   * Phaser loader; load.start() is called immediately because the 'shutdown'
+   * event fires before Phaser's sys.shutdown() resets the loader.
+   */
+  private _forceCompleteWarmup(): void {
+    this._warmupDone = true; // prevent re-entry from rIC/destroy paths
+
+    // Sprites: synchronous canvas ops that write to the shared TextureManager.
+    if (!this._spritesComplete) {
+      for (const phase of MENU_DEFERRED_SPRITE_PHASES) phase.run(this);
+      this._spritesComplete = true;
+    }
+
+    // Sounds: queue blobs + start loader.
+    if (!this.cache.audio.exists('jump')) {
+      for (const phase of BATCHED_SOUND_PHASES) phase.run(this);
+      this.load.once('complete', () => {
+        this.registry.set('proceduralAssetsReady', true);
+      });
+      this.load.start();
+    } else {
+      this.registry.set('proceduralAssetsReady', true);
+    }
+  }
+
+  private runDeferredAssets(): void {
+    const spritePhases = this.textures.exists('tiles') ? [] : MENU_DEFERRED_SPRITE_PHASES;
+    let spriteIndex = 0;
+
+    const finishSprites = (): void => {
+      this._spritesComplete = true;
+
+      // All deferred sprites done — now handle sounds.
+      if (this.cache.audio.exists('jump')) {
+        // Sounds already cached (e.g. on scene re-entry); signal readiness.
+        this._warmupDone = true;
+        this.registry.set('proceduralAssetsReady', true);
+        return;
+      }
+
+      // Run batched sound phases with one frame yield between them (≤2 total).
+      BATCHED_SOUND_PHASES[0].run(this);
+      this.time.addEvent({
+        delay: 0,
+        callback: () => {
+          if (this._warmupDone) return; // shutdown handler ran first
+          BATCHED_SOUND_PHASES[1].run(this);
+          this._warmupDone = true; // committed — prevent double-queuing on late shutdown
+          this.load.once('complete', () => {
+            this.registry.set('proceduralAssetsReady', true);
+          });
+          this.load.start();
+        },
+      });
+    };
+
+    const runNextSprite = (): void => {
+      if (spriteIndex >= spritePhases.length) {
+        finishSprites();
+        return;
+      }
+      const phase = spritePhases[spriteIndex]!;
+      phase.run(this);
+      spriteIndex++;
+      this.time.addEvent({ delay: 0, callback: runNextSprite });
+    };
+
+    this.time.addEvent({ delay: 0, callback: runNextSprite });
   }
 
   private setupKeyboardNavigation(): void {
@@ -442,14 +665,33 @@ export class MenuScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '14px', color: '#9fb1c8',
     }).setOrigin(0.5).setDepth(TEXT_DEPTH);
 
-    // Start button — always leads to the slot picker
+    // Continue button — opens slot picker
     const startAction = () => this.openSlotPicker();
-    const btn = this.makeButton(cx, cy + 40, '[ SELECT SAVE SLOT ]', 24, startAction);
+    const btn = this.makeButton(cx, cy + 40, '[ CONTINUE ]', 24, startAction);
     btn.setDepth(TEXT_DEPTH);
     this.menuButtons.push({ btn, action: startAction });
 
+    const dailyAction = () => this.startDailyChallenge();
+    const dailyBtn = this.makeButton(cx, cy + 95, '[ DAILY CHALLENGE ]', 20, dailyAction);
+    dailyBtn.setDepth(TEXT_DEPTH);
+    this.menuButtons.push({ btn: dailyBtn, action: dailyAction });
+    this.dailyLabel = this.add.text(cx, cy + 122, '', {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: '#9fb1c8',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(TEXT_DEPTH);
+    this.dailyHistory = this.add.text(cx, cy + 196, '', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#6f829b',
+      align: 'center',
+      lineSpacing: 4,
+    }).setOrigin(0.5).setDepth(TEXT_DEPTH);
+    this.refreshDailyChallengeText();
+
     if (SOUNDTRACK_PLAYLIST.length > 0) {
-      const soundtrackYOffset = MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET;
+      const soundtrackYOffset = MenuScene.SOUNDTRACK_BUTTON_Y_NO_SAVE_OFFSET + 90;
       const soundtrackY = cy + soundtrackYOffset;
       const soundtrackAction = () => this.playNextSoundtrack();
       const soundtrackBtn = this.makeButton(cx, soundtrackY, '[ SOUNDTRACK MODE ]', 20, soundtrackAction);
@@ -458,7 +700,7 @@ export class MenuScene extends Phaser.Scene {
       this.soundtrackButton = soundtrackBtn;
     }
 
-    const settingsYOffset = 160;
+    const settingsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 250 : 205;
     const settingsAction = () => this.openSettings();
     const settingsBtn = this.makeButton(cx, cy + settingsYOffset, '[ SETTINGS ]', 20, settingsAction);
     settingsBtn.setDepth(TEXT_DEPTH);
@@ -530,8 +772,37 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private openSlotPicker(): void {
+    setDailyState(this.registry, null);
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => this.scene.start('SaveSlotScene'));
+  }
+
+  private refreshDailyChallengeText(): void {
+    const state = getCurrentDailyState();
+    const best = getResult(state.dateKey)?.runMs;
+    const bestText = best !== undefined ? formatDailyRun(best) : '—';
+    this.dailyLabel?.setText(`${formatDailyDateLabel(state.dateKey)}  ·  Best: ${bestText}`);
+
+    const history = getRecentResults(7).map((entry) => {
+      const label = `${entry.dateKey.slice(4, 6)}-${entry.dateKey.slice(6, 8)}`;
+      return `${label}: ${entry.runMs !== undefined ? formatDailyRun(entry.runMs) : '—'}`;
+    });
+    this.dailyHistory?.setText(history.join('\n'));
+
+    this.dailyRefreshTimer?.remove(false);
+    this.dailyRefreshTimer = this.time.delayedCall(msUntilNextUtcMidnight() + 1000, () => {
+      this.refreshDailyChallengeText();
+    });
+  }
+
+  private startDailyChallenge(): void {
+    const state = getCurrentDailyState();
+    setDailyState(this.registry, state);
+    setPlayerSlot(state.slotId);
+    (this.registry.get('gameState') as GameStateManager).resetLoadState();
+    const ctx: NavigationContext = { loadSave: hasSave() };
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.time.delayedCall(300, () => this.scene.start('ElevatorScene', ctx));
   }
 
   private openSettings(): void {
