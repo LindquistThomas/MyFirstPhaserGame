@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelConfig } from '../_shared/LevelScene';
 import { defineFloorScene } from '../_shared/defineFloorScene';
-import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
 import { FinanceTeamScene } from '../finance/FinanceTeamScene';
 import { InteractiveDoor } from '../../../ui/InteractiveDoor';
@@ -166,7 +165,7 @@ export class ExecutiveSuiteScene extends defineFloorScene({
       wordWrap: { width: W - 40 }, align: 'center',
     }).setOrigin(0.5, 0);
 
-    const hint = this.add.text(0, H / 2 - 18, `Press ${allKeyLabels('Interact')} to continue`, {
+    const hint = this.add.text(0, H / 2 - 18, `${this.formatPromptAction('Interact')} to continue`, {
       fontFamily: 'monospace', fontSize: '11px', color: '#666677',
     }).setOrigin(0.5, 1);
 
@@ -322,7 +321,7 @@ export class ExecutiveSuiteScene extends defineFloorScene({
     if (!this.bombPromptText) {
       this.bombPromptText = this.add.text(
         GAME_WIDTH / 2, GAME_HEIGHT - 148,
-        `Press ${allKeyLabels('Interact')} to disarm bomb`,
+          `${this.formatPromptAction('Interact')} to disarm bomb`,
         { fontFamily: 'monospace', fontSize: '12px', color: '#ffd700' },
       ).setOrigin(0.5).setScrollFactor(0).setDepth(65).setVisible(false);
     }
@@ -588,7 +587,7 @@ export class ExecutiveSuiteScene extends defineFloorScene({
 
     if (!near) return;
 
-    this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 ${near.label}`).setPosition(
+    this.interactPrompt?.setText(`${this.formatPromptAction('Interact')} → ${near.label}`).setPosition(
       near.x - 100, G - 180,
     ).setVisible(true);
     if (this.inputs.justPressed('Interact')) {

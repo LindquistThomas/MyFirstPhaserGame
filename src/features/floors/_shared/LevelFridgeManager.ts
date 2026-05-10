@@ -3,7 +3,7 @@ import { EnergyDrinkFridge, ENERGY_DRINK_DURATION_MS } from '../../../entities/E
 import { Player } from '../../../entities/Player';
 import { eventBus } from '../../../systems/EventBus';
 import { ensureCoffeeFridgeSounds } from '../../../systems/SoundGenerator';
-import { allKeyLabels } from '../../../input';
+import { promptLabel } from '../../../input';
 import { theme } from '../../../style/theme';
 import type { LevelConfig } from './LevelScene';
 
@@ -72,7 +72,7 @@ export class LevelFridgeManager {
 
     if (nearFridge) {
       this.prompt
-        .setText(`Press ${allKeyLabels('Interact')} \u2192 ${FRIDGE_ITEM_NAME}`)
+        .setText(`${formatActionPrompt('Interact')} → ${FRIDGE_ITEM_NAME}`)
         .setPosition(nearFridge.x + PROMPT_OFFSET_X, nearFridge.y - nearFridge.displayHeight + PROMPT_OFFSET_Y)
         .setVisible(true);
 
@@ -110,4 +110,10 @@ export class LevelFridgeManager {
     emitter.explode(10);
     scene.time.delayedCall(700, () => emitter.destroy());
   }
+}
+
+function formatActionPrompt(action: 'Interact'): string {
+  const label = promptLabel(action);
+  if (label === 'Tap' || label === 'Tap and hold' || label === 'Swipe') return label;
+  return `Press ${label}`;
 }

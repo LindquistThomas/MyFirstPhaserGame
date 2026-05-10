@@ -1,7 +1,8 @@
 import * as Phaser from 'phaser';
 import { hasBeenSeen, hasSeenAny } from '../systems/InfoDialogManager';
-import { primaryKeyLabel } from '../input';
+import { initInputModeTracking, promptLabel, type InputMode } from '../input';
 import type { GameAction } from '../input';
+import { eventBus } from '../systems/EventBus';
 import { theme } from '../style/theme';
 import { getCooldownRemaining } from '../systems/QuizManager';
 
@@ -154,11 +155,16 @@ export class InfoIcon {
   private tweens: Phaser.Tweens.Tween[] = [];
   private badge?: Phaser.GameObjects.Container;
   private hint?: Phaser.GameObjects.Container;
+  private hintText?: Phaser.GameObjects.Text;
   private mode: 'idle' | 'attention' | 'calm' = 'idle';
   private cooldownChip?: Phaser.GameObjects.Container;
   private cooldownChipText?: Phaser.GameObjects.Text;
   private cooldownTimer?: Phaser.Time.TimerEvent;
   private cooldownActive = false;
+  private readonly inputModeChangedHandler = (_mode: InputMode): void => {
+    if (!this.container.visible || !this.hint) return;
+    this.refreshHintLabel();
+  };
 
   constructor(scene: Phaser.Scene, x: number, y: number, onClick: () => void,
               contentId?: string, worldSpace = false,
@@ -166,6 +172,8 @@ export class InfoIcon {
     this.scene = scene;
     this.contentId = contentId;
     this.hintAction = hintAction;
+    initInputModeTracking();
+    eventBus.on('input:mode-changed', this.inputModeChangedHandler);
 
     ensureTextures(scene);
 
@@ -283,6 +291,7 @@ export class InfoIcon {
   }
 
   destroy(): void {
+    eventBus.off('input:mode-changed', this.inputModeChangedHandler);
     this.stopAllTweens();
     this.stopCooldown();
     this.container.destroy();
@@ -391,13 +400,14 @@ export class InfoIcon {
   }
 
   private createHint(): Phaser.GameObjects.Container {
-    const label = `Press ${primaryKeyLabel(this.hintAction)}`;
+    const label = this.hintActionLabel();
     const text = this.scene.add.text(0, 0, label, {
       fontFamily: 'monospace',
       fontSize: '11px',
       color: theme.color.css.textWhite,
       fontStyle: 'bold',
     }).setOrigin(0.5);
+    this.hintText = text;
 
     const padX = 6;
     const padY = 3;
@@ -414,6 +424,20 @@ export class InfoIcon {
     const container = this.scene.add.container(0, RADIUS + h / 2 + 6, [bg, text]);
     this.container.add(container);
     return container;
+  }
+
+  private refreshHintLabel(): void {
+    if (!this.hint) return;
+    const wasVisible = this.hint.visible;
+    this.hint.destroy();
+    this.hint = this.createHint();
+    this.hint.setVisible(wasVisible);
+  }
+
+  private hintActionLabel(): string {
+    const label = promptLabel(this.hintAction);
+    if (label === 'Tap' || label === 'Tap and hold' || label === 'Swipe') return label;
+    return `Press ${label}`;
   }
 
   private stopAllTweens(): void {

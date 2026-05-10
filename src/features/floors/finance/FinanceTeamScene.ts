@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { defineFloorScene } from '../_shared/defineFloorScene';
-import { allKeyLabels } from '../../../input';
 
 /**
  * Finance — now a content-only room accessed via a door inside the
@@ -100,7 +99,7 @@ export class FinanceTeamScene extends defineFloorScene({
     const near = d < 90;
     this.setExitDoorOpen(near);
     if (near) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} → Executive Suite`).setPosition(
+      this.interactPrompt?.setText(`${this.formatPromptAction('Interact')} → Executive Suite`).setPosition(
         this.exitDoor.x - 80, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();
@@ -109,4 +108,3 @@ export class FinanceTeamScene extends defineFloorScene({
     }
   }
 }
-

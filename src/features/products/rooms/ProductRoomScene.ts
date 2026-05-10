@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../../floors/_shared/LevelScene';
-import { allKeyLabels } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 
 export interface ProductRoomDecoration {
@@ -121,7 +120,7 @@ export class ProductRoomScene extends LevelScene {
     const near = d < 90;
     this.setExitDoorOpen(near);
     if (near) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Products Floor`).setPosition(
+      this.interactPrompt?.setText(`${this.formatPromptAction('Interact')} \u2192 Products Floor`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();

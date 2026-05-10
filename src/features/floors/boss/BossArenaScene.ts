@@ -13,7 +13,7 @@ import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
-import { allKeyLabels } from '../../../input';
+import { promptLabel } from '../../../input';
 import { ensureBossArenaSprites } from '../../../systems/SpriteGenerator';
 import { ensureBossRescueSounds } from '../../../systems/SoundGenerator';
 
@@ -72,6 +72,12 @@ export const DIALOGUES = [
 
 const MUG_PICKUP_PLATFORM_OFFSET_Y = 16;
 const MUG_PLATFORM_HEIGHT_ABOVE_GROUND = 300;
+
+function formatActionPrompt(action: 'Attack' | 'Interact'): string {
+  const label = promptLabel(action);
+  if (label === 'Tap' || label === 'Tap and hold' || label === 'Swipe') return label;
+  return `Press ${label}`;
+}
 
 /**
  * Boss arena scene — CEO Showdown.
@@ -182,12 +188,12 @@ export class BossArenaScene extends Phaser.Scene {
       new BossIntroDialog(this, () => {
         this.physics.resume();
         this.isTransitioning = false;
-        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug  |  Collect mugs from the side platforms`);
+        this.showMechanicHint(`${formatActionPrompt('Attack')} — Throw mug  |  Collect mugs from the side platforms`);
       });
     } else {
       // Brief reminder on every replay — unobtrusive bottom-right toast.
       this.time.delayedCall(1500, () => {
-        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug`);
+        this.showMechanicHint(`${formatActionPrompt('Attack')} — Throw mug`);
       });
     }
   }
@@ -295,7 +301,7 @@ export class BossArenaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
     }).setScrollFactor(0).setDepth(60);
 
-    const attackHint = allKeyLabels('Attack');
+    const attackHint = formatActionPrompt('Attack');
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, `${attackHint} — Throw Mug  |  Collect mugs from platforms  |  Answer challenges to unlock the final blow`, {
       fontFamily: 'monospace', fontSize: '12px', color: '#888899',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
@@ -585,7 +591,7 @@ export class BossArenaScene extends Phaser.Scene {
       wordWrap: { width: panelW - 32 }, align: 'center',
     }).setOrigin(0.5);
 
-    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, `Press ${allKeyLabels('Interact')}`, {
+    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, formatActionPrompt('Interact'), {
       fontFamily: 'monospace', fontSize: '11px', color: '#666677',
     }).setOrigin(1, 1);
 
