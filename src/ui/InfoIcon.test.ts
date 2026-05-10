@@ -21,6 +21,7 @@ vi.mock('../systems/InfoDialogManager', () => ({
 }));
 
 vi.mock('../input', () => ({
+  actionPrompt: vi.fn(() => 'Press ↑'),
   initInputModeTracking: vi.fn(),
   promptLabel: vi.fn(() => '↑'),
 }));
@@ -344,8 +345,8 @@ describe('InfoIcon cooldown chip', () => {
   });
 
   it('(h) refreshes visible hint label on input:mode-changed', () => {
-    vi.mocked(input.promptLabel)
-      .mockReturnValueOnce('↑')
+    vi.mocked(input.actionPrompt)
+      .mockReturnValueOnce('Press ↑')
       .mockReturnValueOnce('Tap');
 
     const scene = makeScene();

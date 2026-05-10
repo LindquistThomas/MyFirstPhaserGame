@@ -14,6 +14,7 @@ export {
 } from './InputService';
 export { keyLabel, primaryKeyLabel, allKeyLabels } from './keyLabels';
 export {
+  actionPrompt,
   detectInputMode,
   initInputModeTracking,
   promptLabel,

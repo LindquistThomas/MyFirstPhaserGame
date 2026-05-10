@@ -9,7 +9,8 @@ import { DialogController } from '../../../ui/DialogController';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { FloorHitState } from '../../../systems/FloorHitState';
-import { promptLabel } from '../../../input';
+import { actionPrompt } from '../../../input';
+import type { GameAction } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPlatform';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
@@ -956,10 +957,8 @@ export class LevelScene extends Phaser.Scene {
     this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
   }
 
-  protected formatPromptAction(action: 'Interact' | 'Jump' | 'ToggleInfo' | 'Confirm' | 'Cancel' | 'MoveLeft' | 'MoveRight'): string {
-    const label = promptLabel(action);
-    if (label === 'Tap' || label === 'Tap and hold' || label === 'Swipe') return label;
-    return `Press ${label}`;
+  protected formatPromptAction(action: GameAction): string {
+    return actionPrompt(action);
   }
 
   /* ---- checkpoints ---- */

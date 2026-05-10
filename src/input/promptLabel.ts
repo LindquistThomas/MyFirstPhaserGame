@@ -62,6 +62,13 @@ export function promptLabel(action: GameAction, mode: InputMode = detectInputMod
   return primaryKeyLabel(action);
 }
 
+/** Human-readable action instruction, e.g. "Press A" or "Tap". */
+export function actionPrompt(action: GameAction, mode: InputMode = detectInputMode()): string {
+  const label = promptLabel(action, mode);
+  if (label === 'Tap' || label === 'Tap and hold' || label === 'Swipe') return label;
+  return `Press ${label}`;
+}
+
 function emitModeChangedIfNeeded(): void {
   const nextMode = detectInputMode();
   if (trackedMode === nextMode) return;
@@ -77,6 +84,8 @@ function onTouchOverrideMaybeChanged(): void {
 }
 
 export function initInputModeTracking(): void {
+  // Safe to call from bootstrap and UI constructors; only the first call
+  // attaches listeners, later calls are intentional no-ops.
   if (trackingInitialised || typeof window === 'undefined') return;
   trackingInitialised = true;
   trackedMode = detectInputMode();

@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { hasBeenSeen, hasSeenAny } from '../systems/InfoDialogManager';
-import { initInputModeTracking, promptLabel, type InputMode } from '../input';
+import { actionPrompt, initInputModeTracking, type InputMode } from '../input';
 import type { GameAction } from '../input';
 import { eventBus } from '../systems/EventBus';
 import { theme } from '../style/theme';
@@ -161,7 +161,7 @@ export class InfoIcon {
   private cooldownChipText?: Phaser.GameObjects.Text;
   private cooldownTimer?: Phaser.Time.TimerEvent;
   private cooldownActive = false;
-  private readonly inputModeChangedHandler = (_mode: InputMode): void => {
+  private readonly inputModeChangedHandler = (_: InputMode): void => {
     if (!this.container.visible || !this.hint) return;
     this.refreshHintLabel();
   };
@@ -435,9 +435,7 @@ export class InfoIcon {
   }
 
   private hintActionLabel(): string {
-    const label = promptLabel(this.hintAction);
-    if (label === 'Tap' || label === 'Tap and hold' || label === 'Swipe') return label;
-    return `Press ${label}`;
+    return actionPrompt(this.hintAction);
   }
 
   private stopAllTweens(): void {
