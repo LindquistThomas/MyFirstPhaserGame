@@ -27,11 +27,21 @@ export interface ProductRoomConfig {
   decorations: ProductRoomDecoration[];
 }
 
-const PRODUCT_ROOM_TOKEN_BASE_INDEX: Readonly<Record<string, number>> = {
-  'product-isy-project-controls': 0,
-  'product-isy-beskrivelse': 2,
-  'product-isy-road': 4,
-};
+const PRODUCT_ROOM_TOKEN_LAYOUT = [
+  { x: 640, yOffset: -130 },
+  { x: 920, yOffset: -170 },
+] as const;
+const PRODUCT_ROOMS_WITH_AU = [
+  'product-isy-project-controls',
+  'product-isy-beskrivelse',
+  'product-isy-road',
+] as const;
+const PRODUCT_ROOM_TOKEN_BASE_INDICES: Readonly<Record<string, number>> = Object.fromEntries(
+  PRODUCT_ROOMS_WITH_AU.map((contentId, roomIndex) => [
+    contentId,
+    roomIndex * PRODUCT_ROOM_TOKEN_LAYOUT.length,
+  ]),
+);
 
 /**
  * A self-contained room dedicated to a single product. Reached from
@@ -83,13 +93,16 @@ export class ProductRoomScene extends LevelScene {
 
   protected override getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
-    const tokenBase = PRODUCT_ROOM_TOKEN_BASE_INDEX[this.cfg.contentId];
+    const tokenBase = PRODUCT_ROOM_TOKEN_BASE_INDICES[this.cfg.contentId];
+    // Only selected product rooms are currently part of the AU progression
+    // budget. Unlisted rooms intentionally spawn no AU tokens.
     const tokens = tokenBase === undefined
       ? []
-      : [
-        { x: 640, y: G - 130, index: tokenBase },
-        { x: 920, y: G - 170, index: tokenBase + 1 },
-      ];
+      : PRODUCT_ROOM_TOKEN_LAYOUT.map((token, index) => ({
+        x: token.x,
+        y: G + token.yOffset,
+        index: tokenBase + index,
+      }));
 
     return {
       floorId: FLOORS.PRODUCTS,

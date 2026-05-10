@@ -3,6 +3,10 @@ import { LEVEL_DATA } from './levelData';
 import { FLOORS } from './gameConfig';
 
 describe('LEVEL_DATA', () => {
+  // Keep boss access tight: all AU should be required, with at most a small
+  // optional cushion (about one short room's worth of AU).
+  const BOSS_AU_MARGIN_MAX = 6;
+  const MID_GAME_FLOOR_THRESHOLD = 4;
   const entries = Object.entries(LEVEL_DATA);
 
   it('has an entry for every FloorId in FLOORS', () => {
@@ -69,7 +73,7 @@ describe('LEVEL_DATA', () => {
     const totalAvailable = Object.values(LEVEL_DATA).reduce((sum, floor) => sum + floor.totalAU, 0);
     const bossRequired = LEVEL_DATA[FLOORS.BOSS].auRequired;
     expect(totalAvailable).toBeGreaterThanOrEqual(bossRequired);
-    expect(totalAvailable).toBeLessThanOrEqual(bossRequired + 6);
+    expect(totalAvailable).toBeLessThanOrEqual(bossRequired + BOSS_AU_MARGIN_MAX);
   });
 
   it('each non-boss floor is unlockable from lower-numbered floors', () => {
@@ -91,10 +95,12 @@ describe('LEVEL_DATA', () => {
     const earlierFloors: typeof sorted = [];
 
     for (const floor of sorted) {
-      if (floor.floorNumber >= 4 && floor.auRequired > 0) {
-        const earlierAUSources = earlierFloors.filter((earlier) => earlier.totalAU > 0);
-        if (earlierAUSources.length >= 2) {
-          const maxSingleEarlierYield = Math.max(...earlierAUSources.map((earlier) => earlier.totalAU));
+      if (floor.floorNumber >= MID_GAME_FLOOR_THRESHOLD && floor.auRequired > 0) {
+        const earlierAuSources = earlierFloors.filter((earlier) => earlier.totalAU > 0);
+        // Early floor gates can only have 0-1 prior AU sources by design.
+        // We enforce the multi-source rule only where 2+ earlier sources exist.
+        if (earlierAuSources.length >= 2) {
+          const maxSingleEarlierYield = Math.max(...earlierAuSources.map((earlier) => earlier.totalAU));
           expect(
             floor.auRequired,
             `Floor "${floor.name}" (auRequired=${floor.auRequired}) should require AU from multiple earlier floors; ` +
