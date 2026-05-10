@@ -266,6 +266,19 @@ describe('HUD', () => {
     expect(showSpy).not.toHaveBeenCalled();
   });
 
+  it('shows NG+ badge when progression mode is ngplus', () => {
+    scene = makeScene(false);
+    progression.startNewGame('ngplus');
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    const ngBadgeCall = scene.add.text.mock.calls.findIndex(
+      ([x, y, initialText]) => x === GAME_WIDTH - 8 && y === 14 && initialText === 'NG+',
+    );
+    expect(ngBadgeCall).toBeGreaterThan(-1);
+    const ngBadge = scene.add.text.mock.results[ngBadgeCall]?.value as ReturnType<typeof makeText>;
+    expect(ngBadge.setVisible).toHaveBeenCalledWith(true);
+  });
+
   it('emits toggle event on mute click and unsubscribes from mute-changed on shutdown', () => {
     scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);

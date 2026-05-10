@@ -3,6 +3,7 @@ import { LEVEL_DATA } from '../config/levelData';
 import type { SaveData } from './SaveManager';
 import * as DefaultSaveManager from './SaveManager';
 import { CURRENT_SAVE_VERSION } from './SaveManager';
+import { DEFAULT_GAME_MODE, isGameMode, type GameMode } from './GameMode';
 import { resetAllQuizzes } from './QuizManager';
 import { resetAll as resetAllInfoDialogs } from './InfoDialogManager';
 import { eventBus } from './EventBus';
@@ -27,6 +28,10 @@ export interface ProgressionState {
   onboardingComplete: boolean;
   /** Floors the player has physically entered at least once. */
   visitedFloors: Set<FloorId>;
+  /** Current run mode. */
+  mode: GameMode;
+  /** Meta progression that persists across NG+ resets. */
+  bossDefeatedCount: number;
 }
 
 export class ProgressionSystem {
@@ -54,6 +59,8 @@ export class ProgressionSystem {
       collectedTokens: Object.fromEntries(allFloors.map(id => [id, new Set<number>()])) as Record<FloorId, Set<number>>,
       onboardingComplete: false,
       visitedFloors: new Set<FloorId>(),
+      mode: DEFAULT_GAME_MODE,
+      bossDefeatedCount: 0,
     };
   }
 
@@ -173,6 +180,18 @@ export class ProgressionSystem {
     return this.state.currentFloor;
   }
 
+  getMode(): GameMode {
+    return this.state.mode;
+  }
+
+  isNgPlusMode(): boolean {
+    return this.state.mode === 'ngplus';
+  }
+
+  getBossDefeatedCount(): number {
+    return this.state.bossDefeatedCount;
+  }
+
   setCurrentFloor(floorId: FloorId): void {
     this.state.currentFloor = floorId;
     this.persist();
@@ -207,6 +226,23 @@ export class ProgressionSystem {
     this.saveAdapter.clear();
     resetAllQuizzes();
     resetAllInfoDialogs();
+  }
+
+  startNewGame(mode: GameMode): void {
+    const bossDefeatedCount = this.state.bossDefeatedCount;
+    this.state = this.defaultState();
+    this.state.mode = mode;
+    this.state.bossDefeatedCount = bossDefeatedCount;
+    this.persist();
+    resetAllQuizzes();
+    resetAllInfoDialogs();
+  }
+
+  recordBossDefeat(): boolean {
+    if (this.state.bossDefeatedCount > 0) return false;
+    this.state.bossDefeatedCount = 1;
+    this.persist();
+    return true;
   }
 
   loadFromSave(): boolean {
@@ -248,6 +284,8 @@ export class ProgressionSystem {
       collectedTokens: safeTokens,
       onboardingComplete: data.onboardingComplete ?? false,
       visitedFloors: new Set<FloorId>((data.visitedFloors ?? []).filter(id => FLOOR_IDS.includes(id))),
+      mode: isGameMode(data.mode) ? data.mode : DEFAULT_GAME_MODE,
+      bossDefeatedCount: Math.max(0, Math.floor(data.bossDefeatedCount ?? 0)),
     };
     this.checkUnlocks();
     return true;
@@ -269,6 +307,8 @@ export class ProgressionSystem {
       onboardingComplete: this.state.onboardingComplete,
       visitedFloors: Array.from(this.state.visitedFloors),
       lastPlayedAt: Date.now(),
+      mode: this.state.mode,
+      bossDefeatedCount: this.state.bossDefeatedCount,
     });
   }
 }

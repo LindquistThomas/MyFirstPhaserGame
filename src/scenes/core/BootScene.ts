@@ -11,6 +11,7 @@ import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 import { isPersistenceAvailable } from '../../systems/PersistedStore';
 import { createAnalyticsService } from '../../systems/Analytics';
 import { setDailyState } from '../../systems/DailyChallenge';
+import { getWorldModifiers } from '../../systems/WorldModifiers';
 
 /** Count of static assets that failed to load during this boot pass. */
 let _bootAssetErrorCount = 0;
@@ -146,7 +147,9 @@ export class BootScene extends Phaser.Scene {
     // Build the persistent game-state facade once. Subsequent scenes read
     // `gameState` from the registry instead of constructing their own
     // ProgressionSystem or reaching into the singleton save managers.
-    this.registry.set('gameState', new GameStateManager());
+    const gameState = new GameStateManager();
+    this.registry.set('gameState', gameState);
+    this.registry.set('worldModifiers', getWorldModifiers(gameState.progression.getMode()));
 
     // Bootstrap opt-in analytics. createAnalyticsService() returns null when
     // VITE_ANALYTICS_ENDPOINT is not set (structurally disabled). When set,

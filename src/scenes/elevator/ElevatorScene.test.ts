@@ -176,3 +176,32 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
     expect(stub.scene.start).toHaveBeenNthCalledWith(2, 'ArchitectureTeamScene');
   });
 });
+
+describe('ElevatorScene.init() — mode propagation', () => {
+  it('writes NG+ world modifiers to registry when starting ngplus', () => {
+    const scene = new ElevatorScene() as unknown as {
+      registry: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> };
+      init: (data?: { loadSave?: boolean; startMode?: 'normal' | 'ngplus' }) => void;
+      progression: { getMode: () => 'normal' | 'ngplus' };
+    };
+
+    const progression = { getMode: vi.fn(() => 'ngplus') };
+    const gameState = {
+      applyInitialLoad: vi.fn(),
+      progression,
+    };
+
+    scene.registry = {
+      get: vi.fn((key: string) => (key === 'gameState' ? gameState : undefined)),
+      set: vi.fn(),
+    };
+
+    scene.init({ loadSave: false, startMode: 'ngplus' });
+
+    expect(gameState.applyInitialLoad).toHaveBeenCalledWith(false, 'ngplus');
+    expect(scene.registry.set).toHaveBeenCalledWith(
+      'worldModifiers',
+      expect.objectContaining({ enemySpeedMultiplier: 1.25, enemyContactDamageMultiplier: 1.5 }),
+    );
+  });
+});

@@ -79,6 +79,7 @@ import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { ProgressionSystem, type SaveAdapter } from '../../../systems/ProgressionSystem';
 import type { SaveData } from '../../../systems/SaveManager';
+import type { WorldModifiers } from '../../../systems/WorldModifiers';
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -91,7 +92,12 @@ function makeSaveAdapter(): SaveAdapter {
   };
 }
 
-function makeHarness() {
+function makeHarness(worldModifiers: WorldModifiers = {
+  enemySpeedMultiplier: 1,
+  enemyContactDamageMultiplier: 1,
+  bossHpMultiplier: 1,
+  hardQuizOnly: false,
+}) {
   const overlapCallbacks: Array<(player: unknown, enemy: unknown) => void> = [];
   const colliderArgs: unknown[][] = [];
   const progression = new ProgressionSystem(makeSaveAdapter());
@@ -152,6 +158,7 @@ function makeHarness() {
     platformGroup: platformGroup as unknown as Phaser.Physics.Arcade.StaticGroup,
     droppedAUGroup: droppedAUGroup as unknown as Phaser.Physics.Arcade.Group,
     camera: camera as unknown as Phaser.Cameras.Scene2D.Camera,
+    worldModifiers,
   });
 
   return { spawner, overlapCallbacks, colliderArgs, player, camera, progression, droppedAUGroup, droppedAUPool };
@@ -320,10 +327,32 @@ describe('LevelEnemySpawner — minX/maxX defaults', () => {
     expect((lastCreated.opts as { speed: number }).speed).toBe(80);
   });
 
-  it('passes undefined speed when not provided', () => {
+  it('uses built-in default speed when speed is not provided', () => {
     const { spawner } = makeHarness();
     spawner.spawn(makeConfig([enemyEntry('slime')]));
-    expect((lastCreated.opts as { speed: unknown }).speed).toBeUndefined();
+    expect((lastCreated.opts as { speed: number }).speed).toBe(50);
+  });
+
+  it('applies enemy speed multiplier from world modifiers', () => {
+    const { spawner } = makeHarness({
+      enemySpeedMultiplier: 1.25,
+      enemyContactDamageMultiplier: 1,
+      bossHpMultiplier: 1,
+      hardQuizOnly: false,
+    });
+    spawner.spawn(makeConfig([enemyEntry('slime', 500, 800, { speed: 80 })]));
+    expect((lastCreated.opts as { speed: number }).speed).toBe(100);
+  });
+
+  it('applies enemy contact-damage multiplier from world modifiers', () => {
+    const { spawner } = makeHarness({
+      enemySpeedMultiplier: 1,
+      enemyContactDamageMultiplier: 1.5,
+      bossHpMultiplier: 1,
+      hardQuizOnly: false,
+    });
+    spawner.spawn(makeConfig([enemyEntry('slime')]));
+    expect(spawner.enemies[0]?.hitCost).toBe(2);
   });
 });
 
