@@ -1,6 +1,8 @@
 # Music Assets
 
-Background music for the game lives in this directory as MP3 / OGG files organized by pack. Files are declared in `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` (the full catalog). `BootScene.preload()` eagerly loads only `music_menu` and `music_elevator_jazz`; all other tracks are deferred so the menu renders fast while first-visited scenes still avoid silence. Tracks reach the Phaser cache via the mechanisms described below. Scene-to-track mapping is defined by `SCENE_MUSIC` in the same config file and applied automatically by `src/plugins/MusicPlugin.ts`.
+Background music for the game lives in this directory as OGG files organized by pack. Files are declared in `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` (the full catalog). `BootScene.preload()` eagerly loads only `music_menu` and `music_elevator_jazz`; all other tracks are deferred so the menu renders fast while first-visited scenes still avoid silence. Tracks reach the Phaser cache via the mechanisms described below. Scene-to-track mapping is defined by `SCENE_MUSIC` in the same config file and applied automatically by `src/plugins/MusicPlugin.ts`.
+
+> **Codec standard — OGG Vorbis**: All music tracks use **OGG Vorbis** (`.ogg`). Do not add new `.mp3` files; encode new tracks with `ffmpeg -i source.wav -c:a libvorbis -q:a <Q> out.ogg` (see the Encoding section for per-group quality levels). Legacy `.mp3` tracks in the lazy set will be migrated in a follow-up.
 
 SFX (jump, land, token collect, quiz feedback, info-card / link clicks, elevator cues, etc.) are **not** loaded from this directory — they are procedurally generated at runtime by `src/systems/SoundGenerator.ts`, which also generates the procedural lullaby track (no separate MusicGenerator module).
 
@@ -9,7 +11,7 @@ SFX (jump, land, token collect, quiz feedback, info-card / link clicks, elevator
 Tracks marked `eager: true`:
 
 - `music_menu` (`8bit-chiptune/bgm_menu.ogg`)
-- `music_elevator_jazz` (`elevator-jazz/elevator_jazz.mp3`)
+- `music_elevator_jazz` (`elevator-jazz/elevator_jazz.ogg`)
 
 All other tracks arrive via background mechanisms so time-to-interactive stays low.
 
@@ -29,7 +31,7 @@ Any code that needs to play or push a non-eager track imperatively must emit `mu
 | Asset key | File | Used by | Load path |
 | --- | --- | --- | --- |
 | `music_menu` | `8bit-chiptune/bgm_menu.ogg` | `MenuScene` (via `SCENE_MUSIC`) | Eager boot load + automatic |
-| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.mp3` | `ElevatorScene` (via `SCENE_MUSIC`); `ElevatorController` on elevator stop (`music:request`) | Eager boot load + automatic + imperative |
+| `music_elevator_jazz` | `elevator-jazz/elevator_jazz.ogg` | `ElevatorScene` (via `SCENE_MUSIC`); `ElevatorController` on elevator stop (`music:request`) | Eager boot load + automatic + imperative |
 | `music_elevator_ride` | `8bit-chiptune/bgm_action_3.mp3` | `ElevatorController` on elevator start (`music:request`) | Imperative |
 | `music_floor1` | `8bit-chiptune/bgm_action_1.mp3` | `ArchitectureTeamScene` (via `SCENE_MUSIC`) | Automatic |
 | `music_floor2` | `8bit-chiptune/bgm_action_2.mp3` | `FinanceTeamScene`, `ProductLeadershipScene`, `CustomerSuccessScene`, and the Product sub-scenes (via `SCENE_MUSIC`) | Automatic |
@@ -57,19 +59,23 @@ The following files are part of the library but are not currently referenced by 
 
 ## Encoding
 
-MP3 background tracks are re-encoded using **FFmpeg / libmp3lame**; OGG tracks (menu, boss battle, and retro-synth loops) use **libvorbis**. The two boss rescue-cue WAV files (`boss_tension.wav` / `boss_victory.wav`) are short procedural sounds kept at their original PCM quality and are not subject to the table below.
+**OGG Vorbis is the standard codec for all game music.** Use `libvorbis` with a `-q:a` quality level; avoid fixed-bitrate (`-b:a`) mode so the encoder can adapt to the content.
 
-| Group | Bitrate | Channels | Sample rate | Re-encode command |
+Two boss rescue-cue WAV files (`boss_tension.wav` / `boss_victory.wav`) are short procedural sounds kept at their original PCM quality and are not subject to the table below.
+
+| Group | Quality | Channels | Sample rate | Re-encode command |
 | --- | --- | --- | --- | --- |
-| Menu track (`8bit-chiptune/bgm_menu.ogg`) | **64 kbps VBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -c:a libvorbis -b:a 64k -ac 1 -ar 44100 bgm_menu.ogg` |
-| 8-bit chiptune (`8bit-chiptune/*.mp3`) | **64 kbps CBR** | mono | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 64k -ar 44100 -ac 1 out.mp3` |
-| Elevator jazz (`elevator-jazz/*.mp3`) | **96 kbps CBR** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 96k -ar 44100 -ac 2 out.mp3` |
+| Menu track (`8bit-chiptune/bgm_menu.ogg`) | **q0 VBR (~32 kbps)** | mono | 22 050 Hz | `ffmpeg -i in.ogg -c:a libvorbis -q:a 0 -ac 1 -ar 22050 bgm_menu.ogg` |
+| Elevator jazz (`elevator-jazz/elevator_jazz.ogg`) | **q0 VBR (~64 kbps)** | stereo | 44 100 Hz | `ffmpeg -i in.mp3 -c:a libvorbis -q:a 0 -ar 44100 elevator_jazz.ogg` |
+| 8-bit chiptune action (`8bit-chiptune/*.mp3`) | **64 kbps CBR** (MP3 legacy) | mono | 44 100 Hz | `ffmpeg -i in.mp3 -codec:a libmp3lame -b:a 64k -ar 44100 -ac 1 out.mp3` ¹ |
 | Boss battle (`boss/bossroom-battle.ogg`) | **~28 kbps ABR** | mono | 22 050 Hz | `ffmpeg -i in.mp3 -ac 1 -ar 22050 -c:a libvorbis -b:a 28k -minrate 20k -maxrate 36k out.ogg` |
 | OGG loops (`retro-synth/*.ogg`) | **96 kbps CBR** | stereo | 48 000 Hz | `ffmpeg -i in.ogg -c:a libvorbis -b:a 96k -ac 2 -ar 48000 out.ogg` |
 
-> **Unused reserve tracks** (`8bit-chiptune/bgm_action_4.mp3`, `bgm_action_5.mp3`; `retro-synth/retro_synth.mp3`; `retro-synth/deadly_contracts-loop1.ogg` etc.) have not yet been re-encoded. Apply the matching group's command from the table above before activating any of them.
+¹ The action tracks are MP3 legacy from before the OGG standard was adopted; re-encode to OGG before activating any new ones.
 
-> **Note on track lengths and file sizes**: The chiptune, elevator-jazz, and boss tracks are full songs (47–192 s), so their deployed file sizes are large relative to the bitrate. Reducing bitrates further risks audible generation loss since these files are already lossy-encoded MP3s with no lossless source retained. The current settings are the minimum that avoids noticeable artefacts in a browser game context.
+> **Listening notes (2026-05)**: `bgm_menu.ogg` was re-encoded from 64 kbps/44 kHz mono to q0/22 kHz mono (331 KB, was 652 KB). `elevator_jazz.mp3` was converted from MP3 96 kbps to OGG q0/44 kHz stereo (354 KB, was 575 KB). Both were re-encoded from already-compressed sources, so the quality levels were chosen to be the lowest that retains acceptable fidelity: chiptune music at 22 kHz/q0 matches 8-bit game aesthetics; the jazz loop at 44 kHz/q0 is roughly equivalent to a 80 kbps MP3. **A/B listen before merging any further re-encodes.**
+
+> **Unused reserve tracks** (`8bit-chiptune/bgm_action_4.mp3`, `bgm_action_5.mp3`; `retro-synth/retro_synth.mp3`; `retro-synth/deadly_contracts-loop1.ogg` etc.) have not yet been re-encoded. Apply the matching group's command from the table above before activating any of them (re-encode to OGG for the chiptune ones).
 
 ## Licensing
 
