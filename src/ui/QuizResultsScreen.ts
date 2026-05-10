@@ -47,9 +47,8 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
     const reward = recordQuizPass(infoId, floorId, getQuizInfoIdsForFloor(floorId));
     auAwarded = reward.quizBonusAU;
     floorMasteryAwarded = reward.floorMasteryBonusAU;
-    const totalAward = reward.totalBonusAU;
-    if (totalAward > 0) {
-      progression.addAU(floorId, totalAward);
+    if (reward.totalBonusAU > 0) {
+      progression.addAU(floorId, reward.totalBonusAU);
     }
     if (reward.floorMasteryEarned) {
       const hudHost = scene as Phaser.Scene & { hud?: { showToast: (message: string, duration?: number) => void } };

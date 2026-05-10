@@ -156,7 +156,7 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '12px', color: '#5e6e85',
       }).setOrigin(0.5));
 
-      const quizLine = this.add.text(w / 2, 122, this.formatQuizProgress(info.slotId), {
+      const quizLine = this.add.text(w / 2, 122, this.formatQuizProgressLabel(info.slotId), {
         fontFamily: 'monospace', fontSize: '12px', color: '#88a5c8',
       }).setOrigin(0.5);
       container.add(quizLine);
@@ -195,8 +195,9 @@ export class SaveSlotScene extends Phaser.Scene {
         this.totalQuizCount = getLoadedQuizCount();
         this.refreshQuizCountLabels();
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         // Non-fatal: keep placeholder total until content is loaded elsewhere.
+        console.warn('[SaveSlotScene] Failed to preload quiz totals', err);
       });
   }
 
@@ -204,11 +205,11 @@ export class SaveSlotScene extends Phaser.Scene {
     this.slotInfos.forEach((info, index) => {
       const label = this.quizCountLabels[index];
       if (!label || !info?.exists) return;
-      label.setText(this.formatQuizProgress(info.slotId));
+      label.setText(this.formatQuizProgressLabel(info.slotId));
     });
   }
 
-  private formatQuizProgress(slotId: SaveSlotId): string {
+  private formatQuizProgressLabel(slotId: SaveSlotId): string {
     const passed = getPassedCount(slotId);
     const total = this.totalQuizCount ?? '…';
     return `Quizzes: ${passed}/${total}`;

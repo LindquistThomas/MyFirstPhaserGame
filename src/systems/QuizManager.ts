@@ -40,7 +40,7 @@ function defaultStore(): QuizStore {
   return { slots: {} };
 }
 
-function normaliseLegacySlot(raw: unknown): Record<string, QuizRecord> {
+function normalizeLegacySlot(raw: unknown): Record<string, QuizRecord> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const out: Record<string, QuizRecord> = {};
   for (const [infoId, rec] of Object.entries(raw as Record<string, unknown>)) {
@@ -61,13 +61,17 @@ function normaliseLegacySlot(raw: unknown): Record<string, QuizRecord> {
   return out;
 }
 
+function isValidFloorMasteryObject(val: unknown): val is Partial<Record<FloorId, boolean>> {
+  return !!val && typeof val === 'object' && !Array.isArray(val);
+}
+
 function parseSlotState(raw: unknown): QuizSlotState {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return defaultSlotState();
   const obj = raw as Record<string, unknown>;
   return {
-    quizzes: normaliseLegacySlot(obj['quizzes']),
-    floorMasteryAwarded: (obj['floorMasteryAwarded'] && typeof obj['floorMasteryAwarded'] === 'object' && !Array.isArray(obj['floorMasteryAwarded']))
-      ? obj['floorMasteryAwarded'] as Partial<Record<FloorId, boolean>>
+    quizzes: normalizeLegacySlot(obj['quizzes']),
+    floorMasteryAwarded: isValidFloorMasteryObject(obj['floorMasteryAwarded'])
+      ? obj['floorMasteryAwarded']
       : {},
   };
 }
@@ -82,7 +86,7 @@ const store = createPersistedStore<QuizStore>({
       return {
         slots: {
           [getPlayerSlot()]: {
-            quizzes: normaliseLegacySlot(raw),
+            quizzes: normalizeLegacySlot(raw),
             floorMasteryAwarded: {},
           },
         },
@@ -182,9 +186,9 @@ export function recordQuizPass(infoId: string, floorId: FloorId, floorQuizInfoId
     const nextQuizAward = existing?.awarded ? 0 : QUIZ_REWARDS.pass;
     const updatedQuiz: QuizRecord = {
       passed: true,
-      bestScore: existing?.bestScore ?? 0,
+      bestScore: Math.max(existing?.bestScore ?? 0, QUIZ_PASS_THRESHOLD),
       lastAttemptTime: existing?.lastAttemptTime ?? Date.now(),
-      attempts: existing?.attempts ?? 0,
+      attempts: existing?.attempts ?? 1,
       awarded: true,
     };
 
