@@ -57,7 +57,7 @@ export function detectInputMode(): InputMode {
 }
 
 export function promptLabel(action: GameAction, mode: InputMode = detectInputMode()): string {
-  if (mode === 'touch') return TOUCH_PROMPTS[action] ?? 'Tap';
+  if (mode === 'touch') return TOUCH_PROMPTS[action] ?? primaryKeyLabel(action);
   if (mode === 'gamepad') return GAMEPAD_PROMPTS[action] ?? primaryKeyLabel(action);
   return primaryKeyLabel(action);
 }
@@ -94,8 +94,7 @@ export function initInputModeTracking(): void {
   const onGamepadEvent = (): void => emitModeChangedIfNeeded();
   const onStorage = (event: StorageEvent): void => {
     if (event.key !== TOUCH_PRIMARY_OVERRIDE_KEY) return;
-    touchOverrideSnapshot = event.newValue;
-    emitModeChangedIfNeeded();
+    onTouchOverrideMaybeChanged();
   };
   const onOverrideChanged = (): void => onTouchOverrideMaybeChanged();
 

@@ -56,7 +56,9 @@ describe('promptLabel', () => {
     vi.mocked(keyLabels.primaryKeyLabel).mockReturnValue('X');
 
     expect(promptLabel('Attack', 'gamepad')).toBe('X');
+    expect(promptLabel('Pause', 'touch')).toBe('X');
     expect(keyLabels.primaryKeyLabel).toHaveBeenCalledWith('Attack');
+    expect(keyLabels.primaryKeyLabel).toHaveBeenCalledWith('Pause');
   });
 
   it('emits input:mode-changed for gamepad connect/disconnect and touch override changes', () => {
