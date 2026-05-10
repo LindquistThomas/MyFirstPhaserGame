@@ -222,6 +222,7 @@ function isValidSaveData(d: unknown): d is SaveData {
   if (o['runStartedAt'] !== undefined && typeof o['runStartedAt'] !== 'number') return false;
   if (o['bossDefeatedCount'] !== undefined) {
     if (typeof o['bossDefeatedCount'] !== 'number') return false;
+    if (!Number.isInteger(o['bossDefeatedCount'])) return false;
     if (!Number.isFinite(o['bossDefeatedCount'])) return false;
     if (o['bossDefeatedCount'] < 0) return false;
   }

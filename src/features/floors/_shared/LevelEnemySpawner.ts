@@ -15,6 +15,15 @@ import { isReducedMotion } from '../../../systems/MotionPreference';
 import type { WorldModifiers } from '../../../systems/WorldModifiers';
 import type { LevelConfig } from './LevelScene';
 
+const DEFAULT_ENEMY_SPEED_BY_TYPE = {
+  slime: 50,
+  bot: 75,
+  'scope-creep': 35,
+  astronaut: 60,
+  'tech-debt-ghost': 40,
+  terrorist: 90,
+} as const;
+
 export interface EnemySpawnerDeps {
   scene: Phaser.Scene;
   floorId: FloorId;
@@ -42,18 +51,10 @@ export class LevelEnemySpawner {
     if (!config.enemies?.length) return;
     const speedMultiplier = this.deps.worldModifiers.enemySpeedMultiplier;
     const contactDamageMultiplier = this.deps.worldModifiers.enemyContactDamageMultiplier;
-    const defaultSpeedByType = {
-      slime: 50,
-      bot: 75,
-      'scope-creep': 35,
-      astronaut: 60,
-      'tech-debt-ghost': 40,
-      terrorist: 90,
-    } as const;
     for (const e of config.enemies) {
       const minX = e.minX ?? e.x - 160;
       const maxX = e.maxX ?? e.x + 160;
-      const baseSpeed = e.speed ?? defaultSpeedByType[e.type];
+      const baseSpeed = e.speed ?? DEFAULT_ENEMY_SPEED_BY_TYPE[e.type];
       const opts = { minX, maxX, speed: baseSpeed * speedMultiplier };
       let enemy: Enemy;
       switch (e.type) {

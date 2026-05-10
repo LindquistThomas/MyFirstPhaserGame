@@ -238,11 +238,12 @@ export class ProgressionSystem {
     resetAllInfoDialogs();
   }
 
+  /** Record a boss clear. Returns true only on the first clear for this slot. */
   recordBossDefeat(): boolean {
-    if (this.state.bossDefeatedCount > 0) return false;
-    this.state.bossDefeatedCount = 1;
+    const firstDefeat = this.state.bossDefeatedCount === 0;
+    this.state.bossDefeatedCount += 1;
     this.persist();
-    return true;
+    return firstDefeat;
   }
 
   loadFromSave(): boolean {
