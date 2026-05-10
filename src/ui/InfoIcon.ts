@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { hasBeenSeen, hasSeenAny } from '../systems/InfoDialogManager';
-import { actionPrompt, initInputModeTracking, type InputMode } from '../input';
+import { actionPrompt, initInputModeTracking } from '../input';
 import type { GameAction } from '../input';
 import { eventBus } from '../systems/EventBus';
 import { theme } from '../style/theme';
@@ -161,7 +161,7 @@ export class InfoIcon {
   private cooldownChipText?: Phaser.GameObjects.Text;
   private cooldownTimer?: Phaser.Time.TimerEvent;
   private cooldownActive = false;
-  private readonly inputModeChangedHandler = (_: InputMode): void => {
+  private readonly inputModeChangedHandler = (): void => {
     if (!this.container.visible || !this.hint) return;
     this.refreshHintLabel();
   };
