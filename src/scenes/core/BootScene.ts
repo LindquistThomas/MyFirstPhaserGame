@@ -149,7 +149,8 @@ export class BootScene extends Phaser.Scene {
     // ProgressionSystem or reaching into the singleton save managers.
     const gameState = new GameStateManager();
     this.registry.set('gameState', gameState);
-    this.registry.set('worldModifiers', getWorldModifiers(gameState.progression.getMode()));
+    const mode = gameState.progression?.getMode?.() ?? 'normal';
+    this.registry.set('worldModifiers', getWorldModifiers(mode));
 
     // Bootstrap opt-in analytics. createAnalyticsService() returns null when
     // VITE_ANALYTICS_ENDPOINT is not set (structurally disabled). When set,
