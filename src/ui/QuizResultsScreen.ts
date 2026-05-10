@@ -1,8 +1,8 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FloorId } from '../config/gameConfig';
-import { QUIZ_REWARDS, QUIZ_PASS_THRESHOLD } from '../config/quiz';
+import { getQuizInfoIdsForFloor, QUIZ_PASS_THRESHOLD } from '../config/quiz';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
-import { saveQuizResult, getQuizRecord } from '../systems/QuizManager';
+import { saveQuizResult, getQuizRecord, recordQuizPass } from '../systems/QuizManager';
 import { eventBus } from '../systems/EventBus';
 import { isReducedMotion } from '../systems/MotionPreference';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
@@ -34,8 +34,6 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   const { scene, container, navigator, progression, floorId, infoId, score, total, alreadyPassed, onClose } = options;
 
   const passed = score >= QUIZ_PASS_THRESHOLD;
-  const perfect = score === total;
-
   saveQuizResult(infoId, score);
   // getQuizRecord is called after saveQuizResult so the record is guaranteed to exist.
   // The fallback to 1 guards against unexpected storage failures where the write
@@ -44,9 +42,19 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   eventBus.emit('quiz:completed', { infoId, score, total, passed, attemptNumber });
 
   let auAwarded = 0;
+  let floorMasteryAwarded = 0;
   if (passed && !alreadyPassed) {
-    auAwarded = perfect ? QUIZ_REWARDS.perfect : QUIZ_REWARDS.pass;
-    progression.addAU(floorId, auAwarded);
+    const reward = recordQuizPass(infoId, floorId, getQuizInfoIdsForFloor(floorId));
+    auAwarded = reward.quizBonusAU;
+    floorMasteryAwarded = reward.floorMasteryBonusAU;
+    const totalAward = reward.totalBonusAU;
+    if (totalAward > 0) {
+      progression.addAU(floorId, totalAward);
+    }
+    if (reward.floorMasteryEarned) {
+      const hudHost = scene as Phaser.Scene & { hud?: { showToast: (message: string, duration?: number) => void } };
+      hudHost.hud?.showToast('Floor Mastery unlocked! +5 AU');
+    }
   }
 
   eventBus.emit(passed ? 'sfx:quiz_success' : 'sfx:quiz_fail');
@@ -54,7 +62,7 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   const PANEL_W = 620;
   const PADDING = 32;
   const panelX = (GAME_WIDTH - PANEL_W) / 2;
-  const panelH = passed ? 340 : 280;
+  const panelH = passed ? 380 : 280;
   const panelY = (GAME_HEIGHT - panelH) / 2;
 
   const bg = scene.add.graphics();
@@ -66,9 +74,7 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
 
   let curY = panelY + PADDING;
 
-  const titleText = passed
-    ? (perfect ? 'PERFECT SCORE!' : 'QUIZ PASSED!')
-    : 'NOT QUITE...';
+  const titleText = passed ? 'QUIZ PASSED!' : 'NOT QUITE...';
   const titleColor = passed ? '#ffd700' : '#ff6644';
 
   const title = scene.add.text(GAME_WIDTH / 2, curY, titleText, {
@@ -96,10 +102,10 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
 
   curY += 40;
 
-  if (passed && auAwarded > 0) {
+  if (passed) {
     const auText = scene.add.text(
       GAME_WIDTH / 2, curY,
-      `+${auAwarded} AU Earned!`,
+      `Quiz Bonus: +${auAwarded} AU`,
       { fontFamily: 'monospace', fontSize: '22px', color: '#ffd700', fontStyle: 'bold' },
     ).setOrigin(0.5, 0);
     container.add(auText);
@@ -113,13 +119,21 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
       scene.cameras.main.flash(200, 255, 215, 0);
     }
 
-    curY += 40;
-    const alreadyText = scene.add.text(
+    curY += 36;
+    const floorMasteryText = scene.add.text(
       GAME_WIDTH / 2, curY,
-      'Quiz already completed \u2014 no additional AU',
+      `Floor Mastery Bonus: +${floorMasteryAwarded} AU`,
+      { fontFamily: 'monospace', fontSize: '15px', color: '#88d8ff' },
+    ).setOrigin(0.5, 0);
+    container.add(floorMasteryText);
+
+    curY += 32;
+    const replayText = scene.add.text(
+      GAME_WIDTH / 2, curY,
+      alreadyPassed ? 'Quiz already completed — no additional AU' : 'First-time pass bonus applied',
       { fontFamily: 'monospace', fontSize: '15px', color: '#8899aa' },
     ).setOrigin(0.5, 0);
-    container.add(alreadyText);
+    container.add(replayText);
     curY += 40;
   } else {
     const failHint = scene.add.text(

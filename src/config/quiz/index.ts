@@ -26,6 +26,7 @@ export type {
 } from './types';
 export {
   QUIZ_REWARDS,
+  QUIZ_FLOOR_MASTERY_BONUS_AU,
   QUIZ_COOLDOWN_MS,
   QUIZ_QUESTION_COUNT,
   QUIZ_DIFFICULTY_MIX,
@@ -118,4 +119,19 @@ export function preloadQuizFor(floorId: FloorId): Promise<void> {
  */
 export function getQuizFor(floorId: FloorId): Record<string, QuizDefinition> {
   return _quizFloorCache.get(floorId) ?? {};
+}
+
+/** Stable list of quiz infoIds for a floor once it has been preloaded. */
+export function getQuizInfoIdsForFloor(floorId: FloorId): string[] {
+  return Object.keys(getQuizFor(floorId));
+}
+
+/** Kick off loading for all floors. Safe to call repeatedly. */
+export function preloadAllQuizzes(): Promise<void> {
+  return Promise.all(Object.values(FLOORS).map((floorId) => preloadQuizFor(floorId))).then(() => undefined);
+}
+
+/** Number of quizzes currently loaded into QUIZ_DATA. */
+export function getLoadedQuizCount(): number {
+  return Object.keys(QUIZ_DATA).length;
 }

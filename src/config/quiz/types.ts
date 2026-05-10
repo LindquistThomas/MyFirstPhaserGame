@@ -5,9 +5,10 @@
  * Each quiz attempt randomly draws QUIZ_QUESTION_COUNT questions with a
  * deterministic difficulty mix (see QUIZ_DIFFICULTY_MIX).
  *
- * Scoring: pass (>= QUIZ_PASS_THRESHOLD correct) → 3 AU,
- *          perfect (all correct)               → 5 AU,
- *          below threshold                     → 0 AU.
+ * Scoring:
+ *   - First-time pass (>= QUIZ_PASS_THRESHOLD correct) → 3 AU
+ *   - Floor mastery (all quizzes on a floor passed)    → +5 AU once
+ *   - Below threshold                                   → 0 AU
  */
 
 export type QuizDifficulty = 'easy' | 'medium' | 'hard';
@@ -28,10 +29,13 @@ export interface QuizDefinition {
 
 /** AU awarded per quiz result. */
 export const QUIZ_REWARDS = {
-  pass: 3,       // 2 out of 3 correct
-  perfect: 5,    // 3 out of 3 correct
-  fail: 0,       // 0-1 correct
+  pass: 3,
+  perfect: 5,
+  fail: 0,
 } as const;
+
+/** One-time AU bonus awarded when every quiz on a floor has been passed. */
+export const QUIZ_FLOOR_MASTERY_BONUS_AU = 5;
 
 /** Cooldown between quiz retry attempts in milliseconds. */
 export const QUIZ_COOLDOWN_MS = 30_000;

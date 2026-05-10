@@ -8,7 +8,7 @@ vi.mock('phaser', () => {
     for (const m of [
       'setOrigin', 'setDepth', 'setScrollFactor', 'setInteractive', 'setAlpha',
       'setShadow', 'setColor', 'setScale', 'fillStyle', 'fillRect',
-      'lineStyle', 'strokeRect', 'clear', 'on',
+      'lineStyle', 'strokeRect', 'clear', 'on', 'setText',
     ]) {
       o[m] = vi.fn(() => o);
     }
@@ -83,6 +83,19 @@ vi.mock('../../config/levelData', () => ({
     1: { id: 1, name: 'Platform Team' },
     4: { id: 4, name: 'Executive Suite' },
   },
+}));
+
+vi.mock('../../config/quiz', () => ({
+  getLoadedQuizCount: vi.fn(() => 4),
+  preloadAllQuizzes: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../../systems/QuizManager', () => ({
+  getPassedCount: vi.fn((slotId: string) => {
+    if (slotId === 'slot1') return 2;
+    if (slotId === 'slot2') return 1;
+    return 0;
+  }),
 }));
 
 vi.mock('../../systems/SaveManager', () => ({
@@ -214,5 +227,22 @@ describe('SaveSlotScene — save card floor display', () => {
     const scene = buildScene();
     const labels = getTextLabels(scene);
     expect(labels).not.toContain('Floor 4');
+  });
+
+  it('shows per-slot quiz progress as "Quizzes: X/Y"', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return { slotId, exists: true, totalAU: 42, currentFloor: 4 as FloorId, lastPlayedAt: undefined };
+      }
+      if (slotId === 'slot2') {
+        return { slotId, exists: true, totalAU: 10, currentFloor: 1 as FloorId, lastPlayedAt: undefined };
+      }
+      return { slotId, exists: false };
+    });
+
+    const scene = buildScene();
+    const labels = getTextLabels(scene);
+    expect(labels).toContain('Quizzes: 2/4');
+    expect(labels).toContain('Quizzes: 1/4');
   });
 });

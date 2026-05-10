@@ -79,4 +79,13 @@ describe('LEVEL_DATA', () => {
       cumulativeAU += floor.totalAU;
     }
   });
+
+  it('boss remains reachable from base floor AU alone (without quiz bonuses)', () => {
+    const boss = LEVEL_DATA[FLOORS.BOSS];
+    const guaranteedFloorAU = Object.values(LEVEL_DATA)
+      .filter((floor) => floor.floorNumber < boss.floorNumber)
+      .reduce((sum, floor) => sum + floor.totalAU, 0);
+
+    expect(guaranteedFloorAU).toBeGreaterThanOrEqual(boss.auRequired);
+  });
 });
