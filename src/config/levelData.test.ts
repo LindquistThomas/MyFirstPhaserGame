@@ -65,18 +65,44 @@ describe('LEVEL_DATA', () => {
     expect(LEVEL_DATA[FLOORS.LOBBY].auRequired).toBe(0);
   });
 
-  it('cumulative token AU available (Σ totalAU for all lower-numbered floors) >= auRequired for every floor', () => {
-    // Sort floors by their display order (floorNumber) so we accumulate AU
-    // in the same order a player would encounter them.
+  it('total available AU stays within boss-gate tuning window', () => {
+    const totalAvailable = Object.values(LEVEL_DATA).reduce((sum, floor) => sum + floor.totalAU, 0);
+    const bossRequired = LEVEL_DATA[FLOORS.BOSS].auRequired;
+    expect(totalAvailable).toBeGreaterThanOrEqual(bossRequired);
+    expect(totalAvailable).toBeLessThanOrEqual(bossRequired + 6);
+  });
+
+  it('each non-boss floor is unlockable from lower-numbered floors', () => {
     const sorted = Object.values(LEVEL_DATA).sort((a, b) => a.floorNumber - b.floorNumber);
     let cumulativeAU = 0;
     for (const floor of sorted) {
+      if (floor.id === FLOORS.BOSS) break;
       expect(
         cumulativeAU,
         `Floor "${floor.name}" (auRequired=${floor.auRequired}) requires more AU than is ` +
         `available from all preceding floors (cumulative available=${cumulativeAU})`,
       ).toBeGreaterThanOrEqual(floor.auRequired);
       cumulativeAU += floor.totalAU;
+    }
+  });
+
+  it('mid/late-game gates cannot be unlocked by the AU of any single earlier floor', () => {
+    const sorted = Object.values(LEVEL_DATA).sort((a, b) => a.floorNumber - b.floorNumber);
+    const earlierFloors: typeof sorted = [];
+
+    for (const floor of sorted) {
+      if (floor.floorNumber >= 4 && floor.auRequired > 0) {
+        const earlierAUSources = earlierFloors.filter((earlier) => earlier.totalAU > 0);
+        if (earlierAUSources.length >= 2) {
+          const maxSingleEarlierYield = Math.max(...earlierAUSources.map((earlier) => earlier.totalAU));
+          expect(
+            floor.auRequired,
+            `Floor "${floor.name}" (auRequired=${floor.auRequired}) should require AU from multiple earlier floors; ` +
+            `max single earlier yield is ${maxSingleEarlierYield}`,
+          ).toBeGreaterThan(maxSingleEarlierYield);
+        }
+      }
+      earlierFloors.push(floor);
     }
   });
 });

@@ -27,6 +27,12 @@ export interface ProductRoomConfig {
   decorations: ProductRoomDecoration[];
 }
 
+const PRODUCT_ROOM_TOKEN_BASE_INDEX: Readonly<Record<string, number>> = {
+  'product-isy-project-controls': 0,
+  'product-isy-beskrivelse': 2,
+  'product-isy-road': 4,
+};
+
 /**
  * A self-contained room dedicated to a single product. Reached from
  * the PRODUCTS floor of the elevator shaft (rendered by
@@ -34,8 +40,8 @@ export interface ProductRoomConfig {
  * pressing Enter (or tapping the door).
  *
  * Same `FLOORS.PRODUCTS` is reused for all product rooms ΓÇö token
- * collection state is shared but no rooms define tokens, so there is
- * no collision risk.
+ * collection state is shared, so each room uses explicit token index
+ * ranges to avoid collisions.
  */
 export class ProductRoomScene extends LevelScene {
   private readonly cfg: ProductRoomConfig;
@@ -77,6 +83,13 @@ export class ProductRoomScene extends LevelScene {
 
   protected override getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
+    const tokenBase = PRODUCT_ROOM_TOKEN_BASE_INDEX[this.cfg.contentId];
+    const tokens = tokenBase === undefined
+      ? []
+      : [
+        { x: 640, y: G - 130, index: tokenBase },
+        { x: 920, y: G - 170, index: tokenBase + 1 },
+      ];
 
     return {
       floorId: FLOORS.PRODUCTS,
@@ -88,7 +101,7 @@ export class ProductRoomScene extends LevelScene {
       ],
 
       roomElevators: [],
-      tokens: [],
+      tokens,
 
       infoPoints: [
         {
