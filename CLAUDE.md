@@ -54,7 +54,8 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │                             # Touch / a11y: VirtualGamepad, TouchHintOverlay, touchPrimary,
 │                             #   ariaLive, pillarboxBackdrop
 │                             # hud/ subdir — one Controller.ts per HUD feature
-│                             #   (AchievementBadge, CaffeineRing, CoinCounter, MuteIcon, ProgressStrip)
+│                             #   (AchievementBadgeController, CaffeineRingController,
+│                             #    CoinCounterController, MuteIconController, ProgressStripController)
 ├── docs/                     # architecture.md, eventbus-audit.md, archive/ (shipped specs)
 ├── scripts/                  # check-size.cjs — bundle-size budget gate (used by `npm run size`)
 ├── idea/                     # design notes / brainstorm dump (not part of build)
