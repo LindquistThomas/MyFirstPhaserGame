@@ -129,6 +129,7 @@ export const BOSS_RESCUE_SOUND_PHASES: readonly GeneratorPhase[] = [
       loadWav(s, 'bomb_disarm',     generateBombDisarmSound());
       loadWav(s, 'hostage_freed',   generateHostageFreedSound());
       loadWav(s, 'pistol_shot',     generatePistolShotSound());
+      loadWav(s, 'item_pickup',     generateItemPickupSound());
     },
   },
 ];
