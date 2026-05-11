@@ -37,6 +37,7 @@ src/
 │       │   ├── sceneBackdrop.ts        Layered gradient/pattern/vignette background.
 │       │   ├── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
 │       │   ├── coachHints.ts           First-visit per-floor toast hint copy.
+│       │   ├── dailyChallengeLayout.ts Seeded deterministic token/enemy/consumable layout overrides for daily challenge runs.
 │       │   └── defineFloorScene.ts     Factory that builds a LevelScene subclass from declarative options (key, floorId, config, banner, decorations, returnSide). Used by every standard floor.
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
@@ -126,8 +127,11 @@ src/
 │   ├── SettingsStore.ts      Persisted volume levels + motion/control overrides.
 │   ├── MotionPreference.ts   Reduced-motion helper (reads OS preference + settings).
 │   ├── CaffeineBuff.ts       Pure timer for caffeine buff; callers supply `now`.
+│   ├── DailyChallenge.ts     Daily challenge state helpers: UTC date key, seed + slot-id derivation, midnight timer, and registry read/write.
+│   ├── DailyChallengeStore.ts Persisted daily results store (architect_daily_results_v1) with best-time updates, recent-history reads, and streak checks.
 │   ├── FloorHitState.ts      Per-floor hit / checkpoint tracking; pure (no Phaser/eventBus); 3-hit forced respawn threshold.
 │   ├── PersistedStore.ts     Generic JSON-backed key/value store factory.
+│   ├── SeededRandom.ts       Deterministic mulberry32 PRNG for seeded systems (daily challenge layout, etc.).
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
 │   ├── PlaytimeTracker.ts    Total + per-floor active-playtime accumulator; persists via PlaytimeSaveAdapter (10 s flush throttle).
 │   ├── Analytics.ts          Opt-in analytics service. Gated on VITE_ANALYTICS_ENDPOINT (build) + SettingsStore.analyticsConsent (runtime). Stashed on scene.registry under "analytics" by BootScene.

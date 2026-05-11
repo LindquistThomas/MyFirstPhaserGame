@@ -42,7 +42,8 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
 │   │                         # PersistedStore, SettingsStore, AchievementManager, TouchHintStore,
 │   │                         # MotionPreference, CaffeineBuff, FloorHitState, PlaytimeTracker,
-│   │                         # Analytics, sceneLifecycle, sliderUtils,
+│   │                         # Analytics, DailyChallenge, DailyChallengeStore, SeededRandom,
+│   │                         # sceneLifecycle, sliderUtils,
 │   │                         # SpriteGenerator (+ sprites/ per-asset families),
 │   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
