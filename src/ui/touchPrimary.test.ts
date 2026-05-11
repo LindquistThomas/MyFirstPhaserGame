@@ -49,7 +49,8 @@ describe('isTouchPrimary', () => {
   it('(d) no override + ontouchstart + coarse pointer → true', async () => {
     // Simulate a touch-primary environment
     (window as unknown as Record<string, unknown>)['ontouchstart'] = null;
-    // jsdom may not have matchMedia; define it returning coarse pointer
+    // Production code: !window.matchMedia('(pointer: fine)').matches
+    // matches: false → NOT a fine pointer → coarse pointer assumed → returns true
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
       configurable: true,
