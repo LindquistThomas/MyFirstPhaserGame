@@ -24,6 +24,7 @@ import { LAZY_SCENE_LOADERS } from '../lazySceneLoaders';
 import { preloadQuizFor } from '../../config/quiz';
 import { preloadInfoFor } from '../../config/info';
 import { prefetchSceneMusic } from '../../plugins/MusicPlugin';
+import { SceneLoadingOverlay } from '../../ui/SceneLoadingOverlay';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -75,6 +76,8 @@ export class ElevatorScene extends Phaser.Scene {
   private controlHints?: ControlHintsOverlay;
   /** Whether the welcome modal is currently open (blocks control hints). */
   private welcomeModalOpen = false;
+  private sceneLoadingOverlay?: SceneLoadingOverlay;
+  private retrySceneKey: string | null = null;
 
   /** The shaft is wider in the 128-px world. */
   private static readonly SHAFT_WIDTH = 220;
@@ -92,6 +95,9 @@ export class ElevatorScene extends Phaser.Scene {
   private static readonly CALL_BUTTON_RADIUS = 54;
   private static readonly CALL_BUTTON_RADIUS_SQ =
     ElevatorScene.CALL_BUTTON_RADIUS * ElevatorScene.CALL_BUTTON_RADIUS;
+  private static readonly TRANSITION_FADE_MS = 500;
+  private static readonly LOADING_OVERLAY_DELAY_MS = 250;
+  private static readonly LOADING_OVERLAY_MIN_VISIBLE_MS = 150;
 
   constructor() {
     super({ key: 'ElevatorScene' });
@@ -114,6 +120,7 @@ export class ElevatorScene extends Phaser.Scene {
 
   create(): void {
     this.isTransitioning = false;
+    this.retrySceneKey = null;
     this.floorCallButtons = [];
     this.zoneManager.bindScene(this);
     // Fallback colour behind the sky backdrop (drawn by ElevatorSceneLayout).
@@ -316,6 +323,8 @@ export class ElevatorScene extends Phaser.Scene {
       this.progression,
       (floorId) => this.callFloorIfUnlocked(floorId),
     );
+
+    this.sceneLoadingOverlay = new SceneLoadingOverlay(this);
   }
 
   /**
@@ -456,9 +465,14 @@ export class ElevatorScene extends Phaser.Scene {
 
   /* ---- update loop ---- */
   update(_time: number, delta: number): void {
-    if (this.isTransitioning) return;
-
     const inputs = this.inputs;
+    if (this.retrySceneKey && inputs.justPressed('Confirm')) {
+      this.cameras.main.fadeOut(ElevatorScene.TRANSITION_FADE_MS, 0, 0, 0);
+      void this.lazyStartScene(this.retrySceneKey);
+      return;
+    }
+    if (this.retrySceneKey) return;
+    if (this.isTransitioning) return;
     const infoPressed = inputs.justPressed('ToggleInfo');
     const interactPressed = inputs.justPressed('Interact');
 
@@ -572,7 +586,7 @@ export class ElevatorScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.progression.setCurrentFloor(FLOORS.PRODUCTS);
     prefetchSceneMusic(this, door.sceneKey);
-    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.fadeOut(ElevatorScene.TRANSITION_FADE_MS, 0, 0, 0);
     void this.lazyStartScene(door.sceneKey);
   }
 
@@ -626,15 +640,14 @@ export class ElevatorScene extends Phaser.Scene {
     this.progression.setCurrentFloor(floorId);
     const sceneKey = ElevatorFloorTransitionManager.resolveSceneKey(floorId, direction);
     prefetchSceneMusic(this, sceneKey);
-    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.fadeOut(ElevatorScene.TRANSITION_FADE_MS, 0, 0, 0);
     void this.lazyStartScene(sceneKey);
   }
 
   /**
    * Registers the scene class with Phaser on first use (via a dynamic import
-   * that Vite splits into its own chunk), then starts it once the 500 ms fade
-   * has elapsed. The fetch and the fade run concurrently — on fast connections
-   * there is no extra black-screen time beyond the animation itself.
+   * that Vite splits into its own chunk), then starts it after the transition
+   * fade and optional loading overlay complete.
    *
    * Guards against concurrent invocations: if a transition is already in
    * progress (e.g. the player mashes two floor buttons within a single frame),
@@ -648,25 +661,76 @@ export class ElevatorScene extends Phaser.Scene {
   private async lazyStartScene(sceneKey: string): Promise<void> {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
-
-    const fadeDelay = new Promise<void>((resolve) => {
-      this.time.delayedCall(500, () => resolve());
-    });
+    this.retrySceneKey = null;
+    this.sceneLoadingOverlay?.hide();
 
     try {
       const loader = LAZY_SCENE_LOADERS.get(sceneKey);
       if (loader && !this.scene.get(sceneKey)) {
-        const [cls] = await Promise.all([loader(), fadeDelay]);
-        this.scene.add(sceneKey, cls, false);
+        let loaderSettled = false;
+        const registerScene = loader()
+          .then((cls) => { this.scene.add(sceneKey, cls, false); })
+          .finally(() => { loaderSettled = true; });
+
+        await this.waitMs(ElevatorScene.TRANSITION_FADE_MS);
+
+        let overlayShownAt: number | null = null;
+        if (!loaderSettled) {
+          await this.waitMs(ElevatorScene.LOADING_OVERLAY_DELAY_MS);
+          if (!loaderSettled) {
+            this.sceneLoadingOverlay?.showLoading();
+            overlayShownAt = performance.now();
+          }
+        }
+
+        await registerScene;
+        if (overlayShownAt !== null) {
+          await this.waitForAnimationMs(
+            Math.max(
+              0,
+              ElevatorScene.LOADING_OVERLAY_MIN_VISIBLE_MS - (performance.now() - overlayShownAt),
+            ),
+          );
+        }
       } else {
-        await fadeDelay;
+        await this.waitMs(ElevatorScene.TRANSITION_FADE_MS);
       }
+      this.sceneLoadingOverlay?.hide();
       this.scene.start(sceneKey);
     } catch (err: unknown) {
       console.error(`[ElevatorScene] Failed to load scene "${sceneKey}":`, err);
+      this.sceneLoadingOverlay?.showError(
+        'Could not load floor',
+        'Press Enter to retry',
+      );
+      this.retrySceneKey = sceneKey;
       this.isTransitioning = false;
       this.cameras.main.fadeIn(300, 0, 0, 0);
     }
+  }
+
+  private waitMs(ms: number): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.time.delayedCall(ms, () => resolve());
+    });
+  }
+
+  private waitForAnimationMs(ms: number): Promise<void> {
+    if (ms <= 0) return Promise.resolve();
+    if (typeof requestAnimationFrame !== 'function') {
+      return this.waitMs(ms);
+    }
+    return new Promise<void>((resolve) => {
+      const start = performance.now();
+      const tick = (): void => {
+        if (performance.now() - start >= ms) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
   }
 
   /**
