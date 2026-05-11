@@ -86,8 +86,13 @@ vi.mock('../../systems/SaveManager', () => ({
   setPlayerSlot: vi.fn(),
 }));
 vi.mock('../../config/audioConfig', () => ({ STATIC_MUSIC_ASSETS: [] }));
-vi.mock('../../config/gameConfig', () => ({ COLORS: { hudText: '#fff', titleText: '#fff' } }));
+vi.mock('../../config/gameConfig', () => ({
+  COLORS: { hudText: '#fff', titleText: '#fff' },
+  FLOOR_IDS: [0, 1, 3, 4, 5, 6],
+}));
 vi.mock('../../style/theme', () => ({ theme: { color: { ui: { accent: 0xffffff } } } }));
+vi.mock('../../config/info', () => ({ preloadInfoFor: vi.fn(() => Promise.resolve()) }));
+vi.mock('../../config/quiz', () => ({ preloadQuizFor: vi.fn(() => Promise.resolve()) }));
 
 // isPersistenceAvailable is the module under test — NOT mocked by default.
 // Individual tests that need to control the return value use vi.spyOn.
@@ -95,6 +100,8 @@ vi.mock('../../style/theme', () => ({ theme: { color: { ui: { accent: 0xffffff }
 import { eventBus } from '../../systems/EventBus';
 import { BootScene } from './BootScene';
 import * as PersistedStore from '../../systems/PersistedStore';
+import * as InfoModule from '../../config/info';
+import * as QuizModule from '../../config/quiz';
 
 describe('BootScene — persistenceAvailable registry flag', () => {
   let scene: BootScene;
@@ -326,6 +333,75 @@ describe('BootScene — proceduralAssetsReady registry flag', () => {
     // Re-enter
     scene.create();
     expect(scene.registry.set).toHaveBeenCalledWith('proceduralAssetsReady', false);
+    (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
+  });
+});
+
+describe('BootScene — eager info/quiz preloads', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    eventBus.removeAllListeners();
+    vi.restoreAllMocks();
+  });
+
+  it('schedules preloadInfoFor and preloadQuizFor for all floors via requestIdleCallback', () => {
+    const idleCallbacks: Array<() => void> = [];
+    const origRic = globalThis.requestIdleCallback;
+    (globalThis as Record<string, unknown>).requestIdleCallback = vi.fn((cb: () => void) => {
+      idleCallbacks.push(cb);
+    });
+
+    const scene = new BootScene();
+    scene.create();
+
+    // requestIdleCallback should have been called once
+    expect(idleCallbacks).toHaveLength(1);
+
+    // Execute the idle callback
+    idleCallbacks[0]!();
+
+    const FLOOR_IDS = [0, 1, 3, 4, 5, 6];
+    expect(InfoModule.preloadInfoFor).toHaveBeenCalledTimes(FLOOR_IDS.length);
+    expect(QuizModule.preloadQuizFor).toHaveBeenCalledTimes(FLOOR_IDS.length);
+    for (const floorId of FLOOR_IDS) {
+      expect(InfoModule.preloadInfoFor).toHaveBeenCalledWith(floorId);
+      expect(QuizModule.preloadQuizFor).toHaveBeenCalledWith(floorId);
+    }
+
+    // Restore
+    if (origRic === undefined) {
+      delete (globalThis as Record<string, unknown>).requestIdleCallback;
+    } else {
+      (globalThis as Record<string, unknown>).requestIdleCallback = origRic;
+    }
+    (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
+  });
+
+  it('falls back to setTimeout(0) when requestIdleCallback is not available', () => {
+    vi.useFakeTimers();
+    const origRic = globalThis.requestIdleCallback;
+    delete (globalThis as Record<string, unknown>).requestIdleCallback;
+
+    const scene = new BootScene();
+    scene.create();
+
+    // Before timers fire, no preloads should have run
+    expect(InfoModule.preloadInfoFor).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+
+    const FLOOR_IDS = [0, 1, 3, 4, 5, 6];
+    expect(InfoModule.preloadInfoFor).toHaveBeenCalledTimes(FLOOR_IDS.length);
+    expect(QuizModule.preloadQuizFor).toHaveBeenCalledTimes(FLOOR_IDS.length);
+
+    // Restore
+    if (origRic !== undefined) {
+      (globalThis as Record<string, unknown>).requestIdleCallback = origRic;
+    }
+    vi.useRealTimers();
     (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
   });
 });
