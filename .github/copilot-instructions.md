@@ -198,6 +198,9 @@ Playwright helpers in `tests/helpers/playwright.ts`:
 - `clearStorage(page)` — wipes localStorage before boot.
 - `attachErrorWatchers(page).assertClean()` — fails the test if any uncaught `pageerror`/console error leaked.
 
+`window.__testHooks` extras (available when `VITE_EXPOSE_TEST_HOOKS !== 'false'`):
+- `forceShowVirtualGamepad(visible: boolean)` — imperatively mount (`true`) or unmount (`false`) the virtual gamepad without writing localStorage. Use this to cover touch UI in Playwright tests on non-touch Chromium. `true` also shows the first-run hint if `TouchHintStore.hasSeen()` is still `false`.
+
 For detailed Playwright debugging recipes, see `.github/skills/debug-with-playwright.md`.
 
 ## Common tripwires
