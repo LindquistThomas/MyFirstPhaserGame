@@ -27,7 +27,7 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 
 ### Floors
 
-Defined in `src/config/gameConfig.ts` (`FLOORS`) and `src/config/levelData.ts` (`LEVEL_DATA`).
+The display "Floor" number below comes from `LEVEL_DATA[*].floorNumber` (`src/config/levelData.ts`) — a sequential 0–5 sequence used for the cab panel and HUD. The internal `FloorId` values in `FLOORS` (`src/config/gameConfig.ts`) are **non-sequential** (`LOBBY=0, PLATFORM_TEAM=1, BUSINESS=3, EXECUTIVE=4, PRODUCTS=5, BOSS=6`); the two are intentionally decoupled so IDs can be reallocated without renumbering the displayed labels.
 
 | Floor | Department | Notes |
 |-------|-----------|-------|
