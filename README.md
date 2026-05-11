@@ -37,7 +37,7 @@ The display "Floor" number below comes from `LEVEL_DATA[*].floorNumber` (`src/co
 | 1 | Platform Team / Architecture Team | Split floor: Platform on the left, Architecture on the right. Green — Infrastructure AU. |
 | 2 | Products | Rendered directly by `ElevatorScene` / `ProductDoorManager` — one door per ISY product, no standalone scene. |
 | 3 | Business | Split floor: Product Leadership on the left, Customer Success on the right. Amber — Business AU. |
-| 4 | Executive Suite | Penthouse — Strategy AU. |
+| 4 | Executive Suite | Penthouse — Strategy AU. Hosts the Finance room (separate door inside the suite). |
 | 5 | Boardroom | Boss arena — final encounter, `BossArenaScene`. |
 
 ## Bundle size budget
