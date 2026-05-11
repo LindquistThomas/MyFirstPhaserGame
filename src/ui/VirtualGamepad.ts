@@ -1,6 +1,6 @@
 import { setVirtualButton } from '../input';
 import type { GameAction } from '../input';
-import { showTouchHintIfNeeded, showTouchHintForced } from './TouchHintOverlay';
+import { showTouchHintIfNeeded, showTouchHintForced, showTouchHintIfNotSeen } from './TouchHintOverlay';
 export { isTouchPrimary } from './touchPrimary';
 import { isTouchPrimary } from './touchPrimary';
 import { eventBus } from '../systems/EventBus';
@@ -14,6 +14,17 @@ import { isReducedMotion } from '../systems/MotionPreference';
  * pad for hybrid devices that weren't detected as touch-primary at boot.
  */
 let reactiveDetected = false;
+
+/**
+ * Session-scoped override set by `forceShowVirtualGamepad()`.
+ *
+ * - `true`  → force-show the pad regardless of `isTouchPrimary()`.
+ * - `false` → force-hide the pad (pad is destroyed; applyVirtualGamepadVisibility no-ops).
+ * - `null`  → normal auto-detect behaviour.
+ *
+ * Never written to localStorage — purely in-memory.
+ */
+let forcedVisible: boolean | null = null;
 
 /**
  * Cached value of `settingsStore.hapticsEnabled`.
@@ -199,8 +210,11 @@ export function applyVirtualGamepadVisibility(): void {
   hapticsEnabled = settings.hapticsEnabled;
 
   const shouldShow =
-    onScreenControls === 'always' ||
-    (onScreenControls === 'auto' && (isTouchPrimary() || reactiveDetected));
+    forcedVisible === true ||
+    (forcedVisible !== false && (
+      onScreenControls === 'always' ||
+      (onScreenControls === 'auto' && (isTouchPrimary() || reactiveDetected))
+    ));
 
   let pad = document.getElementById('virtual-pad') as HTMLElement | null;
 
@@ -218,10 +232,14 @@ export function applyVirtualGamepadVisibility(): void {
         // Mid-session touch detected while playing: re-show hint without
         // overwriting the hasSeen flag.
         showTouchHintForced(pad);
-      } else if (onScreenControls === 'always' && !isTouchPrimary() && !reactiveDetected) {
+      } else if (onScreenControls === 'always' && !isTouchPrimary() && !reactiveDetected && forcedVisible !== true) {
         // User explicitly enabled the pad on a non-touch device from Settings:
         // pop the hint so they know what the buttons do.
         showTouchHintForced(pad);
+      } else if (forcedVisible === true) {
+        // Force-mounted via test hook: show hint if not yet seen, bypassing
+        // the isTouchPrimary() guard so the first-run flow works in Playwright.
+        showTouchHintIfNotSeen(pad);
       } else {
         // Normal touch-primary device at boot.
         showTouchHintIfNeeded(pad);
@@ -312,6 +330,31 @@ export function initVirtualGamepad(): void {
 export function _destroyVirtualGamepadForTests(): void {
   activeVirtualGamepadInstance?.destroy();
   activeVirtualGamepadInstance = null;
+  forcedVisible = null;
+}
+
+/**
+ * Imperatively show or hide the virtual gamepad, bypassing `isTouchPrimary()`
+ * and without writing localStorage.
+ *
+ * - `visible=true`  → builds and activates the pad. The first-run hint appears
+ *   if `TouchHintStore.hasSeen()` is false (just like the normal first-run flow,
+ *   but without the `isTouchPrimary()` guard so it works in Playwright).
+ * - `visible=false` → destroys the pad element and removes all DOM listeners.
+ *
+ * Uses a session-scoped module flag so subsequent `settings:changed` events
+ * cannot override the forced state. The flag is cleared on page reload.
+ *
+ * @internal Exposed via `window.__testHooks.forceShowVirtualGamepad` when
+ * `VITE_EXPOSE_TEST_HOOKS !== 'false'`.
+ */
+export function forceShowVirtualGamepad(visible: boolean): void {
+  forcedVisible = visible;
+  if (!visible) {
+    destroyVirtualGamepadInstance();
+  } else {
+    applyVirtualGamepadVisibility();
+  }
 }
 
 /**
