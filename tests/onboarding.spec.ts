@@ -102,11 +102,38 @@ test.describe('Onboarding flow', () => {
     await page.keyboard.press('Enter');
     await waitForScene(page, 'SettingsScene');
 
-    // [ BACK ] is the last item (ArrowUp wraps from index 0), so two ArrowUps
-    // land on [ REPLAY TUTORIAL ] (second-from-last) without depending on the
-    // total item count.
-    await page.keyboard.press('ArrowUp');
-    await page.keyboard.press('ArrowUp');
+    // Navigate to [ REPLAY TUTORIAL ] by label — the action list grew with
+    // EXPORT SAVE / IMPORT SAVE items, so a fixed ArrowUp count is brittle.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const settings = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
+        if (!settings) return false;
+        const items = settings['items'] as Array<{ label?: string }> | undefined;
+        return Array.isArray(items) && items.length > 0;
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
+    for (let i = 0; i < 30; i++) {
+      const done = await page.evaluate(() => {
+        const g = window.__game;
+        if (!g) return false;
+        const settings = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
+        if (!settings) return false;
+        const items = settings['items'] as Array<{ label?: string }> | undefined;
+        const selectedIndex = settings['selectedIndex'] as number | undefined;
+        if (!items || selectedIndex === undefined) return false;
+        return items[selectedIndex]?.label === '[ REPLAY TUTORIAL ]';
+      });
+      if (done) break;
+      await page.keyboard.press('ArrowUp');
+    }
     await page.keyboard.press('Enter');
 
     // Should return to MenuScene.
