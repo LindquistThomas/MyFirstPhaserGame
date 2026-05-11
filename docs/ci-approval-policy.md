@@ -53,7 +53,7 @@ curl -X PATCH \
 
 > If your team wants `Bundle size budget` as required, add it to `contexts`.
 
-## Optional API command (maintainer token required)
+## Optional API command to set Actions approval policy (maintainer token required)
 
 ```bash
 curl -X PUT \
