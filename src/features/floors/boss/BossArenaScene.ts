@@ -17,7 +17,6 @@ import { allKeyLabels } from '../../../input';
 import { ObjectiveBanner } from '../../../ui/ObjectiveBanner';
 import { ensureBossArenaSprites } from '../../../systems/SpriteGenerator';
 import { ensureBossRescueSounds } from '../../../systems/SoundGenerator';
-import { ObjectiveBanner } from '../../../ui/ObjectiveBanner';
 
 /** Architecture quiz prompts used during knowledge windows. */
 export interface BossPrompt {
