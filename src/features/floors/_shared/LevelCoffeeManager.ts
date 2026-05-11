@@ -4,7 +4,6 @@ import { Player } from '../../../entities/Player';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { ensureCoffeeFridgeSounds } from '../../../systems/SoundGenerator';
-import { isReducedMotion } from '../../../systems/MotionPreference';
 import type { LevelConfig } from './LevelScene';
 
 export interface CoffeeManagerDeps {
