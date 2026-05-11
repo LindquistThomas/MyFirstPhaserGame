@@ -47,7 +47,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
 │                               InfoIcon, HUD, DialogController, …
-├── docs/                     # architecture.md, eventbus-audit.md, archive/ (shipped specs)
+├── docs/                     # architecture.md, eventbus-audit.md, ci-approval-policy.md, tween-lifecycle.md, archive/ (shipped specs)
 ├── scripts/                  # check-size.cjs — bundle-size budget gate (used by `npm run size`)
 ├── idea/                     # design notes / brainstorm dump (not part of build)
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
