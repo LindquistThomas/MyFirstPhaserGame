@@ -255,7 +255,7 @@ export class SaveSlotScene extends Phaser.Scene {
   }
 
   private setupCardNavigator(): void {
-    this.cardNavigator = new ButtonListNavigator(this, 55);
+    this.cardNavigator = new ButtonListNavigator(this, 45);
     this.cards.forEach((_card, index) => {
       this.cardNavigator?.add({
         focus: () => {
@@ -327,6 +327,7 @@ export class SaveSlotScene extends Phaser.Scene {
   private openDeleteConfirm(): void {
     this.inConfirm = true;
     this.confirmIndex = 1; // default to "No"
+    this.cardNavigator?.hideRing();
 
     const ow = 340, oh = 140;
     const ox = (GAME_WIDTH - ow) / 2;
@@ -401,5 +402,6 @@ export class SaveSlotScene extends Phaser.Scene {
     this.confirmOverlay = undefined;
     this.confirmYes = undefined;
     this.confirmNo = undefined;
+    this.cardNavigator?.setFocus(this.selectedIndex);
   }
 }

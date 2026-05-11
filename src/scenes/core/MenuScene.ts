@@ -355,7 +355,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private setupButtonNavigator(): void {
-    this.menuNavigator = new ButtonListNavigator(this, 13);
+    const topButtonDepth = this.menuButtons.reduce((maxDepth, entry) => Math.max(maxDepth, entry.btn.depth), 0);
+    this.menuNavigator = new ButtonListNavigator(this, topButtonDepth + 1);
     this.menuButtons.forEach(({ btn, action }, index) => {
       this.menuNavigator?.add({
         focus: () => {
