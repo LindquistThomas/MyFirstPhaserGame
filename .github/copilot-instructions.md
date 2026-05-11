@@ -1,6 +1,6 @@
-# Copilot Instructions — So You Want To Be An Architect
+# So You Want To Be An Architect
 
-<!-- SYNC NOTICE: This file and CLAUDE.md (repo root) share the same
+<!-- SYNC NOTICE: This file and .github/copilot-instructions.md share the same
      project instructions. When you edit one, update the other to match. -->
 
 A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Utility) to unlock floors of a building, each representing a domain team.
@@ -13,7 +13,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── package.json              # Scripts, deps (phaser ^3.90)
 ├── tsconfig.json             # TypeScript strict
 ├── vite.config.ts            # Bundler config
-├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 65% (60% branches) on src/ui; 60% on src/entities; 20% on src/scenes; 50% on src/features/floors)
+├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 65% (60% branches) on src/ui; 60% on src/entities; 20% on src/scenes; 25% on src/features/floors)
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
@@ -52,7 +52,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── idea/                     # design notes / brainstorm dump (not part of build)
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
-    ├── copilot-instructions.md   # This file
+    ├── copilot-instructions.md   # Mirror of this file (keep in sync)
     └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
 
@@ -76,7 +76,7 @@ Scripts from `package.json`:
 | `npm run lint` | ESLint across the repo. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:unit` | Vitest (pure logic; jsdom). |
-| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. |
+| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 25% (20% branches) on `src/features/floors/**`. |
 | `npm run test:e2e` | Playwright integration specs (excludes `@visual`). |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:visual:update` | Run the `@visual` suite and refresh snapshot PNGs — the only script that exercises visual specs. To verify against existing baselines without updating, invoke `npx playwright test tests/visual.spec.ts --grep @visual` directly. |
@@ -182,7 +182,7 @@ zoneManager.update();
 
 Two suites, different purposes:
 
-- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. `src/plugins/**`, the procedural sprite/sound generator modules, and `src/main.ts` are excluded entirely (see `vitest.config.ts` for the full exclusion list). Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
+- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 25% (20% branches) on `src/features/floors/**`. `src/plugins/**`, the procedural sprite/sound generator modules, and `src/main.ts` are excluded entirely (see `vitest.config.ts` for the full exclusion list). Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
 - **Playwright (`tests/*.spec.ts`)** — drives the actual dev server via `window.__game`. Use for end-to-end user flows, scene transitions, and visual snapshots.
 
 Playwright helpers in `tests/helpers/playwright.ts`:
