@@ -222,7 +222,7 @@ Use this to find the right file to edit for a given feature.
 | Procedural sprites                  | `systems/SpriteGenerator.ts`, `systems/sprites/*.ts`                                   |
 | Theme tokens (colours + spacing)    | `style/theme.ts`                                                                       |
 | Analytics / playtime                | `systems/Analytics.ts`, `systems/PlaytimeTracker.ts`                                   |
-| Daily Challenge mode               | `systems/DailyChallenge.ts`, `systems/DailyChallengeStore.ts`, `systems/SeededRandom.ts`, `scenes/core/MenuScene.ts` (entry tile), `scenes/core/SaveSlotScene.ts` |
+| Daily Challenge mode               | `systems/DailyChallenge.ts`, `systems/DailyChallengeStore.ts`, `systems/SeededRandom.ts`, `features/floors/_shared/dailyChallengeLayout.ts` (seeded layout application), `features/floors/_shared/LevelScene.ts` (result recording), `scenes/core/MenuScene.ts` (entry tile) |
 
 ## Data Flow
 

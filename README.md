@@ -12,7 +12,7 @@ The game is deployed automatically to GitHub Pages on every push to `main`.
 
 You are an IT architect navigating the **Architecture Elevator** — a central shaft that connects different departments in a corporation. Ride the elevator between floors, explore each department, and collect **AU (Architecture Utility)** points to unlock higher floors and advance your career.
 
-A **Daily Challenge** mode is available from the main menu: each UTC day generates a unique seed that produces the same reproducible run for all players, with results tracked per day.
+A **Daily Challenge** mode is available from the main menu: each UTC day generates a unique seed that produces the same deterministic seeded layout for all players, with personal results tracked per day.
 
 ### Controls
 
