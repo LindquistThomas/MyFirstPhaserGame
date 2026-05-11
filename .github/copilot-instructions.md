@@ -52,7 +52,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── idea/                     # design notes / brainstorm dump (not part of build)
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
-    ├── copilot-instructions.md   # This file
+    ├── copilot-instructions.md   # Mirror file (keep in sync with CLAUDE.md)
     └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
 
