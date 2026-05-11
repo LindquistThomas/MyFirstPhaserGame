@@ -12,7 +12,7 @@ The project is already scaffolded (TypeScript strict, Phaser 3.90, Vite, Vitest,
 
 ## Prerequisites
 
-- **Node.js** — match what `package.json` / the lockfile were last built against. Any recent LTS (≥ 18) generally works.
+- **Node.js** — Vite 8 requires `^20.19.0 || >=22.12.0`; Vitest 4 requires `^20.0.0 || ^22.0.0 || >=24.0.0`. Use Node 20.19 LTS or any newer LTS (22, 24). Node 18 is **not** supported.
 - **npm** — the lockfile is `package-lock.json`. Do not substitute pnpm / yarn.
 
 ## Steps
