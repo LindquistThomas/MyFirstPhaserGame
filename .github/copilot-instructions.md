@@ -28,7 +28,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # MissionItem, Checkpoint
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, coachHints,
-│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene), one dir per floor (lobby/, platform/, architecture/,
+│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene, dailyChallengeLayout), one dir per floor (lobby/, platform/, architecture/,
 │   │   │                       finance/, product/, customer/, executive/, boss/)
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
 │   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
@@ -42,7 +42,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
 │   │                         # PersistedStore, SettingsStore, AchievementManager, TouchHintStore,
 │   │                         # MotionPreference, CaffeineBuff, FloorHitState, PlaytimeTracker,
-│   │                         # Analytics, sceneLifecycle, sliderUtils,
+│   │                         # Analytics, SeededRandom, DailyChallenge, DailyChallengeStore, sceneLifecycle, sliderUtils,
 │   │                         # SpriteGenerator (+ sprites/ per-asset families),
 │   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
@@ -108,6 +108,9 @@ Short index of where things live. Reach for these instead of re-implementing.
 - **`PlaytimeTracker`** (`src/systems/PlaytimeTracker.ts`) — tracks total + per-floor active playtime and run timer; persists via `PlaytimeSaveAdapter` (10 s flush throttle). Owned by `GameStateManager` as `gameState.playtime`.
 - **`Analytics`** (`src/systems/Analytics.ts`) — opt-in analytics. Gated on `VITE_ANALYTICS_ENDPOINT` (build-time) **and** `SettingsStore.analyticsConsent` (runtime). `createAnalyticsService()` returns `null` when endpoint absent → no network path. `BootScene` stores the service in `scene.registry` under key `'analytics'` (`registry.set`); scenes retrieve it via `registry.get('analytics')`. Anonymous client ID under `architect_analytics_client_v1`.
 - **`MotionPreference`** (`src/systems/MotionPreference.ts`, localStorage key `architect_reduce_motion_v1`) — persisted user override for reduced motion (`true` / `false` / `null` to follow OS `prefers-reduced-motion`). Read via `isReducedMotion()`.
+- **`SeededRandom`** (`src/systems/SeededRandom.ts`) — deterministic 32-bit PRNG used by seeded gameplay systems, including daily-challenge layout overrides.
+- **`DailyChallenge`** (`src/systems/DailyChallenge.ts`) — UTC date-derived daily challenge state (`getCurrentDailyState()`, `getDailyState()`) and slot/seed helpers consumed by `LevelScene` via `applyDailyChallengeLayout`.
+- **`DailyChallengeStore`** (`src/systems/DailyChallengeStore.ts`, localStorage key `architect_daily_results_v1`) — persisted completion results with streak/query helpers (`hasCompletionStreakEndingAt`, `recordResult`, `getRecentResults`).
 - **`touchPrimary`** (`src/ui/touchPrimary.ts`, localStorage key `architect_touch_override_v1`) — manual override of the touch-primary detection (`'true'` | `'false'` | unset). Used to force the virtual gamepad on/off in tests and edge devices.
 - **`LevelScene`** (`src/features/floors/_shared/LevelScene.ts`) — shared base for floor scenes. Sibling helpers (`LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, `LevelCoffeeManager`, `LevelFridgeManager`, `LevelRoomElevators`) compose the shared concerns. Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a complete `LevelConfig` (see the type definition for required fields such as `floorId`, `playerStart`, `exitPosition`, and `roomElevators`, plus authored collections like `platforms`, `tokens`, `enemies`, and `infoPoints`). Enemy entries use `type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist'`. Enemies are scene-local, no persistence; they respawn on re-entry.
 - **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.

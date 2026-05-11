@@ -37,6 +37,7 @@ src/
 │       │   ├── sceneBackdrop.ts        Layered gradient/pattern/vignette background.
 │       │   ├── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
 │       │   ├── coachHints.ts           First-visit per-floor toast hint copy.
+│       │   ├── dailyChallengeLayout.ts Deterministic per-day layout overrides for tokens/enemies/consumables.
 │       │   └── defineFloorScene.ts     Factory that builds a LevelScene subclass from declarative options (key, floorId, config, banner, decorations, returnSide). Used by every standard floor.
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
@@ -131,6 +132,9 @@ src/
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
 │   ├── PlaytimeTracker.ts    Total + per-floor active-playtime accumulator; persists via PlaytimeSaveAdapter (10 s flush throttle).
 │   ├── Analytics.ts          Opt-in analytics service. Gated on VITE_ANALYTICS_ENDPOINT (build) + SettingsStore.analyticsConsent (runtime). Stashed on scene.registry under "analytics" by BootScene.
+│   ├── SeededRandom.ts       Deterministic mulberry32 PRNG used by seeded systems.
+│   ├── DailyChallenge.ts     UTC date-key/seed helpers + registry-backed daily mode state.
+│   ├── DailyChallengeStore.ts Persisted per-day completion times + streak queries (architect_daily_results_v1).
 │   ├── sliderUtils.ts        Volume slider clamping utilities.
 │   ├── sceneLifecycle.ts     `createSceneLifecycle(scene)` — uniform teardown.
 │   ├── SpriteGenerator.ts    Composition root → `./sprites/` per-asset modules.
@@ -216,6 +220,7 @@ Use this to find the right file to edit for a given feature.
 | Info modal runtime                  | `systems/InfoDialogManager.ts`, `ui/InfoDialog.ts`, `ui/DialogController.ts`           |
 | Input (keyboard + touch)            | `input/*`                                                                              |
 | Audio                               | `systems/AudioManager.ts`, `systems/SoundGenerator.ts` (also generates procedural lullaby), `systems/sounds/*` |
+| Daily challenge                     | `systems/DailyChallenge.ts`, `systems/DailyChallengeStore.ts`, `systems/SeededRandom.ts`, `features/floors/_shared/dailyChallengeLayout.ts` |
 | Procedural sprites                  | `systems/SpriteGenerator.ts`, `systems/sprites/*.ts`                                   |
 | Theme tokens (colours + spacing)    | `style/theme.ts`                                                                       |
 | Analytics / playtime                | `systems/Analytics.ts`, `systems/PlaytimeTracker.ts`                                   |
