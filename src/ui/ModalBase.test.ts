@@ -203,7 +203,7 @@ describe('ModalBase', () => {
     expect(scene._tweenCount()).toBe(2);
   });
 
-  it('(f2) fadeIn onComplete clears activeTween (line 69 branch)', () => {
+  it('(f2) fadeIn onComplete clears activeTween so subsequent fadeIn does not call stop on null', () => {
     const scene = makeScene();
     const modal = new TestModal(scene as unknown as Phaser.Scene);
     modal.callFadeIn(200);
