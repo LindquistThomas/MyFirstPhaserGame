@@ -1,6 +1,6 @@
-# So You Want To Be An Architect
+# Copilot Instructions — So You Want To Be An Architect
 
-<!-- SYNC NOTICE: This file and .github/copilot-instructions.md share the same
+<!-- SYNC NOTICE: This file and CLAUDE.md (repo root) share the same
      project instructions. When you edit one, update the other to match. -->
 
 A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Utility) to unlock floors of a building, each representing a domain team.
@@ -52,7 +52,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── idea/                     # design notes / brainstorm dump (not part of build)
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
-    ├── copilot-instructions.md   # Mirror of this file (keep in sync)
+    ├── copilot-instructions.md   # This file
     └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
 
