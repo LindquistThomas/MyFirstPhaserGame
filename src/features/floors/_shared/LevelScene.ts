@@ -131,8 +131,7 @@ export interface LevelConfig {
   fridges?: Array<{ x: number; y: number }>;
   /**
    * Checkpoint positions for mid-floor respawn.
-   * Scene-local — not persisted; resets on scene re-entry.
-   * Player activating a checkpoint records its position as the respawn origin.
+   * Player activating a checkpoint records it as the preferred respawn origin.
    * Placed by the floor scene's `getLevelConfig()` override.
    */
   checkpoints?: Array<{ x: number; y: number; id: string }>;
@@ -745,7 +744,8 @@ export class LevelScene extends Phaser.Scene {
   /* ---- player ---- */
   protected createPlayer(): void {
     const c = this.getResolvedLevelConfig();
-    this.player = new Player(this, c.playerStart.x, c.playerStart.y);
+    const spawn = this.resolveEntrySpawn(c);
+    this.player = new Player(this, spawn.x, spawn.y);
     this.player.sprite.setCollideWorldBounds(true);
 
     this.interactPrompt = this.add.text(0, 0, '', {
@@ -753,6 +753,13 @@ export class LevelScene extends Phaser.Scene {
       color: theme.color.css.textWarn, backgroundColor: theme.color.css.bgDialog,
       padding: { x: theme.space.sm, y: theme.space.xs },
     }).setDepth(20).setVisible(false);
+  }
+
+  private resolveEntrySpawn(cfg: LevelConfig): { x: number; y: number } {
+    const latestCheckpointId = this.progression.getLatestActivatedCheckpointId(this.floorId);
+    if (!latestCheckpointId) return cfg.playerStart;
+    const checkpoint = cfg.checkpoints?.find((cp) => cp.id === latestCheckpointId);
+    return checkpoint ? { x: checkpoint.x, y: checkpoint.y } : cfg.playerStart;
   }
 
   /* ---- UI ---- */
@@ -961,7 +968,10 @@ export class LevelScene extends Phaser.Scene {
 
   private spawnCheckpoints(cfg: LevelConfig): void {
     if (!cfg.checkpoints?.length) return;
+    const activated = new Set(this.progression.getActivatedCheckpointIds(this.floorId));
+    const latestActivatedId = this.progression.getLatestActivatedCheckpointId(this.floorId);
     for (const cp of cfg.checkpoints) {
+      const isActivated = activated.has(cp.id);
       const checkpoint = new Checkpoint(
         this,
         cp.x,
@@ -969,9 +979,14 @@ export class LevelScene extends Phaser.Scene {
         cp.id,
         () => {
           this.floorHazard.registerCheckpoint(cp.x, cp.y);
+          this.progression.activateCheckpoint(this.floorId, cp.id);
           eventBus.emit('checkpoint:activate', cp.id);
         },
+        isActivated,
       );
+      if (isActivated && cp.id === latestActivatedId) {
+        this.floorHazard.registerCheckpoint(cp.x, cp.y);
+      }
       checkpoint.wireOverlap(this.physics, this.player.sprite);
     }
   }
