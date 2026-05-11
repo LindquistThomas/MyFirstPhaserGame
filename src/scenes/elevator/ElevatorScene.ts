@@ -175,6 +175,7 @@ export class ElevatorScene extends Phaser.Scene {
 
     this.dialogs = new DialogController(this, {
       progression: this.progression,
+      floorId: FLOORS.LOBBY,
       getIconForContent: (id) => {
         if (id === GEIR_F4_ID) return this.zones.geirInfoIcon;
         if (id === WELCOME_BOARD_ID) return this.zones.lobbyBoardIcon;

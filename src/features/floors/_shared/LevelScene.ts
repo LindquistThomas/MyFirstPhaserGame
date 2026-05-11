@@ -537,6 +537,7 @@ export class LevelScene extends Phaser.Scene {
     this.dialogs = createLevelDialogs(this, {
       gameState: this.gameState,
       getIcon: (id) => this.zones.iconsByContentId.get(id),
+      floorId: this.floorId,
     });
     return this.dialogs;
   }
