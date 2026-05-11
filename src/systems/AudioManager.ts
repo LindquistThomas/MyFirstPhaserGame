@@ -140,6 +140,12 @@ export class AudioManager {
 
   /** Play a one-shot sound effect. */
   private playSfx(key: string): void {
+    // Defensive: deferred procedural sound generation may not have completed
+    // yet when an early scene fires an SFX event (or a lazy sound batch
+    // belongs to a different scene). Skip silently rather than throwing
+    // "Audio key not found in cache", which surfaces as a page error and
+    // fails Playwright specs that watch for clean console output.
+    if (this.game && !this.game.cache.audio.exists(key)) return;
     const s = settingsStore.read();
     // masterVolume is applied at the sound-manager level (sound.volume),
     // so per-sound volume only needs to scale by the SFX channel preference.

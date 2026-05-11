@@ -709,13 +709,13 @@ export class MenuScene extends Phaser.Scene {
       this.soundtrackButton = soundtrackBtn;
     }
 
-    const controlsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 190 : 145;
+    const controlsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 250 : 205;
     const controlsAction = () => this.openControlsModal();
     const controlsBtn = this.makeButton(cx, cy + controlsYOffset, '[ CONTROLS ]', 20, controlsAction);
     controlsBtn.setDepth(TEXT_DEPTH);
     this.menuButtons.push({ btn: controlsBtn, action: controlsAction });
 
-    const settingsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 250 : 205;
+    const settingsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 310 : 265;
     const settingsAction = () => this.openSettings();
     const settingsBtn = this.makeButton(cx, cy + settingsYOffset, '[ SETTINGS ]', 20, settingsAction);
     settingsBtn.setDepth(TEXT_DEPTH);
