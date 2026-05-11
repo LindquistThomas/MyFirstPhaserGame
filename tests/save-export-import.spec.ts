@@ -20,17 +20,24 @@ import {
 
 async function navigateToSettings(page: Parameters<typeof waitForGame>[0]): Promise<void> {
   await waitForScene(page, 'MenuScene');
-  // Press Enter to proceed from MenuScene → SaveSlotScene
-  await page.keyboard.press('Enter');
-  await waitForScene(page, 'SaveSlotScene');
-  // Press Enter to confirm slot1
-  await page.keyboard.press('Enter');
-  await waitForScene(page, 'ElevatorScene');
-  // Press Escape to open PauseScene then navigate to Settings
-  await page.keyboard.press('Escape');
-  await waitForScene(page, 'PauseScene');
-  // Navigate down to Settings button (index 1) and press Enter
-  await page.keyboard.press('ArrowDown');
+  // Walk the MenuScene buttons until [ SETTINGS ] is selected, then Enter.
+  // Using label match (not a fixed ArrowDown count) so the helper survives
+  // future menu reorderings or added items.
+  const SETTINGS_LABEL = 'SETTINGS';
+  for (let i = 0; i < 30; i++) {
+    const selectedLabel = await page.evaluate(() => {
+      const g = window.__game;
+      if (!g) return null;
+      const scene = g.scene.getScenes(true).find(
+        (s) => s.sys.settings.key === 'MenuScene',
+      ) as unknown as { menuButtons?: Array<{ btn: { text: string } }>; selectedIndex?: number } | undefined;
+      if (!scene || !scene.menuButtons) return null;
+      const idx = scene.selectedIndex ?? 0;
+      return scene.menuButtons[idx]?.btn.text ?? null;
+    });
+    if (selectedLabel && selectedLabel.includes(SETTINGS_LABEL)) break;
+    await page.keyboard.press('ArrowDown');
+  }
   await page.keyboard.press('Enter');
   await waitForScene(page, 'SettingsScene');
 }
@@ -48,8 +55,9 @@ test.describe('Save export / import', () => {
 
     // Directly exercise the SaveManager API (bypasses UI file-picker limitation)
     const result = await page.evaluate(async () => {
-      // Dynamic import so we get the module's live state
-      const { exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT } = await import('/src/systems/SaveManager.ts');
+      const hooks = (window as unknown as { __testHooks?: { exportSlot: (s:string)=>string|null; importToSlot:(s:string,j:string)=>unknown; SAVE_ENVELOPE_FORMAT: string } }).__testHooks;
+      if (!hooks) return { ok: false, reason: '__testHooks missing' };
+      const { exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT } = hooks;
 
       const json = exportSlot('slot1');
       if (!json) return { ok: false, reason: 'exportSlot returned null' };
@@ -108,7 +116,9 @@ test.describe('Save export / import', () => {
     await waitForGame(page);
 
     const result = await page.evaluate(async () => {
-      const { importToSlot } = await import('/src/systems/SaveManager.ts');
+      const hooks = (window as unknown as { __testHooks?: { importToSlot:(s:string,j:string)=>unknown } }).__testHooks;
+      if (!hooks) throw new Error('__testHooks missing');
+      const { importToSlot } = hooks;
       return importToSlot('slot1', 'this is not json at all');
     });
 
@@ -122,7 +132,9 @@ test.describe('Save export / import', () => {
     await waitForGame(page);
 
     const result = await page.evaluate(async () => {
-      const { importToSlot } = await import('/src/systems/SaveManager.ts');
+      const hooks = (window as unknown as { __testHooks?: { importToSlot:(s:string,j:string)=>unknown } }).__testHooks;
+      if (!hooks) throw new Error('__testHooks missing');
+      const { importToSlot } = hooks;
       const badEnvelope = JSON.stringify({
         format: 'architect-save-v99',
         exportedAt: new Date().toISOString(),
