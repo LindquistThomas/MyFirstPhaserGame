@@ -755,11 +755,17 @@ export class LevelScene extends Phaser.Scene {
     }).setDepth(20).setVisible(false);
   }
 
-  private resolveEntrySpawn(cfg: LevelConfig): { x: number; y: number } {
+  protected resolveEntrySpawn(cfg: LevelConfig): { x: number; y: number } {
     const latestCheckpointId = this.progression.getLatestActivatedCheckpointId(this.floorId);
     if (!latestCheckpointId) return cfg.playerStart;
     const checkpoint = cfg.checkpoints?.find((cp) => cp.id === latestCheckpointId);
-    return checkpoint ? { x: checkpoint.x, y: checkpoint.y } : cfg.playerStart;
+    if (!checkpoint) {
+      // Config changed and the persisted checkpoint no longer exists. Clear stale
+      // ids so future entries keep using the canonical playerStart.
+      this.progression.clearActivatedCheckpoints(this.floorId);
+      return cfg.playerStart;
+    }
+    return { x: checkpoint.x, y: checkpoint.y };
   }
 
   /* ---- UI ---- */
@@ -984,7 +990,7 @@ export class LevelScene extends Phaser.Scene {
         },
         isActivated,
       );
-      if (isActivated && cp.id === latestActivatedId) {
+      if (cp.id === latestActivatedId) {
         this.floorHazard.registerCheckpoint(cp.x, cp.y);
       }
       checkpoint.wireOverlap(this.physics, this.player.sprite);
