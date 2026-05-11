@@ -22,11 +22,37 @@ test.describe('Help / How to Play recall', () => {
     await page.keyboard.press('Enter');
     await waitForScene(page, 'SettingsScene');
 
-    // Navigate to [ HOW TO PLAY ] — from the default selection (index 0),
-    // pressing ArrowUp wraps to the last item ([ BACK ]), then four more
-    // presses arrive at [ HOW TO PLAY ]:
-    //   1 → BACK, 2 → REPLAY TUTORIAL, 3 → CONTROLS, 4 → SHOW TOUCH HINT, 5 → HOW TO PLAY
-    for (let i = 0; i < 5; i++) {
+    // Navigate by label match — the SettingsScene action list grew with EXPORT
+    // SAVE / IMPORT SAVE items, so a fixed ArrowUp count is brittle. Loop
+    // ArrowUp until the selected label matches HOW TO PLAY.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const settings = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
+        if (!settings) return false;
+        const items = settings['items'] as Array<{ label?: string }> | undefined;
+        return Array.isArray(items) && items.length > 0;
+      },
+      undefined,
+      { timeout: 5_000 },
+    );
+    for (let i = 0; i < 30; i++) {
+      const done = await page.evaluate(() => {
+        const g = window.__game;
+        if (!g) return false;
+        const settings = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'SettingsScene') as unknown as Record<string, unknown>;
+        if (!settings) return false;
+        const items = settings['items'] as Array<{ label?: string }> | undefined;
+        const selectedIndex = settings['selectedIndex'] as number | undefined;
+        if (!items || selectedIndex === undefined) return false;
+        return items[selectedIndex]?.label === '[ HOW TO PLAY ]';
+      });
+      if (done) break;
       await page.keyboard.press('ArrowUp');
     }
 
