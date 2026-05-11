@@ -21,6 +21,7 @@ export interface SaveAdapter {
 export interface ProgressionState {
   totalAU: number;
   floorAU: Record<FloorId, number>;
+  activatedCheckpoints: Record<FloorId, string[]>;
   unlockedFloors: Set<FloorId>;
   currentFloor: FloorId;
   collectedTokens: Record<FloorId, Set<number>>;
@@ -43,6 +44,7 @@ export class ProgressionSystem {
     return {
       totalAU: 0,
       floorAU: Object.fromEntries(allFloors.map(id => [id, 0])) as Record<FloorId, number>,
+      activatedCheckpoints: Object.fromEntries(allFloors.map(id => [id, [] as string[]])) as Record<FloorId, string[]>,
       // Only floors with auRequired === 0 are unlocked from the start.
       // All other floors are gated behind AU thresholds checked in checkUnlocks().
       unlockedFloors: new Set(
@@ -141,6 +143,30 @@ export class ProgressionSystem {
     return this.state.visitedFloors.size;
   }
 
+  getActivatedCheckpointIds(floorId: FloorId): readonly string[] {
+    return [...(this.state.activatedCheckpoints[floorId] ?? [])];
+  }
+
+  getLatestActivatedCheckpointId(floorId: FloorId): string | null {
+    const checkpoints = this.state.activatedCheckpoints[floorId];
+    if (!checkpoints?.length) return null;
+    return checkpoints[checkpoints.length - 1] ?? null;
+  }
+
+  activateCheckpoint(floorId: FloorId, checkpointId: string): void {
+    const existing = this.state.activatedCheckpoints[floorId] ?? [];
+    const next = existing.filter((id) => id !== checkpointId);
+    next.push(checkpointId);
+    this.state.activatedCheckpoints[floorId] = next;
+    this.persist();
+  }
+
+  clearActivatedCheckpoints(floorId: FloorId): void {
+    if (!this.state.activatedCheckpoints[floorId]?.length) return;
+    this.state.activatedCheckpoints[floorId] = [];
+    this.persist();
+  }
+
   /** Total number of tokens collected across all floors. */
   getTotalCollectedTokens(): number {
     return Object.values(this.state.collectedTokens)
@@ -237,9 +263,20 @@ export class ProgressionSystem {
       }
     }
 
+    const safeActivatedCheckpoints: Record<FloorId, string[]> = Object.fromEntries(
+      FLOOR_IDS.map(id => [id, [] as string[]]),
+    ) as Record<FloorId, string[]>;
+    for (const [k, v] of Object.entries(data.activatedCheckpoints ?? {})) {
+      const id = Number(k) as FloorId;
+      if (FLOOR_IDS.includes(id) && Array.isArray(v)) {
+        safeActivatedCheckpoints[id] = v.filter((cpId): cpId is string => typeof cpId === 'string');
+      }
+    }
+
     this.state = {
       totalAU: data.totalAU,
       floorAU: safeFloorAU,
+      activatedCheckpoints: safeActivatedCheckpoints,
       // Restore only the floors the player actually unlocked (no merge with
       // defaults). checkUnlocks() below will re-unlock any floor whose
       // auRequired threshold the player's saved total already meets.
@@ -258,6 +295,7 @@ export class ProgressionSystem {
       version: CURRENT_SAVE_VERSION,
       totalAU: this.state.totalAU,
       floorAU: this.state.floorAU,
+      activatedCheckpoints: this.state.activatedCheckpoints,
       unlockedFloors: Array.from(this.state.unlockedFloors),
       currentFloor: this.state.currentFloor,
       // Object.entries() widens keys to string; Number(k) restores the FloorId
