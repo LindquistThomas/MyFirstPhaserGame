@@ -488,9 +488,13 @@ export class Player {
   }
 
   private destroyEmitters(): void {
-    this.dustEmitter?.destroy();
+    if (this.dustEmitter && 'destroy' in this.dustEmitter && typeof this.dustEmitter.destroy === 'function') {
+      this.dustEmitter.destroy();
+    }
     this.dustEmitter = undefined;
-    this.caffeineSteam?.destroy();
+    if (this.caffeineSteam && 'destroy' in this.caffeineSteam && typeof this.caffeineSteam.destroy === 'function') {
+      this.caffeineSteam.destroy();
+    }
     this.caffeineSteam = undefined;
   }
 

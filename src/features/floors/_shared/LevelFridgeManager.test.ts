@@ -27,6 +27,11 @@ vi.mock('../../../systems/EventBus', () => ({
   eventBus: { emit: eventBusEmit },
 }));
 
+const ensureCoffeeFridgeSounds = vi.hoisted(() => vi.fn());
+vi.mock('../../../systems/SoundGenerator', () => ({
+  ensureCoffeeFridgeSounds,
+}));
+
 vi.mock('../../../input', () => ({
   allKeyLabels: vi.fn(() => 'E'),
 }));
@@ -62,6 +67,7 @@ import { LevelFridgeManager } from './LevelFridgeManager';
 beforeEach(() => {
   reducedMotionState.value = false;
   eventBusEmit.mockReset();
+  ensureCoffeeFridgeSounds.mockReset();
   createdFridges.length = 0;
 });
 

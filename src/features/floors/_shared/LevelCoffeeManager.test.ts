@@ -14,6 +14,11 @@ vi.mock('../../../systems/EventBus', () => ({
   eventBus: { emit: eventBusEmit },
 }));
 
+const ensureCoffeeFridgeSounds = vi.hoisted(() => vi.fn());
+vi.mock('../../../systems/SoundGenerator', () => ({
+  ensureCoffeeFridgeSounds,
+}));
+
 interface MockCoffee {
   x: number;
   y: number;
@@ -38,6 +43,7 @@ import { LevelCoffeeManager } from './LevelCoffeeManager';
 beforeEach(() => {
   reducedMotionState.value = false;
   eventBusEmit.mockReset();
+  ensureCoffeeFridgeSounds.mockReset();
   createdCoffees.length = 0;
 });
 
