@@ -45,8 +45,16 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # Analytics, sceneLifecycle, sliderUtils,
 │   │                         # SpriteGenerator (+ sprites/ per-asset families),
 │   │                         # SoundGenerator (+ sounds/ per-SFX families)
-│   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
-│                               InfoIcon, HUD, DialogController, …
+│   └── ui/                   # Modals: InfoDialog, QuizDialog, QuizResultsScreen, ModalBase,
+│                             #   ModalKeyboardNavigator, AchievementsDialog, WelcomeModal,
+│                             #   SaveRecoveryDialog, BossIntroDialog, BombDisarmDialog
+│                             # HUD: HUD, DialogController, InfoIcon, Toast, BossHealthBar,
+│                             #   ControlHintsOverlay, InteractiveDoor
+│                             # Elevator UI: ElevatorButtons, ElevatorPanel, CallElevatorButton
+│                             # Touch / a11y: VirtualGamepad, TouchHintOverlay, touchPrimary,
+│                             #   ariaLive, pillarboxBackdrop
+│                             # hud/ subdir — one Controller.ts per HUD feature
+│                             #   (AchievementBadge, CaffeineRing, CoinCounter, MuteIcon, ProgressStrip)
 ├── docs/                     # architecture.md, eventbus-audit.md, archive/ (shipped specs)
 ├── scripts/                  # check-size.cjs — bundle-size budget gate (used by `npm run size`)
 ├── idea/                     # design notes / brainstorm dump (not part of build)
