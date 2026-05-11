@@ -83,7 +83,7 @@ test.describe('Boss arena — CEO showdown', () => {
     const errors = attachErrorWatchers(page);
 
     await goToBossArena(page);
-    await page.waitForTimeout(300);
+    // waitForScene ensures create() finished and boss is constructed; no extra wait needed.
 
     const result = await page.evaluate(() => {
       const g = window.__game!;
@@ -122,7 +122,7 @@ test.describe('Boss arena — CEO showdown', () => {
     const errors = attachErrorWatchers(page);
 
     await goToBossArena(page);
-    await page.waitForTimeout(400);
+    // waitForScene ensures create() finished and boss is constructed; no extra wait needed.
 
     // Trigger defeat via the public method (same as HP reaching 0)
     await page.evaluate(() => {
@@ -135,10 +135,24 @@ test.describe('Boss arena — CEO showdown', () => {
       boss.triggerDefeat();
     });
 
-    // Stagger tween ~360ms, then defeatDialogue event fires showDefeatDialogue().
-    // showDefeatDialogue() shows line 0 immediately, then registers Interact
-    // (Enter) handler after 600ms. 3 Enter presses advance through the 3 lines.
-    await page.waitForTimeout(1100);
+    // Stagger tween fires defeatDialogue → showDefeatDialogue() registers the
+    // Interact handler after a 600ms delayedCall. Poll until it's wired up so
+    // Enter presses reliably advance the dialogue on slow CI runners.
+    // InputService stores handlers in a private Map<GameAction, Set>; TypeScript
+    // `private` is compile-time only so the map is accessible at runtime.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene.getScenes(true).find(
+          (s) => s.sys.settings.key === 'BossArenaScene',
+        ) as unknown as Record<string, unknown>;
+        const inputs = scene?.['inputs'] as { handlers?: Map<string, Set<unknown>> } | undefined;
+        return (inputs?.handlers?.get('Interact')?.size ?? 0) > 0;
+      },
+      undefined,
+      { timeout: 15_000 },
+    );
 
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press('Enter');
