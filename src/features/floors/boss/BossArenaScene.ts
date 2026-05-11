@@ -14,6 +14,7 @@ import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { allKeyLabels } from '../../../input';
+import { ObjectiveBanner } from '../../../ui/ObjectiveBanner';
 import { ensureBossArenaSprites } from '../../../systems/SpriteGenerator';
 import { ensureBossRescueSounds } from '../../../systems/SoundGenerator';
 import { ObjectiveBanner } from '../../../ui/ObjectiveBanner';
