@@ -28,8 +28,11 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # MissionItem, Checkpoint
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, coachHints,
-│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene), one dir per floor (lobby/, platform/, architecture/,
-│   │   │                       finance/, product/, customer/, executive/, boss/)
+│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig,
+│   │   │                       defineFloorScene). One dir per playable floor (lobby/, platform/,
+│   │   │                       architecture/, product/, customer/, executive/, boss/) plus
+│   │   │                       finance/ — a content-only sub-room reached via a door inside
+│   │   │                       the Executive Suite (FloorId reuses FLOORS.EXECUTIVE).
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
 │   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
 │   ├── plugins/              # MusicPlugin, DebugPlugin, ScopedEventBus (Phaser ScenePlugins)
@@ -52,7 +55,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── idea/                     # design notes / brainstorm dump (not part of build)
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
-    ├── copilot-instructions.md   # This file
+    ├── copilot-instructions.md   # Shared repo instructions (keep in sync with CLAUDE.md)
     └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
 
