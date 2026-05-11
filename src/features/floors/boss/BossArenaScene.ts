@@ -291,7 +291,15 @@ export class BossArenaScene extends Phaser.Scene {
 
   private spawnPlayer(): void {
     const G = GAME_HEIGHT - 64;
-    this.player = new Player(this, 140, G - 80);
+    const checkpointId = this.progression.getLatestActivatedCheckpointId(FLOORS.BOSS);
+    const hasBossCheckpoint = checkpointId === 'boss-cp-1';
+    const spawn = hasBossCheckpoint
+      ? { x: 208, y: G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND - MUG_PICKUP_PLATFORM_OFFSET_Y - 20 }
+      : { x: 140, y: G - 80 };
+    this.player = new Player(this, spawn.x, spawn.y);
+    if (hasBossCheckpoint) {
+      this.floorHazard.registerCheckpoint(spawn.x, spawn.y);
+    }
     this.physics.add.collider(this.player.sprite, this.platformGroup);
   }
 
@@ -764,10 +772,16 @@ export class BossArenaScene extends Phaser.Scene {
     // respawn point after the player reaches the elevated area.
     const cpX = 208;
     const cpY = G - MUG_PLATFORM_HEIGHT_ABOVE_GROUND - MUG_PICKUP_PLATFORM_OFFSET_Y - 20;
-    const cp = new Checkpoint(this, cpX, cpY, 'boss-cp-1', () => {
+    const cpId = 'boss-cp-1';
+    const activatedOnSpawn = this.progression.getActivatedCheckpointIds(FLOORS.BOSS).includes(cpId);
+    const cp = new Checkpoint(this, cpX, cpY, cpId, () => {
       this.floorHazard.registerCheckpoint(cpX, cpY);
-      eventBus.emit('checkpoint:activate', 'boss-cp-1');
-    });
+      this.progression.activateCheckpoint(FLOORS.BOSS, cpId);
+      eventBus.emit('checkpoint:activate', cpId);
+    }, activatedOnSpawn);
+    if (activatedOnSpawn) {
+      this.floorHazard.registerCheckpoint(cpX, cpY);
+    }
     cp.wireOverlap(this.physics, this.player.sprite);
   }
 
