@@ -29,6 +29,71 @@ export interface GeneratorPhase {
 }
 
 /**
+ * Texture keys that are intentionally shared across scenes and should stay
+ * resident for the duration of a play session.
+ */
+export const PERSISTENT_TEXTURE_KEYS: ReadonlySet<string> = new Set([
+  // Required shared/core keys.
+  'player',
+  'token',
+  'elevator_cab',
+  'lobby_logo',
+  // Shared token variants.
+  'token_floor1',
+  'token_floor2',
+  'token_halo',
+  // Shared elevator/base geometry.
+  'elevator_platform',
+  'elevator_cable',
+  'elevator_shaft',
+  'room_elevator_platform',
+  // Shared generic level tiles.
+  'platform_tile',
+  'wall_tile',
+  'platform_floor1',
+  'platform_floor2',
+  'platform_floor4_lit',
+  'bg_tile',
+  'tile_detail_overlay',
+  // Shared generic enemies.
+  'enemy_slime',
+  'enemy_bot',
+  'enemy_scope_creep',
+  'enemy_astronaut',
+  'enemy_tech_debt_ghost',
+]);
+
+const ownedTextureKeysByScene = new WeakMap<Phaser.Scene, Set<string>>();
+
+function collectCreatedTextureKeys(scene: Phaser.Scene, run: () => void): string[] {
+  const before = new Set(scene.textures.getTextureKeys());
+  run();
+  const created: string[] = [];
+  for (const key of scene.textures.getTextureKeys()) {
+    if (!before.has(key)) created.push(key);
+  }
+  return created;
+}
+
+function rememberSceneTextureOwnership(scene: Phaser.Scene, keys: readonly string[]): void {
+  if (keys.length === 0) return;
+  let owned = ownedTextureKeysByScene.get(scene);
+  if (!owned) {
+    owned = new Set<string>();
+    ownedTextureKeysByScene.set(scene, owned);
+  }
+  for (const key of keys) owned.add(key);
+}
+
+export function getSceneOwnedTextureKeys(scene: Phaser.Scene): string[] {
+  return [...(ownedTextureKeysByScene.get(scene) ?? [])];
+}
+
+export function clearSceneOwnedTextureKeys(scene: Phaser.Scene): void {
+  ownedTextureKeysByScene.delete(scene);
+}
+
+/**
  * Build the two player GeneratorPhases, sharing a canvas via closure.
  *
  * Phase 1 creates the canvas and draws idle/walk frames (0–5).
@@ -181,19 +246,22 @@ function ensureSpritePhases(
   scene: Phaser.Scene,
   phases: readonly GeneratorPhase[],
   requiredTextureKeys: readonly string[],
-): void {
-  if (requiredTextureKeys.every((key) => scene.textures.exists(key))) return;
+): string[] {
+  if (requiredTextureKeys.every((key) => scene.textures.exists(key))) return [];
+  const created: string[] = [];
   for (const phase of phases) {
-    phase.run(scene);
+    created.push(...collectCreatedTextureKeys(scene, () => phase.run(scene)));
   }
+  rememberSceneTextureOwnership(scene, created);
+  return created;
 }
 
-export function ensureBossArenaSprites(scene: Phaser.Scene): void {
-  ensureSpritePhases(scene, BOSS_ARENA_SPRITE_PHASES, ['boss_ceo', 'mug_projectile', 'briefcase_projectile']);
+export function ensureBossArenaSprites(scene: Phaser.Scene): string[] {
+  return ensureSpritePhases(scene, BOSS_ARENA_SPRITE_PHASES, ['boss_ceo', 'mug_projectile', 'briefcase_projectile']);
 }
 
-export function ensureExecutiveRescueSprites(scene: Phaser.Scene): void {
-  ensureSpritePhases(
+export function ensureExecutiveRescueSprites(scene: Phaser.Scene): string[] {
+  return ensureSpritePhases(
     scene,
     EXECUTIVE_RESCUE_SPRITE_PHASES,
     ['enemy_terrorist', 'door_sanctum_locked', 'door_sanctum_open', 'item_pistol', 'item_keycard', 'item_bomb_code', 'bomb_device'],
@@ -211,11 +279,14 @@ export function ensureExecutiveRescueSprites(scene: Phaser.Scene): void {
  * For smooth boot-screen progress, prefer driving `SPRITE_PHASES` directly
  * via a frame-yielding pipeline (see `BootScene`).
  */
-export function generateSprites(scene: Phaser.Scene): void {
-  if (scene.textures.exists('player')) return;
+export function generateSprites(scene: Phaser.Scene): string[] {
+  if (scene.textures.exists('player')) return [];
+  const created: string[] = [];
   for (const phase of SPRITE_PHASES) {
-    phase.run(scene);
+    created.push(...collectCreatedTextureKeys(scene, () => phase.run(scene)));
   }
+  rememberSceneTextureOwnership(scene, created);
+  return created;
 }
 
 // Re-export aggregates so callers that import them directly still work.
