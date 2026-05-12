@@ -169,3 +169,19 @@ export function showTouchHintForced(padEl: HTMLElement): void {
 export function showTouchHintForcedWithPersist(padEl: HTMLElement): void {
   mountHintOverlay(padEl, true);
 }
+
+/**
+ * Show the first-run hint overlay if the hint has not yet been seen
+ * (`hasSeen()` is false), bypassing the `isTouchPrimary()` guard.
+ *
+ * Marks seen on dismiss, just like {@link showTouchHintIfNeeded}.
+ * Use this when the gamepad is force-mounted via a test hook on a
+ * non-touch device so the natural first-run flow (skip if already seen,
+ * persist on dismiss) is preserved without requiring `isTouchPrimary()`.
+ *
+ * @param padEl  The mounted `#virtual-pad` element.
+ */
+export function showTouchHintIfNotSeen(padEl: HTMLElement): void {
+  if (TouchHintStore.hasSeen()) return;
+  mountHintOverlay(padEl, true);
+}
