@@ -38,6 +38,7 @@ export class ArchitectureTeamScene extends defineFloorScene({
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
+      objective: 'Read architecture stations and pass the quiz',
       playerStart: { x: 150, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 

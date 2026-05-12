@@ -118,6 +118,7 @@ export class BossArenaScene extends Phaser.Scene {
 
   /** Mechanic-hint toast shown at fight start and on phase transitions. Assigned in buildUI(). */
   private mechHintToast!: Toast;
+  private objectiveBanner?: ObjectiveBanner;
 
   /** Per-visit hit / checkpoint tracking. */
   private readonly floorHazard = new FloorHitState();
@@ -314,6 +315,10 @@ export class BossArenaScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
 
     this.mechHintToast = new Toast(this);
+    this.objectiveBanner = new ObjectiveBanner(this, {
+      getText: () => this.getObjectiveText(),
+      isModalOpen: () => this.promptActive || this.isTransitioning,
+    });
   }
 
   private wireColliders(): void {
@@ -342,6 +347,7 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.objectiveBanner?.update();
     if (this.isTransitioning) return;
     if (!this.boss || this.boss.defeated) return;
 
@@ -572,6 +578,14 @@ export class BossArenaScene extends Phaser.Scene {
         onComplete: () => toast.destroy(),
       });
     });
+  }
+
+  private getObjectiveText(): string {
+    if (!this.boss || this.boss.defeated) return '';
+    if (this.promptActive) return 'Answer the architecture challenge';
+    if (this.boss.phase === 1) return 'Collect mugs and hit the CEO';
+    if (this.boss.phase === 2) return 'Answer challenges to disable briefcases';
+    return 'Stun the CEO, then finish the fight';
   }
 
   private showDefeatDialogue(): void {

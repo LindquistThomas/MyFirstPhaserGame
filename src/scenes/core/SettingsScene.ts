@@ -284,6 +284,12 @@ export class SettingsScene extends Phaser.Scene {
       },
       {
         kind: 'toggle',
+        label: 'SHOW OBJECTIVE',
+        get: () => settingsStore.read().showObjectiveBanner,
+        set: (v) => settingsStore.setShowObjectiveBanner(v),
+      },
+      {
+        kind: 'toggle',
         label: 'SEND ANALYTICS',
         get: () => settingsStore.read().analyticsConsent,
         set: (v) => settingsStore.setAnalyticsConsent(v),

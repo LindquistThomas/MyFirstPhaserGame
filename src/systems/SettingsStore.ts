@@ -71,6 +71,8 @@ export interface SettingsData {
    * Useful for replay sessions where the player already knows the controls.
    */
   hideTutorials: boolean;
+  /** When true, render the persistent objective banner in gameplay scenes. */
+  showObjectiveBanner: boolean;
   /**
    * When true, the full game UI (dialogs, HUD, floor text) switches to a
    * WCAG-AA-compliant high-contrast palette. Also applies to the virtual
@@ -140,6 +142,7 @@ export function defaultSettings(): SettingsData {
     controlBindings: {},
     onScreenControls: 'auto',
     hideTutorials: false,
+    showObjectiveBanner: true,
     highContrast: false,
     hapticsEnabled: true,
     colorBlindMode: 'off',
@@ -195,6 +198,9 @@ function parseSettings(raw: unknown): SettingsData {
       ? (r['onScreenControls'] as OnScreenControlsSetting)
       : defaults.onScreenControls,
     hideTutorials: typeof r['hideTutorials'] === 'boolean' ? r['hideTutorials'] : defaults.hideTutorials,
+    showObjectiveBanner: typeof r['showObjectiveBanner'] === 'boolean'
+      ? r['showObjectiveBanner']
+      : defaults.showObjectiveBanner,
     // Migration: legacy `highContrastControls` field is mapped to `highContrast`.
     // If `highContrast` is explicitly stored, it takes precedence.
     highContrast: typeof r['highContrast'] === 'boolean'
@@ -329,6 +335,10 @@ export const settingsStore = {
   /** Toggle the first-visit coaching-toast suppression. */
   setHideTutorials(hide: boolean): void {
     this.updateNonAudio((prev) => ({ ...prev, hideTutorials: hide }));
+  },
+
+  setShowObjectiveBanner(show: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, showObjectiveBanner: show }));
   },
 
   setHapticsEnabled(enabled: boolean): void {

@@ -53,6 +53,7 @@ export class PlatformTeamScene extends defineFloorScene({
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
+      objective: 'Collect AU and reach the elevator exit',
       playerStart: { x: 240, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 

@@ -495,6 +495,7 @@ export class ExecutiveSuiteScene extends defineFloorScene({
 
     return {
       floorId: FLOORS.EXECUTIVE,
+      objective: 'Collect mission items, disarm bomb, rescue leadership',
       playerStart: { x: spawnX, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 

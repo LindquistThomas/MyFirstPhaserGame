@@ -63,6 +63,8 @@ export interface RoomElevator {
 
 export interface LevelConfig {
   floorId: FloorId;
+  /** Persistent objective shown in HUD while this scene is active. */
+  objective?: string;
   platforms: Array<{ x: number; y: number; width: number }>;
   /**
    * Thin catwalks / walkways.
@@ -808,7 +810,10 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- UI ---- */
   protected createUI(): void {
-    this.hud = new HUD(this, this.progression, this.gameState.playtime);
+    this.hud = new HUD(this, this.progression, this.gameState.playtime, {
+      getObjectiveText: () => this.getLevelConfig().objective ?? '',
+      isObjectiveHidden: () => this.dialogs?.isOpen ?? false,
+    });
     this.callElevatorButton = new CallElevatorButton(this, () => this.returnToElevator());
     this.createDangerVignette();
   }

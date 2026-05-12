@@ -162,6 +162,8 @@ export interface GameEvents {
    * Useful for screen-reader announcements and HUD celebrations.
    */
   'progression:au_milestone': [milestone: number];
+  /** Any progression value changed (AU, floor, load) — UI can refresh derived text. */
+  'progression:changed': [];
 
   /**
    * SaveManager failed to read or write a save slot.
