@@ -18,7 +18,6 @@ import {
   setDailyState,
 } from '../../systems/DailyChallenge';
 import { getRecentResults, getResult } from '../../systems/DailyChallengeStore';
-import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
 
