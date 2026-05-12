@@ -16,7 +16,7 @@
  * with info icons.
  */
 
-import { FloorId, FLOORS } from '../gameConfig';
+import { FloorId, FLOOR_IDS, FLOORS } from '../gameConfig';
 import { InfoPointDef } from './types';
 import {
   readContentCache,
@@ -72,15 +72,19 @@ const _infoPendingFloors = new Map<FloorId, Promise<void>>();
 // Attempt to hydrate from the content cache on module init so that
 // subsequent calls to `preloadInfoFor` for already-cached floors return
 // immediately without triggering a dynamic import.
-{
+try {
   const _cached = readContentCache();
   if (_cached) {
     for (const [floorIdStr, floorData] of Object.entries(_cached.infoByFloor)) {
-      const floorId = Number(floorIdStr) as FloorId;
+      const rawId = Number(floorIdStr);
+      if (!FLOOR_IDS.includes(rawId as FloorId)) continue;
+      const floorId = rawId as FloorId;
       Object.assign(INFO_POINTS, floorData);
       _infoLoadedFloors.add(floorId);
     }
   }
+} catch {
+  // Malformed cache — proceed without hydration; dynamic imports will repopulate.
 }
 
 /**
