@@ -45,6 +45,8 @@ describe('SettingsStore', () => {
       expect(s.sfxVolume).toBe(90);
       expect(s.muteAll).toBe(false);
       expect(s.musicStyle).toBe('8bit-chiptune');
+      expect(s.llmProvider).toBe('none');
+      expect(s.llmApiKey).toBe('');
     });
 
     it('defaultSettings() returns independent objects each call', () => {
@@ -79,6 +81,8 @@ describe('SettingsStore', () => {
         hapticsEnabled: false,
         colorBlindMode: 'deuteranopia',
         textScale: 1.3,
+        llmProvider: 'openai',
+        llmApiKey: 'sk-local-test',
         analyticsConsent: true,
       }));
       // Force cache-miss by re-pointing at the same storage.
@@ -96,6 +100,8 @@ describe('SettingsStore', () => {
       expect(s.hapticsEnabled).toBe(false);
       expect(s.colorBlindMode).toBe('deuteranopia');
       expect(s.textScale).toBe(1.3);
+      expect(s.llmProvider).toBe('openai');
+      expect(s.llmApiKey).toBe('sk-local-test');
       expect(s.analyticsConsent).toBe(true);
     });
 

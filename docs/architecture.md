@@ -364,6 +364,7 @@ automatically.
 | `sfx:recover_au`     | —       | Player (AU recovered)       | AudioManager |
 | `sfx:coffee_sip`     | —       | Coffee                      | AudioManager |
 | `sfx:fridge_open`    | —       | EnergyDrinkFridge           | AudioManager |
+| `sfx:npc_greet`      | —       | LevelNpcManager             | AudioManager |
 | `sfx:boss_hit`       | —       | CEOBoss                     | AudioManager |
 | `sfx:boss_defeated`  | —       | TerroristCommander          | AudioManager |
 | `sfx:boss_phase_2`   | —       | CEOBoss                     | AudioManager |
@@ -381,6 +382,14 @@ automatically.
 | Event                 | Payload       | Emitters | Consumers |
 |-----------------------|---------------|----------|-----------|
 | `checkpoint:activate` | `id: string`  | LevelScene, BossArenaScene | — |
+
+#### `npc:*` — NPC questions
+
+| Event                | Payload                                      | Emitters         | Consumers |
+|----------------------|----------------------------------------------|------------------|-----------|
+| `npc:interact`       | `{ npcId; npcName; topic }`                  | LevelNpcManager  | — |
+| `npc:answer:correct` | `{ npcName; questionId }`                    | NpcDialog        | — |
+| `npc:answer:wrong`   | `{ npcName; questionId }`                    | NpcDialog        | — |
 
 #### `boss:*` — boss lifecycle
 

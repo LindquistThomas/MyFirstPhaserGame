@@ -35,6 +35,20 @@ export class FinanceTeamScene extends defineFloorScene({
       // Finance is a narrative room — no AU tokens here.
       tokens: [],
 
+      npcs: [
+        {
+          id: 'finance-architect',
+          name: 'Finley',
+          x: 760,
+          y: G,
+          minX: 620,
+          maxX: 920,
+          speed: 26,
+          topic: 'executive architecture',
+          tint: 0xb8ffd1,
+        },
+      ],
+
       infoPoints: [
         {
           x: 260, y: G, contentId: 'finance',
@@ -109,4 +123,3 @@ export class FinanceTeamScene extends defineFloorScene({
     }
   }
 }
-

@@ -30,6 +30,7 @@ export type TextScale = 1 | 1.15 | 1.3 | 1.5;
 
 /** Controls when the on-screen virtual gamepad is displayed. */
 export type OnScreenControlsSetting = 'auto' | 'always' | 'never';
+export type LlmProvider = 'none' | 'openai';
 
 /** Persisted key-binding overrides. Empty map = fall back to DEFAULT_BINDINGS. */
 export type ControlBindings = Partial<Record<GameAction, number[]>>;
@@ -95,6 +96,13 @@ export interface SettingsData {
    * Defaults to `1` (100%). Supports up to 1.5 (150%) per WCAG 2.1 SC 1.4.4.
    */
   textScale: TextScale;
+  /** Optional BYOK LLM provider for NPC question generation. */
+  llmProvider: LlmProvider;
+  /**
+   * Optional BYOK API key. Stored as plaintext localStorage because this is a
+   * static client-only game; SettingsScene warns users before saving it.
+   */
+  llmApiKey: string;
   /**
    * When true, anonymous gameplay telemetry is forwarded to the configured
    * analytics endpoint. Requires `VITE_ANALYTICS_ENDPOINT` to also be set
@@ -111,6 +119,7 @@ const LEGACY_MUTE_KEY = 'architect_audio_muted_v1';
 const VALID_MUSIC_STYLES: ReadonlySet<string> = new Set(['8bit-chiptune', 'retro-synth', 'elevator-jazz']);
 const VALID_COLOR_BLIND_MODES: ReadonlySet<string> = new Set(['off', 'deuteranopia', 'protanopia', 'tritanopia']);
 const VALID_TEXT_SCALES: ReadonlySet<number> = new Set([1, 1.15, 1.3, 1.5]);
+const VALID_LLM_PROVIDERS: ReadonlySet<string> = new Set(['none', 'openai']);
 
 function defaultReducedMotion(): boolean {
   try {
@@ -135,6 +144,8 @@ export function defaultSettings(): SettingsData {
     hapticsEnabled: true,
     colorBlindMode: 'off',
     textScale: 1,
+    llmProvider: 'none',
+    llmApiKey: '',
     analyticsConsent: false,
   };
 }
@@ -196,6 +207,10 @@ function parseSettings(raw: unknown): SettingsData {
     textScale: VALID_TEXT_SCALES.has(r['textScale'] as number)
       ? (r['textScale'] as TextScale)
       : defaults.textScale,
+    llmProvider: VALID_LLM_PROVIDERS.has(r['llmProvider'] as string)
+      ? (r['llmProvider'] as LlmProvider)
+      : defaults.llmProvider,
+    llmApiKey: typeof r['llmApiKey'] === 'string' ? r['llmApiKey'].slice(0, 256) : defaults.llmApiKey,
     analyticsConsent: typeof r['analyticsConsent'] === 'boolean' ? r['analyticsConsent'] : defaults.analyticsConsent,
   };
 }
@@ -322,6 +337,14 @@ export const settingsStore = {
 
   setColorBlindMode(mode: ColorBlindMode): void {
     this.updateNonAudio((prev) => ({ ...prev, colorBlindMode: mode }));
+  },
+
+  setLlmProvider(provider: LlmProvider): void {
+    this.updateNonAudio((prev) => ({ ...prev, llmProvider: provider }));
+  },
+
+  setLlmApiKey(apiKey: string): void {
+    this.updateNonAudio((prev) => ({ ...prev, llmApiKey: apiKey.trim().slice(0, 256) }));
   },
 
   setAnalyticsConsent(enabled: boolean): void {

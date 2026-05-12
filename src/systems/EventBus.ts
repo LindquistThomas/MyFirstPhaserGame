@@ -80,6 +80,15 @@ export interface GameEvents {
   'sfx:coffee_sip': [];
   /** Energy drink fridge opened — mechanical click + cold air whoosh. */
   'sfx:fridge_open': [];
+  /** Friendly NPC greeting / question prompt. */
+  'sfx:npc_greet': [];
+
+  /** Friendly NPC interaction started. */
+  'npc:interact': [payload: { npcId: string; npcName: string; topic: string }];
+  /** NPC architecture question answered correctly. */
+  'npc:answer:correct': [payload: { npcName: string; questionId: string }];
+  /** NPC architecture question answered incorrectly. */
+  'npc:answer:wrong': [payload: { npcName: string; questionId: string }];
 
   // ---- Boss fight SFX ----
   /** Short percussive thud when CEO is hit. */
