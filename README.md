@@ -12,6 +12,8 @@ The game is deployed automatically to GitHub Pages on every push to `main`.
 
 You are an IT architect navigating the **Architecture Elevator** — a central shaft that connects different departments in a corporation. Ride the elevator between floors, explore each department, and collect **AU (Architecture Utility)** points to unlock higher floors and advance your career.
 
+A **Daily Challenge** mode is available from the main menu: each UTC day generates a unique seed that produces the same deterministic seeded layout for all players, with personal results tracked per day.
+
 ### Controls
 
 | Key | Action |
@@ -27,7 +29,7 @@ You are an IT architect navigating the **Architecture Elevator** — a central s
 
 ### Floors
 
-Defined in `src/config/gameConfig.ts` (`FLOORS`) and `src/config/levelData.ts` (`LEVEL_DATA`).
+The display "Floor" number below comes from `LEVEL_DATA[*].floorNumber` (`src/config/levelData.ts`) — a sequential 0–5 sequence used for the cab panel and HUD. The internal `FloorId` values in `FLOORS` (`src/config/gameConfig.ts`) are **non-sequential** (`LOBBY=0, PLATFORM_TEAM=1, BUSINESS=3, EXECUTIVE=4, PRODUCTS=5, BOSS=6`); the two are intentionally decoupled so IDs can be reallocated without renumbering the displayed labels.
 
 | Floor | Department | Notes |
 |-------|-----------|-------|
@@ -35,7 +37,7 @@ Defined in `src/config/gameConfig.ts` (`FLOORS`) and `src/config/levelData.ts` (
 | 1 | Platform Team / Architecture Team | Split floor: Platform on the left, Architecture on the right. Green — Infrastructure AU. |
 | 2 | Products | Rendered directly by `ElevatorScene` / `ProductDoorManager` — one door per ISY product, no standalone scene. |
 | 3 | Business | Split floor: Product Leadership on the left, Customer Success on the right. Amber — Business AU. |
-| 4 | Executive Suite | Penthouse — Strategy AU. |
+| 4 | Executive Suite | Penthouse — Strategy AU. Hosts the Finance room (separate door inside the suite). |
 | 5 | Boardroom | Boss arena — final encounter, `BossArenaScene`. |
 
 ## Bundle size budget
@@ -47,7 +49,7 @@ The CI `size-budget` job (`npm run size`) runs `scripts/check-size.cjs` after ev
 | `dist/assets/index-*.js` (app chunk, gzipped) | 150 KB | App logic; well under today's size. |
 | `dist/assets/phaser-*.js` (engine chunk, gzipped) | 400 KB | Phaser 3.90 gzips to ~330 KB; guards against accidental engine duplication. |
 | Total `dist/` excluding `dist/music/**` (gzipped) | 700 KB | JS + HTML payload, minus streamed audio. |
-| Eager music assets (raw, from `STATIC_MUSIC_ASSETS`) | 700 KB | First-load audio; currently 0 KB (no tracks marked `eager: true`). Headroom for one ~640 KB OGG. |
+| Eager music assets (raw, from `STATIC_MUSIC_ASSETS`) | 700 KB | First-load audio; currently `music_menu` + `music_elevator_jazz` are eager (~size measured by `npm run size`). Remaining headroom shown by the size budget. |
 | **Total music assets** (raw, all `dist/music/**`) | **6.5 MB** | Guards against audio bloat; ~6.0 MB today after orphan cleanup. |
 
 In addition to size budgets, the check fails if any audio file in `dist/music/` is **not declared** in `STATIC_MUSIC_ASSETS` (`src/config/audioConfig.ts`). This prevents orphaned tracks from accumulating unnoticed.
