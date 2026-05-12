@@ -122,6 +122,8 @@ export class Player {
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.onAnimationFrame, this);
     this.createDustEmitter();
     this.createCaffeineEmitter();
+    this.scene.events.once('shutdown', this.destroyEmitters, this);
+    this.scene.events.once('destroy', this.destroyEmitters, this);
     this.scene.events.once('shutdown', this.clearTransientTweens, this);
   }
 
@@ -511,6 +513,17 @@ export class Player {
     this.caffeineSteam.setDepth(9);
   }
 
+  private destroyEmitters(): void {
+    if (this.dustEmitter && 'destroy' in this.dustEmitter && typeof this.dustEmitter.destroy === 'function') {
+      this.dustEmitter.destroy();
+    }
+    this.dustEmitter = undefined;
+    if (this.caffeineSteam && 'destroy' in this.caffeineSteam && typeof this.caffeineSteam.destroy === 'function') {
+      this.caffeineSteam.destroy();
+    }
+    this.caffeineSteam = undefined;
+  }
+
   private tickCaffeine(): void {
     const now = this.scene.time.now;
     if (this.caffeine.isActive(now)) {
@@ -610,8 +623,11 @@ export class Player {
   destroy(): void {
     if ('off' in this.scene.events) {
       this.scene.events.off('shutdown', this.clearTransientTweens, this);
+      this.scene.events.off('shutdown', this.destroyEmitters, this);
+      this.scene.events.off('destroy', this.destroyEmitters, this);
     }
     this.clearTransientTweens();
+    this.destroyEmitters();
     this.sprite.destroy();
   }
 

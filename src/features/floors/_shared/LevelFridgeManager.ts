@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { EnergyDrinkFridge, ENERGY_DRINK_DURATION_MS } from '../../../entities/EnergyDrinkFridge';
 import { Player } from '../../../entities/Player';
 import { eventBus } from '../../../systems/EventBus';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import { ensureCoffeeFridgeSounds } from '../../../systems/SoundGenerator';
 import { allKeyLabels } from '../../../input';
 import { theme } from '../../../style/theme';
@@ -35,6 +36,7 @@ export interface FridgeManagerDeps {
 export class LevelFridgeManager {
   private fridges: EnergyDrinkFridge[] = [];
   private prompt: Phaser.GameObjects.Text;
+  private coldBurstEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
 
   constructor(private readonly deps: FridgeManagerDeps) {
     this.prompt = deps.scene.add
@@ -47,6 +49,14 @@ export class LevelFridgeManager {
       })
       .setDepth(20)
       .setVisible(false);
+    this.coldBurstEmitter = this.createColdBurstEmitter();
+    const destroyEmitter = (): void => {
+      const emitter = this.coldBurstEmitter;
+      this.coldBurstEmitter = undefined;
+      emitter?.destroy();
+    };
+    deps.scene.events.once('shutdown', destroyEmitter);
+    deps.scene.events.once('destroy', destroyEmitter);
   }
 
   spawn(config: LevelConfig): void {
@@ -94,9 +104,15 @@ export class LevelFridgeManager {
 
   /** Particle burst of icy blue-green motes when the fridge opens. */
   private emitColdBurst(x: number, y: number): void {
+    if (isReducedMotion()) return;
+    this.coldBurstEmitter?.emitParticleAt(x, y - 30, 10);
+  }
+
+  private createColdBurstEmitter(): Phaser.GameObjects.Particles.ParticleEmitter | undefined {
     const scene = this.deps.scene;
-    if (!scene.textures.exists('particle')) return;
-    const emitter = scene.add.particles(x, y - 30, 'particle', {
+    if (isReducedMotion()) return undefined;
+    if (!scene.textures.exists('particle')) return undefined;
+    const emitter = scene.add.particles(0, 0, 'particle', {
       speed: { min: 30, max: 100 },
       angle: { min: 200, max: 340 },
       scale: { start: 0.5, end: 0 },
@@ -107,7 +123,6 @@ export class LevelFridgeManager {
       emitting: false,
     });
     emitter.setDepth(11);
-    emitter.explode(10);
-    scene.time.delayedCall(700, () => emitter.destroy());
+    return emitter;
   }
 }

@@ -21,6 +21,8 @@ export interface QuizResultsScreenOptions {
   onClose: () => void;
 }
 
+const celebrationEmitters = new WeakMap<Phaser.Scene, Phaser.GameObjects.Particles.ParticleEmitter>();
+
 /**
  * Render the end-of-quiz summary panel.
  *
@@ -149,6 +151,7 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
 }
 
 function spawnCelebrationParticles(scene: Phaser.Scene): void {
+  if (isReducedMotion()) return;
   if (!scene.textures.exists('quiz_particle')) {
     const g = scene.add.graphics();
     g.fillStyle(0xffffff);
@@ -160,7 +163,17 @@ function spawnCelebrationParticles(scene: Phaser.Scene): void {
   const cx = GAME_WIDTH / 2;
   const cy = GAME_HEIGHT / 2 - 40;
 
-  const emitter = scene.add.particles(cx, cy, 'quiz_particle', {
+  const emitter = getCelebrationEmitter(scene);
+  if (!emitter) return;
+  emitter.setPosition(cx, cy);
+  emitter.explode(30);
+}
+
+function getCelebrationEmitter(scene: Phaser.Scene): Phaser.GameObjects.Particles.ParticleEmitter | undefined {
+  const existing = celebrationEmitters.get(scene);
+  if (existing) return existing;
+
+  const emitter = scene.add.particles(0, 0, 'quiz_particle', {
     speed: { min: 80, max: 250 },
     angle: { min: 0, max: 360 },
     scale: { start: 1.2, end: 0 },
@@ -172,9 +185,16 @@ function spawnCelebrationParticles(scene: Phaser.Scene): void {
   });
   emitter.setDepth(201);
   emitter.setScrollFactor(0);
-  emitter.explode(30);
+  celebrationEmitters.set(scene, emitter);
 
-  scene.time.delayedCall(1500, () => {
+  let destroyed = false;
+  const destroyEmitter = (): void => {
+    if (destroyed) return;
+    destroyed = true;
+    celebrationEmitters.delete(scene);
     emitter.destroy();
-  });
+  };
+  scene.events.once('shutdown', destroyEmitter);
+  scene.events.once('destroy', destroyEmitter);
+  return emitter;
 }
