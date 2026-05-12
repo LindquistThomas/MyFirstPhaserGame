@@ -1,13 +1,11 @@
 name: CI
 
 on:
-  pull_request_target:
+  pull_request:
   push:
     branches: [main]
   merge_group:
 
-# Restrict the base-branch token to read-only so untrusted PR code cannot
-# exfiltrate it to modify the repository.
 permissions:
   contents: read
 
@@ -26,9 +24,6 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       # Detect whether this push/PR touches anything outside docs/**.
       # If only docs/** changed, downstream jobs are skipped — skipped jobs
@@ -47,9 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-node@v6
         with:
@@ -82,9 +74,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-node@v6
         with:
@@ -117,9 +106,6 @@ jobs:
         total: [4]
     steps:
       - uses: actions/checkout@v6
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: actions/setup-node@v6
         with:
