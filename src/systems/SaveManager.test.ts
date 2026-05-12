@@ -322,9 +322,33 @@ describe('SaveManager — schema versioning & migration', () => {
     expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
     expect(loaded?.playtimeMs).toBe(0);
     expect(loaded?.floorPlaytimeMs).toEqual({});
+    expect(loaded?.activatedCheckpoints).toEqual({});
   });
 
-  it('v0→current migration (no version field): yields zeroed playtime fields', () => {
+  it('v2→v3 migration: loading a v2 save yields empty activatedCheckpoints', () => {
+    const store = memoryStorage();
+    const v2Save = {
+      version: 2,
+      totalAU: 5,
+      floorAU: { 0: 5 },
+      unlockedFloors: [0],
+      currentFloor: 0,
+      collectedTokens: {},
+      playtimeMs: 1234,
+      floorPlaytimeMs: { 0: 1234 },
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v2Save));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.playtimeMs).toBe(1234);
+    expect(loaded?.floorPlaytimeMs).toEqual({ 0: 1234 });
+    expect(loaded?.activatedCheckpoints).toEqual({});
+  });
+
+  it('v0→v3 migration (no version field): yields zeroed playtime fields and empty activatedCheckpoints', () => {
     const store = memoryStorage();
     const v0Save = {
       totalAU: 3,
@@ -341,6 +365,7 @@ describe('SaveManager — schema versioning & migration', () => {
     expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
     expect(loaded?.playtimeMs).toBe(0);
     expect(loaded?.floorPlaytimeMs).toEqual({});
+    expect(loaded?.activatedCheckpoints).toEqual({});
     // original fields preserved
     expect(loaded?.totalAU).toBe(3);
   });
@@ -753,10 +778,12 @@ describe('SaveManager — isValidSaveData schema validation', () => {
       onboardingComplete: true,
       visitedFloors: [0, 1],
       lastPlayedAt: 1234567890,
+      activatedCheckpoints: { 1: ['platform-cp-1'] },
     };
     const loaded = storeAndLoad(withOptionals);
     expect(loaded).not.toBeNull();
     expect(loaded?.onboardingComplete).toBe(true);
+    expect(loaded?.activatedCheckpoints).toEqual({ 1: ['platform-cp-1'] });
   });
 
   it('returns null and emits persistence:failed when totalAU is missing', () => {
@@ -883,6 +910,24 @@ describe('SaveManager — isValidSaveData schema validation', () => {
     eventBus.on('persistence:failed', handler);
 
     const loaded = storeAndLoad({ ...validBase, collectedTokens: { 0: {} } });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when optional activatedCheckpoints is not an object', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, activatedCheckpoints: ['platform-cp-1'] });
+    expect(loaded).toBeNull();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
+  });
+
+  it('returns null and emits persistence:failed when optional activatedCheckpoints has non-string entries', () => {
+    const handler = vi.fn();
+    eventBus.on('persistence:failed', handler);
+
+    const loaded = storeAndLoad({ ...validBase, activatedCheckpoints: { 1: ['ok', 7] } });
     expect(loaded).toBeNull();
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ reason: 'parse' }));
   });

@@ -166,6 +166,27 @@ describe('ProgressionSystem', () => {
     expect(p.hasVisitedFloor(FLOORS.PLATFORM_TEAM)).toBe(false);
   });
 
+  it('persists activated checkpoints and restores latest checkpoint id on reload', () => {
+    const p = new ProgressionSystem();
+    p.activateCheckpoint(FLOORS.PLATFORM_TEAM, 'platform-cp-1');
+    p.activateCheckpoint(FLOORS.PLATFORM_TEAM, 'platform-cp-2');
+
+    const q = new ProgressionSystem();
+    expect(q.loadFromSave()).toBe(true);
+    expect(q.getActivatedCheckpointIds(FLOORS.PLATFORM_TEAM)).toEqual(['platform-cp-1', 'platform-cp-2']);
+    expect(q.getLatestActivatedCheckpointId(FLOORS.PLATFORM_TEAM)).toBe('platform-cp-2');
+  });
+
+  it('re-activating an older checkpoint moves it to latest', () => {
+    const p = new ProgressionSystem();
+    p.activateCheckpoint(FLOORS.PLATFORM_TEAM, 'platform-cp-1');
+    p.activateCheckpoint(FLOORS.PLATFORM_TEAM, 'platform-cp-2');
+    p.activateCheckpoint(FLOORS.PLATFORM_TEAM, 'platform-cp-1');
+
+    expect(p.getActivatedCheckpointIds(FLOORS.PLATFORM_TEAM)).toEqual(['platform-cp-2', 'platform-cp-1']);
+    expect(p.getLatestActivatedCheckpointId(FLOORS.PLATFORM_TEAM)).toBe('platform-cp-1');
+  });
+
   it('reset() clears all state and the persisted save', () => {
     const p = new ProgressionSystem();
     p.addAU(FLOORS.PLATFORM_TEAM, 10);
@@ -342,6 +363,22 @@ describe('ProgressionSystem — loadFromSave optional-field fallbacks', () => {
     const p = new ProgressionSystem();
     expect(p.loadFromSave()).toBe(true);
     expect(p.isOnboardingComplete()).toBe(false);
+  });
+
+  it('defaults activatedCheckpoints to empty when absent in legacy save', () => {
+    setStorage(seededStorage({
+      version: CURRENT_SAVE_VERSION,
+      totalAU: 0,
+      floorAU: {},
+      unlockedFloors: [FLOORS.LOBBY],
+      currentFloor: FLOORS.LOBBY,
+      collectedTokens: {},
+    }));
+
+    const p = new ProgressionSystem();
+    expect(p.loadFromSave()).toBe(true);
+    expect(p.getActivatedCheckpointIds(FLOORS.LOBBY)).toEqual([]);
+    expect(p.getLatestActivatedCheckpointId(FLOORS.LOBBY)).toBeNull();
   });
 });
 

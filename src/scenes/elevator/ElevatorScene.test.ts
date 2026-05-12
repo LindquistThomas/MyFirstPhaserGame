@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as Phaser from 'phaser';
+import type { LazySceneLoader } from '../lazySceneLoaders';
+
+const { testLazyLoaders } = vi.hoisted(() => ({
+  testLazyLoaders: new Map<string, LazySceneLoader>(),
+}));
 
 // ── Phaser stub ──────────────────────────────────────────────────────────────
 // Only the surface ElevatorScene extends (Phaser.Scene constructor).
@@ -19,6 +25,7 @@ vi.mock('../../ui/ElevatorButtons', () => ({ ElevatorButtons: class {} }));
 vi.mock('../../ui/ElevatorPanel', () => ({ ElevatorPanel: class {} }));
 vi.mock('../../ui/WelcomeModal', () => ({ WelcomeModal: class {} }));
 vi.mock('../../ui/ControlHintsOverlay', () => ({ ControlHintsOverlay: class {} }));
+vi.mock('../../ui/SceneLoadingOverlay', () => ({ SceneLoadingOverlay: class {} }));
 vi.mock('../../systems/ProgressionSystem', () => ({ ProgressionSystem: class {} }));
 vi.mock('../../systems/GameStateManager', () => ({ GameStateManager: class {} }));
 vi.mock('../../ui/DialogController', () => ({ DialogController: class {} }));
@@ -63,10 +70,8 @@ vi.mock('../../config/gameConfig', () => ({
   FLOOR_IDS: [0, 1, 3, 4, 5, 6],
 }));
 
-// LAZY_SCENE_LOADERS returns undefined for every key in tests so the
-// lazyStartScene() path falls through to the "scene already registered" branch.
 vi.mock('../lazySceneLoaders', () => ({
-  LAZY_SCENE_LOADERS: new Map<string, never>(),
+  LAZY_SCENE_LOADERS: testLazyLoaders,
 }));
 
 import { ElevatorScene } from './ElevatorScene';
@@ -75,14 +80,26 @@ import { ElevatorScene } from './ElevatorScene';
 
 type SceneInternal = {
   isTransitioning: boolean;
+  retrySceneKey: string | null;
   time: { delayedCall: (ms: number, fn: () => void) => void };
+  inputs: {
+    justPressed: ReturnType<typeof vi.fn>;
+    isDown: ReturnType<typeof vi.fn>;
+  };
   scene: {
     get: ReturnType<typeof vi.fn>;
     add: ReturnType<typeof vi.fn>;
     start: ReturnType<typeof vi.fn>;
   };
   cameras: { main: { fadeIn: ReturnType<typeof vi.fn>; fadeOut: ReturnType<typeof vi.fn> } };
+  sceneLoadingOverlay?: {
+    showLoading: ReturnType<typeof vi.fn>;
+    showError: ReturnType<typeof vi.fn>;
+    hide: ReturnType<typeof vi.fn>;
+    message: string;
+  };
   lazyStartScene: (key: string) => Promise<void>;
+  update: (time: number, delta: number) => void;
 };
 
 /**
@@ -95,10 +112,16 @@ function makeStub(): SceneInternal {
 
   // isTransitioning starts false (mirrors create() reset).
   stub.isTransitioning = false;
+  stub.retrySceneKey = null;
+  testLazyLoaders.clear();
 
   // Fire delayedCall callbacks synchronously so the fade Promise resolves
   // in the same micro-task turn as the await inside lazyStartScene().
   stub.time = { delayedCall: (_ms, fn) => fn() };
+  stub.inputs = {
+    justPressed: vi.fn(() => false),
+    isDown: vi.fn(() => false),
+  };
 
   // scene.get() returning null tells lazyStartScene there is no loader in
   // LAZY_SCENE_LOADERS (the Map is empty in tests), so it falls through to
@@ -112,6 +135,15 @@ function makeStub(): SceneInternal {
   stub.cameras = {
     main: { fadeIn: vi.fn(), fadeOut: vi.fn() },
   };
+  const overlay = {
+    message: '',
+    showLoading: vi.fn(() => { overlay.message = 'Loading...'; }),
+    showError: vi.fn((message: string, hint: string) => { overlay.message = `${message} ${hint}`; }),
+    hide: vi.fn(),
+  };
+  stub.sceneLoadingOverlay = overlay;
+  (stub as unknown as { waitForAnimationMs: (ms: number) => Promise<void> }).waitForAnimationMs =
+    vi.fn(async () => undefined);
 
   return stub;
 }
@@ -174,6 +206,50 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
     await stub.lazyStartScene('ArchitectureTeamScene');
     expect(stub.scene.start).toHaveBeenCalledTimes(2);
     expect(stub.scene.start).toHaveBeenNthCalledWith(2, 'ArchitectureTeamScene');
+  });
+
+  it('shows loading overlay text when lazy loader is still pending', async () => {
+    let resolveLoader: ((cls: new (...args: never[]) => Phaser.Scene) => void) | undefined;
+    testLazyLoaders.set(
+      'PlatformTeamScene',
+      () => new Promise((resolve) => { resolveLoader = resolve; }),
+    );
+
+    const transition = stub.lazyStartScene('PlatformTeamScene');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(stub.sceneLoadingOverlay?.showLoading).toHaveBeenCalledTimes(1);
+    expect(stub.sceneLoadingOverlay?.message).toContain('Loading');
+
+    resolveLoader?.(class MockScene extends Phaser.Scene {});
+    await transition;
+  });
+
+  it('shows retry copy and stores retry key when lazy loader fails', async () => {
+    testLazyLoaders.set(
+      'PlatformTeamScene',
+      () => Promise.reject(new Error('chunk download failed')),
+    );
+
+    await stub.lazyStartScene('PlatformTeamScene');
+
+    expect(stub.retrySceneKey).toBe('PlatformTeamScene');
+    expect(stub.sceneLoadingOverlay?.showError).toHaveBeenCalledWith(
+      'Could not load floor',
+      'Press Enter to retry',
+    );
+  });
+
+  it('retry prompt binds Confirm to reattempt lazyStartScene()', () => {
+    stub.retrySceneKey = 'PlatformTeamScene';
+    stub.inputs.justPressed = vi.fn((action: string) => action === 'Confirm');
+    const retrySpy = vi.spyOn(stub, 'lazyStartScene').mockResolvedValue();
+
+    stub.update(0, 16);
+
+    expect(stub.cameras.main.fadeOut).toHaveBeenCalled();
+    expect(retrySpy).toHaveBeenCalledWith('PlatformTeamScene');
   });
 });
 

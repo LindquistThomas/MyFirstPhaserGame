@@ -28,6 +28,9 @@ function makeEnemyClass(type: string) {
     knockbackY = -300;
     x: number;
     y: number;
+    active = true;
+    body: { enable: boolean } = { enable: true };
+    setActive = vi.fn((v: boolean) => { this.active = v; });
     update = vi.fn();
     onStomp = vi.fn();
 
@@ -75,7 +78,7 @@ vi.mock('../../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
 
-import { LevelEnemySpawner } from './LevelEnemySpawner';
+import { LevelEnemySpawner, OFFSCREEN_ENEMY_MARGIN_PX } from './LevelEnemySpawner';
 import { DroppedAU } from '../../../entities/DroppedAU';
 import { ProgressionSystem, type SaveAdapter } from '../../../systems/ProgressionSystem';
 import type { SaveData } from '../../../systems/SaveManager';
@@ -92,15 +95,12 @@ function makeSaveAdapter(): SaveAdapter {
   };
 }
 
-function makeHarness(worldModifiers: WorldModifiers = {
-  enemySpeedMultiplier: 1,
-  enemyContactDamageMultiplier: 1,
-  bossHpMultiplier: 1,
-  hardQuizOnly: false,
-}) {
+function makeHarness(cameraWorldView?: { left: number; right: number; top: number; bottom: number }) {
   const overlapCallbacks: Array<(player: unknown, enemy: unknown) => void> = [];
   const colliderArgs: unknown[][] = [];
   const progression = new ProgressionSystem(makeSaveAdapter());
+
+  const worldView = cameraWorldView ?? { left: 0, right: 800, top: 0, bottom: 600 };
 
   const scene = {
     physics: {
@@ -111,6 +111,9 @@ function makeHarness(worldModifiers: WorldModifiers = {
         collider: vi.fn((...args: unknown[]) => { colliderArgs.push(args); }),
         group: vi.fn(() => ({ add: vi.fn() })),
       },
+    },
+    cameras: {
+      main: { worldView },
     },
   } as unknown as Phaser.Scene;
 
@@ -389,5 +392,64 @@ describe('LevelEnemySpawner — update()', () => {
     (enemy as { defeated: boolean }).defeated = true;
     spawner.update(1000, 16);
     expect((enemy as unknown as { update: ReturnType<typeof vi.fn> }).update).not.toHaveBeenCalled();
+  });
+
+  it('calls update() on an on-screen enemy and not on an off-screen enemy', () => {
+    // Camera worldView: left=0, right=800, top=0, bottom=600
+    // Margin=256, so active zone: x in [-256, 1056], y in [-256, 856]
+    // on-screen enemy at (400, 300) — well inside
+    // off-screen enemy at (2000, 300) — far outside right edge
+    const onScreenX = 400;
+    const offScreenX = 2000;
+    const spawner = makeHarness().spawner;
+    spawner.spawn(makeConfig([
+      enemyEntry('slime', onScreenX, 300),
+      enemyEntry('bot', offScreenX, 300),
+    ]));
+
+    spawner.update(0, 16);
+
+    const [onEnemy, offEnemy] = spawner.enemies as unknown as Array<{
+      update: ReturnType<typeof vi.fn>;
+      active: boolean;
+      body: { enable: boolean };
+      setActive: ReturnType<typeof vi.fn>;
+    }>;
+
+    expect(onEnemy!.update).toHaveBeenCalledWith(0, 16);
+    expect(offEnemy!.update).not.toHaveBeenCalled();
+    expect(offEnemy!.active).toBe(false);
+    expect(offEnemy!.body.enable).toBe(false);
+  });
+
+  it('re-enables physics body and resumes update() when off-screen enemy comes back on-screen', () => {
+    // Start with enemy off-screen
+    const spawner = makeHarness({ left: 0, right: 800, top: 0, bottom: 600 }).spawner;
+    spawner.spawn(makeConfig([enemyEntry('slime', 2000, 300)]));
+    spawner.update(0, 16);
+
+    const enemy = spawner.enemies[0] as unknown as {
+      update: ReturnType<typeof vi.fn>;
+      active: boolean;
+      body: { enable: boolean };
+      setActive: ReturnType<typeof vi.fn>;
+      x: number;
+    };
+
+    expect(enemy.active).toBe(false);
+    expect(enemy.body.enable).toBe(false);
+
+    // Move enemy on-screen and update again
+    enemy.x = 400;
+    enemy.update.mockClear();
+    spawner.update(16, 16);
+
+    expect(enemy.active).toBe(true);
+    expect(enemy.body.enable).toBe(true);
+    expect(enemy.update).toHaveBeenCalledWith(16, 16);
+  });
+
+  it('exports OFFSCREEN_ENEMY_MARGIN_PX as 256', () => {
+    expect(OFFSCREEN_ENEMY_MARGIN_PX).toBe(256);
   });
 });

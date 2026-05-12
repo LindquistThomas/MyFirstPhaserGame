@@ -6,6 +6,7 @@ import { InfoDialog } from './InfoDialog';
 import { QuizDialog } from './QuizDialog';
 import { canRetryQuiz, getCooldownRemaining, isQuizPassed } from '../systems/QuizManager';
 import { preloadInfoFor } from '../config/info';
+import * as InfoModule from '../config/info';
 import { preloadQuizFor } from '../config/quiz';
 import { FLOORS } from '../config/gameConfig';
 
@@ -16,6 +17,7 @@ vi.mock('../systems/QuizManager', () => ({
   canRetryQuiz: vi.fn(() => true),
   getCooldownRemaining: vi.fn(() => 0),
 }));
+vi.mock('./Toast', () => ({ Toast: vi.fn(() => ({ show: vi.fn(), destroy: vi.fn() })) }));
 
 // Preload lobby content so INFO_POINTS and QUIZ_DATA are populated before any test runs.
 beforeAll(async () => {
@@ -109,5 +111,78 @@ describe('DialogController', () => {
 
     expect(controller.isOpen).toBe(false);
     expect(icon.setQuizBadge).toHaveBeenCalledWith(scene, true);
+  });
+});
+
+describe('DialogController — async readiness guard', () => {
+  const scene = {} as Phaser.Scene;
+  const progression = {} as unknown as ProgressionSystem;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('awaits info readiness and opens dialog when INFO_POINTS is initially empty', async () => {
+    const contentId = '__async_test_content__';
+
+    // Control the readiness promise from outside the controller.
+    let resolveReadiness!: () => void;
+    const readinessPromise = new Promise<void>((r) => { resolveReadiness = r; });
+    const readinessSpy = vi.spyOn(InfoModule, 'getInfoReadiness').mockReturnValue(readinessPromise);
+
+    const controller = new DialogController(scene, {
+      progression,
+      getIconForContent: () => undefined,
+      floorId: FLOORS.LOBBY,
+    });
+
+    // INFO_POINTS does NOT have contentId yet — open() should start waiting.
+    controller.open(contentId);
+    expect(InfoDialog).not.toHaveBeenCalled();
+
+    // Populate INFO_POINTS with the content, then resolve readiness.
+    (InfoModule.INFO_POINTS as Record<string, unknown>)[contentId] = {
+      content: { title: 'Async test', body: 'Loaded!' },
+      floorId: FLOORS.LOBBY,
+    };
+    resolveReadiness();
+
+    // Let the microtask queue drain so _openAsync can resume.
+    await new Promise<void>((r) => setTimeout(r, 0));
+
+    expect(InfoDialog).toHaveBeenCalledTimes(1);
+
+    // Cleanup
+    delete (InfoModule.INFO_POINTS as Record<string, unknown>)[contentId];
+    readinessSpy.mockRestore();
+  });
+
+  it('logs a warning and does not open when readiness times out', async () => {
+    vi.useFakeTimers();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Never-resolving readiness promise to simulate a timeout.
+    const readinessSpy = vi.spyOn(InfoModule, 'getInfoReadiness').mockReturnValue(new Promise(() => {}));
+
+    const controller = new DialogController(scene, {
+      progression,
+      getIconForContent: () => undefined,
+      floorId: FLOORS.LOBBY,
+    });
+
+    controller.open('__content_that_never_loads__');
+
+    // Advance timers past the 2 s readiness timeout.
+    await vi.runAllTimersAsync();
+
+    expect(InfoDialog).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Timed out waiting for info data'),
+    );
+    expect(controller.isOpen).toBe(false);
+
+    vi.useRealTimers();
+    warnSpy.mockRestore();
+    readinessSpy.mockRestore();
   });
 });
