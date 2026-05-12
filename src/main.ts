@@ -10,9 +10,10 @@ import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
 import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';
 import { initAriaLive } from './ui/ariaLive';
-import { initVirtualGamepad } from './ui/VirtualGamepad';
+import { initVirtualGamepad, forceShowVirtualGamepad } from './ui/VirtualGamepad';
 import { eventBus } from './systems/EventBus';
 import { exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT } from './systems/SaveManager';
+import './pwa';
 
 // Render all Text objects at 1.5x internal resolution — the sweet spot between
 // crispness and memory. ~30% lower texture footprint than 2x while remaining
@@ -145,10 +146,11 @@ if (import.meta.env.VITE_EXPOSE_TEST_HOOKS !== 'false') {
       exportSlot: typeof exportSlot;
       importToSlot: typeof importToSlot;
       SAVE_ENVELOPE_FORMAT: typeof SAVE_ENVELOPE_FORMAT;
+      forceShowVirtualGamepad: typeof forceShowVirtualGamepad;
     };
   };
   gameWindow.__game = game;
-  gameWindow.__testHooks = { QuizDialog, canRetryQuiz, eventBus, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT };
+  gameWindow.__testHooks = { QuizDialog, canRetryQuiz, eventBus, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, forceShowVirtualGamepad };
 }
 
 // Kick the pillarbox backdrop once the first frame has rendered, so the
@@ -164,4 +166,3 @@ if (needsPillarboxBackdrop) {
 // Mount the on-screen virtual gamepad for touch-primary devices (phones/tablets).
 // No-op on desktop (pointer: fine) so keyboard players are unaffected.
 initVirtualGamepad();
-initInputModeTracking();

@@ -7,6 +7,8 @@ export const TILE_SIZE = 128;
 export const PLAYER_SPEED = 320;
 export const PLAYER_JUMP_VELOCITY = -520;
 export const PLAYER_GRAVITY = 900;
+export const PLAYER_COYOTE_MS = 90;
+export const PLAYER_JUMP_BUFFER_MS = 110;
 
 export const ELEVATOR_SPEED = 760;
 
