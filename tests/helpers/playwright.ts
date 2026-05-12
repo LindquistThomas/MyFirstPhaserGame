@@ -36,6 +36,7 @@ export interface PhaserLike {
  *   PAUSED=6, SLEEPING=7, SHUTDOWN=8, DESTROYED=9.
  */
 const SCENE_STATUS_RUNNING = 5;
+const STORAGE_CLEARED_SENTINEL = '__architect_test_storage_cleared__';
 
 declare global {
   interface Window {
@@ -264,12 +265,11 @@ export function attachErrorWatchers(page: Page): ErrorWatcher {
 
 /** Clear localStorage before the app boots so each test starts clean. */
 export async function clearStorage(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+  await page.addInitScript((sentinel) => {
     try {
-      const sentinel = '__architect_test_storage_cleared__';
       if (window.sessionStorage.getItem(sentinel) === 'true') return;
       window.localStorage.clear();
       window.sessionStorage.setItem(sentinel, 'true');
     } catch { /* noop */ }
-  });
+  }, STORAGE_CLEARED_SENTINEL);
 }
