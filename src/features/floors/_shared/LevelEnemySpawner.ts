@@ -14,6 +14,17 @@ import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import type { LevelConfig } from './LevelScene';
 
+/**
+ * Extra pixels added to each edge of the camera's world view when deciding
+ * whether an enemy is "on screen". A generous margin keeps enemies active
+ * just past the visible edge so they don't pop in unexpectedly as the player
+ * runs toward them.
+ *
+ * Note: the boss enemy in BossArenaScene is managed outside LevelEnemySpawner
+ * and is always active, so this culling has no effect on boss fights.
+ */
+export const OFFSCREEN_ENEMY_MARGIN_PX = 256;
+
 export interface EnemySpawnerDeps {
   scene: Phaser.Scene;
   floorId: FloorId;
@@ -83,8 +94,22 @@ export class LevelEnemySpawner {
   }
 
   update(time: number, delta: number): void {
+    const cam = this.deps.scene.cameras.main;
+    const margin = OFFSCREEN_ENEMY_MARGIN_PX;
+    const left = cam.worldView.left - margin;
+    const right = cam.worldView.right + margin;
+    const top = cam.worldView.top - margin;
+    const bottom = cam.worldView.bottom + margin;
+
     for (const enemy of this.enemies) {
-      if (!enemy.defeated) enemy.update(time, delta);
+      if (enemy.defeated) continue;
+      const onScreen = enemy.x >= left && enemy.x <= right && enemy.y >= top && enemy.y <= bottom;
+      if (enemy.active !== onScreen) {
+        enemy.setActive(onScreen);
+        const body = enemy.body as Phaser.Physics.Arcade.Body | undefined;
+        if (body) body.enable = onScreen;
+      }
+      if (onScreen) enemy.update(time, delta);
     }
   }
 

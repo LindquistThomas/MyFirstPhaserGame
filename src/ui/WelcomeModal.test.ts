@@ -312,4 +312,11 @@ describe('WelcomeModal', () => {
     modal.close();
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
+
+  it('constructs with default no-op onComplete (no arg) and does not throw on close', () => {
+    const scene = makeScene();
+    // No onComplete provided — exercises the default parameter arrow function
+    const modal = new WelcomeModal(scene as unknown as Phaser.Scene);
+    expect(() => modal.close()).not.toThrow();
+  });
 });
