@@ -9,7 +9,8 @@ import { DialogController } from '../../../ui/DialogController';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { FloorHitState } from '../../../systems/FloorHitState';
-import { allKeyLabels } from '../../../input';
+import { actionPrompt } from '../../../input';
+import type { GameAction } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPlatform';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
@@ -980,7 +981,7 @@ export class LevelScene extends Phaser.Scene {
     const near = d < 90;
     this.setExitDoorOpen(near);
     if (near) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Elevator`).setPosition(
+      this.interactPrompt?.setText(`${this.formatPromptAction('Interact')} → Elevator`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();
@@ -1014,6 +1015,10 @@ export class LevelScene extends Phaser.Scene {
       spawnSide: this.returnSide,
     };
     this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
+  }
+
+  protected formatPromptAction(action: GameAction): string {
+    return actionPrompt(action);
   }
 
   /* ---- checkpoints ---- */

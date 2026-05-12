@@ -8,6 +8,7 @@
  */
 
 import type { FloorId } from '../config/gameConfig';
+import type { InputMode } from '../input/promptLabel';
 
 /** Event name → payload tuple. Each event's handler arguments are derived from this map. */
 export interface GameEvents {
@@ -188,6 +189,8 @@ export interface GameEvents {
    * can listen to activate touch-specific UI without polling.
    */
   'input:touch_detected': [];
+  /** Active prompt input mode changed (keyboard/gamepad/touch). */
+  'input:mode-changed': [mode: InputMode];
 
   /**
    * Emitted by `SettingsStore.updateNonAudio()` whenever a non-audio setting

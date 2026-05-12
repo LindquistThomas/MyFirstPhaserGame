@@ -4,7 +4,7 @@ import { Player } from '../../../entities/Player';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { ensureCoffeeFridgeSounds } from '../../../systems/SoundGenerator';
-import { allKeyLabels } from '../../../input';
+import { actionPrompt } from '../../../input';
 import { theme } from '../../../style/theme';
 import type { LevelConfig } from './LevelScene';
 
@@ -82,7 +82,7 @@ export class LevelFridgeManager {
 
     if (nearFridge) {
       this.prompt
-        .setText(`Press ${allKeyLabels('Interact')} \u2192 ${FRIDGE_ITEM_NAME}`)
+        .setText(`${actionPrompt('Interact')} → ${FRIDGE_ITEM_NAME}`)
         .setPosition(nearFridge.x + PROMPT_OFFSET_X, nearFridge.y - nearFridge.displayHeight + PROMPT_OFFSET_Y)
         .setVisible(true);
 

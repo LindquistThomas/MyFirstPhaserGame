@@ -191,12 +191,12 @@ export class BossArenaScene extends Phaser.Scene {
       new BossIntroDialog(this, () => {
         this.physics.resume();
         this.isTransitioning = false;
-        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug  |  Collect mugs from the side platforms`);
+        this.showMechanicHint(`${actionPrompt('Attack')} — Throw mug  |  Collect mugs from the side platforms`);
       });
     } else {
       // Brief reminder on every replay — unobtrusive bottom-right toast.
       this.time.delayedCall(1500, () => {
-        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug`);
+        this.showMechanicHint(`${actionPrompt('Attack')} — Throw mug`);
       });
     }
   }
@@ -310,7 +310,7 @@ export class BossArenaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
     }).setScrollFactor(0).setDepth(60);
 
-    const attackHint = allKeyLabels('Attack');
+    const attackHint = actionPrompt('Attack');
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, `${attackHint} — Throw Mug  |  Collect mugs from platforms  |  Answer challenges to unlock the final blow`, {
       fontFamily: 'monospace', fontSize: '12px', color: '#888899',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
@@ -615,7 +615,7 @@ export class BossArenaScene extends Phaser.Scene {
       wordWrap: { width: panelW - 32 }, align: 'center',
     }).setOrigin(0.5);
 
-    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, `Press ${allKeyLabels('Interact')}`, {
+    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, actionPrompt('Interact'), {
       fontFamily: 'monospace', fontSize: '11px', color: '#666677',
     }).setOrigin(1, 1);
 
