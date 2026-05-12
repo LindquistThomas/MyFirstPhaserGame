@@ -8,9 +8,6 @@ import { isReducedMotion } from '../systems/MotionPreference';
  * Activation: caller provides an `onActivate` callback invoked the first time
  * the player overlaps the invisible physics trigger. Subsequent overlaps are
  * ignored (once per visit).
- *
- * The checkpoint is scene-local — it is not persisted and resets on scene
- * re-entry, matching the existing enemy-respawn model.
  */
 export class Checkpoint {
   /** Invisible physics trigger the caller wires into `physics.add.overlap`. */
@@ -27,6 +24,7 @@ export class Checkpoint {
     y: number,
     id: string,
     onActivate: (checkpoint: Checkpoint) => void,
+    activatedOnSpawn = false,
   ) {
     // --- Invisible physics trigger (32×64 box centred at x, y) ---
     this.trigger = scene.physics.add.image(x, y, '__DEFAULT');
@@ -42,10 +40,11 @@ export class Checkpoint {
 
     // --- Visual flag ---
     this.flagGraphic = scene.add.graphics().setDepth(6);
-    this.drawFlag(x, y, false);
+    this.activated = activatedOnSpawn;
+    this.drawFlag(x, y, activatedOnSpawn ? 'consumed' : 'inactive');
 
     // Subtle idle bob (skip under reduced motion).
-    if (!isReducedMotion()) {
+    if (!isReducedMotion() && !activatedOnSpawn) {
       scene.tweens.add({
         targets: this.flagGraphic,
         y: this.flagGraphic.y - 4,
@@ -62,7 +61,7 @@ export class Checkpoint {
     this._pendingCallback = () => {
       if (this.activated) return;
       this.activated = true;
-      this.drawFlag(x, y, true);
+      this.drawFlag(x, y, 'active');
       onActivate(this);
     };
   }
@@ -86,13 +85,15 @@ export class Checkpoint {
 
   private _pendingCallback: () => void;
 
-  private drawFlag(x: number, y: number, active: boolean): void {
+  private drawFlag(x: number, y: number, state: 'inactive' | 'active' | 'consumed'): void {
     const g = this.flagGraphic;
     g.clear();
 
-    const poleColor  = active ? 0xffd700 : 0x888888;
-    const flagColor  = active ? 0x00cc66 : 0x446688;
-    const glowColor  = active ? 0x44ff88 : 0x88aacc;
+    const active = state === 'active';
+    const consumed = state === 'consumed';
+    const poleColor = active ? 0xffd700 : consumed ? 0x7d858c : 0x888888;
+    const flagColor = active ? 0x00cc66 : consumed ? 0x5f7785 : 0x446688;
+    const glowColor = active ? 0x44ff88 : consumed ? 0xa6b2bb : 0x88aacc;
     const poleH = 36;
     const poleW = 3;
     const flagW = 18;
