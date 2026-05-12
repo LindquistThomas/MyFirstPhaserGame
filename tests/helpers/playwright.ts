@@ -265,6 +265,11 @@ export function attachErrorWatchers(page: Page): ErrorWatcher {
 /** Clear localStorage before the app boots so each test starts clean. */
 export async function clearStorage(page: Page): Promise<void> {
   await page.addInitScript(() => {
-    try { window.localStorage.clear(); } catch { /* noop */ }
+    try {
+      const sentinel = '__architect_test_storage_cleared__';
+      if (window.sessionStorage.getItem(sentinel) === 'true') return;
+      window.localStorage.clear();
+      window.sessionStorage.setItem(sentinel, 'true');
+    } catch { /* noop */ }
   });
 }
