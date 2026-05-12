@@ -101,6 +101,23 @@ export function preloadInfoFor(floorId: FloorId): Promise<void> {
   return p;
 }
 
+/**
+ * Return the in-flight (or already-resolved) promise for a floor's info import.
+ *
+ * - Already loaded   → `Promise.resolve()` immediately.
+ * - Currently loading → returns the same in-flight promise so callers can await
+ *   without kicking off a second fetch.
+ * - Not yet started  → `Promise.resolve()` (caller can assume the data will not
+ *   arrive; `LevelScene.init()` is responsible for starting the preload).
+ *
+ * Use this in `DialogController` to await readiness before giving up with a
+ * timeout rather than silently no-opping when the lazy import is still in flight.
+ */
+export function getInfoReadiness(floorId: FloorId): Promise<void> {
+  if (_infoLoadedFloors.has(floorId)) return Promise.resolve();
+  return _infoPendingFloors.get(floorId) ?? Promise.resolve();
+}
+
 /** Return the info points that belong to a given floor (from the cache). */
 export function getInfoPointsFor(floorId: FloorId): Record<string, InfoPointDef> {
   const out: Record<string, InfoPointDef> = {};

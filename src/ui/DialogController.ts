@@ -1,11 +1,16 @@
 import * as Phaser from 'phaser';
-import { INFO_POINTS } from '../config/info';
+import { INFO_POINTS, getInfoReadiness } from '../config/info';
 import { QUIZ_DATA } from '../config/quiz';
+import { type FloorId } from '../config/gameConfig';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { isQuizPassed, canRetryQuiz, getCooldownRemaining } from '../systems/QuizManager';
 import { InfoDialog } from './InfoDialog';
 import { QuizDialog } from './QuizDialog';
 import { InfoIcon } from './InfoIcon';
+import { Toast } from './Toast';
+
+/** How long (ms) to wait for the lazy info import before giving up. */
+const READINESS_TIMEOUT_MS = 2_000;
 
 export interface DialogControllerOptions {
   progression: ProgressionSystem;
@@ -18,6 +23,12 @@ export interface DialogControllerOptions {
   onOpen?: (contentId: string) => void;
   /** Scene-specific hook fired after the info dialog is closed. */
   onClose?: (contentId: string) => void;
+  /**
+   * Floor whose lazy-import readiness to await when `INFO_POINTS` is not yet
+   * populated for the requested content id.  If omitted the controller falls
+   * back to the original silent no-op behaviour for unknown ids.
+   */
+  floorId?: FloorId;
 }
 
 /**
@@ -34,6 +45,7 @@ export interface DialogControllerOptions {
  */
 export class DialogController {
   private dialogOpen = false;
+  private _loadingToast: Toast | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -56,10 +68,43 @@ export class DialogController {
 
   /** Open the info dialog for `contentId`; no-op if any dialog is already open. */
   open(contentId: string): void {
+    void this._openAsync(contentId);
+  }
+
+  private async _openAsync(contentId: string): Promise<void> {
     if (this.dialogOpen) return;
 
-    const infoDef = INFO_POINTS[contentId];
+    let infoDef = INFO_POINTS[contentId];
+
+    if (!infoDef && this.options.floorId !== undefined) {
+      // Data not ready yet — await the in-flight lazy import (with a 2 s cap).
+      const toast = this._getOrCreateToast();
+      toast?.show('Loading…', READINESS_TIMEOUT_MS + 500);
+
+      let timedOut = false;
+      await Promise.race([
+        getInfoReadiness(this.options.floorId),
+        new Promise<void>((resolve) => setTimeout(() => { timedOut = true; resolve(); }, READINESS_TIMEOUT_MS)),
+      ]);
+
+      // Dismiss the loading toast now that the wait is over.
+      this._loadingToast?.destroy();
+      this._loadingToast = null;
+
+      if (timedOut) {
+        console.warn(`[DialogController] Timed out waiting for info data for "${contentId}"`);
+        return;
+      }
+
+      // Guard: another open() call may have succeeded during the await.
+      if (this.dialogOpen) return;
+      infoDef = INFO_POINTS[contentId];
+    }
+
     if (!infoDef) return;
+
+    // Final guard: a concurrent open() may have won the race.
+    if (this.dialogOpen) return;
 
     this.dialogOpen = true;
     this.options.onOpen?.(contentId);
@@ -104,5 +149,20 @@ export class DialogController {
         }
       },
     });
+  }
+
+  /**
+   * Lazily create the loading-toast on first use.
+   * Returns null if the scene doesn't expose the required Phaser APIs
+   * (e.g. in unit tests that stub the scene as a bare object).
+   */
+  private _getOrCreateToast(): Toast | null {
+    if (this._loadingToast) return this._loadingToast;
+    try {
+      this._loadingToast = new Toast(this.scene);
+    } catch {
+      return null;
+    }
+    return this._loadingToast;
   }
 }
