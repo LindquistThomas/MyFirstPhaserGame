@@ -1,0 +1,15 @@
+{
+  "name": "So You Want to Be an Architect",
+  "short_name": "Architect",
+  "start_url": "./",
+  "display": "standalone",
+  "theme_color": "#1a1a2e",
+  "background_color": "#1a1a2e",
+  "icons": [
+    {
+      "src": "./icons/pwa-icon.svg",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
