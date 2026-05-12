@@ -33,6 +33,7 @@ import { preloadInfoFor } from '../../../config/info';
 import { applyDailyChallengeLayout } from './dailyChallengeLayout';
 import { getDailyState } from '../../../systems/DailyChallenge';
 import { hasCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
+import { PERSISTENT_TEXTURE_KEYS, clearSceneOwnedTextureKeys, getSceneOwnedTextureKeys } from '../../../systems/SpriteGenerator';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
@@ -131,8 +132,7 @@ export interface LevelConfig {
   fridges?: Array<{ x: number; y: number }>;
   /**
    * Checkpoint positions for mid-floor respawn.
-   * Scene-local — not persisted; resets on scene re-entry.
-   * Player activating a checkpoint records its position as the respawn origin.
+   * Player activating a checkpoint records it as the preferred respawn origin.
    * Placed by the floor scene's `getLevelConfig()` override.
    */
   checkpoints?: Array<{ x: number; y: number; id: string }>;
@@ -208,6 +208,15 @@ export class LevelScene extends Phaser.Scene {
   private wasDialogOpen = false;
   /** Immutable per-scene level config (daily overrides resolved once in create()). */
   private resolvedLevelConfig?: LevelConfig;
+
+  private freeOwnedTextures(): void {
+    const ownedKeys = getSceneOwnedTextureKeys(this);
+    for (const key of ownedKeys) {
+      if (PERSISTENT_TEXTURE_KEYS.has(key)) continue;
+      if (this.textures.exists(key)) this.textures.remove(key);
+    }
+    clearSceneOwnedTextureKeys(this);
+  }
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
@@ -361,10 +370,12 @@ export class LevelScene extends Phaser.Scene {
     // when the scene shuts down, so PAUSE and RESUME do not need explicit teardown.
     this.events.on(Phaser.Scenes.Events.PAUSE, () => tracker.pause(), this);
     this.events.on(Phaser.Scenes.Events.RESUME, () => tracker.resume(), this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    const lc = createSceneLifecycle(this);
+    lc.add(() => {
       tracker.pause();
       tracker.flush();
-    }, this);
+      this.freeOwnedTextures();
+    });
   }
 
   /**
@@ -537,6 +548,7 @@ export class LevelScene extends Phaser.Scene {
     this.dialogs = createLevelDialogs(this, {
       gameState: this.gameState,
       getIcon: (id) => this.zones.iconsByContentId.get(id),
+      floorId: this.floorId,
     });
     return this.dialogs;
   }
@@ -744,7 +756,8 @@ export class LevelScene extends Phaser.Scene {
   /* ---- player ---- */
   protected createPlayer(): void {
     const c = this.getResolvedLevelConfig();
-    this.player = new Player(this, c.playerStart.x, c.playerStart.y);
+    const spawn = this.resolveEntrySpawn(c);
+    this.player = new Player(this, spawn.x, spawn.y);
     this.player.sprite.setCollideWorldBounds(true);
 
     this.interactPrompt = this.add.text(0, 0, '', {
@@ -752,6 +765,19 @@ export class LevelScene extends Phaser.Scene {
       color: theme.color.css.textWarn, backgroundColor: theme.color.css.bgDialog,
       padding: { x: theme.space.sm, y: theme.space.xs },
     }).setDepth(20).setVisible(false);
+  }
+
+  protected resolveEntrySpawn(cfg: LevelConfig): { x: number; y: number } {
+    const latestCheckpointId = this.progression.getLatestActivatedCheckpointId(this.floorId);
+    if (!latestCheckpointId) return cfg.playerStart;
+    const checkpoint = cfg.checkpoints?.find((cp) => cp.id === latestCheckpointId);
+    if (!checkpoint) {
+      // Config changed and the persisted checkpoint no longer exists. Clear stale
+      // ids so future entries keep using the canonical playerStart.
+      this.progression.clearActivatedCheckpoints(this.floorId);
+      return cfg.playerStart;
+    }
+    return { x: checkpoint.x, y: checkpoint.y };
   }
 
   /* ---- UI ---- */
@@ -960,7 +986,10 @@ export class LevelScene extends Phaser.Scene {
 
   private spawnCheckpoints(cfg: LevelConfig): void {
     if (!cfg.checkpoints?.length) return;
+    const activated = new Set(this.progression.getActivatedCheckpointIds(this.floorId));
+    const latestActivatedId = this.progression.getLatestActivatedCheckpointId(this.floorId);
     for (const cp of cfg.checkpoints) {
+      const isActivated = activated.has(cp.id);
       const checkpoint = new Checkpoint(
         this,
         cp.x,
@@ -968,9 +997,14 @@ export class LevelScene extends Phaser.Scene {
         cp.id,
         () => {
           this.floorHazard.registerCheckpoint(cp.x, cp.y);
+          this.progression.activateCheckpoint(this.floorId, cp.id);
           eventBus.emit('checkpoint:activate', cp.id);
         },
+        isActivated,
       );
+      if (cp.id === latestActivatedId) {
+        this.floorHazard.registerCheckpoint(cp.x, cp.y);
+      }
       checkpoint.wireOverlap(this.physics, this.player.sprite);
     }
   }

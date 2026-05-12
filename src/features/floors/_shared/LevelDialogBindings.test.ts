@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type * as Phaser from 'phaser';
+import type { FloorId } from '../../../config/gameConfig';
 
 // ---- Phaser stub ----
 vi.mock('phaser', () => ({
@@ -20,7 +21,7 @@ vi.mock('../../../ui/DialogController', () => ({
 }));
 
 // ---- INFO_POINTS / QUIZ_DATA stubs (not needed for these tests) ----
-vi.mock('../../../config/info', () => ({ INFO_POINTS: {} }));
+vi.mock('../../../config/info', () => ({ INFO_POINTS: {}, getInfoReadiness: vi.fn(() => Promise.resolve()) }));
 vi.mock('../../../config/quiz', () => ({ QUIZ_DATA: {} }));
 vi.mock('../../../systems/QuizManager', () => ({
   isQuizPassed: vi.fn(() => false),
@@ -29,6 +30,8 @@ vi.mock('../../../systems/QuizManager', () => ({
 }));
 
 import { createLevelDialogs } from './LevelDialogBindings';
+
+const STUB_FLOOR_ID = 0 as FloorId;
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -69,6 +72,7 @@ describe('createLevelDialogs', () => {
     const result = createLevelDialogs(scene, {
       gameState,
       getIcon: () => undefined,
+      floorId: STUB_FLOOR_ID,
     });
     // The returned object is the mocked DialogController
     expect(result).toBeDefined();
@@ -78,7 +82,7 @@ describe('createLevelDialogs', () => {
     mockDialogControllerCtor.mockClear();
     const progressionStub = { foo: true };
     const gameState = makeGameState({ progression: progressionStub });
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined, floorId: STUB_FLOOR_ID });
     expect(lastCapturedOpts().progression).toBe(progressionStub);
   });
 
@@ -86,7 +90,7 @@ describe('createLevelDialogs', () => {
     mockDialogControllerCtor.mockClear();
     const getIcon = vi.fn(() => undefined);
     const gameState = makeGameState();
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon, floorId: STUB_FLOOR_ID });
     lastCapturedOpts().getIconForContent('test-id');
     expect(getIcon).toHaveBeenCalledWith('test-id');
   });
@@ -97,7 +101,7 @@ describe('createLevelDialogs — onOpen callback', () => {
     mockDialogControllerCtor.mockClear();
     const markSeen = vi.fn();
     const gameState = makeGameState({ markSeen });
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined, floorId: STUB_FLOOR_ID });
     lastCapturedOpts().onOpen?.('my-content');
     expect(markSeen).toHaveBeenCalledWith('my-content');
   });
@@ -106,7 +110,7 @@ describe('createLevelDialogs — onOpen callback', () => {
     mockDialogControllerCtor.mockClear();
     const checkAchievements = vi.fn();
     const gameState = makeGameState({ checkAchievements });
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined, floorId: STUB_FLOOR_ID });
     lastCapturedOpts().onOpen?.('my-content');
     expect(checkAchievements).toHaveBeenCalledOnce();
   });
@@ -119,7 +123,7 @@ describe('createLevelDialogs — onClose callback', () => {
     const fakeIcon = { markAsSeen, setQuizBadge: vi.fn() } as unknown as import('../../../ui/InfoIcon').InfoIcon;
     const getIcon = vi.fn(() => fakeIcon);
     const gameState = makeGameState();
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon, floorId: STUB_FLOOR_ID });
     lastCapturedOpts().onClose?.('my-content');
     expect(markAsSeen).toHaveBeenCalledOnce();
   });
@@ -127,7 +131,7 @@ describe('createLevelDialogs — onClose callback', () => {
   it('does not throw when getIcon returns undefined', () => {
     mockDialogControllerCtor.mockClear();
     const gameState = makeGameState();
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined, floorId: STUB_FLOOR_ID });
     expect(() => lastCapturedOpts().onClose?.('my-content')).not.toThrow();
   });
 
@@ -135,7 +139,7 @@ describe('createLevelDialogs — onClose callback', () => {
     mockDialogControllerCtor.mockClear();
     const checkAchievements = vi.fn();
     const gameState = makeGameState({ checkAchievements });
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon: () => undefined, floorId: STUB_FLOOR_ID });
     lastCapturedOpts().onClose?.('my-content');
     expect(checkAchievements).toHaveBeenCalledOnce();
   });
@@ -144,7 +148,7 @@ describe('createLevelDialogs — onClose callback', () => {
     mockDialogControllerCtor.mockClear();
     const getIcon = vi.fn(() => undefined);
     const gameState = makeGameState();
-    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon });
+    createLevelDialogs({} as Phaser.Scene, { gameState, getIcon, floorId: STUB_FLOOR_ID });
     lastCapturedOpts().onClose?.('specific-id');
     expect(getIcon).toHaveBeenCalledWith('specific-id');
   });

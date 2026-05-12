@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createFakeScene, type FakeScene, type FakeSprite } from '../../tests/helpers/phaserMock';
 import type * as Phaser from 'phaser';
 import { eventBus } from '../systems/EventBus';
-import * as MotionPreference from '../systems/MotionPreference';
+import {
+  PLAYER_COYOTE_MS,
+  PLAYER_JUMP_BUFFER_MS,
+  PLAYER_JUMP_VELOCITY,
+} from '../config/gameConfig';
 
 vi.mock('phaser', () => {
   class Sprite {}
@@ -115,6 +119,68 @@ describe('Player', () => {
     player.update(16.67);
 
     expect(player.getIsFlipping()).toBe(true);
+  });
+
+  it('allows jump during coyote window after leaving ground', () => {
+    const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    player.update(16.67);
+
+    setVelocityY.mockClear();
+    sprite.body.blocked.down = false;
+    sprite.body.touching.down = false;
+    scene.inputs.justPressed = () => true;
+
+    player.update(PLAYER_COYOTE_MS - 1);
+
+    expect(setVelocityY).toHaveBeenCalledWith(PLAYER_JUMP_VELOCITY);
+  });
+
+  it('fires buffered jump on landing when jump was pressed shortly before touch-down', () => {
+    const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    player.update(16.67);
+
+    sprite.body.blocked.down = false;
+    sprite.body.touching.down = false;
+    scene.inputs.justPressed = () => true;
+    player.update(PLAYER_JUMP_BUFFER_MS - 1);
+
+    setVelocityY.mockClear();
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    sprite.body.touching.down = true;
+    player.update(16.67);
+
+    expect(setVelocityY).toHaveBeenCalledWith(PLAYER_JUMP_VELOCITY);
+  });
+
+  it('does not double-fire jump when coyote and buffer overlap', () => {
+    const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    player.update(16.67);
+
+    setVelocityY.mockClear();
+    sprite.body.blocked.down = false;
+    sprite.body.touching.down = false;
+    scene.inputs.justPressed = () => true;
+    player.update(16.67);
+
+    expect(setVelocityY).toHaveBeenCalledTimes(1);
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    sprite.body.touching.down = true;
+    sprite.body.velocity.y = 200;
+    player.update(16.67);
+
+    expect(setVelocityY).toHaveBeenCalledTimes(1);
   });
 
   it('takeHit applies knockback velocity and sets invulnerability', () => {
