@@ -33,6 +33,7 @@ import { preloadInfoFor } from '../../../config/info';
 import { applyDailyChallengeLayout } from './dailyChallengeLayout';
 import { getDailyState } from '../../../systems/DailyChallenge';
 import { hasCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
+import { PERSISTENT_TEXTURE_KEYS, clearSceneOwnedTextureKeys, getSceneOwnedTextureKeys } from '../../../systems/SpriteGenerator';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
@@ -208,6 +209,15 @@ export class LevelScene extends Phaser.Scene {
   /** Immutable per-scene level config (daily overrides resolved once in create()). */
   private resolvedLevelConfig?: LevelConfig;
 
+  private freeOwnedTextures(): void {
+    const ownedKeys = getSceneOwnedTextureKeys(this);
+    for (const key of ownedKeys) {
+      if (PERSISTENT_TEXTURE_KEYS.has(key)) continue;
+      if (this.textures.exists(key)) this.textures.remove(key);
+    }
+    clearSceneOwnedTextureKeys(this);
+  }
+
   constructor(key: string, floorId: FloorId) {
     super({ key });
     this.floorId = floorId;
@@ -360,10 +370,12 @@ export class LevelScene extends Phaser.Scene {
     // when the scene shuts down, so PAUSE and RESUME do not need explicit teardown.
     this.events.on(Phaser.Scenes.Events.PAUSE, () => tracker.pause(), this);
     this.events.on(Phaser.Scenes.Events.RESUME, () => tracker.resume(), this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    const lc = createSceneLifecycle(this);
+    lc.add(() => {
       tracker.pause();
       tracker.flush();
-    }, this);
+      this.freeOwnedTextures();
+    });
   }
 
   /**

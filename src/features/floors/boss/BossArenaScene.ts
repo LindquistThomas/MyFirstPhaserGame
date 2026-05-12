@@ -14,8 +14,14 @@ import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { allKeyLabels } from '../../../input';
-import { ensureBossArenaSprites } from '../../../systems/SpriteGenerator';
+import {
+  PERSISTENT_TEXTURE_KEYS,
+  clearSceneOwnedTextureKeys,
+  ensureBossArenaSprites,
+  getSceneOwnedTextureKeys,
+} from '../../../systems/SpriteGenerator';
 import { ensureBossRescueSounds } from '../../../systems/SoundGenerator';
+import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 
 /** Architecture quiz prompts used during knowledge windows. */
 export interface BossPrompt {
@@ -165,7 +171,8 @@ export class BossArenaScene extends Phaser.Scene {
     this.gameState.checkAchievements();
 
     this.scopedEvents.on('boss:phase_changed', this.onPhaseChanged);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onShutdown, this);
+    const lc = createSceneLifecycle(this);
+    lc.add(() => this.onShutdown());
 
     // Start playtime tracking for the boss floor.
     const tracker = this.gameState.playtime;
@@ -728,6 +735,12 @@ export class BossArenaScene extends Phaser.Scene {
     // showPrompt() stores its raw 1/2/3 keyboard handler on the active panel.
     const promptHandler = this.promptPanel?.getData('keyHandler');
     if (promptHandler) this.input.keyboard?.off('keydown', promptHandler);
+    const ownedKeys = getSceneOwnedTextureKeys(this);
+    for (const key of ownedKeys) {
+      if (PERSISTENT_TEXTURE_KEYS.has(key)) continue;
+      if (this.textures.exists(key)) this.textures.remove(key);
+    }
+    clearSceneOwnedTextureKeys(this);
   }
 
   /* ---- checkpoint ---- */
