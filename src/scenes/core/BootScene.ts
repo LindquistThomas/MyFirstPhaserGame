@@ -5,12 +5,14 @@ import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
 import { eventBus } from '../../systems/EventBus';
 import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
-import { COLORS } from '../../config/gameConfig';
+import { COLORS, FLOOR_IDS } from '../../config/gameConfig';
 import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 import { isPersistenceAvailable } from '../../systems/PersistedStore';
 import { createAnalyticsService } from '../../systems/Analytics';
 import { setDailyState } from '../../systems/DailyChallenge';
+import { preloadInfoFor } from '../../config/info';
+import { preloadQuizFor } from '../../config/quiz';
 
 /** Count of static assets that failed to load during this boot pass. */
 let _bootAssetErrorCount = 0;
@@ -218,6 +220,24 @@ export class BootScene extends Phaser.Scene {
       // Write the final error count now that all loading is complete,
       // so MenuScene reads an accurate total rather than a mid-boot snapshot.
       this.registry.set('bootAssetErrors', _bootAssetErrorCount);
+
+      // Eagerly warm all floor info + quiz caches via requestIdleCallback so
+      // DialogController never has to wait for a lazy import on the first
+      // visit.  Total payload is ~30 KB of minified text; gated behind
+      // requestIdleCallback (falls back to setTimeout(0)) so it never blocks
+      // the boot critical path or main-thread paint.
+      const scheduleEagerPreloads = (): void => {
+        for (const floorId of FLOOR_IDS) {
+          preloadInfoFor(floorId).catch(() => {});
+          preloadQuizFor(floorId).catch(() => {});
+        }
+      };
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(scheduleEagerPreloads);
+      } else {
+        setTimeout(scheduleEagerPreloads, 0);
+      }
+
       this._destroyProgress();
       this.scene.start('MenuScene');
     };

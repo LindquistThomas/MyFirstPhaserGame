@@ -4,6 +4,7 @@ import {
   SPRITE_PHASES,
   ensureBossArenaSprites,
   ensureExecutiveRescueSprites,
+  PERSISTENT_TEXTURE_KEYS,
 } from './SpriteGenerator';
 
 // Mock all sub-generators so tests run without a real Phaser context.
@@ -103,6 +104,7 @@ function makeScene(playerTextureExists: boolean) {
     textures: {
       exists: vi.fn().mockReturnValue(playerTextureExists),
       addSpriteSheet: vi.fn(),
+      getTextureKeys: vi.fn(() => []),
     },
   };
 }
@@ -282,11 +284,21 @@ describe('lazy sprite ensure helpers', () => {
       textures: {
         exists: vi.fn().mockReturnValue(true),
         addSpriteSheet: vi.fn(),
+        getTextureKeys: vi.fn(() => []),
       },
     };
     ensureExecutiveRescueSprites(scene as never);
     expect(generateBossSpritesB).not.toHaveBeenCalled();
     expect(generateBossSpritesC).not.toHaveBeenCalled();
     expect(generateMissionItemSprites).not.toHaveBeenCalled();
+  });
+});
+
+describe('PERSISTENT_TEXTURE_KEYS', () => {
+  it('contains baseline cross-scene keys', () => {
+    expect(PERSISTENT_TEXTURE_KEYS.has('player')).toBe(true);
+    expect(PERSISTENT_TEXTURE_KEYS.has('token')).toBe(true);
+    expect(PERSISTENT_TEXTURE_KEYS.has('elevator_cab')).toBe(true);
+    expect(PERSISTENT_TEXTURE_KEYS.has('lobby_logo')).toBe(true);
   });
 });
