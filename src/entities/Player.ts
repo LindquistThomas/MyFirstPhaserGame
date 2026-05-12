@@ -202,19 +202,6 @@ export class Player {
   update(_delta: number): void {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     const onGround = body.blocked.down || body.touching.down;
-    const jumpPressed = this.scene.inputs.justPressed('Jump');
-
-    if (onGround) {
-      this.coyoteTimer = PLAYER_COYOTE_MS;
-    } else {
-      this.coyoteTimer = Math.max(0, this.coyoteTimer - _delta);
-    }
-
-    if (jumpPressed && !onGround) {
-      this.jumpBufferTimer = PLAYER_JUMP_BUFFER_MS;
-    } else {
-      this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - _delta);
-    }
 
     this.tickCaffeine();
 
@@ -242,6 +229,22 @@ export class Player {
       }
       this.updateAnimation(onGround);
       return;
+    }
+
+    const jumpPressed = this.scene.inputs.justPressed('Jump');
+    if (this.flipEnabled) {
+      if (onGround) {
+        this.coyoteTimer = PLAYER_COYOTE_MS;
+      } else {
+        this.coyoteTimer = Math.max(0, this.coyoteTimer - _delta);
+      }
+      if (jumpPressed && !onGround) {
+        this.jumpBufferTimer = PLAYER_JUMP_BUFFER_MS;
+      } else {
+        this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - _delta);
+      }
+    } else {
+      this.clearJumpAssistTimers();
     }
 
     // FSM-driven update: dispatch on current state.
