@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { DialogController } from '../../../ui/DialogController';
 import { InfoIcon } from '../../../ui/InfoIcon';
 import { GameStateManager } from '../../../systems/GameStateManager';
+import type { FloorId } from '../../../config/gameConfig';
 
 /**
  * Build a DialogController with the standard level bindings: badge refresh
@@ -14,11 +15,13 @@ export function createLevelDialogs(
   opts: {
     gameState: GameStateManager;
     getIcon: (contentId: string) => InfoIcon | undefined;
+    floorId: FloorId;
   },
 ): DialogController {
   return new DialogController(scene, {
     progression: opts.gameState.progression,
     getIconForContent: opts.getIcon,
+    floorId: opts.floorId,
     onOpen: (id) => {
       opts.gameState.markSeen(id);
       // Info panel read — may unlock info-1 / info-5 / info-all achievements.
