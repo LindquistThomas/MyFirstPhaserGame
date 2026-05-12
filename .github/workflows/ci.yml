@@ -4,6 +4,7 @@ on:
   pull_request_target:
   push:
     branches: [main]
+  merge_group:
 
 # Restrict the base-branch token to read-only so untrusted PR code cannot
 # exfiltrate it to modify the repository.
@@ -14,7 +15,7 @@ concurrency:
   # pull_request_target sets github.ref/sha to the BASE branch, so the old
   # ref-based key would collapse all PR runs into a single group.  Use the PR
   # number instead (unique per PR) and fall back to the push SHA on main.
-  group: ${{ github.event_name == 'pull_request_target' && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-push-{0}', github.sha) }}
+  group: ${{ github.event_name == 'pull_request_target' && format('ci-pr-{0}', github.event.pull_request.number) || github.event_name == 'merge_group' && format('ci-mq-{0}', github.event.merge_group.head_sha) || format('ci-push-{0}', github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
 
 jobs:
@@ -52,7 +53,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: '22.20.0'
           cache: npm
 
       - run: npm ci
@@ -87,7 +88,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: '22.20.0'
           cache: npm
 
       - run: npm ci
@@ -122,7 +123,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: '22.20.0'
           cache: npm
 
       - run: npm ci

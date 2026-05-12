@@ -3,6 +3,8 @@ import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/game
 import { LevelScene, LevelConfig } from '../../floors/_shared/LevelScene';
 import { allKeyLabels } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
+import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
+import { PERSISTENT_TEXTURE_KEYS, clearSceneOwnedTextureKeys, getSceneOwnedTextureKeys } from '../../../systems/SpriteGenerator';
 
 export interface ProductRoomDecoration {
   x: number;
@@ -43,6 +45,19 @@ export class ProductRoomScene extends LevelScene {
   constructor(cfg: ProductRoomConfig) {
     super(cfg.sceneKey, FLOORS.PRODUCTS);
     this.cfg = cfg;
+  }
+
+  override create(): void {
+    super.create();
+    const lc = createSceneLifecycle(this);
+    lc.add(() => {
+      const ownedKeys = getSceneOwnedTextureKeys(this);
+      for (const key of ownedKeys) {
+        if (PERSISTENT_TEXTURE_KEYS.has(key)) continue;
+        if (this.textures.exists(key)) this.textures.remove(key);
+      }
+      clearSceneOwnedTextureKeys(this);
+    });
   }
 
   protected override createBackground(): void {

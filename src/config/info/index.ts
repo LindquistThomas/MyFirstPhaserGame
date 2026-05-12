@@ -16,8 +16,12 @@
  * with info icons.
  */
 
-import { FloorId, FLOORS } from '../gameConfig';
+import { FloorId, FLOOR_IDS, FLOORS } from '../gameConfig';
 import { InfoPointDef } from './types';
+import {
+  readContentCache,
+  writeInfoFloorToContentCache,
+} from '../../systems/ContentCache';
 
 export type { InfoPointDef } from './types';
 
@@ -65,6 +69,24 @@ const INFO_LOADERS: Partial<Record<FloorId, () => Promise<Record<string, InfoPoi
 const _infoLoadedFloors = new Set<FloorId>();
 const _infoPendingFloors = new Map<FloorId, Promise<void>>();
 
+// Attempt to hydrate from the content cache on module init so that
+// subsequent calls to `preloadInfoFor` for already-cached floors return
+// immediately without triggering a dynamic import.
+try {
+  const _cached = readContentCache();
+  if (_cached) {
+    for (const [floorIdStr, floorData] of Object.entries(_cached.infoByFloor)) {
+      const rawId = Number(floorIdStr);
+      if (!FLOOR_IDS.includes(rawId as FloorId)) continue;
+      const floorId = rawId as FloorId;
+      Object.assign(INFO_POINTS, floorData);
+      _infoLoadedFloors.add(floorId);
+    }
+  }
+} catch {
+  // Malformed cache — proceed without hydration; dynamic imports will repopulate.
+}
+
 /**
  * Kick off (or await) the dynamic import for a floor's info content.
  *
@@ -90,6 +112,7 @@ export function preloadInfoFor(floorId: FloorId): Promise<void> {
     Object.assign(INFO_POINTS, data);
     _infoLoadedFloors.add(floorId);
     _infoPendingFloors.delete(floorId);
+    writeInfoFloorToContentCache(floorId, data);
   }).catch((err: unknown) => {
     // Remove from pending so callers can retry on the next interaction.
     _infoPendingFloors.delete(floorId);
@@ -99,6 +122,23 @@ export function preloadInfoFor(floorId: FloorId): Promise<void> {
 
   _infoPendingFloors.set(floorId, p);
   return p;
+}
+
+/**
+ * Return the in-flight (or already-resolved) promise for a floor's info import.
+ *
+ * - Already loaded   → `Promise.resolve()` immediately.
+ * - Currently loading → returns the same in-flight promise so callers can await
+ *   without kicking off a second fetch.
+ * - Not yet started  → `Promise.resolve()` (caller can assume the data will not
+ *   arrive; `LevelScene.init()` is responsible for starting the preload).
+ *
+ * Use this in `DialogController` to await readiness before giving up with a
+ * timeout rather than silently no-opping when the lazy import is still in flight.
+ */
+export function getInfoReadiness(floorId: FloorId): Promise<void> {
+  if (_infoLoadedFloors.has(floorId)) return Promise.resolve();
+  return _infoPendingFloors.get(floorId) ?? Promise.resolve();
 }
 
 /** Return the info points that belong to a given floor (from the cache). */

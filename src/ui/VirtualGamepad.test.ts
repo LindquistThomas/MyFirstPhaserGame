@@ -23,6 +23,7 @@ vi.mock('./touchPrimary', () => ({
 vi.mock('./TouchHintOverlay', () => ({
   showTouchHintIfNeeded: vi.fn(),
   showTouchHintForced: vi.fn(),
+  showTouchHintIfNotSeen: vi.fn(),
 }));
 vi.mock('../systems/EventBus', () => ({
   eventBus: {

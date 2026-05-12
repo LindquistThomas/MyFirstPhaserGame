@@ -13,6 +13,7 @@ export interface SaveData {
   version: number;
   totalAU: number;
   floorAU: Partial<Record<FloorId, number>>;
+  activatedCheckpoints?: Partial<Record<FloorId, string[]>>;
   unlockedFloors: FloorId[];
   currentFloor: FloorId;
   collectedTokens: Partial<Record<FloorId, number[]>>;
@@ -64,7 +65,7 @@ function validateFloorId(value: unknown): FloorId | undefined {
 
 /** Schema version written by this build. Increment when SaveData shape changes. */
 // IMPORTANT: when bumping this value, add MIGRATIONS[CURRENT_SAVE_VERSION - 1] first.
-export const CURRENT_SAVE_VERSION = 2;
+export const CURRENT_SAVE_VERSION = 3;
 
 /**
  * Storage key pattern reference (keep in sync when changing the format):
@@ -87,6 +88,9 @@ export const CURRENT_SAVE_VERSION = 2;
  * v1 → v2: adds playtime fields (playtimeMs, floorPlaytimeMs) with zero
  * defaults so loading old saves never results in `undefined`.
  *
+ * v2 → v3: adds activated checkpoint IDs per floor so mid-floor respawn
+ * points survive scene re-entry.
+ *
  * To add a new save version:
  *   1. Bump CURRENT_SAVE_VERSION.
  *   2. Add an entry to MIGRATIONS keyed by the OLD version:
@@ -99,6 +103,7 @@ export type SaveMigrationMap = Record<number, (data: Record<string, unknown>) =>
 const MIGRATIONS: SaveMigrationMap = {
   0: (d) => d,
   1: (d) => ({ ...d, playtimeMs: 0, floorPlaytimeMs: {} }),
+  2: (d) => ({ ...d, activatedCheckpoints: {} }),
 };
 
 
@@ -195,6 +200,12 @@ function isValidSaveData(d: unknown): d is SaveData {
   if (!Object.values(o['collectedTokens'] as object).every(
     (v) => Array.isArray(v) && (v as unknown[]).every((n) => typeof n === 'number'),
   )) return false;
+  if (o['activatedCheckpoints'] !== undefined) {
+    if (typeof o['activatedCheckpoints'] !== 'object' || o['activatedCheckpoints'] === null || Array.isArray(o['activatedCheckpoints'])) return false;
+    if (!Object.values(o['activatedCheckpoints'] as object).every(
+      (v) => Array.isArray(v) && (v as unknown[]).every((id) => typeof id === 'string'),
+    )) return false;
+  }
   // Optional fields: only validated if present.
   if (o['onboardingComplete'] !== undefined && typeof o['onboardingComplete'] !== 'boolean') return false;
   if (o['visitedFloors'] !== undefined) {
