@@ -13,7 +13,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── package.json              # Scripts, deps (phaser ^3.90)
 ├── tsconfig.json             # TypeScript strict
 ├── vite.config.ts            # Bundler config
-├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 65% (60% branches) on src/ui; 60% on src/entities; 20% on src/scenes; 50% on src/features/floors)
+├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 75% (70% branches) on src/ui; 60% on src/entities; 20% on src/scenes; 50% on src/features/floors)
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
@@ -35,24 +35,30 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   ├── plugins/              # MusicPlugin, DebugPlugin, ScopedEventBus (Phaser ScenePlugins)
 │   ├── scenes/               # core/ (BootScene, MenuScene, SettingsScene,
 │   │                         # ControlsScene, PauseScene, SaveSlotScene),
-│   │                         # elevator/, NavigationContext, sceneRegistry,
-│   │                         # lazySceneLoaders
+│   │                         # elevator/ (ElevatorScene + ElevatorController,
+│   │                         #   ElevatorFloorTransitionManager, ElevatorSceneLayout,
+│   │                         #   ElevatorShaftDoors, ElevatorZones, ProductDoorManager,
+│   │                         #   buildingFacade, distantSkyline, elevatorCabGeometry,
+│   │                         #   floorBackdrops, floorDecorations, platformTiles,
+│   │                         #   shaftWalls, skyBackdrop),
+│   │                         # NavigationContext, sceneRegistry, lazySceneLoaders
 │   ├── style/                # theme.ts (colour/spacing tokens) + responsive.ts (viewport helpers)
 │   ├── systems/              # ProgressionSystem, GameStateManager, EventBus, ZoneManager,
 │   │                         # AudioManager, QuizManager, InfoDialogManager, SaveManager,
 │   │                         # PersistedStore, SettingsStore, AchievementManager, TouchHintStore,
 │   │                         # MotionPreference, CaffeineBuff, FloorHitState, PlaytimeTracker,
 │   │                         # Analytics, sceneLifecycle, sliderUtils,
+│   │                         # DailyChallenge, DailyChallengeStore, SeededRandom,
 │   │                         # SpriteGenerator (+ sprites/ per-asset families),
 │   │                         # SoundGenerator (+ sounds/ per-SFX families)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
 │                               InfoIcon, HUD, DialogController, …
-├── docs/                     # architecture.md, eventbus-audit.md, archive/ (shipped specs)
+├── docs/                     # architecture.md, eventbus-audit.md, ci-approval-policy.md, tween-lifecycle.md, archive/ (shipped specs)
 ├── scripts/                  # check-size.cjs — bundle-size budget gate (used by `npm run size`)
 ├── idea/                     # design notes / brainstorm dump (not part of build)
 ├── tests/                    # Playwright specs + helpers/ (see testing section)
 └── .github/
-    ├── copilot-instructions.md   # This file
+    ├── copilot-instructions.md   # Mirror file (keep in sync with CLAUDE.md)
     └── skills/                   # add-game-object, caveman-mode, debug-with-playwright, git-worktree, new-scene, setup-project
 ```
 
@@ -76,7 +82,7 @@ Scripts from `package.json`:
 | `npm run lint` | ESLint across the repo. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:unit` | Vitest (pure logic; jsdom). |
-| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. |
+| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 75% (70% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. |
 | `npm run test:e2e` | Playwright integration specs (excludes `@visual`). |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:visual:update` | Run the `@visual` suite and refresh snapshot PNGs — the only script that exercises visual specs. To verify against existing baselines without updating, invoke `npx playwright test tests/visual.spec.ts --grep @visual` directly. |
@@ -108,6 +114,8 @@ Short index of where things live. Reach for these instead of re-implementing.
 - **`PlaytimeTracker`** (`src/systems/PlaytimeTracker.ts`) — tracks total + per-floor active playtime and run timer; persists via `PlaytimeSaveAdapter` (10 s flush throttle). Owned by `GameStateManager` as `gameState.playtime`.
 - **`Analytics`** (`src/systems/Analytics.ts`) — opt-in analytics. Gated on `VITE_ANALYTICS_ENDPOINT` (build-time) **and** `SettingsStore.analyticsConsent` (runtime). `createAnalyticsService()` returns `null` when endpoint absent → no network path. `BootScene` stores the service in `scene.registry` under key `'analytics'` (`registry.set`); scenes retrieve it via `registry.get('analytics')`. Anonymous client ID under `architect_analytics_client_v1`.
 - **`MotionPreference`** (`src/systems/MotionPreference.ts`, localStorage key `architect_reduce_motion_v1`) — persisted user override for reduced motion (`true` / `false` / `null` to follow OS `prefers-reduced-motion`). Read via `isReducedMotion()`.
+- **`DailyChallenge` / `DailyChallengeStore`** (`src/systems/DailyChallenge.ts`, `src/systems/DailyChallengeStore.ts`, localStorage key `architect_daily_results_v1`) — daily challenge mode. UTC date → seed → reproducible run. Slot id `daily_<YYYYMMDD>`. Wired in `BootScene`, `MenuScene` (start tile + recent results), `SaveSlotScene`. `LevelScene` applies the seeded layout via `applyDailyChallengeLayout` (`features/floors/_shared/dailyChallengeLayout.ts`) and records results/streak achievements. Registry key `dailyChallenge` carries the active state across scenes.
+- **`SeededRandom`** (`src/systems/SeededRandom.ts`) — deterministic PRNG used by Daily Challenge for reproducible runs.
 - **`touchPrimary`** (`src/ui/touchPrimary.ts`, localStorage key `architect_touch_override_v1`) — manual override of the touch-primary detection (`'true'` | `'false'` | unset). Used to force the virtual gamepad on/off in tests and edge devices.
 - **`LevelScene`** (`src/features/floors/_shared/LevelScene.ts`) — shared base for floor scenes. Composition root: `init()`, `create()`, `update()`. Sibling managers and helpers compose all shared concerns:
   - `LevelDecorationsManager` — background (`createBackground`), atmospheric FX, ambient plants/signposts, catwalk geometry.
@@ -136,7 +144,7 @@ Short index of where things live. Reach for these instead of re-implementing.
 Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in `src/scenes/sceneRegistry.ts` (the single source of truth — `main.ts` spreads `SCENE_CLASSES` from there; do **not** edit the `scene:` array in `main.ts` directly), and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`. **Eager vs lazy**: core/elevator scenes go into `EAGER_REGISTRY` in `src/scenes/sceneRegistry.ts` (imported at the top, available at startup); floor, product-room, and boss scenes go into `LOADERS` in `src/scenes/lazySceneLoaders.ts` as `{ key: '<Name>TeamScene', loader: () => import('…').then(m => m.<Name>TeamScene) }` — they are fetched on demand by `ElevatorScene.lazyStartScene()`.
 
 ### Add a floor / level
-Create `src/features/floors/<floor>/<Name>TeamScene.ts` using the `defineFloorScene({ key, floorId, config })` factory from `../_shared/defineFloorScene` (preferred). For scenes that need extra hook overrides (e.g. `createDecorations`, custom `create()`), `extends defineFloorScene({ … })` and override there — see `src/features/floors/platform/PlatformTeamScene.ts` for an example. Direct `extends LevelScene` is reserved for `BossArenaScene`. Provide a `LevelConfig` with the required fields `floorId`, `playerStart`, `exitPosition`, `platforms`, `tokens`, and `roomElevators` (any of these arrays may be `[]`), plus optional content arrays `catwalks`, `movingPlatforms`, `enemies`, `infoPoints`, `coffees`, `fridges`, and `checkpoints`. See `src/features/floors/_shared/LevelConfig.ts` for the authoritative full interface. Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and add a lazy entry `{ key: '<Name>TeamScene', loader: () => import('../features/floors/<floor>/<Name>TeamScene').then(m => m.<Name>TeamScene) }` to the `LOADERS` array in `src/scenes/lazySceneLoaders.ts`. `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys do not match registered scene keys.
+Create `src/features/floors/<floor>/<Name>TeamScene.ts` using the `defineFloorScene({ key, floorId, config, returnSide?, banner?, decorations? })` factory from `../_shared/defineFloorScene` (preferred). `returnSide` (`'left' | 'right'`) controls which side of the elevator the player respawns on when returning from the room. For scenes that need extra hook overrides (e.g. `createDecorations`, custom `create()`), `extends defineFloorScene({ … })` and override there — see `src/features/floors/platform/PlatformTeamScene.ts` for an example. Direct `extends LevelScene` is reserved for `BossArenaScene`. Provide a `LevelConfig` with the required fields `floorId`, `playerStart`, `exitPosition`, `platforms`, `tokens`, and `roomElevators` (any of these arrays may be `[]`), plus optional content arrays `catwalks`, `movingPlatforms`, `enemies`, `infoPoints`, `coffees`, `fridges`, and `checkpoints`. See `src/features/floors/_shared/LevelScene.ts` for the authoritative full interface. Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and add a lazy entry `{ key: '<Name>TeamScene', loader: () => import('../features/floors/<floor>/<Name>TeamScene').then(m => m.<Name>TeamScene) }` to the `LOADERS` array in `src/scenes/lazySceneLoaders.ts`. `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys do not match registered scene keys.
 
 ### Add an enemy
 Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist', x, y, minX?, maxX?, speed? }`. `minX`/`maxX` default to `x ± 160` when omitted (per `LevelEnemySpawner.spawn`). Implementations live in `src/entities/enemies/`. To add a new enemy *type*: (1) create the subclass under `src/entities/enemies/<Name>.ts` extending `Enemy`; (2) add the literal to the `type` union in `LevelConfig.enemies` (`src/features/floors/_shared/LevelConfig.ts`); (3) add a `case` to the `switch` in `LevelEnemySpawner.spawn()` (`src/features/floors/_shared/LevelEnemySpawner.ts`) that constructs the new subclass.
@@ -149,7 +157,7 @@ Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' 
 
 ### Add music for a scene
 1. Put the file in `public/music/<style>/`.
-2. Add a `MusicAsset` entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with `key: 'music_<name>'` and `path: 'music/<file>'` (path is relative to `public/`). Set `eager: true` only if the track must be available at the very start of boot (currently no tracks need this); otherwise omit — `MusicPlugin` lazy-loads it on first scene entry.
+2. Add a `MusicAsset` entry to `STATIC_MUSIC_ASSETS` in `src/config/audioConfig.ts` with `key: 'music_<name>'` and `path: 'music/<file>'` (path is relative to `public/`). Set `eager: true` only if the track must be available at the very start of boot — `music_menu` and `music_elevator_jazz` are the current precedents. Otherwise omit — `MusicPlugin` lazy-loads on first scene entry.
 3. Add a `SceneKey → music_<name>` entry in `SCENE_MUSIC`. `MusicPlugin` handles playback — no scene code needed.
 
 ### Add an info card
@@ -187,7 +195,7 @@ zoneManager.update();
 
 Two suites, different purposes:
 
-- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 65% (60% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. `src/plugins/**`, the procedural sprite/sound generator modules, and `src/main.ts` are excluded entirely (see `vitest.config.ts` for the full exclusion list). Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
+- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 75% (70% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. `src/plugins/**`, the procedural sprite/sound generator modules, and `src/main.ts` are excluded entirely (see `vitest.config.ts` for the full exclusion list). Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
 - **Playwright (`tests/*.spec.ts`)** — drives the actual dev server via `window.__game`. Use for end-to-end user flows, scene transitions, and visual snapshots.
 
 Playwright helpers in `tests/helpers/playwright.ts`:
@@ -199,6 +207,9 @@ Playwright helpers in `tests/helpers/playwright.ts`:
 - `seedFullProgressSave(page, { totalAU?, floorAU? })` — pre-populates the save slot and marks the elevator info dialog as seen so it doesn't swallow input.
 - `clearStorage(page)` — wipes localStorage before boot.
 - `attachErrorWatchers(page).assertClean()` — fails the test if any uncaught `pageerror`/console error leaked.
+
+`window.__testHooks` extras (available when `VITE_EXPOSE_TEST_HOOKS !== 'false'`):
+- `forceShowVirtualGamepad(visible: boolean)` — imperatively mount (`true`) or unmount (`false`) the virtual gamepad without writing localStorage. Use this to cover touch UI in Playwright tests on non-touch Chromium. `true` also shows the first-run hint if `TouchHintStore.hasSeen()` is still `false`.
 
 For detailed Playwright debugging recipes, see `.github/skills/debug-with-playwright.md`.
 
