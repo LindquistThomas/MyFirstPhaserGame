@@ -160,4 +160,28 @@ describe('Checkpoint', () => {
     );
     expect(cp.trigger.getData('checkpointId')).toBe('my-checkpoint-id');
   });
+
+  it('starts activated when created from persisted state and ignores overlap callbacks', () => {
+    const { scene } = makeScene();
+    const onActivate = vi.fn();
+    const cp = new Checkpoint(
+      scene as unknown as Phaser.Scene,
+      100, 120,
+      'persisted-cp',
+      onActivate,
+      true,
+    );
+
+    expect(cp.activated).toBe(true);
+
+    const overlapSpy = vi.fn();
+    const fakePhysics = {
+      add: { overlap: overlapSpy },
+    } as unknown as Phaser.Physics.Arcade.ArcadePhysics;
+    const fakePlayer = createFakeSprite(100, 100) as unknown as Phaser.Physics.Arcade.Sprite;
+    cp.wireOverlap(fakePhysics, fakePlayer);
+    const overlapCallback = overlapSpy.mock.calls[0]?.[2] as (() => void) | undefined;
+    overlapCallback?.();
+    expect(onActivate).not.toHaveBeenCalled();
+  });
 });
