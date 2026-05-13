@@ -199,6 +199,31 @@ describe('ProgressionSystem', () => {
     expect(q.loadFromSave()).toBe(false);
   });
 
+  it('recordBossDefeat returns first-defeat flag and persists total count', () => {
+    const p = new ProgressionSystem();
+    expect(p.getBossDefeatedCount()).toBe(0);
+    expect(p.recordBossDefeat()).toBe(true);
+    expect(p.getBossDefeatedCount()).toBe(1);
+    expect(p.recordBossDefeat()).toBe(false);
+    expect(p.getBossDefeatedCount()).toBe(2);
+
+    const q = new ProgressionSystem();
+    expect(q.loadFromSave()).toBe(true);
+    expect(q.getBossDefeatedCount()).toBe(2);
+  });
+
+  it('startNewGame("ngplus") resets run state but preserves bossDefeatedCount', () => {
+    const p = new ProgressionSystem();
+    p.addAU(FLOORS.PLATFORM_TEAM, 10);
+    p.recordBossDefeat();
+    p.startNewGame('ngplus');
+
+    expect(p.getMode()).toBe('ngplus');
+    expect(p.getTotalAU()).toBe(0);
+    expect(p.getCurrentFloor()).toBe(FLOORS.LOBBY);
+    expect(p.getBossDefeatedCount()).toBe(1);
+  });
+
   describe('loseAU', () => {
     it('returns 0 and is a no-op when the player has no AU on the floor', () => {
       const p = new ProgressionSystem();

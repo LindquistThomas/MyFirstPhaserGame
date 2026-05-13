@@ -105,8 +105,9 @@ export class ElevatorScene extends Phaser.Scene {
 
   init(data?: NavigationContext): void {
     this.gameState = this.registry.get('gameState') as GameStateManager;
-    this.gameState.applyInitialLoad(data?.loadSave);
+    this.gameState.applyInitialLoad(data?.loadSave, data?.startMode);
     this.progression = this.gameState.progression;
+    this.registry.set('worldModifiers', getWorldModifiers(this.progression.getMode()));
     this.spawnAtProductDoor = data?.spawnDoorId;
     this.spawnAtFloor = data?.fromFloor;
     this.spawnAtFloorSide = data?.spawnSide ?? 'left';

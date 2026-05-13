@@ -43,6 +43,7 @@ export class HUD {
   private bg!: Phaser.GameObjects.Graphics;
   private titleText!: Phaser.GameObjects.Text;
   private timerText!: Phaser.GameObjects.Text;
+  private ngPlusBadge!: Phaser.GameObjects.Text;
   private toast!: Toast;
   private muteCtrl!: MuteIconController;
   private coinCtrl!: CoinCounterController;
@@ -167,6 +168,7 @@ export class HUD {
     this.titleText.setStyle({ fontSize: this.tokens.hudFontTitle });
     this.titleText.setVisible(this.sizeClass !== 'compact');
     this.timerText.setVisible(this._isTimerVisible());
+    this.ngPlusBadge.setVisible(this.progression.isNgPlusMode());
   }
 
   /**

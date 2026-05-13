@@ -158,6 +158,7 @@ export class LevelScene extends Phaser.Scene {
   protected hud!: HUD;
   protected gameState!: GameStateManager;
   protected progression!: ProgressionSystem;
+  protected worldModifiers!: WorldModifiers;
   protected platformGroup!: Phaser.Physics.Arcade.StaticGroup;
   protected floorData!: FloorData;
   protected floorId!: FloorId;
@@ -241,6 +242,9 @@ export class LevelScene extends Phaser.Scene {
   init(): void {
     this.gameState = this.registry.get('gameState') as GameStateManager;
     this.progression = this.gameState.progression;
+    this.worldModifiers = (this.registry.get('worldModifiers') as WorldModifiers | undefined)
+      ?? getWorldModifiers(this.progression.getMode());
+    this.registry.set('worldModifiers', this.worldModifiers);
     this.floorData = LEVEL_DATA[this.floorId];
     this.isTransitioning = false;
     this.movingPlatforms = [];
@@ -318,7 +322,8 @@ export class LevelScene extends Phaser.Scene {
       platformGroup: this.platformGroup,
       droppedAUGroup: this.tokenMgr.droppedAUGroup,
       camera: this.cameras.main,
-      onPlayerHit: () => this.checkpointMgr.onPlayerHit(),
+      onPlayerHit: () => this.onPlayerHit(),
+      worldModifiers: this.worldModifiers,
     });
     this.coffeeMgr = new LevelCoffeeManager({
       scene: this,
