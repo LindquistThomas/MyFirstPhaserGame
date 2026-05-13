@@ -48,6 +48,8 @@ export class SaveSlotScene extends Phaser.Scene {
   private inActionSelect = false;
   /** True while the SaveRecoveryDialog is open; gates scene-level input handlers. */
   private inRecoveryDialog = false;
+  private quizCountLabels: Array<Phaser.GameObjects.Text | undefined> = [];
+  private totalQuizCount: number | null = null;
 
   constructor() {
     super({ key: 'SaveSlotScene' });
@@ -70,6 +72,8 @@ export class SaveSlotScene extends Phaser.Scene {
     this.drawFooter();
     this.setupKeyboard();
     this.updateHighlight();
+    this.refreshQuizCountLabels();
+    this.preloadQuizTotals();
 
     this.cameras.main.fadeIn(300, 0, 0, 0);
 
@@ -192,6 +196,32 @@ export class SaveSlotScene extends Phaser.Scene {
     });
 
     return container;
+  }
+
+  private preloadQuizTotals(): void {
+    preloadAllQuizzes()
+      .then(() => {
+        this.totalQuizCount = getLoadedQuizCount();
+        this.refreshQuizCountLabels();
+      })
+      .catch((err: unknown) => {
+        // Non-fatal: keep placeholder total until content is loaded elsewhere.
+        console.warn('[SaveSlotScene] Failed to preload quiz totals', err);
+      });
+  }
+
+  private refreshQuizCountLabels(): void {
+    this.slotInfos.forEach((info, index) => {
+      const label = this.quizCountLabels[index];
+      if (!label || !info?.exists) return;
+      label.setText(this.formatQuizProgressLabel(info.slotId));
+    });
+  }
+
+  private formatQuizProgressLabel(slotId: SaveSlotId): string {
+    const passed = getPassedCount(slotId);
+    const total = this.totalQuizCount ?? '…';
+    return `Quizzes: ${passed}/${total}`;
   }
 
   private drawFooter(): void {

@@ -8,7 +8,7 @@ vi.mock('phaser', () => {
     for (const m of [
       'setOrigin', 'setDepth', 'setScrollFactor', 'setInteractive', 'setAlpha',
       'setShadow', 'setColor', 'setScale', 'fillStyle', 'fillRect',
-      'lineStyle', 'strokeRect', 'clear', 'on',
+      'lineStyle', 'strokeRect', 'clear', 'on', 'setText',
     ]) {
       o[m] = vi.fn(() => o);
     }
@@ -83,6 +83,19 @@ vi.mock('../../config/levelData', () => ({
     1: { id: 1, name: 'Platform Team' },
     4: { id: 4, name: 'Executive Suite' },
   },
+}));
+
+vi.mock('../../config/quiz', () => ({
+  getLoadedQuizCount: vi.fn(() => 4),
+  preloadAllQuizzes: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../../systems/QuizManager', () => ({
+  getPassedCount: vi.fn((slotId: string) => {
+    if (slotId === 'slot1') return 2;
+    if (slotId === 'slot2') return 1;
+    return 0;
+  }),
 }));
 
 vi.mock('../../systems/SaveManager', () => ({
