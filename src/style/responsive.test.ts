@@ -1,14 +1,24 @@
 import { describe, it, expect } from 'vitest';
 import { getSizeClass, getLayoutTokens, type SizeClass } from './responsive';
 
+/** Phaser game canvas logical width (matches gameConfig.GAME_WIDTH). */
+const GAME_WIDTH = 1280;
+
 describe('getSizeClass', () => {
-  it('returns compact for widths below 700', () => {
-    expect(getSizeClass(375)).toBe('compact');
-    expect(getSizeClass(699)).toBe('compact');
+  it('returns ultra-compact for widths below 500', () => {
+    expect(getSizeClass(320)).toBe('ultra-compact');
+    expect(getSizeClass(375)).toBe('ultra-compact');
+    expect(getSizeClass(499)).toBe('ultra-compact');
   });
 
-  it('returns compact at exactly 0', () => {
-    expect(getSizeClass(0)).toBe('compact');
+  it('returns ultra-compact at exactly 0', () => {
+    expect(getSizeClass(0)).toBe('ultra-compact');
+  });
+
+  it('returns compact for widths from 500 to 699', () => {
+    expect(getSizeClass(500)).toBe('compact');
+    expect(getSizeClass(600)).toBe('compact');
+    expect(getSizeClass(699)).toBe('compact');
   });
 
   it('returns regular for widths from 700 to 1099', () => {
@@ -23,14 +33,19 @@ describe('getSizeClass', () => {
     expect(getSizeClass(1920)).toBe('wide');
   });
 
-  it('covers all three branches without overlap', () => {
-    const classes = [0, 699, 700, 1099, 1100, 1280].map(getSizeClass);
-    expect(classes).toEqual(['compact', 'compact', 'regular', 'regular', 'wide', 'wide']);
+  it('covers all four branches without overlap', () => {
+    const classes = [0, 499, 500, 699, 700, 1099, 1100, 1280].map(getSizeClass);
+    expect(classes).toEqual([
+      'ultra-compact', 'ultra-compact',
+      'compact', 'compact',
+      'regular', 'regular',
+      'wide', 'wide',
+    ]);
   });
 });
 
 describe('getLayoutTokens', () => {
-  const sizeClasses: SizeClass[] = ['compact', 'regular', 'wide'];
+  const sizeClasses: SizeClass[] = ['ultra-compact', 'compact', 'regular', 'wide'];
 
   it('returns a complete LayoutTokens object for every size class', () => {
     for (const sc of sizeClasses) {
@@ -43,10 +58,12 @@ describe('getLayoutTokens', () => {
       expect(typeof t.dialogFontTitle).toBe('string');
       expect(typeof t.dialogTapTarget).toBe('number');
       expect(typeof t.dialogPanelW).toBe('number');
+      expect(typeof t.infoIconHitSize).toBe('number');
     }
   });
 
   it('font sizes increase (larger game-unit values) as viewport gets smaller', () => {
+    const ultraCompact = getLayoutTokens('ultra-compact');
     const compact = getLayoutTokens('compact');
     const regular = getLayoutTokens('regular');
     const wide = getLayoutTokens('wide');
@@ -54,13 +71,18 @@ describe('getLayoutTokens', () => {
     // Extract numeric part from e.g. '28px'
     const px = (s: string): number => parseInt(s, 10);
 
+    expect(px(ultraCompact.hudFontAU)).toBeGreaterThan(px(compact.hudFontAU));
     expect(px(compact.hudFontAU)).toBeGreaterThan(px(regular.hudFontAU));
     expect(px(regular.hudFontAU)).toBeGreaterThan(px(wide.hudFontAU));
+    expect(px(ultraCompact.dialogFontBody)).toBeGreaterThan(px(compact.dialogFontBody));
     expect(px(compact.dialogFontBody)).toBeGreaterThan(px(wide.dialogFontBody));
+    expect(px(ultraCompact.dialogFontTitle)).toBeGreaterThan(px(compact.dialogFontTitle));
     expect(px(compact.dialogFontTitle)).toBeGreaterThan(px(wide.dialogFontTitle));
   });
 
   it('dialog panel is wider for smaller size classes', () => {
+    expect(getLayoutTokens('ultra-compact').dialogPanelW)
+      .toBeGreaterThan(getLayoutTokens('compact').dialogPanelW);
     expect(getLayoutTokens('compact').dialogPanelW)
       .toBeGreaterThan(getLayoutTokens('regular').dialogPanelW);
     expect(getLayoutTokens('regular').dialogPanelW)
@@ -74,6 +96,8 @@ describe('getLayoutTokens', () => {
   });
 
   it('tap targets are larger at smaller sizes', () => {
+    expect(getLayoutTokens('ultra-compact').dialogTapTarget)
+      .toBeGreaterThan(getLayoutTokens('compact').dialogTapTarget);
     expect(getLayoutTokens('compact').dialogTapTarget)
       .toBeGreaterThan(getLayoutTokens('wide').dialogTapTarget);
   });
@@ -110,6 +134,7 @@ describe('getLayoutTokens', () => {
     const scaled = getLayoutTokens('wide', 1.5);
     expect(scaled.dialogTapTarget).toBe(base.dialogTapTarget);
     expect(scaled.dialogPanelW).toBe(base.dialogPanelW);
+    expect(scaled.infoIconHitSize).toBe(base.infoIconHitSize);
   });
 
   it('textScale applies correctly to compact size class', () => {
@@ -117,5 +142,24 @@ describe('getLayoutTokens', () => {
     const scaled = getLayoutTokens('compact', 1.15);
     const px = (s: string): number => parseInt(s, 10);
     expect(px(scaled.dialogFontBody)).toBe(Math.round(px(base.dialogFontBody) * 1.15));
+  });
+
+  describe('WCAG 2.5.5 tap-target invariant at 320×640 viewport', () => {
+    // On a 320px-wide device the Phaser canvas (1280 game-units wide) is
+    // FIT-scaled to 320 CSS px.  The CSS-pixel-per-game-unit ratio is
+    // 320/1280 = 0.25.  A tap target of N game-units therefore renders as
+    // N × 0.25 CSS px.  WCAG 2.5.5 Level AAA requires ≥ 44 CSS px.
+    const VIEWPORT_WIDTH = 320;
+    const CSS_PX_PER_GU = VIEWPORT_WIDTH / GAME_WIDTH;
+
+    it('ultra-compact dialogTapTarget meets WCAG 44 CSS px at 320px viewport', () => {
+      const { dialogTapTarget } = getLayoutTokens('ultra-compact');
+      expect(dialogTapTarget * CSS_PX_PER_GU).toBeGreaterThanOrEqual(44);
+    });
+
+    it('ultra-compact infoIconHitSize meets WCAG 44 CSS px at 320px viewport', () => {
+      const { infoIconHitSize } = getLayoutTokens('ultra-compact');
+      expect(infoIconHitSize * CSS_PX_PER_GU).toBeGreaterThanOrEqual(44);
+    });
   });
 });

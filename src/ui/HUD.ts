@@ -101,7 +101,7 @@ export class HUD {
       color: theme.color.css.textQuizMuted, fontStyle: 'bold',
     }).setOrigin(0.5, 0).setAlpha(0.6);
     this.applyTitleTextContrast();
-    this.titleText.setVisible(this.sizeClass !== 'compact');
+    this.titleText.setVisible(this.sizeClass !== 'compact' && this.sizeClass !== 'ultra-compact');
     container.add(this.titleText as unknown as Phaser.GameObjects.GameObject);
 
     // Run timer — small M:SS counter in the top-right corner.
@@ -167,7 +167,7 @@ export class HUD {
     this.coinCtrl.relayout(this.tokens);
     this.progressCtrl.relayout(this.tokens);
     this.titleText.setStyle({ fontSize: this.tokens.hudFontTitle });
-    this.titleText.setVisible(this.sizeClass !== 'compact');
+    this.titleText.setVisible(this.sizeClass !== 'compact' && this.sizeClass !== 'ultra-compact');
     this.timerText.setVisible(this._isTimerVisible());
     this.ngPlusBadge.setVisible(this.progression.isNgPlusMode());
   }

@@ -327,8 +327,8 @@ describe('HUD', () => {
     expect(resizeCall).toBeDefined();
     const onResize = resizeCall![1];
 
-    // Simulate crossing into the compact size class (< 700 px)
-    scene.scale.displaySize.width = 375;
+    // Simulate crossing into the compact size class (500–699 px)
+    scene.scale.displaySize.width = 600;
     onResize();
 
     // auText should have been restyled with the compact font
