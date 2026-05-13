@@ -14,6 +14,7 @@
  */
 import type * as Phaser from 'phaser';
 import { FLOORS, FloorId } from '../../../config/gameConfig';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 
 export interface AccentTheme {
   backgroundColor: number;
@@ -38,6 +39,7 @@ type AccentFn = (args: FloorAccentArgs) => void;
  * concierge desk / plants.
  */
 const lobbyAccent: AccentFn = ({ scene, g, width, height, theme }) => {
+  const reducedMotion = isReducedMotion();
   const baseY = Math.round(height * 0.78);
   const silhouetteColor = 0x000000;
   g.fillStyle(silhouetteColor, 0.45);
@@ -78,14 +80,18 @@ const lobbyAccent: AccentFn = ({ scene, g, width, height, theme }) => {
     .rectangle(bigTowerX + 8, baseY - 260 + 56, 4, 6, theme.tokenColor, 0.8)
     .setOrigin(0, 0)
     .setDepth(0);
-  scene.tweens.add({
-    targets: pulse,
-    alpha: { from: 0.9, to: 0.25 },
-    duration: 2600,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.inOut',
-  });
+  if (reducedMotion) {
+    pulse.setAlpha(0.575);
+  } else {
+    scene.tweens.add({
+      targets: pulse,
+      alpha: { from: 0.9, to: 0.25 },
+      duration: 2600,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+  }
 };
 
 /**
@@ -93,6 +99,7 @@ const lobbyAccent: AccentFn = ({ scene, g, width, height, theme }) => {
  * blinking status LED.
  */
 const platformAccent: AccentFn = ({ scene, g, width, height, theme }) => {
+  const reducedMotion = isReducedMotion();
   const rackTop = Math.round(height * 0.18);
   const rackBottom = Math.round(height * 0.62);
   const rackH = rackBottom - rackTop;
@@ -122,14 +129,18 @@ const platformAccent: AccentFn = ({ scene, g, width, height, theme }) => {
     .rectangle(midX + 10, rackTop + 10, 2, 2, 0x3aff6f, 1)
     .setOrigin(0, 0)
     .setDepth(0);
-  scene.tweens.add({
-    targets: led,
-    alpha: { from: 1, to: 0.15 },
-    duration: 900,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Cubic.inOut',
-  });
+  if (reducedMotion) {
+    led.setAlpha(0.575);
+  } else {
+    scene.tweens.add({
+      targets: led,
+      alpha: { from: 1, to: 0.15 },
+      duration: 900,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Cubic.inOut',
+    });
+  }
 };
 
 /**
@@ -137,6 +148,7 @@ const platformAccent: AccentFn = ({ scene, g, width, height, theme }) => {
  * subtly pulses up and down, implying a live dashboard.
  */
 const businessAccent: AccentFn = ({ scene, g, width, height, theme }) => {
+  const reducedMotion = isReducedMotion();
   const chartX = Math.round(width * 0.32);
   const chartY = Math.round(height * 0.22);
   const chartW = Math.round(width * 0.36);
@@ -165,14 +177,18 @@ const businessAccent: AccentFn = ({ scene, g, width, height, theme }) => {
     .rectangle(pulseX, chartY + chartH - 20, barW, maxH, theme.tokenColor, 0.85)
     .setOrigin(0, 1)
     .setDepth(0);
-  scene.tweens.add({
-    targets: bar,
-    scaleY: { from: 1, to: 0.7 },
-    duration: 1800,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.inOut',
-  });
+  if (reducedMotion) {
+    bar.setScale(1, 0.85);
+  } else {
+    scene.tweens.add({
+      targets: bar,
+      scaleY: { from: 1, to: 0.7 },
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+  }
 };
 
 /**
@@ -180,6 +196,7 @@ const businessAccent: AccentFn = ({ scene, g, width, height, theme }) => {
  * plus a slow halo breathe on the moon.
  */
 const executiveAccent: AccentFn = ({ scene, g, width, height, theme }) => {
+  const reducedMotion = isReducedMotion();
   const cx = width / 2;
   const archW = Math.round(width * 0.48);
   const archH = Math.round(height * 0.55);
@@ -207,15 +224,19 @@ const executiveAccent: AccentFn = ({ scene, g, width, height, theme }) => {
   g.fillCircle(moonX, moonY, 18);
   // Animated: a breathing halo around the moon — scale + alpha.
   const halo = scene.add.circle(moonX, moonY, 28, 0xf2ead0, 0.22).setDepth(0);
-  scene.tweens.add({
-    targets: halo,
-    scale: { from: 1.0, to: 1.35 },
-    alpha: { from: 0.28, to: 0.08 },
-    duration: 3400,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.inOut',
-  });
+  if (reducedMotion) {
+    halo.setScale(1.175).setAlpha(0.18);
+  } else {
+    scene.tweens.add({
+      targets: halo,
+      scale: { from: 1.0, to: 1.35 },
+      alpha: { from: 0.28, to: 0.08 },
+      duration: 3400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+  }
 };
 
 /**
@@ -223,6 +244,7 @@ const executiveAccent: AccentFn = ({ scene, g, width, height, theme }) => {
  * subtly pulses brighter, hinting at "new arrival".
  */
 const productsAccent: AccentFn = ({ scene, g, width, height, theme }) => {
+  const reducedMotion = isReducedMotion();
   const rows = 3;
   const cols = 8;
   const crateW = 100;
@@ -256,14 +278,18 @@ const productsAccent: AccentFn = ({ scene, g, width, height, theme }) => {
     .setStrokeStyle(2, theme.tokenColor, 0.9)
     .setFillStyle()
     .setDepth(0);
-  scene.tweens.add({
-    targets: highlight,
-    alpha: { from: 1, to: 0.25 },
-    duration: 2200,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.inOut',
-  });
+  if (reducedMotion) {
+    highlight.setAlpha(0.625);
+  } else {
+    scene.tweens.add({
+      targets: highlight,
+      alpha: { from: 1, to: 0.25 },
+      duration: 2200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
+  }
 };
 
 const ACCENTS: Partial<Record<FloorId, AccentFn>> = {

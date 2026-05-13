@@ -10,6 +10,7 @@ import { MissionItem, MissionItemId } from '../../../entities/MissionItem';
 import { TerroristCommander } from '../../../entities/enemies/TerroristCommander';
 import { PistolProjectile } from '../../../entities/PistolProjectile';
 import { eventBus } from '../../../systems/EventBus';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import { BombDisarmDialog } from '../../../ui/BombDisarmDialog';
 import { ensureExecutiveRescueSprites } from '../../../systems/SpriteGenerator';
 import { ensureBossRescueSounds } from '../../../systems/SoundGenerator';
@@ -113,17 +114,22 @@ export class ExecutiveSuiteScene extends defineFloorScene({
     // Stagger-desync alpha pulse on tokens so they don't all breathe in
     // lockstep. Token already owns a y-bob + scale pulse; this is a
     // scene-local additional cadence so Token.ts stays untouched.
+    const reducedMotion = isReducedMotion();
     const tokens = this.tokenGroup.getChildren();
     tokens.forEach((t, i) => {
-      this.tweens.add({
-        targets: t,
-        alpha: 0.85,
-        duration: 2000,
-        ease: 'Sine.easeInOut',
-        yoyo: true,
-        repeat: -1,
-        delay: i * 150,
-      });
+      if (reducedMotion) {
+        (t as Phaser.GameObjects.Sprite).setAlpha(0.85);
+      } else {
+        this.tweens.add({
+          targets: t,
+          alpha: 0.85,
+          duration: 2000,
+          ease: 'Sine.easeInOut',
+          yoyo: true,
+          repeat: -1,
+          delay: i * 150,
+        });
+      }
     });
 
     this.setupRescue();
@@ -216,13 +222,17 @@ export class ExecutiveSuiteScene extends defineFloorScene({
 
     // ---- Bomb device (right side, gated by bomb_code) ----
     this.bombSprite = this.add.image(1100, G - 40, 'bomb_device').setDepth(4);
-    this.tweens.add({
-      targets: this.bombSprite,
-      alpha: 0.5,
-      duration: 500,
-      yoyo: true,
-      repeat: -1,
-    });
+    if (isReducedMotion()) {
+      this.bombSprite.setAlpha(0.75);
+    } else {
+      this.tweens.add({
+        targets: this.bombSprite,
+        alpha: 0.5,
+        duration: 500,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
 
     // ---- Sanctum door (blocks far-right area) ----
     this.sanctumDoor = this.add.image(1200, G - 48, 'door_sanctum_locked')
@@ -409,6 +419,7 @@ export class ExecutiveSuiteScene extends defineFloorScene({
   }
 
   protected override createDecorations(): void {
+    const reducedMotion = isReducedMotion();
     const G = GAME_HEIGHT - TILE_SIZE;
 
     this.addAmbientPlants([
@@ -431,15 +442,19 @@ export class ExecutiveSuiteScene extends defineFloorScene({
     geir.play('geir_walk');
     // He paces a short range centred on GEIR_X so he stays inside the info
     // zone (width=120, so ±60 around GEIR_X is the widest he can roam).
-    this.tweens.add({
-      targets: geir,
-      x: { from: ExecutiveSuiteScene.GEIR_X - 50, to: ExecutiveSuiteScene.GEIR_X + 50 },
-      duration: 2400,
-      yoyo: true,
-      repeat: -1,
-      onYoyo: () => geir.setFlipX(true),
-      onRepeat: () => geir.setFlipX(false),
-    });
+    if (reducedMotion) {
+      geir.x = ExecutiveSuiteScene.GEIR_X;
+    } else {
+      this.tweens.add({
+        targets: geir,
+        x: { from: ExecutiveSuiteScene.GEIR_X - 50, to: ExecutiveSuiteScene.GEIR_X + 50 },
+        duration: 2400,
+        yoyo: true,
+        repeat: -1,
+        onYoyo: () => geir.setFlipX(true),
+        onRepeat: () => geir.setFlipX(false),
+      });
+    }
 
     // Floating name label with a gentle yoyo bob; follows Geir horizontally.
     const labelY = G - 148;
@@ -453,14 +468,18 @@ export class ExecutiveSuiteScene extends defineFloorScene({
       padding: { x: 8, y: 3 },
     }).setOrigin(0.5).setDepth(5);
 
-    this.tweens.add({
-      targets: nameLabel,
-      y: labelY - 6,
-      duration: 1600,
-      ease: 'Sine.easeInOut',
-      yoyo: true,
-      repeat: -1,
-    });
+    if (reducedMotion) {
+      nameLabel.y = labelY - 3;
+    } else {
+      this.tweens.add({
+        targets: nameLabel,
+        y: labelY - 6,
+        duration: 1600,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
+    }
     this.events.on(Phaser.Scenes.Events.UPDATE, () => {
       nameLabel.x = geir.x;
     });
