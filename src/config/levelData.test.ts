@@ -3,9 +3,7 @@ import { LEVEL_DATA } from './levelData';
 import { FLOORS } from './gameConfig';
 
 describe('LEVEL_DATA', () => {
-  // Keep boss access tight: all AU should be required, with at most a small
-  // optional cushion (about one short room's worth of AU).
-  const BOSS_AU_MARGIN_MAX = 6;
+  const UNLOCK_SLACK_MULTIPLIER = 1.25;
   const MID_GAME_FLOOR_THRESHOLD = 4;
   const entries = Object.entries(LEVEL_DATA);
 
@@ -69,13 +67,6 @@ describe('LEVEL_DATA', () => {
     expect(LEVEL_DATA[FLOORS.LOBBY].auRequired).toBe(0);
   });
 
-  it('total available AU stays within boss-gate tuning window', () => {
-    const totalAvailable = Object.values(LEVEL_DATA).reduce((sum, floor) => sum + floor.totalAU, 0);
-    const bossRequired = LEVEL_DATA[FLOORS.BOSS].auRequired;
-    expect(totalAvailable).toBeGreaterThanOrEqual(bossRequired);
-    expect(totalAvailable).toBeLessThanOrEqual(bossRequired + BOSS_AU_MARGIN_MAX);
-  });
-
   it('each non-boss floor is unlockable from lower-numbered floors', () => {
     const sorted = Object.values(LEVEL_DATA).sort((a, b) => a.floorNumber - b.floorNumber);
     let cumulativeAU = 0;
@@ -86,6 +77,21 @@ describe('LEVEL_DATA', () => {
         `Floor "${floor.name}" (auRequired=${floor.auRequired}) requires more AU than is ` +
         `available from all preceding floors (cumulative available=${cumulativeAU})`,
       ).toBeGreaterThanOrEqual(floor.auRequired);
+      cumulativeAU += floor.totalAU;
+    }
+  });
+
+  it('every gated floor has at least 25% AU slack from earlier floors', () => {
+    const sorted = Object.values(LEVEL_DATA).sort((a, b) => a.floorNumber - b.floorNumber);
+    let cumulativeAU = 0;
+    for (const floor of sorted) {
+      if (floor.auRequired > 0) {
+        expect(
+          cumulativeAU,
+          `Floor "${floor.name}" (auRequired=${floor.auRequired}) should have at least 25% AU slack ` +
+          `from earlier floors (cumulative available=${cumulativeAU})`,
+        ).toBeGreaterThanOrEqual(floor.auRequired * UNLOCK_SLACK_MULTIPLIER);
+      }
       cumulativeAU += floor.totalAU;
     }
   });
