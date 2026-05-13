@@ -41,6 +41,8 @@ export class PauseScene extends Phaser.Scene {
     this.parentKey = data.parentKey;
     this.selectedIndex = 0;
     this.menuItems = [];
+    this.menuNavigator?.destroy();
+    this.menuNavigator = undefined;
     this.gameState = this.registry.get('gameState') as GameStateManager;
     this.showControlsOnCreate = data.showControls === true;
   }
@@ -135,6 +137,7 @@ export class PauseScene extends Phaser.Scene {
     container.setAlpha(0);
     this.tweens.add({ targets: container, alpha: 1, duration: 150 });
 
+    this.setupButtonNavigator();
     // Apply initial selection highlight.
     this.updateSelection();
   }
@@ -198,6 +201,7 @@ export class PauseScene extends Phaser.Scene {
       if (idx !== -1) {
         this.selectedIndex = idx;
         this.updateSelection();
+        this.menuNavigator?.setFocus(idx);
       }
     });
     btn.on('pointerdown', action);
@@ -222,15 +226,13 @@ export class PauseScene extends Phaser.Scene {
   }
 
   private moveSelection(delta: number): void {
-    const n = this.menuItems.length;
-    if (n === 0) return;
-    this.selectedIndex = (this.selectedIndex + delta + n) % n;
-    this.updateSelection();
+    if (!this.menuNavigator) return;
+    if (delta > 0) this.menuNavigator.focusNext();
+    else this.menuNavigator.focusPrev();
   }
 
   private activateSelection(): void {
-    const item = this.menuItems[this.selectedIndex];
-    if (item) item.action();
+    this.menuNavigator?.activateFocused();
   }
 
   private updateSelection(): void {
@@ -241,6 +243,29 @@ export class PauseScene extends Phaser.Scene {
         item.btn.setColor(theme.color.css.textWhite).setScale(1.0);
       }
     });
+  }
+
+  private setupButtonNavigator(): void {
+    this.menuNavigator = new ButtonListNavigator(this, 202);
+    this.menuItems.forEach(({ btn, action }, index) => {
+      this.menuNavigator?.add({
+        focus: () => {
+          this.selectedIndex = index;
+          this.updateSelection();
+        },
+        blur: () => undefined,
+        activate: action,
+        bounds: () =>
+          btn.getBounds?.()
+          ?? ({
+            x: Number.isFinite(btn.x) ? btn.x - 160 : 0,
+            y: Number.isFinite(btn.y) ? btn.y - 24 : 0,
+            width: 320,
+            height: 48,
+          } as Phaser.Geom.Rectangle),
+      });
+    });
+    this.menuNavigator.setFocus(this.selectedIndex);
   }
 
   private resumeGame(): void {

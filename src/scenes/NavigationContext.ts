@@ -1,4 +1,5 @@
 import type { FloorId } from '../config/gameConfig';
+import type { GameMode } from '../systems/GameMode';
 
 /**
  * Typed hand-off between scenes.
@@ -51,6 +52,8 @@ export interface NavigationContext {
    * on intra-gameplay transitions.
    */
   loadSave?: boolean;
+  /** Mode used when starting a fresh run from SaveSlotScene. */
+  startMode?: GameMode;
 }
 
 /**
