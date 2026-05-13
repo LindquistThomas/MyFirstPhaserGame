@@ -109,6 +109,20 @@ describe('GameStateManager', () => {
     expect(state.hasSave()).toBe(false);
   });
 
+  it('applyInitialLoad(false, "ngplus") starts NG+ while preserving boss-defeat meta', () => {
+    const storage = memoryStorage();
+    const pre = new GameStateManager(storage);
+    pre.progression.recordBossDefeat();
+    pre.progression.addAU(FLOORS.LOBBY, 9);
+
+    const state = new GameStateManager(storage);
+    state.applyInitialLoad(false, 'ngplus');
+
+    expect(state.progression.getMode()).toBe('ngplus');
+    expect(state.progression.getBossDefeatedCount()).toBe(1);
+    expect(state.progression.getTotalAU()).toBe(0);
+  });
+
   it('applyInitialLoad(undefined) neither loads nor resets', () => {
     const storage = memoryStorage();
     const pre = new GameStateManager(storage);
@@ -218,5 +232,18 @@ describe('GameStateManager.checkAchievements', () => {
     state.progression.addAU(FLOORS.LOBBY, 5);
     state.checkAchievements();
     expect(state.getUnlockedAchievementCount()).toBe(1);
+  });
+
+  it('unlocks NG+ boss achievements once (idempotent)', () => {
+    state.applyInitialLoad(false, 'ngplus');
+
+    const spy = vi.fn();
+    eventBus.on('achievement:unlocked', spy);
+    state.checkBossAchievements(true, false);
+    state.checkBossAchievements(true, false);
+
+    const ids = spy.mock.calls.map((call) => call[0]);
+    expect(ids.filter((id) => id === 'architect-reborn')).toHaveLength(1);
+    expect(ids.filter((id) => id === 'master-architect')).toHaveLength(1);
   });
 });

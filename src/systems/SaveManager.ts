@@ -1,5 +1,6 @@
 import { eventBus } from './EventBus';
 import { FloorId, FLOOR_IDS } from '../config/gameConfig';
+import { DEFAULT_GAME_MODE, isGameMode, type GameMode } from './GameMode';
 
 /** Pluggable key-value storage. Defaults to localStorage. */
 export interface KVStorage {
@@ -37,6 +38,10 @@ export interface SaveData {
   bestFloorMs?: Partial<Record<FloorId, number>>;
   /** Unix ms timestamp when the current run was started; absent when not in a run. */
   runStartedAt?: number;
+  /** Number of times the CEO has been defeated in this slot (meta progression). */
+  bossDefeatedCount?: number;
+  /** Active run mode for this slot. */
+  mode?: GameMode;
 }
 
 /** The three canonical slot IDs shown in the slot picker. */
@@ -51,6 +56,8 @@ export interface SlotInfo {
   currentFloor?: FloorId;
   bestRunMs?: number;
   lastPlayedAt?: number;
+  bossDefeatedCount?: number;
+  mode?: GameMode;
   /**
    * True when the slot's previous save was corrupt and has been discarded this
    * session. The slot behaves identically to an empty slot (selectability,
@@ -231,6 +238,13 @@ function isValidSaveData(d: unknown): d is SaveData {
     if (!Object.values(o['bestFloorMs'] as object).every((v) => typeof v === 'number' && isFinite(v))) return false;
   }
   if (o['runStartedAt'] !== undefined && typeof o['runStartedAt'] !== 'number') return false;
+  if (o['bossDefeatedCount'] !== undefined) {
+    if (typeof o['bossDefeatedCount'] !== 'number') return false;
+    if (!Number.isInteger(o['bossDefeatedCount'])) return false;
+    if (!Number.isFinite(o['bossDefeatedCount'])) return false;
+    if (o['bossDefeatedCount'] < 0) return false;
+  }
+  if (o['mode'] !== undefined && !isGameMode(o['mode'])) return false;
   return true;
 }
 
@@ -391,6 +405,8 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
     currentFloor: validateFloorId(data.currentFloor),
     bestRunMs: data.bestRunMs,
     lastPlayedAt: data.lastPlayedAt,
+    bossDefeatedCount: data.bossDefeatedCount ?? 0,
+    mode: data.mode ?? DEFAULT_GAME_MODE,
   };
 }
 

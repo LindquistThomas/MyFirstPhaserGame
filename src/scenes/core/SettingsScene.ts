@@ -22,6 +22,7 @@ import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 import { clampSlider } from '../../systems/sliderUtils';
+import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 
 /**
  * Settings scene — keyboard-navigable UI for audio and accessibility settings.
@@ -50,6 +51,7 @@ const IMPORT_ERROR_MESSAGE =
 export class SettingsScene extends Phaser.Scene {
   private items: SettingsItem[] = [];
   private selectedIndex = 0;
+  private itemNavigator?: ButtonListNavigator;
   private rows: Phaser.GameObjects.Text[] = [];
   private valueTexts: Phaser.GameObjects.Text[] = [];
   private sliderBars: Phaser.GameObjects.Graphics[] = [];
@@ -85,10 +87,13 @@ export class SettingsScene extends Phaser.Scene {
   create(): void {
     this.items = this.buildItems();
     this.selectedIndex = 0;
+    this.itemNavigator?.destroy();
+    this.itemNavigator = undefined;
 
     this.drawBackground();
     this.drawTitle();
     this.buildRows();
+    this.setupItemNavigator();
     this.setupNavigation();
     this.refreshAll();
 
@@ -491,9 +496,9 @@ export class SettingsScene extends Phaser.Scene {
       this.refreshImportConfirmHighlight();
       return;
     }
-    const n = this.items.length;
-    this.selectedIndex = (this.selectedIndex + delta + n) % n;
-    this.refreshAll();
+    if (!this.itemNavigator) return;
+    if (delta > 0) this.itemNavigator.focusNext();
+    else this.itemNavigator.focusPrev();
   }
 
   private adjust(delta: number): void {
@@ -517,6 +522,32 @@ export class SettingsScene extends Phaser.Scene {
       if (next !== undefined) item.set(next);
     }
     this.refreshAll();
+  }
+
+  private setupItemNavigator(): void {
+    this.itemNavigator = new ButtonListNavigator(this, 11);
+    this.rows.forEach((row, index) => {
+      this.itemNavigator?.add({
+        focus: () => {
+          this.selectedIndex = index;
+          this.refreshAll();
+        },
+        blur: () => undefined,
+        activate: () => {
+          this.selectedIndex = index;
+          this.activate();
+        },
+        bounds: () =>
+          row.getBounds?.()
+          ?? ({
+            x: GAME_WIDTH / 2 - 270,
+            y: GAME_HEIGHT / 2 - 191 + index * 52,
+            width: 560,
+            height: 36,
+          } as Phaser.Geom.Rectangle),
+      });
+    });
+    this.itemNavigator.setFocus(this.selectedIndex);
   }
 
   private activate(): void {
