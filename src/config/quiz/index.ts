@@ -16,8 +16,12 @@
  * cache before the player can interact with info icons.
  */
 
-import { FloorId, FLOORS } from '../gameConfig';
+import { FloorId, FLOOR_IDS, FLOORS } from '../gameConfig';
 import { QuizDefinition } from './types';
+import {
+  readContentCache,
+  writeQuizFloorToContentCache,
+} from '../../systems/ContentCache';
 
 export type {
   QuizDifficulty,
@@ -72,6 +76,25 @@ const _quizFloorCache = new Map<FloorId, Record<string, QuizDefinition>>();
 const _quizLoadedFloors = new Set<FloorId>();
 const _quizPendingFloors = new Map<FloorId, Promise<void>>();
 
+// Attempt to hydrate from the content cache on module init so that
+// subsequent calls to `preloadQuizFor` for already-cached floors return
+// immediately without triggering a dynamic import.
+try {
+  const _cached = readContentCache();
+  if (_cached) {
+    for (const [floorIdStr, floorData] of Object.entries(_cached.quizByFloor)) {
+      const rawId = Number(floorIdStr);
+      if (!FLOOR_IDS.includes(rawId as FloorId)) continue;
+      const floorId = rawId as FloorId;
+      Object.assign(QUIZ_DATA, floorData);
+      _quizFloorCache.set(floorId, floorData);
+      _quizLoadedFloors.add(floorId);
+    }
+  }
+} catch {
+  // Malformed cache — proceed without hydration; dynamic imports will repopulate.
+}
+
 /**
  * Kick off (or await) the dynamic import for a floor's quiz content.
  *
@@ -99,6 +122,7 @@ export function preloadQuizFor(floorId: FloorId): Promise<void> {
     _quizFloorCache.set(floorId, data);
     _quizLoadedFloors.add(floorId);
     _quizPendingFloors.delete(floorId);
+    writeQuizFloorToContentCache(floorId, data);
   }).catch((err: unknown) => {
     // Remove from pending so callers can retry on the next interaction.
     _quizPendingFloors.delete(floorId);

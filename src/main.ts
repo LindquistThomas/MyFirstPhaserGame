@@ -5,6 +5,7 @@ import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
 import { ScopedEventBus } from './plugins/ScopedEventBus';
 import { InputService } from './input';
+import { initInputModeTracking } from './input/promptLabel';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
 import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';
@@ -12,6 +13,7 @@ import { initAriaLive } from './ui/ariaLive';
 import { initVirtualGamepad, forceShowVirtualGamepad } from './ui/VirtualGamepad';
 import { eventBus } from './systems/EventBus';
 import { exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT } from './systems/SaveManager';
+import './pwa';
 
 // Render all Text objects at 1.5x internal resolution — the sweet spot between
 // crispness and memory. ~30% lower texture footprint than 2x while remaining
@@ -164,4 +166,3 @@ if (needsPillarboxBackdrop) {
 // Mount the on-screen virtual gamepad for touch-primary devices (phones/tablets).
 // No-op on desktop (pointer: fine) so keyboard players are unaffected.
 initVirtualGamepad();
-

@@ -44,6 +44,8 @@ vi.mock('phaser', () => {
       })),
     };
     tweens = { add: vi.fn() };
+    inputs = { on: vi.fn(), off: vi.fn() };
+    events = { once: vi.fn(), off: vi.fn() };
     constructor(_config: unknown) {}
   }
   return { default: { Scene }, Scene };
@@ -108,9 +110,14 @@ vi.mock('../../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
 
+vi.mock('../../ui/ControlsReferenceModal', () => ({
+  ControlsReferenceModal: vi.fn(),
+}));
+
 import { PauseScene } from './PauseScene';
 import { eventBus } from '../../systems/EventBus';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { ControlsReferenceModal } from '../../ui/ControlsReferenceModal';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -129,7 +136,8 @@ function makeScene(gameState?: { playtime: unknown }): PauseScene {
   return scene;
 }
 
-// add.text call order in buildPanel: [0]=title, [1]=Resume btn, [2]=Settings btn, [3]=Quit btn, [4]=hint
+// add.text call order in buildPanel:
+// [0]=title, [1]=Resume btn, [2]=Settings btn, [3]=Controls btn, [4]=Quit btn, [5]=hint
 type AddTextCall = [number, number, string, unknown];
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -140,10 +148,10 @@ describe('PauseScene', () => {
   });
 
   describe('menu layout', () => {
-    it('has exactly three menu items', () => {
+    it('has exactly four menu items', () => {
       const scene = makeScene();
       const menuItems = (scene as unknown as { menuItems: unknown[] }).menuItems;
-      expect(menuItems).toHaveLength(3);
+      expect(menuItems).toHaveLength(4);
     });
 
     it('first item is Resume', () => {
@@ -160,11 +168,38 @@ describe('PauseScene', () => {
       expect(labels[2]).toMatch(/Settings/i);
     });
 
-    it('third item is Quit to Menu', () => {
+    it('third item is Controls', () => {
       const scene = makeScene();
       const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as AddTextCall[];
       const labels = addTextCalls.map(([, , label]) => label);
-      expect(labels[3]).toMatch(/Quit/i);
+      expect(labels[3]).toMatch(/Controls/i);
+    });
+
+    it('fourth item is Quit to Menu', () => {
+      const scene = makeScene();
+      const addTextCalls = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls as AddTextCall[];
+      const labels = addTextCalls.map(([, , label]) => label);
+      expect(labels[4]).toMatch(/Quit/i);
+    });
+  });
+
+  describe('openControlsModal()', () => {
+    it('disposes the input lifecycle before creating the modal', () => {
+      const scene = makeScene();
+      const lc = (scene as unknown as { lc: { dispose: ReturnType<typeof vi.fn> } }).lc;
+      (scene as unknown as { openControlsModal: () => void }).openControlsModal.call(scene);
+      expect(lc.dispose).toHaveBeenCalled();
+    });
+
+    it('creates a ControlsReferenceModal', () => {
+      vi.mocked(ControlsReferenceModal).mockClear();
+      const scene = makeScene();
+      (scene as unknown as { openControlsModal: () => void }).openControlsModal.call(scene);
+      expect(ControlsReferenceModal).toHaveBeenCalledWith(
+        scene,
+        expect.any(Function),
+        expect.any(Function),
+      );
     });
   });
 

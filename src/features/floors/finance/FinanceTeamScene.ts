@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { defineFloorScene } from '../_shared/defineFloorScene';
-import { allKeyLabels } from '../../../input';
 
 /**
  * Finance — now a content-only room accessed via a door inside the
@@ -23,6 +22,7 @@ export class FinanceTeamScene extends defineFloorScene({
     const G = GAME_HEIGHT - TILE_SIZE;
     return {
       floorId: FLOORS.EXECUTIVE,
+      objective: 'Review finance tradeoffs and return to the suite',
       playerStart: { x: 150, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 
@@ -34,6 +34,20 @@ export class FinanceTeamScene extends defineFloorScene({
 
       // Finance is a narrative room — no AU tokens here.
       tokens: [],
+
+      npcs: [
+        {
+          id: 'finance-architect',
+          name: 'Finley',
+          x: 760,
+          y: G,
+          minX: 620,
+          maxX: 920,
+          speed: 26,
+          topic: 'executive architecture',
+          tint: 0xb8ffd1,
+        },
+      ],
 
       infoPoints: [
         {
@@ -100,7 +114,7 @@ export class FinanceTeamScene extends defineFloorScene({
     const near = d < 90;
     this.setExitDoorOpen(near);
     if (near) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} → Executive Suite`).setPosition(
+      this.interactPrompt?.setText(`${this.formatPromptAction('Interact')} → Executive Suite`).setPosition(
         this.exitDoor.x - 80, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();
@@ -109,4 +123,3 @@ export class FinanceTeamScene extends defineFloorScene({
     }
   }
 }
-

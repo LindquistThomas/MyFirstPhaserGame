@@ -6,6 +6,13 @@ vi.mock('phaser', () => {
   class Scene {
     constructor(_config: unknown) {}
   }
+  class Container {
+    constructor(_scene: unknown, _x: number, _y: number) {}
+    add(): this { return this; }
+    setDepth(): this { return this; }
+    setScrollFactor(): this { return this; }
+    setVisible(): this { return this; }
+  }
   const Physics = {
     Arcade: {
       Sprite: class ArcadeSprite {
@@ -14,7 +21,8 @@ vi.mock('phaser', () => {
       Events: { WORLD_BOUNDS: 'worldbounds' },
     },
   };
-  return { default: { Scene, Physics }, Scene, Physics };
+  const GameObjects = { Container };
+  return { default: { Scene, Physics, GameObjects }, Scene, Physics, GameObjects };
 });
 
 // ── Stub all heavy entity/system imports ─────────────────────────────────────
@@ -65,6 +73,13 @@ vi.mock('../../../input', () => ({
 }));
 
 import { BossArenaScene, PROMPTS, DIALOGUES, AU_GATE } from './BossArenaScene';
+import { eventBus } from '../../../systems/EventBus';
+import {
+  applyBombDisarmEvent,
+  BOMB_DISARM_EVENTS,
+  createBombDisarmProgress,
+  isBombDisarmWin,
+} from './bombDisarmStateMachine';
 
 // ── Static properties ────────────────────────────────────────────────────────
 
@@ -198,5 +213,75 @@ describe('BossArenaScene — DIALOGUES', () => {
 
   it('dialogue[2] opens with "Ha!"', () => {
     expect(DIALOGUES[2]!.lines[0]).toBe('"Ha!"');
+  });
+});
+
+describe('BossArenaScene — deterministic disarm to defeat integration', () => {
+  function makeTextStub() {
+    return {
+      setOrigin: vi.fn().mockReturnThis(),
+      setScrollFactor: vi.fn().mockReturnThis(),
+      setDepth: vi.fn().mockReturnThis(),
+    };
+  }
+
+  function makeGraphicsStub() {
+    return {
+      setScrollFactor: vi.fn().mockReturnThis(),
+      setDepth: vi.fn().mockReturnThis(),
+      fillStyle: vi.fn().mockReturnThis(),
+      fillRect: vi.fn().mockReturnThis(),
+    };
+  }
+
+  it('emits terminal completion + achievements exactly once after a disarm-win sequence', () => {
+    const scene = new BossArenaScene() as unknown as Record<string, unknown>;
+    const addAU = vi.fn();
+    const checkBossAchievements = vi.fn();
+    const flush = vi.fn();
+    const fadeOut = vi.fn();
+    const start = vi.fn();
+    const delayedCall = vi.fn((_: number, cb: () => void) => cb());
+
+    scene.progression = {
+      addAU,
+    };
+    scene.gameState = {
+      checkBossAchievements,
+      playtime: {
+        getRunElapsedMs: () => 42000,
+        recordClear: () => false,
+        getBestClearMs: () => 30000,
+        flush,
+      },
+    };
+    scene.playerHitCount = 0;
+    scene.add = {
+      graphics: vi.fn(makeGraphicsStub),
+      text: vi.fn(makeTextStub),
+    };
+    scene.time = {
+      delayedCall,
+    };
+    scene.cameras = { main: { fadeOut } };
+    scene.scene = { start };
+    scene.hasCompletedEncounter = false;
+
+    let disarm = createBombDisarmProgress(1);
+    disarm = applyBombDisarmEvent(disarm, BOMB_DISARM_EVENTS.ARM);
+    disarm = applyBombDisarmEvent(disarm, BOMB_DISARM_EVENTS.START_DISARM);
+    disarm = applyBombDisarmEvent(disarm, BOMB_DISARM_EVENTS.SUCCEED);
+    expect(isBombDisarmWin(disarm)).toBe(true);
+
+    (scene.showVictory as () => void)();
+    (scene.showVictory as () => void)();
+
+    expect(addAU).toHaveBeenCalledTimes(1);
+    expect(checkBossAchievements).toHaveBeenCalledTimes(1);
+    expect(checkBossAchievements).toHaveBeenCalledWith(true, true);
+    expect(flush).toHaveBeenCalledTimes(1);
+    expect((eventBus.emit as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('game:completed');
+    expect((eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter(([evt]) => evt === 'game:completed'))
+      .toHaveLength(1);
   });
 });

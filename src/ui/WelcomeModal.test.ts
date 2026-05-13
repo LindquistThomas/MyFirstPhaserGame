@@ -2,7 +2,7 @@
  * Unit tests for WelcomeModal.
  *
  * ModalBase is stubbed so the modal can be constructed without a running
- * Phaser scene. `isTouchPrimary`, `allKeyLabels`, and `primaryKeyLabel` are
+ * Phaser scene. `isTouchPrimary` and `promptLabel` are
  * also mocked to control the two build-panel branches (keyboard vs touch).
  */
 
@@ -60,10 +60,8 @@ vi.mock('./touchPrimary', () => ({
   isTouchPrimary: () => mockIsTouchPrimary(),
 }));
 
-// Mock key labels so the non-touch branch resolves without real input data
-vi.mock('../input/keyLabels', () => ({
-  allKeyLabels: vi.fn(() => 'K'),
-  primaryKeyLabel: vi.fn(() => 'K'),
+vi.mock('../input', () => ({
+  promptLabel: vi.fn(() => 'K'),
 }));
 
 // ---------------------------------------------------------------------------
@@ -135,7 +133,7 @@ function makeScene() {
 // ---------------------------------------------------------------------------
 
 import { WelcomeModal } from './WelcomeModal';
-import * as keyLabels from '../input/keyLabels';
+import * as input from '../input';
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -144,8 +142,7 @@ import * as keyLabels from '../input/keyLabels';
 describe('WelcomeModal', () => {
   beforeEach(() => {
     mockIsTouchPrimary.mockReturnValue(false);
-    vi.mocked(keyLabels.allKeyLabels).mockReturnValue('K');
-    vi.mocked(keyLabels.primaryKeyLabel).mockReturnValue('K');
+    vi.mocked(input.promptLabel).mockReturnValue('K');
   });
 
   afterEach(() => {
@@ -199,21 +196,19 @@ describe('WelcomeModal', () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('uses allKeyLabels / primaryKeyLabel on non-touch devices', () => {
+  it('uses promptLabel on non-touch devices', () => {
     mockIsTouchPrimary.mockReturnValue(false);
     const scene = makeScene();
     new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn());
-    // Both helpers should have been called to build the keyboard-controls block
-    expect(keyLabels.allKeyLabels).toHaveBeenCalled();
-    expect(keyLabels.primaryKeyLabel).toHaveBeenCalled();
+    expect(input.promptLabel).toHaveBeenCalled();
   });
 
-  it('does NOT call allKeyLabels on touch-primary devices (uses TOUCH_CONTROLS constant)', () => {
+  it('does NOT call promptLabel on touch-primary devices (uses TOUCH_CONTROLS constant)', () => {
     mockIsTouchPrimary.mockReturnValue(true);
-    vi.mocked(keyLabels.allKeyLabels).mockClear();
+    vi.mocked(input.promptLabel).mockClear();
     const scene = makeScene();
     new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn());
-    expect(keyLabels.allKeyLabels).not.toHaveBeenCalled();
+    expect(input.promptLabel).not.toHaveBeenCalled();
   });
 
   it('Confirm handler is removed after close so a second fire does not call onComplete again', () => {

@@ -15,6 +15,7 @@ import { CaffeineRingController } from './hud/CaffeineRingController';
 import { AchievementBadgeController } from './hud/AchievementBadgeController';
 import { settingsStore } from '../systems/SettingsStore';
 import { isReducedMotion } from '../systems/MotionPreference';
+import { ObjectiveBanner } from './ObjectiveBanner';
 
 const HUD_HEIGHT = 44;
 
@@ -48,16 +49,29 @@ export class HUD {
   private progressCtrl!: ProgressStripController;
   private caffeineCtrl!: CaffeineRingController;
   private achievementCtrl!: AchievementBadgeController;
+  private objectiveBanner?: ObjectiveBanner;
+  private readonly getObjectiveText: () => string;
+  private readonly isObjectiveHidden: () => boolean;
   private lastAU = 0;
   private lastFloor: FloorId | -1 = -1;
   private sizeClass: SizeClass = 'wide';
   private tokens: LayoutTokens = getLayoutTokens('wide');
   private destroyed = false;
 
-  constructor(scene: Phaser.Scene, progression: ProgressionSystem, playtime?: PlaytimeTracker) {
+  constructor(
+    scene: Phaser.Scene,
+    progression: ProgressionSystem,
+    playtime?: PlaytimeTracker,
+    options?: {
+      getObjectiveText?: () => string;
+      isObjectiveHidden?: () => boolean;
+    },
+  ) {
     this.scene = scene;
     this.progression = progression;
     this.playtime = playtime ?? null;
+    this.getObjectiveText = options?.getObjectiveText ?? (() => '');
+    this.isObjectiveHidden = options?.isObjectiveHidden ?? (() => false);
     const displayW = (scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
     this.sizeClass = getSizeClass(displayW);
     this.tokens = getLayoutTokens(this.sizeClass, settingsStore.read().textScale);
@@ -96,6 +110,11 @@ export class HUD {
     }).setOrigin(0, 0.5);
     this.timerText.setVisible(this._isTimerVisible());
     container.add(this.timerText as unknown as Phaser.GameObjects.GameObject);
+
+    this.objectiveBanner = new ObjectiveBanner(this.scene, {
+      getText: this.getObjectiveText,
+      isModalOpen: this.isObjectiveHidden,
+    });
 
     const lifecycle = createSceneLifecycle(this.scene);
     lifecycle.add(() => this.destroy());
@@ -213,6 +232,7 @@ export class HUD {
 
     this.progressCtrl.update(au, floor, floorChanged, auChanged, this.scene.time.now);
     this.caffeineCtrl.update(this.scene.time.now);
+    this.objectiveBanner?.update();
 
     // Update floor timer.
     if (this.playtime !== null) {

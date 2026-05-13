@@ -1,18 +1,24 @@
-# CI approval policy for Copilot-authored PRs
+# CI policy for this repository
 
-Copilot branches in this repository are in-repo branches, not forks. If Actions is configured to require approval for first-time contributors, workflow runs can get stuck with conclusion `action_required` and required checks never execute.
+## Trigger: `pull_request` (not `pull_request_target`)
 
-## Recommended repository setting
+`ci.yml` uses `on: pull_request`. This means:
 
-In **Settings → Actions → General → Fork pull request workflows from outside collaborators**, set approval policy to:
+- Check runs are posted to the **PR head SHA**, so they appear on the PR Checks tab and can gate merges.
+- Copilot coding-agent PRs open branches inside this repo (not forks), so no approval step is required before the workflow starts.
+- The `auto-approve-bot-ci.yml` workflow was removed; it is no longer needed.
 
-- **Require approval for first-time contributors who are new to GitHub**
+## Required branch-protection checks for `main`
 
-Equivalent API value:
+Configure in **Settings → Branches → `main` → Require status checks to pass**:
 
-- `first_time_contributors_new_to_github`
+| Check name | Notes |
+|---|---|
+| `Lint + typecheck + unit tests` | Always required |
+| `Playwright E2E complete` | Fan-in job; do **not** require individual shard names |
+| `Bundle size budget` | Recommended |
 
-## One-time unblock for already stuck PRs
+Remove any stale per-shard entries (`Playwright E2E (shard 1/4)` … `shard 4/4`) if present.
 
 After changing the setting, trigger a new run on each affected PR by either:
 
@@ -59,6 +65,22 @@ curl -X PATCH \
 curl -X PUT \
   -H "Accept: application/vnd.github+json" \
   -H "Authorization: Bearer <ADMIN_OR_MAINTAINER_TOKEN>" \
-  https://api.github.com/repos/norconsult-digital/architect-elevator-game/actions/permissions/fork-pr-contributor-approval \
-  -d '{"approval_policy":"first_time_contributors_new_to_github"}'
+  https://api.github.com/repos/norconsult-digital/architect-elevator-game/branches/main/protection \
+  -d '{
+    "required_status_checks": {
+      "strict": false,
+      "contexts": [
+        "Lint + typecheck + unit tests",
+        "Playwright E2E complete",
+        "Bundle size budget"
+      ]
+    },
+    "enforce_admins": false,
+    "required_pull_request_reviews": null,
+    "restrictions": null
+  }'
 ```
+
+## If external-fork PRs are ever introduced
+
+Add a separate `pull_request_target` workflow scoped **only** to the approval/labelling step. Keep the build/test jobs in a `pull_request` workflow so check runs still land on the PR head SHA.

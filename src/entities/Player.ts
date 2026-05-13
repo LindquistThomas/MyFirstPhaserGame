@@ -1,9 +1,15 @@
 import * as Phaser from 'phaser';
-import { PLAYER_SPEED, PLAYER_JUMP_VELOCITY } from '../config/gameConfig';
+import {
+  PLAYER_COYOTE_MS,
+  PLAYER_JUMP_BUFFER_MS,
+  PLAYER_SPEED,
+  PLAYER_JUMP_VELOCITY,
+} from '../config/gameConfig';
 import { eventBus } from '../systems/EventBus';
 import { activeContext } from '../input';
 import { CaffeineBuff } from '../systems/CaffeineBuff';
 import { isReducedMotion } from '../systems/MotionPreference';
+import { shouldSkipTween } from '../systems/motionTween';
 
 // Air speed is NOT buffed — see AIR_HORIZONTAL_SPEED shaft-width invariant below.
 export const CAFFEINE_DURATION_MS = 6000;
@@ -91,6 +97,8 @@ export class Player {
    * the idle character into a squat pose.
    */
   private readonly AIRBORNE_ANIM_GRACE_MS = 80;
+  private coyoteTimer = 0;
+  private jumpBufferTimer = 0;
 
   /** Average horizontal pixels traveled per walk-frame to match the sprite stride. */
   private readonly WALK_PX_PER_FRAME = 14;
@@ -115,6 +123,8 @@ export class Player {
     this.sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, this.onAnimationFrame, this);
     this.createDustEmitter();
     this.createCaffeineEmitter();
+    this.scene.events.once('shutdown', this.destroyEmitters, this);
+    this.scene.events.once('destroy', this.destroyEmitters, this);
     this.scene.events.once('shutdown', this.clearTransientTweens, this);
   }
 
@@ -209,6 +219,7 @@ export class Player {
     // frame, so the character would still slide ~170ms and keep the
     // walk animation looping while the dialog is on screen.
     if (activeContext() !== 'gameplay') {
+      this.clearJumpAssistTimers();
       this.sprite.setVelocityX(0);
       this.sprite.setFlipX(!this.facingRight);
       // Bypass the player_land squash gate: if the squash-anim window
@@ -221,6 +232,22 @@ export class Player {
       }
       this.updateAnimation(onGround);
       return;
+    }
+
+    const jumpPressed = this.scene.inputs.justPressed('Jump');
+    if (this.flipEnabled) {
+      if (onGround) {
+        this.coyoteTimer = PLAYER_COYOTE_MS;
+      } else {
+        this.coyoteTimer = Math.max(0, this.coyoteTimer - _delta);
+      }
+      if (jumpPressed && !onGround) {
+        this.jumpBufferTimer = PLAYER_JUMP_BUFFER_MS;
+      } else {
+        this.jumpBufferTimer = Math.max(0, this.jumpBufferTimer - _delta);
+      }
+    } else {
+      this.clearJumpAssistTimers();
     }
 
     // FSM-driven update: dispatch on current state.
@@ -272,7 +299,9 @@ export class Player {
         this.sprite.setFlipX(!this.facingRight);
 
         // Jump → apply an upward impulse; gravity does the rest.
-        if (this.scene.inputs.justPressed('Jump') && onGround && this.flipEnabled) {
+        const shouldUseJumpInput = jumpPressed && (onGround || this.coyoteTimer > 0);
+        const shouldUseBufferedJump = onGround && this.jumpBufferTimer > 0;
+        if (this.flipEnabled && (shouldUseJumpInput || shouldUseBufferedJump)) {
           this.startJump();
         }
 
@@ -363,6 +392,7 @@ export class Player {
    * used `setPosition` and teleported through collisions.
    */
   private startJump(): void {
+    this.clearJumpAssistTimers();
     this.playerState = 'flipping';
     this.airborneSince = this.scene.time.now;
     const jumpV = this.isCaffeinated()
@@ -393,7 +423,7 @@ export class Player {
     this.playerState = 'landing';
     this.currentAnim = 'land';
     this.sprite.anims.play('player_land', true);
-    if (!isReducedMotion()) {
+    if (!shouldSkipTween()) {
       this.scene.tweens.add({
         targets: this.sprite,
         scaleY: { from: 0.92, to: 1 },
@@ -484,6 +514,17 @@ export class Player {
     this.caffeineSteam.setDepth(9);
   }
 
+  private destroyEmitters(): void {
+    if (this.dustEmitter && 'destroy' in this.dustEmitter && typeof this.dustEmitter.destroy === 'function') {
+      this.dustEmitter.destroy();
+    }
+    this.dustEmitter = undefined;
+    if (this.caffeineSteam && 'destroy' in this.caffeineSteam && typeof this.caffeineSteam.destroy === 'function') {
+      this.caffeineSteam.destroy();
+    }
+    this.caffeineSteam = undefined;
+  }
+
   private tickCaffeine(): void {
     const now = this.scene.time.now;
     if (this.caffeine.isActive(now)) {
@@ -537,6 +578,7 @@ export class Player {
     this.invulnerableUntil = now + durationMs;
     this.hitStunUntil = now + 220;
     this.playerState = 'hitStun';
+    this.clearJumpAssistTimers();
     // Reset so that landing detection after the stun only measures airborne
     // time from when the player regained control, not from before the hit.
     this.airborneSince = null;
@@ -547,7 +589,7 @@ export class Player {
 
     this.clearHitFlashTween();
     this.sprite.setAlpha(1);
-    if (!isReducedMotion()) {
+    if (!shouldSkipTween()) {
       this.hitFlashTween = this.scene.tweens.add({
         targets: this.sprite,
         alpha: { from: 1, to: 0.3 },
@@ -582,8 +624,11 @@ export class Player {
   destroy(): void {
     if ('off' in this.scene.events) {
       this.scene.events.off('shutdown', this.clearTransientTweens, this);
+      this.scene.events.off('shutdown', this.destroyEmitters, this);
+      this.scene.events.off('destroy', this.destroyEmitters, this);
     }
     this.clearTransientTweens();
+    this.destroyEmitters();
     this.sprite.destroy();
   }
 
@@ -594,5 +639,10 @@ export class Player {
   private clearHitFlashTween(): void {
     this.hitFlashTween?.stop();
     this.hitFlashTween = undefined;
+  }
+
+  private clearJumpAssistTimers(): void {
+    this.coyoteTimer = 0;
+    this.jumpBufferTimer = 0;
   }
 }

@@ -2,6 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createFakeScene, type FakeScene, type FakeSprite } from '../../tests/helpers/phaserMock';
 import type * as Phaser from 'phaser';
 import { eventBus } from '../systems/EventBus';
+import {
+  PLAYER_COYOTE_MS,
+  PLAYER_JUMP_BUFFER_MS,
+  PLAYER_JUMP_VELOCITY,
+} from '../config/gameConfig';
 
 vi.mock('phaser', () => {
   class Sprite {}
@@ -114,6 +119,68 @@ describe('Player', () => {
     player.update(16.67);
 
     expect(player.getIsFlipping()).toBe(true);
+  });
+
+  it('allows jump during coyote window after leaving ground', () => {
+    const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    player.update(16.67);
+
+    setVelocityY.mockClear();
+    sprite.body.blocked.down = false;
+    sprite.body.touching.down = false;
+    scene.inputs.justPressed = () => true;
+
+    player.update(PLAYER_COYOTE_MS - 1);
+
+    expect(setVelocityY).toHaveBeenCalledWith(PLAYER_JUMP_VELOCITY);
+  });
+
+  it('fires buffered jump on landing when jump was pressed shortly before touch-down', () => {
+    const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    player.update(16.67);
+
+    sprite.body.blocked.down = false;
+    sprite.body.touching.down = false;
+    scene.inputs.justPressed = () => true;
+    player.update(PLAYER_JUMP_BUFFER_MS - 1);
+
+    setVelocityY.mockClear();
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    sprite.body.touching.down = true;
+    player.update(16.67);
+
+    expect(setVelocityY).toHaveBeenCalledWith(PLAYER_JUMP_VELOCITY);
+  });
+
+  it('does not double-fire jump when coyote and buffer overlap', () => {
+    const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    player.update(16.67);
+
+    setVelocityY.mockClear();
+    sprite.body.blocked.down = false;
+    sprite.body.touching.down = false;
+    scene.inputs.justPressed = () => true;
+    player.update(16.67);
+
+    expect(setVelocityY).toHaveBeenCalledTimes(1);
+
+    scene.inputs.justPressed = () => false;
+    sprite.body.blocked.down = true;
+    sprite.body.touching.down = true;
+    sprite.body.velocity.y = 200;
+    player.update(16.67);
+
+    expect(setVelocityY).toHaveBeenCalledTimes(1);
   });
 
   it('takeHit applies knockback velocity and sets invulnerability', () => {
@@ -254,6 +321,24 @@ describe('Player', () => {
       scene.advanceTime(120);
       scene.runDelayedCalls();
       expect(player.getPlayerState()).toBe('grounded');
+    });
+
+    it('skips landing squash tween when reduced motion is enabled', () => {
+      const reducedMotionSpy = vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+      const tweenAdd = scene.tweens.add as ReturnType<typeof vi.fn>;
+
+      sprite.body.blocked.down = false;
+      sprite.body.touching.down = false;
+      player.update(16.67);
+      scene.advanceTime(120);
+      player.update(16.67);
+
+      tweenAdd.mockClear();
+      sprite.body.blocked.down = true;
+      player.update(16.67);
+
+      expect(tweenAdd).not.toHaveBeenCalled();
+      reducedMotionSpy.mockRestore();
     });
 
     it('grounded → flipping on jump input', () => {

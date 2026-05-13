@@ -36,3 +36,21 @@ export function generateLinkClickSound(): ArrayBuffer {
 
   return encodeWAV(samples, SAMPLE_RATE);
 }
+
+/** Friendly two-note bleep for NPC interaction. */
+export function generateNpcGreetSound(): ArrayBuffer {
+  const duration = 0.16;
+  const numSamples = Math.floor(SAMPLE_RATE * duration);
+  const samples = new Float32Array(numSamples);
+
+  let phase = 0;
+  for (let i = 0; i < numSamples; i++) {
+    const progress = numSamples > 1 ? i / (numSamples - 1) : 1;
+    const freq = progress < 0.5 ? 440 : 660;
+    phase += (2 * Math.PI * freq) / SAMPLE_RATE;
+    const envelope = Math.sin(Math.PI * progress);
+    samples[i] = Math.sin(phase) * envelope * 0.16;
+  }
+
+  return encodeWAV(samples, SAMPLE_RATE);
+}
