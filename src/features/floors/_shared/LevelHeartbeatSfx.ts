@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { GAME_HEIGHT, GAME_WIDTH } from '../../../config/gameConfig';
 import type { FloorId } from '../../../config/gameConfig';
 import type { FloorHitState } from '../../../systems/FloorHitState';
 import type { ProgressionSystem } from '../../../systems/ProgressionSystem';
@@ -30,13 +31,11 @@ export class LevelHeartbeatSfx {
       .setScrollFactor(0)
       .setVisible(false);
 
-    const w = this.deps.scene.scale.width;
-    const h = this.deps.scene.scale.height;
     g.fillStyle(VIGNETTE_COLOR, VIGNETTE_ALPHA);
-    g.fillRect(0, 0, w, VIGNETTE_BAND_WIDTH);
-    g.fillRect(0, h - VIGNETTE_BAND_WIDTH, w, VIGNETTE_BAND_WIDTH);
-    g.fillRect(0, 0, VIGNETTE_BAND_WIDTH, h);
-    g.fillRect(w - VIGNETTE_BAND_WIDTH, 0, VIGNETTE_BAND_WIDTH, h);
+    g.fillRect(0, 0, GAME_WIDTH, VIGNETTE_BAND_WIDTH);
+    g.fillRect(0, GAME_HEIGHT - VIGNETTE_BAND_WIDTH, GAME_WIDTH, VIGNETTE_BAND_WIDTH);
+    g.fillRect(0, 0, VIGNETTE_BAND_WIDTH, GAME_HEIGHT);
+    g.fillRect(GAME_WIDTH - VIGNETTE_BAND_WIDTH, 0, VIGNETTE_BAND_WIDTH, GAME_HEIGHT);
 
     this.dangerVignette = g;
   }

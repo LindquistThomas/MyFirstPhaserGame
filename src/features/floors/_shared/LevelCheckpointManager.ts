@@ -62,8 +62,8 @@ export class LevelCheckpointManager {
     return { x: checkpoint.x, y: checkpoint.y };
   }
 
-  resolveRespawnTarget(playerStart: { x: number; y: number }): { x: number; y: number } {
-    return this.deps.floorHazard.getCheckpointPos() ?? playerStart;
+  resolveRespawnTarget(defaultRespawn: { x: number; y: number }): { x: number; y: number } {
+    return this.deps.floorHazard.getCheckpointPos() ?? defaultRespawn;
   }
 
   update(): void {

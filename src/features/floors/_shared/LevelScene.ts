@@ -269,7 +269,8 @@ export class LevelScene extends Phaser.Scene {
     const hint = getCoachHint(this.floorId, firstVisit, settingsStore.read().hideTutorials);
     if (hint) {
       this.time.delayedCall(COACH_HINT_DELAY_MS, () => {
-        this.hudBindings?.showToast(hint, COACH_HINT_DURATION_MS);
+        if (!this.hudBindings) return;
+        this.hudBindings.showToast(hint, COACH_HINT_DURATION_MS);
       });
     }
 
