@@ -60,10 +60,12 @@ vi.mock('phaser', () => {
       Scene,
       Geom: { Rectangle },
       Input: { Keyboard: { KeyCodes: { X: 88 } } },
+      GameObjects: { Container: class {} },
     },
     Scene,
     Geom: { Rectangle },
     Input: { Keyboard: { KeyCodes: { X: 88 } } },
+    GameObjects: { Container: class {} },
   };
 });
 

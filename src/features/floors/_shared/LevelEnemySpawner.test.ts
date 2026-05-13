@@ -83,6 +83,8 @@ import { DroppedAU } from '../../../entities/DroppedAU';
 import { ProgressionSystem, type SaveAdapter } from '../../../systems/ProgressionSystem';
 import type { SaveData } from '../../../systems/SaveManager';
 import type { WorldModifiers } from '../../../systems/WorldModifiers';
+import { eventBus } from '../../../systems/EventBus';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -95,12 +97,34 @@ function makeSaveAdapter(): SaveAdapter {
   };
 }
 
-function makeHarness(cameraWorldView?: { left: number; right: number; top: number; bottom: number }) {
+interface HarnessOptions {
+  cameraWorldView?: { left: number; right: number; top: number; bottom: number };
+  worldModifiers?: WorldModifiers;
+}
+
+function defaultWorldModifiers(): WorldModifiers {
+  return {
+    enemySpeedMultiplier: 1,
+    enemyContactDamageMultiplier: 1,
+    bossHpMultiplier: 1,
+    hardQuizOnly: false,
+  };
+}
+
+function makeHarness(opts: HarnessOptions | { left: number; right: number; top: number; bottom: number } = {}) {
+  const isViewLiteral = (
+    o: unknown,
+  ): o is { left: number; right: number; top: number; bottom: number } =>
+    typeof o === 'object' && o !== null && 'left' in (o as object) && 'right' in (o as object);
+  const options: HarnessOptions = isViewLiteral(opts)
+    ? { cameraWorldView: opts }
+    : (opts as HarnessOptions);
+  const worldModifiers = options.worldModifiers ?? defaultWorldModifiers();
   const overlapCallbacks: Array<(player: unknown, enemy: unknown) => void> = [];
   const colliderArgs: unknown[][] = [];
   const progression = new ProgressionSystem(makeSaveAdapter());
 
-  const worldView = cameraWorldView ?? { left: 0, right: 800, top: 0, bottom: 600 };
+  const worldView = options.cameraWorldView ?? { left: 0, right: 800, top: 0, bottom: 600 };
 
   const scene = {
     physics: {
@@ -338,10 +362,12 @@ describe('LevelEnemySpawner — minX/maxX defaults', () => {
 
   it('applies enemy speed multiplier from world modifiers', () => {
     const { spawner } = makeHarness({
-      enemySpeedMultiplier: 1.25,
-      enemyContactDamageMultiplier: 1,
-      bossHpMultiplier: 1,
-      hardQuizOnly: false,
+      worldModifiers: {
+        enemySpeedMultiplier: 1.25,
+        enemyContactDamageMultiplier: 1,
+        bossHpMultiplier: 1,
+        hardQuizOnly: false,
+      },
     });
     spawner.spawn(makeConfig([enemyEntry('slime', 500, 800, { speed: 80 })]));
     expect((lastCreated.opts as { speed: number }).speed).toBe(100);
@@ -349,10 +375,12 @@ describe('LevelEnemySpawner — minX/maxX defaults', () => {
 
   it('applies enemy contact-damage multiplier from world modifiers', () => {
     const { spawner } = makeHarness({
-      enemySpeedMultiplier: 1,
-      enemyContactDamageMultiplier: 1.5,
-      bossHpMultiplier: 1,
-      hardQuizOnly: false,
+      worldModifiers: {
+        enemySpeedMultiplier: 1,
+        enemyContactDamageMultiplier: 1.5,
+        bossHpMultiplier: 1,
+        hardQuizOnly: false,
+      },
     });
     spawner.spawn(makeConfig([enemyEntry('slime')]));
     expect(spawner.enemies[0]?.hitCost).toBe(2);

@@ -8,6 +8,7 @@ import { GameStateManager } from '../../systems/GameStateManager';
 import { formatPlaytime } from '../../ui/HUD';
 import { LEVEL_DATA } from '../../config/levelData';
 import { ControlsReferenceModal } from '../../ui/ControlsReferenceModal';
+import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 
 const PANEL_WIDTH = 360;
 const PANEL_HEIGHT = 520;
@@ -32,6 +33,8 @@ export class PauseScene extends Phaser.Scene {
   private gameState!: GameStateManager;
   /** When true, immediately open the Controls modal after create(). */
   private showControlsOnCreate = false;
+  /** Keyboard navigator wrapping the panel buttons. */
+  private menuNavigator?: ButtonListNavigator;
 
   constructor() {
     super({ key: 'PauseScene' });

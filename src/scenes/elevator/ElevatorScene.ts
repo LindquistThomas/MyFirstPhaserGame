@@ -10,6 +10,7 @@ import { WelcomeModal } from '../../ui/WelcomeModal';
 import { ControlHintsOverlay } from '../../ui/ControlHintsOverlay';
 import { ProgressionSystem } from '../../systems/ProgressionSystem';
 import { GameStateManager } from '../../systems/GameStateManager';
+import { getWorldModifiers } from '../../systems/WorldModifiers';
 import { DialogController } from '../../ui/DialogController';
 import { ZoneManager } from '../../systems/ZoneManager';
 import { ElevatorZones, ELEVATOR_INFO_ID, WELCOME_BOARD_ID, GEIR_F4_ID, SOFA_SIT_ID } from './ElevatorZones';

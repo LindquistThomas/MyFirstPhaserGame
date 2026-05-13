@@ -3,15 +3,17 @@ import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS, FloorId } from '../../../co
 import { LEVEL_DATA, FloorData } from '../../../config/levelData';
 import { Player } from '../../../entities/Player';
 import { Enemy } from '../../../entities/Enemy';
-import { HUD } from '../../../ui/HUD';
+import { formatPlaytime } from '../../../ui/HUD';
 import { DialogController } from '../../../ui/DialogController';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
-import { FloorHitState } from '../../../systems/FloorHitState';
+import { getWorldModifiers, type WorldModifiers } from '../../../systems/WorldModifiers';
 import { actionPrompt } from '../../../input';
 import type { GameAction } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 import { MovingPlatform } from '../../../entities/MovingPlatform';
+import { LevelDecorationsManager } from './LevelDecorationsManager';
+import { LevelExitManager } from './LevelExitManager';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
@@ -53,95 +55,6 @@ const FLOOR_PATTERNS: Partial<Record<FloorId, FloorPatternId>> = {
   [FLOORS.EXECUTIVE]: 'terrazzo',
   [FLOORS.PRODUCTS]: 'dots',
 };
-
-export interface RoomElevator {
-  x: number;
-  minY: number;
-  maxY: number;
-  startY: number;
-}
-
-export interface LevelConfig {
-  floorId: FloorId;
-  /** Persistent objective shown in HUD while this scene is active. */
-  objective?: string;
-  platforms: Array<{ x: number; y: number; width: number }>;
-  /**
-   * Thin catwalks / walkways.
-   *
-   * Unlike `platforms` (which use the 128×128 floor tile as both visual
-   * and physics body — great for the ground, terrible for mezzanines
-   * because the tile body extends 128 px downward and crushes the
-   * headroom beneath), catwalks are a ~20 px thin rectangle with a
-   * matching graphic on top. Use these for any floating walkway.
-   *
-   * `x`, `y` = top-left of the walking surface (same semantics as
-   * `platforms.y` — the top of the slab, not its centre). `width` is in
-   * pixels. `thickness` defaults to 20.
-   */
-  catwalks?: Array<{ x: number; y: number; width: number; thickness?: number }>;
-  /**
-   * Floating platforms that move along a single axis. Unlike catwalks
-   * (static) and room elevators (player-driven), these travel under their
-   * own steam, ferrying the player between tiers. See {@link MovingPlatform}
-   * for the semantics of each mode — `bounce` = velocity bouncer,
-   * `tween` = smoothed ease-in-out path.
-   */
-  movingPlatforms?: MovingPlatformConfig[];
-  /**
-   * Tokens in the room. `index` overrides the default array-position
-   * index used to key into the ProgressionSystem's collected-tokens
-   * state. Useful when two scenes share the same floorId and need
-   * disjoint token-index ranges.
-   */
-  tokens: Array<{ x: number; y: number; index?: number }>;
-  exitPosition: { x: number; y: number };
-  playerStart: { x: number; y: number };
-  /** Small in-room elevators connecting platform tiers. */
-  roomElevators: RoomElevator[];
-  /**
-   * Info zones placed in the level.
-   * Each zone shows its icon and allows its dialog to open only when the
-   * player is within the zone shape. Default: 120 px circle.
-   *
-   * Prefer `zone` for precise anchor-sized regions (e.g. a signpost or
-   * monitoring wall). `zoneRadius` is kept for simple back-compat.
-   */
-  infoPoints?: Array<{
-    x: number;
-    y: number;
-    contentId: string;
-    zoneRadius?: number;
-    zone?:
-      | { shape: 'circle'; radius: number }
-      | { shape: 'rect'; width: number; height: number; offsetY?: number };
-  }>;
-  /**
-   * Enemies placed in the level. Each entry is spawned in `createEnemies()`.
-   * Enemies are scene-local: they have no persistence, respawn on scene re-entry.
-   * `minX` / `maxX` default to ±radius around `x`.
-   */
-  enemies?: Array<{
-    type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist';
-    x: number;
-    y: number;
-    minX?: number;
-    maxX?: number;
-    speed?: number;
-  }>;
-  /** Friendly NPCs that patrol locally and ask architecture questions on interaction. */
-  npcs?: NpcConfig[];
-  /** Consumable — not persisted, respawns every scene entry. */
-  coffees?: Array<{ x: number; y: number }>;
-  /** Energy drink fridges — interact to open for a long caffeine buff; not persisted. */
-  fridges?: Array<{ x: number; y: number }>;
-  /**
-   * Checkpoint positions for mid-floor respawn.
-   * Player activating a checkpoint records it as the preferred respawn origin.
-   * Placed by the floor scene's `getLevelConfig()` override.
-   */
-  checkpoints?: Array<{ x: number; y: number; id: string }>;
-}
 
 /**
  * Composition root for single-screen floor scenes.
@@ -199,7 +112,6 @@ export class LevelScene extends Phaser.Scene {
   private wasDialogOpen = false;
   /** Immutable per-scene level config (daily overrides resolved once in create()). */
   private resolvedLevelConfig?: LevelConfig;
-  private checkpoints?: LevelCheckpointManager;
   private shadowController?: LevelShadowController;
   private heartbeatSfx?: LevelHeartbeatSfx;
   private hudBindings?: LevelHUDBindings;
@@ -294,25 +206,37 @@ export class LevelScene extends Phaser.Scene {
     this.createMovingPlatforms();
     this.createDecorations();
     this.createExit();
-    this.checkpoints = new LevelCheckpointManager({
-      scene: this,
-      floorId: this.floorId,
-      progression: this.progression,
-      floorHazard: this.floorHazard,
-    });
-    this.createPlayer();
-    this.createUI();
-
-    // Checkpoint manager — owns hit tracking, checkpoints, respawn, danger state.
+    // Checkpoint manager — owns hit tracking, checkpoints, respawn.
+    // Constructed before createPlayer() so the player-spawn helper can read
+    // the active checkpoint position via floorHazard.
     this.checkpointMgr = new LevelCheckpointManager({
       scene: this,
-      player: this.player,
+      player: undefined as unknown as Player, // patched below after createPlayer
       floorId: this.floorId,
       progression: this.progression,
       getIsTransitioning: () => this.isTransitioning,
       getPlayerStart: () => this.getResolvedLevelConfig().playerStart,
     });
-    this.checkpointMgr.createDangerVignette();
+    this.createPlayer();
+    // Patch player ref now that it exists. Avoids a circular dep with createPlayer().
+    (this.checkpointMgr as unknown as { deps: { player: Player } }).deps.player = this.player;
+    this.createUI();
+
+    // Heartbeat SFX + danger vignette — replaces the legacy in-checkpoint vignette.
+    this.heartbeatSfx = new LevelHeartbeatSfx({
+      scene: this,
+      floorId: this.floorId,
+      progression: this.progression,
+      floorHazard: this.checkpointMgr.floorHazard,
+    });
+    this.heartbeatSfx.init();
+
+    // Player + enemy soft shadows.
+    this.shadowController = new LevelShadowController({
+      scene: this,
+      player: this.player,
+      getEnemies: () => this.enemySpawner?.enemies ?? [],
+    });
 
     // Now that the player exists, instantiate the content managers.
     this.tokenMgr = new LevelTokenManager({
@@ -368,6 +292,7 @@ export class LevelScene extends Phaser.Scene {
     this.npcMgr.spawn(cfg);
     this.zones.create(cfg);
     this.checkpointMgr.spawn(cfg);
+    this.shadowController?.init();
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
     this.tokenMgr.wireColliders();
@@ -432,7 +357,6 @@ export class LevelScene extends Phaser.Scene {
       this.hudBindings?.shutdown();
       this.shadowController?.shutdown();
       this.heartbeatSfx?.shutdown();
-      this.checkpoints?.shutdown();
       this.freeOwnedTextures();
     });
   }
@@ -576,7 +500,8 @@ export class LevelScene extends Phaser.Scene {
   /* ---- player ---- */
   protected createPlayer(): void {
     const c = this.getResolvedLevelConfig();
-    const spawn = this.checkpoints?.resolveEntrySpawn(c) ?? c.playerStart;
+    const cp = this.checkpointMgr?.floorHazard.getCheckpointPos();
+    const spawn = cp ?? c.playerStart;
     this.player = new Player(this, spawn.x, spawn.y);
     this.player.sprite.setCollideWorldBounds(true);
 
@@ -686,7 +611,7 @@ export class LevelScene extends Phaser.Scene {
     if (this.dialogs.isOpen) {
       for (const mp of this.movingPlatforms) mp.pause();
       this.player.update(delta);
-      this.hud.update();
+      this.hudBindings?.update();
       this.decorationsMgr.updateAtmosphericFx(this.player, this.enemySpawner.enemies);
       return;
     }
@@ -706,7 +631,6 @@ export class LevelScene extends Phaser.Scene {
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     this.zones.update();
-    this.checkpoints?.update();
 
     // Fridge proximity + interact (runs after zones so Interact isn't
     // double-consumed by an info-dialog open on the same frame).
@@ -760,7 +684,7 @@ export class LevelScene extends Phaser.Scene {
     if (this.floorId !== FLOORS.LOBBY) {
       const floorBest = this.gameState.playtime.recordFloorBest(this.floorId);
       if (floorBest.isNewBest && floorBest.runMs !== null) {
-        this.hud.showToast(`⏱ New best for ${this.floorData.name}: ${formatPlaytime(floorBest.runMs)}`);
+        this.hudBindings?.showToast(`⏱ New best for ${this.floorData.name}: ${formatPlaytime(floorBest.runMs)}`);
       }
     }
     // When the player first leaves the lobby, start the run timer (no-op if
@@ -794,10 +718,7 @@ export class LevelScene extends Phaser.Scene {
 
   /** Called by `LevelEnemySpawner` after every successful player hit. */
   private onPlayerHit(): void {
-    const shouldRespawn = this.floorHazard.recordHit();
-    if (shouldRespawn) {
-      this.triggerRespawn();
-    }
+    this.checkpointMgr.onPlayerHit();
   }
 
   /**
