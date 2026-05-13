@@ -53,10 +53,9 @@ export class LevelHeartbeatSfx {
         this.heartbeatElapsed = 0;
         eventBus.emit('sfx:heartbeat');
       }
-      return;
+    } else {
+      this.heartbeatElapsed = 0;
     }
-
-    this.heartbeatElapsed = 0;
   }
 
   reset(): void {
