@@ -11,12 +11,12 @@ import { FloorHitState } from '../../../systems/FloorHitState';
 import { actionPrompt } from '../../../input';
 import type { GameAction } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
-import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPlatform';
+import { MovingPlatform } from '../../../entities/MovingPlatform';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
 import { LevelFridgeManager } from './LevelFridgeManager';
-import { LevelNpcManager, type NpcConfig } from './LevelNpcManager';
+import { LevelNpcManager } from './LevelNpcManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { LevelRoomElevators } from './LevelRoomElevators';
 import { createLevelDialogs } from './LevelDialogBindings';
@@ -33,17 +33,19 @@ import { applyDailyChallengeLayout } from './dailyChallengeLayout';
 import { getDailyState } from '../../../systems/DailyChallenge';
 import { hasCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
 import { PERSISTENT_TEXTURE_KEYS, clearSceneOwnedTextureKeys, getSceneOwnedTextureKeys } from '../../../systems/SpriteGenerator';
+import { LevelCheckpointManager } from './LevelCheckpointManager';
+import { LevelShadowController } from './LevelShadowController';
+import { LevelHeartbeatSfx } from './LevelHeartbeatSfx';
+import { LevelHUDBindings } from './LevelHUDBindings';
+import type { LevelConfig } from './LevelConfig';
+
+export type { LevelConfig, RoomElevator } from './LevelConfig';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
 /** How long (ms) the first-visit coaching toast stays visible. */
 const COACH_HINT_DURATION_MS = 6_000;
 
-/**
- * Decorative background pattern assignment per floor. Each motif echoes
- * the floor's identity without clashing with decor (see `floorPatterns.ts`).
- * Floors not listed fall back to the quiet default grid.
- */
 const FLOOR_PATTERNS: Partial<Record<FloorId, FloorPatternId>> = {
   [FLOORS.LOBBY]: 'grid',
   [FLOORS.PLATFORM_TEAM]: 'blueprint',
@@ -155,7 +157,6 @@ export interface LevelConfig {
  */
 export class LevelScene extends Phaser.Scene {
   protected player!: Player;
-  protected hud!: HUD;
   protected gameState!: GameStateManager;
   protected progression!: ProgressionSystem;
   protected worldModifiers!: WorldModifiers;
@@ -198,6 +199,10 @@ export class LevelScene extends Phaser.Scene {
   private wasDialogOpen = false;
   /** Immutable per-scene level config (daily overrides resolved once in create()). */
   private resolvedLevelConfig?: LevelConfig;
+  private checkpoints?: LevelCheckpointManager;
+  private shadowController?: LevelShadowController;
+  private heartbeatSfx?: LevelHeartbeatSfx;
+  private hudBindings?: LevelHUDBindings;
 
   private freeOwnedTextures(): void {
     const ownedKeys = getSceneOwnedTextureKeys(this);
@@ -289,6 +294,12 @@ export class LevelScene extends Phaser.Scene {
     this.createMovingPlatforms();
     this.createDecorations();
     this.createExit();
+    this.checkpoints = new LevelCheckpointManager({
+      scene: this,
+      floorId: this.floorId,
+      progression: this.progression,
+      floorHazard: this.floorHazard,
+    });
     this.createPlayer();
     this.createUI();
 
@@ -397,7 +408,8 @@ export class LevelScene extends Phaser.Scene {
     const hint = getCoachHint(this.floorId, firstVisit, settingsStore.read().hideTutorials);
     if (hint) {
       this.time.delayedCall(COACH_HINT_DELAY_MS, () => {
-        this.hud.showToast(hint, COACH_HINT_DURATION_MS);
+        if (!this.hudBindings) return;
+        this.hudBindings.showToast(hint, COACH_HINT_DURATION_MS);
       });
     }
 
@@ -417,6 +429,10 @@ export class LevelScene extends Phaser.Scene {
     lc.add(() => {
       tracker.pause();
       tracker.flush();
+      this.hudBindings?.shutdown();
+      this.shadowController?.shutdown();
+      this.heartbeatSfx?.shutdown();
+      this.checkpoints?.shutdown();
       this.freeOwnedTextures();
     });
   }
@@ -560,7 +576,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- player ---- */
   protected createPlayer(): void {
     const c = this.getResolvedLevelConfig();
-    const spawn = this.resolveEntrySpawn(c);
+    const spawn = this.checkpoints?.resolveEntrySpawn(c) ?? c.playerStart;
     this.player = new Player(this, spawn.x, spawn.y);
     this.player.sprite.setCollideWorldBounds(true);
 
@@ -571,25 +587,16 @@ export class LevelScene extends Phaser.Scene {
     }).setDepth(20).setVisible(false);
   }
 
-  protected resolveEntrySpawn(cfg: LevelConfig): { x: number; y: number } {
-    const latestCheckpointId = this.progression.getLatestActivatedCheckpointId(this.floorId);
-    if (!latestCheckpointId) return cfg.playerStart;
-    const checkpoint = cfg.checkpoints?.find((cp) => cp.id === latestCheckpointId);
-    if (!checkpoint) {
-      // Config changed and the persisted checkpoint no longer exists. Clear stale
-      // ids so future entries keep using the canonical playerStart.
-      this.progression.clearActivatedCheckpoints(this.floorId);
-      return cfg.playerStart;
-    }
-    return { x: checkpoint.x, y: checkpoint.y };
-  }
-
   /* ---- UI ---- */
   protected createUI(): void {
-    this.hud = new HUD(this, this.progression, this.gameState.playtime, {
+    this.hudBindings = new LevelHUDBindings({
+      scene: this,
+      progression: this.progression,
+      playtime: this.gameState.playtime,
       getObjectiveText: () => this.getLevelConfig().objective ?? '',
       isObjectiveHidden: () => this.dialogs?.isOpen ?? false,
     });
+    this.hudBindings.init();
     this.callElevatorButton = new CallElevatorButton(this, () => this.returnToElevator());
   }
 
@@ -686,19 +693,20 @@ export class LevelScene extends Phaser.Scene {
     for (const mp of this.movingPlatforms) mp.resume();
 
     this.player.update(delta);
-    this.hud.update();
+    this.hudBindings?.update();
     this.roomElevators.update();
     for (const mp of this.movingPlatforms) mp.update();
     this.enemySpawner.update(_time, delta);
     const npcPromptVisible = this.npcMgr.update(_time, delta);
-    this.updateAtmosphericFx();
-    this.updateDangerState(delta);
+    this.shadowController?.update();
+    this.heartbeatSfx?.update(delta);
 
     // Call playtime tracker update (throttled persist).
     this.gameState.playtime.update();
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     this.zones.update();
+    this.checkpoints?.update();
 
     // Fridge proximity + interact (runs after zones so Interact isn't
     // double-consumed by an info-dialog open on the same frame).
@@ -780,33 +788,6 @@ export class LevelScene extends Phaser.Scene {
 
   protected formatPromptAction(action: GameAction): string {
     return actionPrompt(action);
-  }
-
-  /* ---- checkpoints ---- */
-
-  private spawnCheckpoints(cfg: LevelConfig): void {
-    if (!cfg.checkpoints?.length) return;
-    const activated = new Set(this.progression.getActivatedCheckpointIds(this.floorId));
-    const latestActivatedId = this.progression.getLatestActivatedCheckpointId(this.floorId);
-    for (const cp of cfg.checkpoints) {
-      const isActivated = activated.has(cp.id);
-      const checkpoint = new Checkpoint(
-        this,
-        cp.x,
-        cp.y,
-        cp.id,
-        () => {
-          this.floorHazard.registerCheckpoint(cp.x, cp.y);
-          this.progression.activateCheckpoint(this.floorId, cp.id);
-          eventBus.emit('checkpoint:activate', cp.id);
-        },
-        isActivated,
-      );
-      if (cp.id === latestActivatedId) {
-        this.floorHazard.registerCheckpoint(cp.x, cp.y);
-      }
-      checkpoint.wireOverlap(this.physics, this.player.sprite);
-    }
   }
 
   /* ---- hit counter / respawn ---- */
