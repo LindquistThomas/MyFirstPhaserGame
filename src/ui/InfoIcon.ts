@@ -174,7 +174,7 @@ export class InfoIcon {
     this.hintAction = hintAction;
     initInputModeTracking();
     eventBus.on('input:mode-changed', this.inputModeChangedHandler);
-    this.scene.events.once('shutdown', () => this.destroy());
+    this.scene.events?.once?.('shutdown', () => this.destroy());
 
     ensureTextures(scene);
 
