@@ -77,6 +77,10 @@ vi.mock('../../systems/SoundGenerator', () => ({
   ],
 }));
 
+vi.mock('../../ui/ControlsReferenceModal', () => ({
+  ControlsReferenceModal: vi.fn(),
+}));
+
 import { SCENE_MUSIC, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { MenuScene } from './MenuScene';
 import * as MotionPreference from '../../systems/MotionPreference';

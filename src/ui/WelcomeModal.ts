@@ -3,7 +3,7 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { theme } from '../style/theme';
 import { ModalBase } from './ModalBase';
 import { isTouchPrimary } from './touchPrimary';
-import { allKeyLabels, primaryKeyLabel } from '../input/keyLabels';
+import { promptLabel } from '../input';
 
 /** Virtual-pad label for each control row shown on touch-primary devices. */
 const TOUCH_CONTROLS = [
@@ -86,11 +86,11 @@ export class WelcomeModal extends ModalBase {
     const controlsRows = isTouchPrimary()
       ? [...TOUCH_CONTROLS]
       : [
-          `  MOVE       ${allKeyLabels('MoveLeft', ' ')} / ${allKeyLabels('MoveRight', ' ')}`,
-          `  JUMP       ${primaryKeyLabel('Jump')}`,
-          `  INFO PANEL ${allKeyLabels('ToggleInfo', ' / ')}`,
-          `  INTERACT   ${allKeyLabels('Interact', ' / ')}`,
-          `  PAUSE      ${allKeyLabels('Pause', ' / ')}`,
+          `  MOVE       ${promptLabel('MoveLeft')} / ${promptLabel('MoveRight')}`,
+          `  JUMP       ${promptLabel('Jump')}`,
+          `  INFO PANEL ${promptLabel('ToggleInfo')}`,
+          `  INTERACT   ${promptLabel('Interact')}`,
+          `  PAUSE      ${promptLabel('Pause')}`,
           '  MUTE       M',
         ];
     const bodyLines = [

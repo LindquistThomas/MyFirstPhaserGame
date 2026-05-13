@@ -45,6 +45,8 @@ describe('SettingsStore', () => {
       expect(s.sfxVolume).toBe(90);
       expect(s.muteAll).toBe(false);
       expect(s.musicStyle).toBe('8bit-chiptune');
+      expect(s.llmProvider).toBe('none');
+      expect(s.llmApiKey).toBe('');
     });
 
     it('defaultSettings() returns independent objects each call', () => {
@@ -75,10 +77,13 @@ describe('SettingsStore', () => {
         controlBindings: {},
         onScreenControls: 'always',
         hideTutorials: true,
+        showObjectiveBanner: false,
         highContrast: true,
         hapticsEnabled: false,
         colorBlindMode: 'deuteranopia',
         textScale: 1.3,
+        llmProvider: 'openai',
+        llmApiKey: 'sk-local-test',
         analyticsConsent: true,
       }));
       // Force cache-miss by re-pointing at the same storage.
@@ -92,10 +97,13 @@ describe('SettingsStore', () => {
       expect(s.reducedMotion).toBe(true);
       expect(s.onScreenControls).toBe('always');
       expect(s.hideTutorials).toBe(true);
+      expect(s.showObjectiveBanner).toBe(false);
       expect(s.highContrast).toBe(true);
       expect(s.hapticsEnabled).toBe(false);
       expect(s.colorBlindMode).toBe('deuteranopia');
       expect(s.textScale).toBe(1.3);
+      expect(s.llmProvider).toBe('openai');
+      expect(s.llmApiKey).toBe('sk-local-test');
       expect(s.analyticsConsent).toBe(true);
     });
 
@@ -420,6 +428,33 @@ describe('SettingsStore', () => {
       eventBus.on('audio:volume-changed', listener);
       settingsStore.setHideTutorials(true);
       expect(listener).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('showObjectiveBanner', () => {
+    it('defaults to true', () => {
+      expect(settingsStore.read().showObjectiveBanner).toBe(true);
+    });
+
+    it('setShowObjectiveBanner(false) persists the flag', () => {
+      settingsStore.setShowObjectiveBanner(false);
+      expect(settingsStore.read().showObjectiveBanner).toBe(false);
+    });
+
+    it('falls back to true when stored value is not boolean', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ showObjectiveBanner: 'no' }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().showObjectiveBanner).toBe(true);
+    });
+
+    it('emits settings:changed (not audio:volume-changed)', () => {
+      const audioListener = vi.fn();
+      const settingsListener = vi.fn();
+      eventBus.on('audio:volume-changed', audioListener);
+      eventBus.on('settings:changed', settingsListener);
+      settingsStore.setShowObjectiveBanner(false);
+      expect(audioListener).not.toHaveBeenCalled();
+      expect(settingsListener).toHaveBeenCalledTimes(1);
     });
   });
 

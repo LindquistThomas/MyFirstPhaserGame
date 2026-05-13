@@ -78,6 +78,10 @@ export const DEFAULT_BINDINGS: Record<GameAction, readonly KeyCode[]> = {
 
   // --- Debug ---
   ToggleDebug: [K.D],
+
+  // --- Show Controls reference ---
+  // H opens the read-only controls reference modal from any gameplay or menu scene.
+  ShowControls: [K.H],
 };
 
 /**

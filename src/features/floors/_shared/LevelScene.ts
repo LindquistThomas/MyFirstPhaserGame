@@ -9,13 +9,15 @@ import { DialogController } from '../../../ui/DialogController';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { FloorHitState } from '../../../systems/FloorHitState';
-import { allKeyLabels } from '../../../input';
+import { actionPrompt } from '../../../input';
+import type { GameAction } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPlatform';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
 import { LevelFridgeManager } from './LevelFridgeManager';
+import { LevelNpcManager, type NpcConfig } from './LevelNpcManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { LevelRoomElevators } from './LevelRoomElevators';
 import { createLevelDialogs } from './LevelDialogBindings';
@@ -33,6 +35,7 @@ import { preloadInfoFor } from '../../../config/info';
 import { applyDailyChallengeLayout } from './dailyChallengeLayout';
 import { getDailyState } from '../../../systems/DailyChallenge';
 import { hasCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
+import { PERSISTENT_TEXTURE_KEYS, clearSceneOwnedTextureKeys, getSceneOwnedTextureKeys } from '../../../systems/SpriteGenerator';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
@@ -61,6 +64,8 @@ export interface RoomElevator {
 
 export interface LevelConfig {
   floorId: FloorId;
+  /** Persistent objective shown in HUD while this scene is active. */
+  objective?: string;
   platforms: Array<{ x: number; y: number; width: number }>;
   /**
    * Thin catwalks / walkways.
@@ -125,6 +130,8 @@ export interface LevelConfig {
     maxX?: number;
     speed?: number;
   }>;
+  /** Friendly NPCs that patrol locally and ask architecture questions on interaction. */
+  npcs?: NpcConfig[];
   /** Consumable — not persisted, respawns every scene entry. */
   coffees?: Array<{ x: number; y: number }>;
   /** Energy drink fridges — interact to open for a long caffeine buff; not persisted. */
@@ -186,6 +193,7 @@ export class LevelScene extends Phaser.Scene {
   private tokenMgr!: LevelTokenManager;
   private coffeeMgr!: LevelCoffeeManager;
   private fridgeMgr!: LevelFridgeManager;
+  private npcMgr!: LevelNpcManager;
   private zones!: LevelZoneSetup;
 
   /** Per-visit hit / checkpoint tracking. */
@@ -207,6 +215,15 @@ export class LevelScene extends Phaser.Scene {
   private wasDialogOpen = false;
   /** Immutable per-scene level config (daily overrides resolved once in create()). */
   private resolvedLevelConfig?: LevelConfig;
+
+  private freeOwnedTextures(): void {
+    const ownedKeys = getSceneOwnedTextureKeys(this);
+    for (const key of ownedKeys) {
+      if (PERSISTENT_TEXTURE_KEYS.has(key)) continue;
+      if (this.textures.exists(key)) this.textures.remove(key);
+    }
+    clearSceneOwnedTextureKeys(this);
+  }
 
   constructor(key: string, floorId: FloorId) {
     super({ key });
@@ -297,12 +314,22 @@ export class LevelScene extends Phaser.Scene {
       dialogs: this.buildDialogs(),
       gameState: this.gameState,
     });
+    this.npcMgr = new LevelNpcManager({
+      scene: this,
+      floorId: this.floorId,
+      progression: this.progression,
+      player: this.player,
+      platformGroup: this.platformGroup,
+      dialogs: this.dialogs,
+      prompt: this.interactPrompt,
+    });
 
     const cfg = this.getResolvedLevelConfig();
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
     this.coffeeMgr.spawn(cfg);
     this.fridgeMgr.spawn(cfg);
+    this.npcMgr.spawn(cfg);
     this.zones.create(cfg);
     this.spawnCheckpoints(cfg);
 
@@ -310,6 +337,7 @@ export class LevelScene extends Phaser.Scene {
     this.tokenMgr.wireColliders();
     this.enemySpawner.wireColliders();
     this.coffeeMgr.wireColliders();
+    this.npcMgr.wireColliders();
 
     const solidEnemies = this.enemySpawner.enemies.filter((e) => e.collidesWithLevel);
     for (const mp of this.movingPlatforms) {
@@ -360,10 +388,12 @@ export class LevelScene extends Phaser.Scene {
     // when the scene shuts down, so PAUSE and RESUME do not need explicit teardown.
     this.events.on(Phaser.Scenes.Events.PAUSE, () => tracker.pause(), this);
     this.events.on(Phaser.Scenes.Events.RESUME, () => tracker.resume(), this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    const lc = createSceneLifecycle(this);
+    lc.add(() => {
       tracker.pause();
       tracker.flush();
-    }, this);
+      this.freeOwnedTextures();
+    });
   }
 
   /**
@@ -427,6 +457,17 @@ export class LevelScene extends Phaser.Scene {
     lc.bindInput('Pause', () => {
       if (!this.isTransitioning && !this.dialogs.isOpen) {
         this.scene.launch('PauseScene', { parentKey: this.sys.settings.key });
+      }
+    });
+
+    // ShowControls (H) pauses gameplay and immediately opens the Controls modal.
+    lc.bindInput('ShowControls', () => {
+      if (!this.isTransitioning && !this.dialogs.isOpen
+          && !this.scene.isActive('PauseScene')) {
+        this.scene.launch('PauseScene', {
+          parentKey: this.sys.settings.key,
+          showControls: true,
+        });
       }
     });
 
@@ -770,7 +811,10 @@ export class LevelScene extends Phaser.Scene {
 
   /* ---- UI ---- */
   protected createUI(): void {
-    this.hud = new HUD(this, this.progression, this.gameState.playtime);
+    this.hud = new HUD(this, this.progression, this.gameState.playtime, {
+      getObjectiveText: () => this.getLevelConfig().objective ?? '',
+      isObjectiveHidden: () => this.dialogs?.isOpen ?? false,
+    });
     this.callElevatorButton = new CallElevatorButton(this, () => this.returnToElevator());
     this.createDangerVignette();
   }
@@ -891,6 +935,7 @@ export class LevelScene extends Phaser.Scene {
     this.roomElevators.update();
     for (const mp of this.movingPlatforms) mp.update();
     this.enemySpawner.update(_time, delta);
+    const npcPromptVisible = this.npcMgr.update(_time, delta);
     this.updateAtmosphericFx();
     this.updateDangerState(delta);
 
@@ -917,7 +962,9 @@ export class LevelScene extends Phaser.Scene {
       return;
     }
 
-    this.checkExitProximity();
+    // Keep the single shared interaction prompt unambiguous: when an NPC prompt
+    // is visible, do not let the exit-door prompt overwrite it in the same frame.
+    if (!npcPromptVisible) this.checkExitProximity();
   }
 
   /** Debug overlay hook: expose spatial zones for DebugPlugin to render. */
@@ -934,7 +981,7 @@ export class LevelScene extends Phaser.Scene {
     const near = d < 90;
     this.setExitDoorOpen(near);
     if (near) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Elevator`).setPosition(
+      this.interactPrompt?.setText(`${this.formatPromptAction('Interact')} → Elevator`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();
@@ -968,6 +1015,10 @@ export class LevelScene extends Phaser.Scene {
       spawnSide: this.returnSide,
     };
     this.time.delayedCall(500, () => this.scene.start('ElevatorScene', ctx));
+  }
+
+  protected formatPromptAction(action: GameAction): string {
+    return actionPrompt(action);
   }
 
   /* ---- checkpoints ---- */
