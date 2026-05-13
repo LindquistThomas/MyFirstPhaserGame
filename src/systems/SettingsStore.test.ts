@@ -85,6 +85,7 @@ describe('SettingsStore', () => {
         llmProvider: 'openai',
         llmApiKey: 'sk-local-test',
         analyticsConsent: true,
+        showRunTimer: false,
       }));
       // Force cache-miss by re-pointing at the same storage.
       settingsStore._store.setStorage(globalThis.localStorage);
@@ -105,6 +106,7 @@ describe('SettingsStore', () => {
       expect(s.llmProvider).toBe('openai');
       expect(s.llmApiKey).toBe('sk-local-test');
       expect(s.analyticsConsent).toBe(true);
+      expect(s.showRunTimer).toBe(false);
     });
 
     it('clamps masterVolume to 0-100 on parse', () => {
@@ -638,6 +640,23 @@ describe('SettingsStore', () => {
       eventBus.on('settings:changed', listener);
       settingsStore.setAnalyticsConsent(true);
       expect(listener).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('showRunTimer', () => {
+    it('defaults to true', () => {
+      expect(settingsStore.read().showRunTimer).toBe(true);
+    });
+
+    it('setShowRunTimer(false) persists the value', () => {
+      settingsStore.setShowRunTimer(false);
+      expect(settingsStore.read().showRunTimer).toBe(false);
+    });
+
+    it('falls back to true when stored value is invalid', () => {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ showRunTimer: 'nope' }));
+      settingsStore._store.setStorage(globalThis.localStorage);
+      expect(settingsStore.read().showRunTimer).toBe(true);
     });
   });
 });
