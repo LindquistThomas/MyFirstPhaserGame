@@ -3,8 +3,6 @@ import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS, FloorId } from '../../../co
 import { LEVEL_DATA, FloorData } from '../../../config/levelData';
 import { Player } from '../../../entities/Player';
 import { Enemy } from '../../../entities/Enemy';
-import { Checkpoint } from '../../../entities/Checkpoint';
-import { HUD } from '../../../ui/HUD';
 import { DialogController } from '../../../ui/DialogController';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { GameStateManager } from '../../../systems/GameStateManager';
@@ -12,12 +10,12 @@ import { FloorHitState } from '../../../systems/FloorHitState';
 import { actionPrompt } from '../../../input';
 import type { GameAction } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
-import { MovingPlatform, MovingPlatformConfig } from '../../../entities/MovingPlatform';
+import { MovingPlatform } from '../../../entities/MovingPlatform';
 import { LevelEnemySpawner } from './LevelEnemySpawner';
 import { LevelTokenManager } from './LevelTokenManager';
 import { LevelCoffeeManager } from './LevelCoffeeManager';
 import { LevelFridgeManager } from './LevelFridgeManager';
-import { LevelNpcManager, type NpcConfig } from './LevelNpcManager';
+import { LevelNpcManager } from './LevelNpcManager';
 import { LevelZoneSetup } from './LevelZoneSetup';
 import { LevelRoomElevators } from './LevelRoomElevators';
 import { createLevelDialogs } from './LevelDialogBindings';
@@ -36,17 +34,19 @@ import { applyDailyChallengeLayout } from './dailyChallengeLayout';
 import { getDailyState } from '../../../systems/DailyChallenge';
 import { hasCompletionStreakEndingAt, recordResult } from '../../../systems/DailyChallengeStore';
 import { PERSISTENT_TEXTURE_KEYS, clearSceneOwnedTextureKeys, getSceneOwnedTextureKeys } from '../../../systems/SpriteGenerator';
+import { LevelCheckpointManager } from './LevelCheckpointManager';
+import { LevelShadowController } from './LevelShadowController';
+import { LevelHeartbeatSfx } from './LevelHeartbeatSfx';
+import { LevelHUDBindings } from './LevelHUDBindings';
+import type { LevelConfig } from './LevelConfig';
+
+export type { LevelConfig, RoomElevator } from './LevelConfig';
 
 /** Delay (ms) after floor entry before the first-visit coaching toast appears. */
 const COACH_HINT_DELAY_MS = 3_000;
 /** How long (ms) the first-visit coaching toast stays visible. */
 const COACH_HINT_DURATION_MS = 6_000;
 
-/**
- * Decorative background pattern assignment per floor. Each motif echoes
- * the floor's identity without clashing with decor (see `floorPatterns.ts`).
- * Floors not listed fall back to the quiet default grid.
- */
 const FLOOR_PATTERNS: Partial<Record<FloorId, FloorPatternId>> = {
   [FLOORS.LOBBY]: 'grid',
   [FLOORS.PLATFORM_TEAM]: 'blueprint',
@@ -54,113 +54,8 @@ const FLOOR_PATTERNS: Partial<Record<FloorId, FloorPatternId>> = {
   [FLOORS.EXECUTIVE]: 'terrazzo',
   [FLOORS.PRODUCTS]: 'dots',
 };
-
-export interface RoomElevator {
-  x: number;
-  minY: number;
-  maxY: number;
-  startY: number;
-}
-
-export interface LevelConfig {
-  floorId: FloorId;
-  /** Persistent objective shown in HUD while this scene is active. */
-  objective?: string;
-  platforms: Array<{ x: number; y: number; width: number }>;
-  /**
-   * Thin catwalks / walkways.
-   *
-   * Unlike `platforms` (which use the 128×128 floor tile as both visual
-   * and physics body — great for the ground, terrible for mezzanines
-   * because the tile body extends 128 px downward and crushes the
-   * headroom beneath), catwalks are a ~20 px thin rectangle with a
-   * matching graphic on top. Use these for any floating walkway.
-   *
-   * `x`, `y` = top-left of the walking surface (same semantics as
-   * `platforms.y` — the top of the slab, not its centre). `width` is in
-   * pixels. `thickness` defaults to 20.
-   */
-  catwalks?: Array<{ x: number; y: number; width: number; thickness?: number }>;
-  /**
-   * Floating platforms that move along a single axis. Unlike catwalks
-   * (static) and room elevators (player-driven), these travel under their
-   * own steam, ferrying the player between tiers. See {@link MovingPlatform}
-   * for the semantics of each mode — `bounce` = velocity bouncer,
-   * `tween` = smoothed ease-in-out path.
-   */
-  movingPlatforms?: MovingPlatformConfig[];
-  /**
-   * Tokens in the room. `index` overrides the default array-position
-   * index used to key into the ProgressionSystem's collected-tokens
-   * state. Useful when two scenes share the same floorId and need
-   * disjoint token-index ranges.
-   */
-  tokens: Array<{ x: number; y: number; index?: number }>;
-  exitPosition: { x: number; y: number };
-  playerStart: { x: number; y: number };
-  /** Small in-room elevators connecting platform tiers. */
-  roomElevators: RoomElevator[];
-  /**
-   * Info zones placed in the level.
-   * Each zone shows its icon and allows its dialog to open only when the
-   * player is within the zone shape. Default: 120 px circle.
-   *
-   * Prefer `zone` for precise anchor-sized regions (e.g. a signpost or
-   * monitoring wall). `zoneRadius` is kept for simple back-compat.
-   */
-  infoPoints?: Array<{
-    x: number;
-    y: number;
-    contentId: string;
-    zoneRadius?: number;
-    zone?:
-      | { shape: 'circle'; radius: number }
-      | { shape: 'rect'; width: number; height: number; offsetY?: number };
-  }>;
-  /**
-   * Enemies placed in the level. Each entry is spawned in `createEnemies()`.
-   * Enemies are scene-local: they have no persistence, respawn on scene re-entry.
-   * `minX` / `maxX` default to ±radius around `x`.
-   */
-  enemies?: Array<{
-    type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist';
-    x: number;
-    y: number;
-    minX?: number;
-    maxX?: number;
-    speed?: number;
-  }>;
-  /** Friendly NPCs that patrol locally and ask architecture questions on interaction. */
-  npcs?: NpcConfig[];
-  /** Consumable — not persisted, respawns every scene entry. */
-  coffees?: Array<{ x: number; y: number }>;
-  /** Energy drink fridges — interact to open for a long caffeine buff; not persisted. */
-  fridges?: Array<{ x: number; y: number }>;
-  /**
-   * Checkpoint positions for mid-floor respawn.
-   * Player activating a checkpoint records it as the preferred respawn origin.
-   * Placed by the floor scene's `getLevelConfig()` override.
-   */
-  checkpoints?: Array<{ x: number; y: number; id: string }>;
-}
-
-/**
- * Impossible-Mission-style single-screen room.
- *
- * - Fixed camera (no scrolling) — the room fits GAME_WIDTH × GAME_HEIGHT.
- * - Multiple platforms at different heights.
- * - Small in-room elevators the player rides with Up/Down.
- * - Exit door returns to the elevator shaft.
- *
- * Concerns are split across focused helpers:
- *   - {@link LevelEnemySpawner}  — spawn, physics, stomp/damage rules.
- *   - {@link LevelTokenManager}  — token group + dropped-AU recovery.
- *   - {@link LevelZoneSetup}     — info-point → proximity zone + icons.
- *   - {@link createLevelDialogs} — wiring the shared DialogController.
- */
 export class LevelScene extends Phaser.Scene {
   protected player!: Player;
-  protected hud!: HUD;
   protected gameState!: GameStateManager;
   protected progression!: ProgressionSystem;
   protected platformGroup!: Phaser.Physics.Arcade.StaticGroup;
@@ -199,22 +94,14 @@ export class LevelScene extends Phaser.Scene {
   /** Per-visit hit / checkpoint tracking. */
   protected readonly floorHazard = new FloorHitState();
 
-  /** Red vignette overlay shown in the danger zone. */
-  private dangerVignette?: Phaser.GameObjects.Graphics;
-  /** Accumulator (ms) for heartbeat SFX pacing in danger zone. */
-  private heartbeatElapsed = 0;
-  /** Interval (ms) between heartbeat pulses. */
-  private static readonly HEARTBEAT_INTERVAL_MS = 850;
-
-  /** Grounding shadow tracked to the player each frame. */
-  private playerShadow?: Phaser.GameObjects.Image;
-  /** Shadows tracked to each spawned enemy (same index as enemies[]). */
-  private enemyShadows: Array<Phaser.GameObjects.Image | undefined> = [];
-
   /** Tracks dialog open state across frames so we can pause/resume the playtime tracker. */
   private wasDialogOpen = false;
   /** Immutable per-scene level config (daily overrides resolved once in create()). */
   private resolvedLevelConfig?: LevelConfig;
+  private checkpoints?: LevelCheckpointManager;
+  private shadowController?: LevelShadowController;
+  private heartbeatSfx?: LevelHeartbeatSfx;
+  private hudBindings?: LevelHUDBindings;
 
   private freeOwnedTextures(): void {
     const ownedKeys = getSceneOwnedTextureKeys(this);
@@ -256,7 +143,11 @@ export class LevelScene extends Phaser.Scene {
     this.movingPlatforms = [];
     this.resolvedLevelConfig = undefined;
     this.floorHazard.reset();
-    this.heartbeatElapsed = 0;
+    this.wasDialogOpen = false;
+    this.checkpoints = undefined;
+    this.shadowController = undefined;
+    this.heartbeatSfx = undefined;
+    this.hudBindings = undefined;
     // Kick off lazy-load of this floor's quiz and info content so the data is
     // available by the time the player walks to an info icon.  Fire-and-forget:
     // Phaser's create() runs synchronously immediately after init(), but the
@@ -276,6 +167,12 @@ export class LevelScene extends Phaser.Scene {
     this.createMovingPlatforms();
     this.createDecorations();
     this.createExit();
+    this.checkpoints = new LevelCheckpointManager({
+      scene: this,
+      floorId: this.floorId,
+      progression: this.progression,
+      floorHazard: this.floorHazard,
+    });
     this.createPlayer();
     this.createUI();
 
@@ -325,13 +222,13 @@ export class LevelScene extends Phaser.Scene {
     });
 
     const cfg = this.getResolvedLevelConfig();
+    this.checkpoints?.init(cfg, this.physics, this.player.sprite);
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
     this.coffeeMgr.spawn(cfg);
     this.fridgeMgr.spawn(cfg);
     this.npcMgr.spawn(cfg);
     this.zones.create(cfg);
-    this.spawnCheckpoints(cfg);
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
     this.tokenMgr.wireColliders();
@@ -372,13 +269,26 @@ export class LevelScene extends Phaser.Scene {
     const hint = getCoachHint(this.floorId, firstVisit, settingsStore.read().hideTutorials);
     if (hint) {
       this.time.delayedCall(COACH_HINT_DELAY_MS, () => {
-        this.hud.showToast(hint, COACH_HINT_DURATION_MS);
+        this.hudBindings?.showToast(hint, COACH_HINT_DURATION_MS);
       });
     }
 
     this.createAtmosphericFx();
+    this.shadowController = new LevelShadowController({
+      scene: this,
+      player: this.player,
+      getEnemies: () => this.enemySpawner.enemies,
+    });
+    this.shadowController.init();
     this.setupPause();
     this.setupFloorUnlockCelebration();
+    this.heartbeatSfx = new LevelHeartbeatSfx({
+      scene: this,
+      floorId: this.floorId,
+      progression: this.progression,
+      floorHazard: this.floorHazard,
+    });
+    this.heartbeatSfx.init();
 
     // Start playtime tracking for this floor.
     const tracker = this.gameState.playtime;
@@ -392,6 +302,10 @@ export class LevelScene extends Phaser.Scene {
     lc.add(() => {
       tracker.pause();
       tracker.flush();
+      this.hudBindings?.shutdown();
+      this.shadowController?.shutdown();
+      this.heartbeatSfx?.shutdown();
+      this.checkpoints?.shutdown();
       this.freeOwnedTextures();
     });
   }
@@ -400,8 +314,6 @@ export class LevelScene extends Phaser.Scene {
    * Atmospheric layer added on top of the backdrop but behind gameplay:
    *   - Per-floor color grading overlay (very low alpha, theme-tinted).
    *   - Ambient floating motes (6–10 drifting particles).
-   *   - Drop shadow tracked to the player.
-   *   - Drop shadows tracked to each spawned enemy.
    */
   private createAtmosphericFx(): void {
     // 1. Color grading overlay — full-screen rect tinted with the floor's
@@ -427,21 +339,6 @@ export class LevelScene extends Phaser.Scene {
         tint: this.floorData.theme.tokenColor,
       });
       motes.setDepth(1.5);
-    }
-
-    // 3. Player drop shadow — a dark ellipse tracked each frame so it
-    // shrinks while airborne for height cueing.
-    if (this.textures.exists('shadow_blob')) {
-      this.playerShadow = this.add
-        .image(this.player.sprite.x, this.player.sprite.y + 70, 'shadow_blob')
-        .setDepth(9.5);
-    }
-
-    // 4. Enemy drop shadows, one per enemy, parented-by-index.
-    for (const enemy of this.enemySpawner.enemies) {
-      if (!this.textures.exists('shadow_blob')) break;
-      const sh = this.add.image(enemy.x, enemy.y + 28, 'shadow_blob').setDepth(5.5).setScale(0.7);
-      this.enemyShadows.push(sh);
     }
   }
 
@@ -534,42 +431,6 @@ export class LevelScene extends Phaser.Scene {
     emitter.setDepth(12);
     emitter.explode(45);
     this.time.delayedCall(1000, () => emitter.destroy());
-  }
-
-  private updateAtmosphericFx(): void {
-    // Player shadow: follow x, lock to ~feet y when grounded, otherwise
-    // project down to the nearest surface below with a height-faded scale.
-    if (this.playerShadow) {
-      const p = this.player.sprite;
-      const body = p.body as Phaser.Physics.Arcade.Body;
-      const onGround = body.blocked.down || body.touching.down;
-      this.playerShadow.setPosition(p.x, p.y + 70);
-      if (onGround) {
-        this.playerShadow.setAlpha(1).setScale(1);
-      } else {
-        // Fade + shrink with upward velocity for an airborne cue.
-        const vy = body.velocity.y;
-        const fade = Phaser.Math.Clamp(1 - Math.abs(vy) / 600, 0.3, 1);
-        this.playerShadow.setAlpha(fade * 0.85).setScale(fade);
-      }
-    }
-
-    // Enemy shadows: follow x, pin y to the body's bottom with a small
-    // fixed offset. If an enemy has been destroyed, drop its shadow too.
-    const enemies = this.enemySpawner.enemies;
-    for (let i = 0; i < this.enemyShadows.length; i++) {
-      const sh = this.enemyShadows[i];
-      if (!sh) continue;
-      const en = enemies[i];
-      if (!en || en.defeated || !en.active) {
-        sh.destroy();
-        this.enemyShadows[i] = undefined;
-        continue;
-      }
-      const body = en.body as Phaser.Physics.Arcade.Body | null;
-      const footY = body ? body.bottom : en.y + 28;
-      sh.setPosition(en.x, footY + 2);
-    }
   }
 
   /** Construct the DialogController and stash it on this.dialogs. */
@@ -785,7 +646,7 @@ export class LevelScene extends Phaser.Scene {
   /* ---- player ---- */
   protected createPlayer(): void {
     const c = this.getResolvedLevelConfig();
-    const spawn = this.resolveEntrySpawn(c);
+    const spawn = this.checkpoints?.resolveEntrySpawn(c) ?? c.playerStart;
     this.player = new Player(this, spawn.x, spawn.y);
     this.player.sprite.setCollideWorldBounds(true);
 
@@ -796,46 +657,17 @@ export class LevelScene extends Phaser.Scene {
     }).setDepth(20).setVisible(false);
   }
 
-  protected resolveEntrySpawn(cfg: LevelConfig): { x: number; y: number } {
-    const latestCheckpointId = this.progression.getLatestActivatedCheckpointId(this.floorId);
-    if (!latestCheckpointId) return cfg.playerStart;
-    const checkpoint = cfg.checkpoints?.find((cp) => cp.id === latestCheckpointId);
-    if (!checkpoint) {
-      // Config changed and the persisted checkpoint no longer exists. Clear stale
-      // ids so future entries keep using the canonical playerStart.
-      this.progression.clearActivatedCheckpoints(this.floorId);
-      return cfg.playerStart;
-    }
-    return { x: checkpoint.x, y: checkpoint.y };
-  }
-
   /* ---- UI ---- */
   protected createUI(): void {
-    this.hud = new HUD(this, this.progression, this.gameState.playtime, {
+    this.hudBindings = new LevelHUDBindings({
+      scene: this,
+      progression: this.progression,
+      playtime: this.gameState.playtime,
       getObjectiveText: () => this.getLevelConfig().objective ?? '',
       isObjectiveHidden: () => this.dialogs?.isOpen ?? false,
     });
+    this.hudBindings.init();
     this.callElevatorButton = new CallElevatorButton(this, () => this.returnToElevator());
-    this.createDangerVignette();
-  }
-
-  private createDangerVignette(): void {
-    this.dangerVignette = this.add.graphics()
-      .setDepth(98)
-      .setScrollFactor(0)
-      .setVisible(false);
-    // Draw a screen-edge vignette using a radial-gradient approximation.
-    // Four semi-transparent edge bands tinted red.
-    const g = this.dangerVignette;
-    const alpha = 0.35;
-    const w = GAME_WIDTH;
-    const h = GAME_HEIGHT;
-    const band = 80;
-    g.fillStyle(0xff2222, alpha);
-    g.fillRect(0,     0,     w,    band); // top
-    g.fillRect(0,     h - band, w, band); // bottom
-    g.fillRect(0,     0,     band, h);    // left
-    g.fillRect(w - band, 0,  band, h);    // right
   }
 
   /* ---- banner ---- */
@@ -924,26 +756,27 @@ export class LevelScene extends Phaser.Scene {
     if (this.dialogs.isOpen) {
       for (const mp of this.movingPlatforms) mp.pause();
       this.player.update(delta);
-      this.hud.update();
-      this.updateAtmosphericFx();
+      this.hudBindings?.update();
+      this.shadowController?.update();
       return;
     }
     for (const mp of this.movingPlatforms) mp.resume();
 
     this.player.update(delta);
-    this.hud.update();
+    this.hudBindings?.update();
     this.roomElevators.update();
     for (const mp of this.movingPlatforms) mp.update();
     this.enemySpawner.update(_time, delta);
     const npcPromptVisible = this.npcMgr.update(_time, delta);
-    this.updateAtmosphericFx();
-    this.updateDangerState(delta);
+    this.shadowController?.update();
+    this.heartbeatSfx?.update(delta);
 
     // Call playtime tracker update (throttled persist).
     this.gameState.playtime.update();
 
     // Emit zone:enter / zone:exit events when player crosses zone boundaries.
     this.zones.update();
+    this.checkpoints?.update();
 
     // Fridge proximity + interact (runs after zones so Interact isn't
     // double-consumed by an info-dialog open on the same frame).
@@ -1021,33 +854,6 @@ export class LevelScene extends Phaser.Scene {
     return actionPrompt(action);
   }
 
-  /* ---- checkpoints ---- */
-
-  private spawnCheckpoints(cfg: LevelConfig): void {
-    if (!cfg.checkpoints?.length) return;
-    const activated = new Set(this.progression.getActivatedCheckpointIds(this.floorId));
-    const latestActivatedId = this.progression.getLatestActivatedCheckpointId(this.floorId);
-    for (const cp of cfg.checkpoints) {
-      const isActivated = activated.has(cp.id);
-      const checkpoint = new Checkpoint(
-        this,
-        cp.x,
-        cp.y,
-        cp.id,
-        () => {
-          this.floorHazard.registerCheckpoint(cp.x, cp.y);
-          this.progression.activateCheckpoint(this.floorId, cp.id);
-          eventBus.emit('checkpoint:activate', cp.id);
-        },
-        isActivated,
-      );
-      if (cp.id === latestActivatedId) {
-        this.floorHazard.registerCheckpoint(cp.x, cp.y);
-      }
-      checkpoint.wireOverlap(this.physics, this.player.sprite);
-    }
-  }
-
   /* ---- hit counter / respawn ---- */
 
   /** Called by `LevelEnemySpawner` after every successful player hit. */
@@ -1067,38 +873,16 @@ export class LevelScene extends Phaser.Scene {
   protected triggerRespawn(): void {
     if (this.isTransitioning) return;
 
-    const cp = this.floorHazard.getCheckpointPos();
-    const target = cp ?? this.getResolvedLevelConfig().playerStart;
+    const target = this.checkpoints?.resolveRespawnTarget(this.getResolvedLevelConfig().playerStart)
+      ?? this.getResolvedLevelConfig().playerStart;
 
     this.floorHazard.reset();
-    this.heartbeatElapsed = 0;
-    this.dangerVignette?.setVisible(false);
+    this.heartbeatSfx?.reset();
 
     // Brief white flash then fade back in (skipped under reduced motion).
     if (!isReducedMotion()) {
       this.cameras.main.flash(180, 255, 255, 255, true);
     }
     this.player.setPosition(target.x, target.y);
-  }
-
-  /* ---- danger state (vignette + heartbeat) ---- */
-
-  private updateDangerState(delta: number): void {
-    const inDanger = this.floorHazard.isDangerZone()
-      && this.progression.getFloorAU(this.floorId) <= 1;
-
-    if (this.dangerVignette) {
-      this.dangerVignette.setVisible(inDanger && !isReducedMotion());
-    }
-
-    if (inDanger) {
-      this.heartbeatElapsed += delta;
-      if (this.heartbeatElapsed >= LevelScene.HEARTBEAT_INTERVAL_MS) {
-        this.heartbeatElapsed = 0;
-        eventBus.emit('sfx:heartbeat');
-      }
-    } else {
-      this.heartbeatElapsed = 0;
-    }
   }
 }
