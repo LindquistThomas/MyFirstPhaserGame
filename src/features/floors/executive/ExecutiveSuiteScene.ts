@@ -118,7 +118,7 @@ export class ExecutiveSuiteScene extends defineFloorScene({
     const tokens = this.tokenGroup.getChildren();
     tokens.forEach((t, i) => {
       if (reducedMotion) {
-        (t as Phaser.GameObjects.GameObject & { setAlpha?: (alpha: number) => void }).setAlpha?.(0.85);
+        (t as Phaser.GameObjects.Sprite).setAlpha(0.85);
       } else {
         this.tweens.add({
           targets: t,

@@ -106,7 +106,7 @@ describe('drawFloorAccents', () => {
     expect(cfg.yoyo).toBe(true);
   });
 
-  it.each(withAccents)('renders silhouette + no ambient tween with reduced motion for floor %s', (floorId) => {
+  it.each(withAccents)('renders silhouette + no ambient tweens when reduced motion is enabled for floor %s', (floorId) => {
     vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
     const scene = makeStubScene();
     const g = makeStubGraphics();
