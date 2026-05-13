@@ -99,7 +99,7 @@ export class HUD {
       color: theme.color.css.textQuizMuted, fontStyle: 'bold',
     }).setOrigin(0.5, 0).setAlpha(0.6);
     this.applyTitleTextContrast();
-    this.titleText.setVisible(this.sizeClass !== 'compact');
+    this.titleText.setVisible(this.sizeClass !== 'compact' && this.sizeClass !== 'ultra-compact');
     container.add(this.titleText as unknown as Phaser.GameObjects.GameObject);
 
     // Floor timer — small M:SS counter in the top-left corner.
@@ -165,7 +165,7 @@ export class HUD {
     this.coinCtrl.relayout(this.tokens);
     this.progressCtrl.relayout(this.tokens);
     this.titleText.setStyle({ fontSize: this.tokens.hudFontTitle });
-    this.titleText.setVisible(this.sizeClass !== 'compact');
+    this.titleText.setVisible(this.sizeClass !== 'compact' && this.sizeClass !== 'ultra-compact');
     this.timerText.setVisible(this._isTimerVisible());
   }
 
@@ -244,7 +244,7 @@ export class HUD {
   /** Whether the timer widget should be visible. Hidden on compact viewports and when the user prefers reduced motion (avoids a distracting animated counter). */
   private _isTimerVisible(): boolean {
     if (this.playtime === null) return false;
-    if (this.sizeClass === 'compact') return false;
+    if (this.sizeClass === 'compact' || this.sizeClass === 'ultra-compact') return false;
     return !isReducedMotion();
   }
 

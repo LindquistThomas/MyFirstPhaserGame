@@ -313,8 +313,8 @@ describe('HUD', () => {
     expect(resizeCall).toBeDefined();
     const onResize = resizeCall![1];
 
-    // Simulate crossing into the compact size class (< 700 px)
-    scene.scale.displaySize.width = 375;
+    // Simulate crossing into the compact size class (500–699 px)
+    scene.scale.displaySize.width = 600;
     onResize();
 
     // auText should have been restyled with the compact font
@@ -513,8 +513,8 @@ describe('HUD — playtime timer widget', () => {
     const tracker = makeTracker(0);
     new HUD(scene as unknown as Phaser.Scene, progression, tracker as never);
 
-    // Simulate compact resize
-    scene.scale.displaySize.width = 375;
+    // Simulate compact resize (500–699 px)
+    scene.scale.displaySize.width = 600;
     const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
       (args: unknown[]) => args[0] === 'resize',
     ) as [string, () => void] | undefined;

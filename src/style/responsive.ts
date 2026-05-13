@@ -13,7 +13,7 @@
  */
 
 /** CSS viewport width breakpoints → layout tier. */
-export type SizeClass = 'compact' | 'regular' | 'wide';
+export type SizeClass = 'ultra-compact' | 'compact' | 'regular' | 'wide';
 
 /**
  * Map the actual CSS/device-pixel viewport width to a layout size class.
@@ -22,11 +22,13 @@ export type SizeClass = 'compact' | 'regular' | 'wide';
  * or `window.innerWidth` — both reflect the physical display size, not the
  * 1280-unit game canvas width.
  *
- *   compact  — < 700 px  (phones, narrow portrait)
- *   regular  — 700–1099 px (tablets, landscape phones, small laptops)
- *   wide     — ≥ 1100 px (desktop default)
+ *   ultra-compact — < 500 px  (small phones ≤ 375px portrait; iPhone SE etc.)
+ *   compact       — 500–699 px (larger phones, narrow portrait)
+ *   regular       — 700–1099 px (tablets, landscape phones, small laptops)
+ *   wide          — ≥ 1100 px (desktop default)
  */
 export function getSizeClass(viewportWidth: number): SizeClass {
+  if (viewportWidth < 500) return 'ultra-compact';
   if (viewportWidth < 700) return 'compact';
   if (viewportWidth < 1100) return 'regular';
   return 'wide';
@@ -69,6 +71,13 @@ export interface LayoutTokens {
    * the canvas is CSS-scaled way down.
    */
   dialogPanelW: number;
+  /**
+   * Info-icon interactive hit-area side length in game-units.
+   * At ultra-compact sizes this is enlarged well beyond the visual disc
+   * radius so the tap target meets WCAG 2.5.5 (≥ 44 CSS px) after FIT
+   * scaling on small phones.
+   */
+  infoIconHitSize: number;
 }
 
 /** Canonical layout tokens per size class, optionally scaled by a text-scale multiplier. */
@@ -90,6 +99,20 @@ export function getLayoutTokens(sc: SizeClass, textScale = 1): LayoutTokens {
 /** Raw (unscaled) layout tokens per size class. */
 function getBaseLayoutTokens(sc: SizeClass): LayoutTokens {
   switch (sc) {
+    case 'ultra-compact':
+      return {
+        hudFontAU: '34px',
+        hudFontFloor: '27px',
+        hudFontTitle: '21px',
+        hudFontFloorLabel: '15px',
+        dialogFontBody: '26px',
+        dialogFontTitle: '37px',
+        // 176 game-units × (320 / 1280) = 44 CSS px on a 320px-wide device —
+        // the minimum WCAG 2.5.5 Level AAA tap-target size.
+        dialogTapTarget: 176,
+        dialogPanelW: 1240,
+        infoIconHitSize: 176,
+      };
     case 'compact':
       return {
         hudFontAU: '28px',
@@ -100,6 +123,7 @@ function getBaseLayoutTokens(sc: SizeClass): LayoutTokens {
         dialogFontTitle: '30px',
         dialogTapTarget: 56,
         dialogPanelW: 1160,
+        infoIconHitSize: 48,
       };
     case 'regular':
       return {
@@ -111,6 +135,7 @@ function getBaseLayoutTokens(sc: SizeClass): LayoutTokens {
         dialogFontTitle: '26px',
         dialogTapTarget: 50,
         dialogPanelW: 820,
+        infoIconHitSize: 48,
       };
     default: // 'wide'
       return {
@@ -122,6 +147,7 @@ function getBaseLayoutTokens(sc: SizeClass): LayoutTokens {
         dialogFontTitle: '24px',
         dialogTapTarget: 44,
         dialogPanelW: 620,
+        infoIconHitSize: 48,
       };
   }
 }

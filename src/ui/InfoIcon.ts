@@ -5,6 +5,8 @@ import type { GameAction } from '../input';
 import { eventBus } from '../systems/EventBus';
 import { theme } from '../style/theme';
 import { getCooldownRemaining } from '../systems/QuizManager';
+import { getSizeClass, getLayoutTokens } from '../style/responsive';
+import { GAME_WIDTH } from '../config/gameConfig';
 
 const RADIUS = 18;
 const BADGE_RADIUS = 10;
@@ -190,7 +192,10 @@ export class InfoIcon {
     this.bg = scene.add.image(0, 0, TEXTURE_KEY);
     this.container.add(this.bg);
 
-    const hitArea = scene.add.rectangle(0, 0, (RADIUS + 6) * 2, (RADIUS + 6) * 2)
+    const displayW = (scene.scale as { displaySize?: { width: number } })?.displaySize?.width ?? GAME_WIDTH;
+    const sc = getSizeClass(displayW);
+    const hitSize = getLayoutTokens(sc).infoIconHitSize;
+    const hitArea = scene.add.rectangle(0, 0, hitSize, hitSize)
       .setInteractive({ useHandCursor: true })
       .setAlpha(0.001);
 
