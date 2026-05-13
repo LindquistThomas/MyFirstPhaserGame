@@ -11,10 +11,16 @@ const createdCheckpoints: Array<{
 const playerCtor = vi.fn();
 
 vi.mock('phaser', () => {
+  class Sprite {}
   class Scene {
     constructor(_config?: unknown) {}
   }
-  return { default: { Scene }, Scene };
+  const Phaser = {
+    Scene,
+    Physics: { Arcade: { Sprite } },
+    Math: { Distance: { Between: vi.fn(() => 0) } },
+  };
+  return { ...Phaser, default: Phaser };
 });
 
 vi.mock('../../../config/gameConfig', () => ({

@@ -12,6 +12,7 @@ vi.mock('./sounds/footsteps', () => ({ generateFootstepSound: vi.fn().mockReturn
 vi.mock('./sounds/ui', () => ({
   generateInfoOpenSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
   generateLinkClickSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
+  generateNpcGreetSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
 }));
 vi.mock('./sounds/combat', () => ({
   generateHitSound: vi.fn().mockReturnValue(new ArrayBuffer(0)),
@@ -76,8 +77,8 @@ describe('generateSounds', () => {
   it('calls loadWav for every sound key on the first invocation', () => {
     const scene = makeScene(false);
     generateSounds(scene as never);
-    // 5 movement + 7 UI + 3 combat + 1 env + 1 music + 10 boss = 27
-    expect(loadWav).toHaveBeenCalledTimes(27);
+    // 5 movement + 8 UI + 3 combat + 1 env + 1 music + 10 boss = 28
+    expect(loadWav).toHaveBeenCalledTimes(28);
   });
 
   it('skips all loadWav calls when audio is already cached', () => {
@@ -120,8 +121,8 @@ describe('SOUND_PHASES', () => {
     for (const phase of SOUND_PHASES) {
       phase.run(scene as never);
     }
-    // 5 movement + 7 UI + 3 combat + 1 env + 1 music + 10 boss = 27
-    expect(loadWav).toHaveBeenCalledTimes(27);
+    // 5 movement + 8 UI + 3 combat + 1 env + 1 music + 10 boss = 28
+    expect(loadWav).toHaveBeenCalledTimes(28);
   });
 
   it('phase labels are unique', () => {
@@ -145,7 +146,7 @@ describe('BATCHED_SOUND_PHASES', () => {
       batch.run(scene as never);
     }
     // Running both batches must call loadWav for the eager subset only.
-    expect(loadWav).toHaveBeenCalledTimes(17);
+    expect(loadWav).toHaveBeenCalledTimes(18);
   });
 
   it('split point produces two non-empty batches that cover all phases', () => {
@@ -160,8 +161,8 @@ describe('BATCHED_SOUND_PHASES', () => {
     const afterBatch1 = (loadWav as ReturnType<typeof vi.fn>).mock.calls.length;
     expect(afterBatch1).toBeGreaterThan(0);
 
-    // Together they must account for all 17 eager loadWav calls.
-    expect(afterBatch0 + afterBatch1).toBe(17);
+    // Together they must account for all 18 eager loadWav calls.
+    expect(afterBatch0 + afterBatch1).toBe(18);
   });
 
   it('batch labels are non-empty strings', () => {
