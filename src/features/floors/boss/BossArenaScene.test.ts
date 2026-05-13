@@ -245,6 +245,7 @@ describe('BossArenaScene — deterministic disarm to defeat integration', () => 
 
     scene.progression = {
       addAU,
+      recordBossDefeat: vi.fn(() => true),
     };
     scene.gameState = {
       checkBossAchievements,

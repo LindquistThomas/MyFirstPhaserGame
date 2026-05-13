@@ -79,7 +79,7 @@ export class QuizDialog extends ModalBase {
     };
 
     const selected: QuizQuestion[] = [];
-    const worldModifiers = this.scene.registry.get('worldModifiers') as WorldModifiers | undefined;
+    const worldModifiers = this.scene.registry?.get('worldModifiers') as WorldModifiers | undefined;
     if (worldModifiers?.hardQuizOnly) {
       return shuffle(byDiff.hard).slice(0, QUIZ_QUESTION_COUNT);
     }

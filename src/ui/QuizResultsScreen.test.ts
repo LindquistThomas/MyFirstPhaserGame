@@ -22,6 +22,12 @@ vi.mock('../config/gameConfig', () => ({
 vi.mock('../systems/QuizManager', () => ({
   saveQuizResult: vi.fn(),
   getQuizRecord: vi.fn(() => ({ attempts: 1 })),
+  recordQuizPass: vi.fn(() => ({
+    quizBonusAU: 5,
+    floorMasteryBonusAU: 0,
+    totalBonusAU: 5,
+    floorMasteryEarned: false,
+  })),
 }));
 
 // isReducedMotion controllable per test
@@ -52,6 +58,7 @@ const PASS_THRESHOLD = 3; // must match real QUIZ_PASS_THRESHOLD
 vi.mock('../config/quiz', () => ({
   QUIZ_REWARDS: { pass: 3, perfect: 5 },
   QUIZ_PASS_THRESHOLD: 3,
+  getQuizInfoIdsForFloor: vi.fn(() => []),
 }));
 
 // ---------------------------------------------------------------------------

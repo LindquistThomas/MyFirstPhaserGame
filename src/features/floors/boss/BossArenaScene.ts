@@ -11,6 +11,7 @@ import { Toast } from '../../../ui/Toast';
 import { ObjectiveBanner } from '../../../ui/ObjectiveBanner';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
+import { getWorldModifiers, type WorldModifiers } from '../../../systems/WorldModifiers';
 import { FloorHitState } from '../../../systems/FloorHitState';
 import { SeededRandom } from '../../../systems/SeededRandom';
 import { eventBus } from '../../../systems/EventBus';
