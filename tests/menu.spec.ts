@@ -23,6 +23,23 @@ test.describe('Menu scene', () => {
     errors.assertClean();
   });
 
+  test('keyboard Down Down Enter activates the third menu option', async ({ page }) => {
+    await clearStorage(page);
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+
+    await waitForScene(page, 'SettingsScene');
+
+    errors.assertClean();
+  });
+
   test('eager boot tracks are cached before menu -> elevator navigation', async ({ page }) => {
     await clearStorage(page);
     const errors = attachErrorWatchers(page);
@@ -72,7 +89,22 @@ test.describe('Menu scene', () => {
         .cache.audio.exists('music_elevator_jazz'),
     );
     expect(stillCached).toBe(true);
+    errors.assertClean();
+  });
 
+  test('keyboard Down Down Enter activates the third menu option', async ({ page }) => {
+    await clearStorage(page);
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+
+    await waitForScene(page, 'SettingsScene');
     errors.assertClean();
   });
 });

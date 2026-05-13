@@ -4,6 +4,7 @@ import { eventBus } from '../systems/EventBus';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { FLOORS, GAME_WIDTH } from '../config/gameConfig';
 import { setPlayerSlot, setStorage, type KVStorage } from '../systems/SaveManager';
+import { settingsStore } from '../systems/SettingsStore';
 
 vi.mock('../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
@@ -276,6 +277,19 @@ describe('HUD', () => {
     expect(showSpy).not.toHaveBeenCalled();
   });
 
+  it('shows NG+ badge when progression mode is ngplus', () => {
+    scene = makeScene(false);
+    progression.startNewGame('ngplus');
+    new HUD(scene as unknown as Phaser.Scene, progression);
+
+    const ngBadgeCall = scene.add.text.mock.calls.findIndex(
+      ([x, y, initialText]) => x === GAME_WIDTH - 8 && y === 14 && initialText === 'NG+',
+    );
+    expect(ngBadgeCall).toBeGreaterThan(-1);
+    const ngBadge = scene.add.text.mock.results[ngBadgeCall]?.value as ReturnType<typeof makeText>;
+    expect(ngBadge.setVisible).toHaveBeenCalledWith(true);
+  });
+
   it('emits toggle event on mute click and unsubscribes from mute-changed on shutdown', () => {
     scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);
@@ -449,6 +463,7 @@ describe('HUD — playtime timer widget', () => {
   beforeEach(() => {
     setPlayerSlot('hud-timer-test');
     setStorage(memoryStorage());
+    settingsStore.setShowRunTimer(true);
     progression = new ProgressionSystem();
     progression.reset();
     scene = undefined;
@@ -458,9 +473,9 @@ describe('HUD — playtime timer widget', () => {
     scene?.events.emit('shutdown');
   });
 
-  function makeTracker(floorMs = 0) {
+  function makeTracker(runMs = 0) {
     return {
-      getFloorMs: vi.fn(() => floorMs),
+      getRunElapsedMs: vi.fn(() => runMs),
     };
   }
 
@@ -468,9 +483,9 @@ describe('HUD — playtime timer widget', () => {
     scene = makeScene(false);
     const tracker = makeTracker(0);
     new HUD(scene as unknown as Phaser.Scene, progression, tracker as never);
-    // Timer text is created at x=8, y=14 with initial text '0:00'
+    // Timer text is created in top-right with initial text '0:00'
     const timerCall = scene.add.text.mock.calls.find(
-      ([x, y, text]: [number, number, string]) => x === 8 && y === 14 && text === '0:00',
+      ([x, y, text]: [number, number, string]) => x === GAME_WIDTH - 10 && y === 32 && text === '0:00',
     );
     expect(timerCall).toBeDefined();
     // The timer text should be visible (not hidden) when a tracker is provided on wide viewport.
@@ -508,17 +523,11 @@ describe('HUD — playtime timer widget', () => {
     expect(timerText.setVisible).toHaveBeenCalledWith(false);
   });
 
-  it('hides timer text when scene is in compact size class', () => {
+  it('hides timer text when SHOW RUN TIMER setting is disabled', () => {
     scene = makeScene(false);
+    settingsStore.setShowRunTimer(false);
     const tracker = makeTracker(0);
     new HUD(scene as unknown as Phaser.Scene, progression, tracker as never);
-
-    // Simulate compact resize (500–699 px)
-    scene.scale.displaySize.width = 600;
-    const resizeCall = (scene.scale.on as ReturnType<typeof vi.fn>).mock.calls.find(
-      (args: unknown[]) => args[0] === 'resize',
-    ) as [string, () => void] | undefined;
-    resizeCall![1]();
 
     const timerText = scene.texts.find((t) => t.text === '0:00');
     expect(timerText).toBeDefined();

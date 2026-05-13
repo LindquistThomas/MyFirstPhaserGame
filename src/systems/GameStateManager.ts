@@ -12,6 +12,7 @@ import type { AchievementId } from '../config/achievements';
 import { INFO_POINTS } from '../config/info';
 import { QUIZ_DATA } from '../config/quiz';
 import { FLOORS } from '../config/gameConfig';
+import { DEFAULT_GAME_MODE, type GameMode } from './GameMode';
 
 /**
  * Single composition root for all persistent game state. Owns the
@@ -47,14 +48,20 @@ export class GameStateManager {
    * Subsequent calls are no-ops so re-entering the elevator doesn't wipe
    * progress mid-run.
    */
-  applyInitialLoad(loadSave?: boolean): void {
+  applyInitialLoad(loadSave?: boolean, startMode: GameMode = DEFAULT_GAME_MODE): void {
     if (this.initialLoadApplied) return;
     this.initialLoadApplied = true;
     if (loadSave === true) {
       this.progression.loadFromSave();
       this.playtime.loadFromSave();
     } else if (loadSave === false) {
-      this.progression.reset();
+      if (startMode === 'ngplus') {
+        // Preserve NG+ meta from the existing slot before resetting run-state.
+        this.progression.loadFromSave();
+        this.progression.startNewGame('ngplus');
+      } else {
+        this.progression.reset();
+      }
       this.playtime.reset();
       // A fresh save has no run-in-progress; start one immediately so playtime
       // is tracked from the first moment the player enters the game world.
@@ -183,11 +190,18 @@ export class GameStateManager {
    */
   checkBossAchievements(defeated: boolean, noDamage: boolean): void {
     const newlyUnlocked: string[] = [];
+    const inNgPlus = this.progression.isNgPlusMode();
     if (defeated && AchievementManager.unlock('boss-defeated' as Parameters<typeof AchievementManager.unlock>[0])) {
       newlyUnlocked.push('boss-defeated');
     }
     if (defeated && noDamage && AchievementManager.unlock('boss-no-damage' as Parameters<typeof AchievementManager.unlock>[0])) {
       newlyUnlocked.push('boss-no-damage');
+    }
+    if (defeated && inNgPlus && AchievementManager.unlock('architect-reborn' as Parameters<typeof AchievementManager.unlock>[0])) {
+      newlyUnlocked.push('architect-reborn');
+    }
+    if (defeated && inNgPlus && AchievementManager.unlock('master-architect' as Parameters<typeof AchievementManager.unlock>[0])) {
+      newlyUnlocked.push('master-architect');
     }
     for (const id of newlyUnlocked) {
       const def = ACHIEVEMENT_MAP.get(id as Parameters<typeof ACHIEVEMENT_MAP.get>[0]);
