@@ -5,6 +5,7 @@ import { MusicPlugin } from './plugins/MusicPlugin';
 import { DebugPlugin } from './plugins/DebugPlugin';
 import { ScopedEventBus } from './plugins/ScopedEventBus';
 import { InputService } from './input';
+import { initInputModeTracking } from './input/promptLabel';
 import { QuizDialog } from './ui/QuizDialog';
 import { canRetryQuiz } from './systems/QuizManager';
 import { startPillarboxBackdrop } from './ui/pillarboxBackdrop';

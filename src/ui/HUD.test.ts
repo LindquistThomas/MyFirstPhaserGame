@@ -11,11 +11,19 @@ vi.mock('../systems/MotionPreference', () => ({
 
 vi.mock('phaser', () => {
   const keyCodes = new Proxy({}, { get: () => 0 });
+  class Container {
+    constructor(_scene: unknown, _x: number, _y: number) {}
+    add(): this { return this; }
+    setDepth(): this { return this; }
+    setScrollFactor(): this { return this; }
+    setVisible(): this { return this; }
+  }
   class ScenePlugin {
     constructor(_scene: unknown, _pluginManager: unknown) {}
     boot(): void {}
   }
   const Phaser = {
+    GameObjects: { Container },
     Math: {
       Clamp: (value: number, min: number, max: number) => Math.min(max, Math.max(min, value)),
     },
@@ -39,6 +47,7 @@ function makeGraphics() {
     'fillCircle',
     'fillRect',
     'fillRoundedRect',
+    'strokeRoundedRect',
     'fillGradientStyle',
     'lineStyle',
     'beginPath',
@@ -138,6 +147,7 @@ function makeScene(muted = false) {
         texts.push(t);
         return t;
       }),
+      existing: vi.fn(),
       zone: vi.fn(() => {
         const z = {
           setInteractive: vi.fn().mockReturnThis(),

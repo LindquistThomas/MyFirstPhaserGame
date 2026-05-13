@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { theme } from '../style/theme';
-import { primaryKeyLabel, type GameAction } from '../input';
+import { initInputModeTracking, promptLabel, type GameAction } from '../input';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 
 /** A single control hint chip shown to the player. */
@@ -35,6 +35,7 @@ export class ControlHintsOverlay {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+    initInputModeTracking();
     this.buildChips();
     this.startDismissTimer();
 
@@ -62,9 +63,9 @@ export class ControlHintsOverlay {
   private buildChips(): void {
     const hints: Array<{ action: GameAction; label: string }> = [
       { action: 'MoveLeft',   label: `\u2190 \u2192  Move` },
-      { action: 'Jump',       label: `${primaryKeyLabel('Jump')}  Jump` },
-      { action: 'ToggleInfo', label: `${primaryKeyLabel('ToggleInfo')}  Info` },
-      { action: 'Interact',   label: `${primaryKeyLabel('Interact')}  Interact` },
+      { action: 'Jump',       label: `${promptLabel('Jump')}  Jump` },
+      { action: 'ToggleInfo', label: `${promptLabel('ToggleInfo')}  Info` },
+      { action: 'Interact',   label: `${promptLabel('Interact')}  Interact` },
     ];
 
     const chipW = 130;

@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { eventBus } from '../systems/EventBus';
 import { isReducedMotion } from '../systems/MotionPreference';
+import { selectPhase } from '../features/floors/boss/bossPhaseSelector';
 
 export type BossPhase = 1 | 2 | 3;
 
@@ -129,11 +130,7 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
   private readonly PHASE3_BRIEFCASE_GRACE_MS = 3000;
 
   private checkPhaseTransition(): void {
-    let newPhase: BossPhase = this.phase;
-    const phase2Threshold = Math.ceil(this.maxHp * 0.7);
-    const phase3Threshold = Math.ceil(this.maxHp * 0.3);
-    if (this.hp <= phase3Threshold) newPhase = 3;
-    else if (this.hp <= phase2Threshold) newPhase = 2;
+    const newPhase = selectPhase(this.hp, 0);
 
     if (newPhase !== this.phase) {
       this.phase = newPhase;

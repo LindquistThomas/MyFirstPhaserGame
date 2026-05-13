@@ -3,8 +3,9 @@ import { GAME_WIDTH, GAME_HEIGHT, COLORS } from '../../config/gameConfig';
 import { SCENE_MUSIC, SOUNDTRACK_PLAYLIST, STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { eventBus } from '../../systems/EventBus';
 import { pushContext, popContext } from '../../input';
-import { createSceneLifecycle } from '../../systems/sceneLifecycle';
+import { createSceneLifecycle, type SceneLifecycle } from '../../systems/sceneLifecycle';
 import { isReducedMotion } from '../../systems/MotionPreference';
+import { ControlsReferenceModal } from '../../ui/ControlsReferenceModal';
 import { MENU_DEFERRED_SPRITE_PHASES } from '../../systems/SpriteGenerator';
 import { BATCHED_SOUND_PHASES } from '../../systems/SoundGenerator';
 import { setPlayerSlot, hasSave } from '../../systems/SaveManager';
@@ -47,6 +48,12 @@ export class MenuScene extends Phaser.Scene {
   private soundtrackIndex = -1;
   /** DOM banner element shown when browser storage is unavailable; null when absent. */
   private guestBannerEl: HTMLElement | null = null;
+  /**
+   * Active keyboard navigation lifecycle. Stored so it can be disposed before
+   * opening the Controls modal (prevents menu handlers from firing alongside
+   * the modal's modal-context bindings) and recreated when the modal closes.
+   */
+  private menuLc!: SceneLifecycle;
 
   /**
    * Handle returned by requestIdleCallback or setTimeout for the deferred-
@@ -322,11 +329,13 @@ export class MenuScene extends Phaser.Scene {
 
   private setupKeyboardNavigation(): void {
     const contextToken = pushContext('menu');
-    const lifecycle = createSceneLifecycle(this);
-    lifecycle.add(() => popContext(contextToken));
-    lifecycle.bindInput('NavigateUp', () => this.moveSelection(-1));
-    lifecycle.bindInput('NavigateDown', () => this.moveSelection(1));
-    lifecycle.bindInput('Confirm', () => this.activateSelection());
+    this.menuLc = createSceneLifecycle(this);
+    this.menuLc.add(() => popContext(contextToken));
+    this.menuLc.bindInput('NavigateUp', () => this.moveSelection(-1));
+    this.menuLc.bindInput('NavigateDown', () => this.moveSelection(1));
+    this.menuLc.bindInput('Confirm', () => this.activateSelection());
+    // H in menu context opens the Controls reference modal.
+    this.menuLc.bindInput('ShowControls', () => this.openControlsModal());
   }
 
   private moveSelection(delta: number): void {
@@ -700,7 +709,13 @@ export class MenuScene extends Phaser.Scene {
       this.soundtrackButton = soundtrackBtn;
     }
 
-    const settingsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 250 : 205;
+    const controlsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 250 : 205;
+    const controlsAction = () => this.openControlsModal();
+    const controlsBtn = this.makeButton(cx, cy + controlsYOffset, '[ CONTROLS ]', 20, controlsAction);
+    controlsBtn.setDepth(TEXT_DEPTH);
+    this.menuButtons.push({ btn: controlsBtn, action: controlsAction });
+
+    const settingsYOffset = SOUNDTRACK_PLAYLIST.length > 0 ? 310 : 265;
     const settingsAction = () => this.openSettings();
     const settingsBtn = this.makeButton(cx, cy + settingsYOffset, '[ SETTINGS ]', 20, settingsAction);
     settingsBtn.setDepth(TEXT_DEPTH);
@@ -775,6 +790,19 @@ export class MenuScene extends Phaser.Scene {
     setDailyState(this.registry, null);
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => this.scene.start('SaveSlotScene'));
+  }
+
+  private openControlsModal(): void {
+    // Dispose menu keyboard handlers so NavigateUp/Down and Confirm don't fire
+    // behind the modal while it is open.
+    this.menuLc.dispose();
+    new ControlsReferenceModal(
+      this,
+      // onClose: modal closed normally — restore keyboard navigation.
+      () => { this.setupKeyboardNavigation(); },
+      // onRebind: user clicked "Rebind..." — navigate to SettingsScene.
+      () => { this.openSettings(); },
+    );
   }
 
   private refreshDailyChallengeText(): void {

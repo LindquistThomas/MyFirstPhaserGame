@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FLOORS } from '../../../config/gameConfig';
 import { ProgressionSystem, type SaveAdapter } from '../../../systems/ProgressionSystem';
 import type { SaveData } from '../../../systems/SaveManager';
@@ -53,8 +53,17 @@ vi.mock('../../../entities/DroppedAU', () => ({
   },
 }));
 
+const reducedMotionState = vi.hoisted(() => ({ value: false }));
+vi.mock('../../../systems/MotionPreference', () => ({
+  isReducedMotion: vi.fn(() => reducedMotionState.value),
+}));
+
 // ---- Import module under test after mocks ----
 import { LevelTokenManager } from './LevelTokenManager';
+
+beforeEach(() => {
+  reducedMotionState.value = false;
+});
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -82,7 +91,10 @@ function makeConfig(
   };
 }
 
-function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLOORS.PLATFORM_TEAM) {
+function makeHarness(
+  floorId: import('../../../config/gameConfig').FloorId = FLOORS.PLATFORM_TEAM,
+  options?: { hasParticleTexture?: boolean },
+) {
   createdTokens.length = 0;
 
   // Groups returned from physics.add.staticGroup() / physics.add.group()
@@ -96,6 +108,12 @@ function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLO
   // correct callback by group reference rather than relying on array index.
   const overlapCalls: Array<{ b: unknown; cb: (player: unknown, obj: unknown) => void }> = [];
 
+  const sparkleEmitter = {
+    emitParticleAt: vi.fn(),
+    setDepth: vi.fn(),
+    destroy: vi.fn(),
+  };
+  const sceneEventHandlers: Record<string, Array<() => void>> = {};
   const scene = {
     physics: {
       add: {
@@ -109,9 +127,15 @@ function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLO
         collider: vi.fn(),
       },
     },
-    textures: { exists: vi.fn(() => false) },
+    textures: { exists: vi.fn(() => options?.hasParticleTexture ?? false) },
     time: { delayedCall: vi.fn() },
-    add: { particles: vi.fn() },
+    add: { particles: vi.fn(() => sparkleEmitter) },
+    events: {
+      once: vi.fn((event: string, cb: () => void) => {
+        if (!sceneEventHandlers[event]) sceneEventHandlers[event] = [];
+        sceneEventHandlers[event]!.push(cb);
+      }),
+    },
   } as unknown as Phaser.Scene;
 
   const progression = new ProgressionSystem(makeSaveAdapter());
@@ -161,6 +185,8 @@ function makeHarness(floorId: import('../../../config/gameConfig').FloorId = FLO
     checkAchievements,
     cameraFlash,
     scene,
+    sparkleEmitter,
+    sceneEventHandlers,
     player,
   };
 }
@@ -187,6 +213,23 @@ describe('LevelTokenManager — constructor', () => {
   it('starts with auCollected = 0', () => {
     const { mgr } = makeHarness();
     expect(mgr.auCollected).toBe(0);
+  });
+
+  it('constructs exactly one sparkle emitter per manager lifecycle', () => {
+    const { scene } = makeHarness(FLOORS.PLATFORM_TEAM, { hasParticleTexture: true });
+    expect(scene.add.particles).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not construct sparkle emitter when reduced motion is enabled', () => {
+    reducedMotionState.value = true;
+    const { scene } = makeHarness(FLOORS.PLATFORM_TEAM, { hasParticleTexture: true });
+    expect(scene.add.particles).not.toHaveBeenCalled();
+  });
+
+  it('destroys pooled emitter on scene shutdown', () => {
+    const { sparkleEmitter, sceneEventHandlers } = makeHarness(FLOORS.PLATFORM_TEAM, { hasParticleTexture: true });
+    sceneEventHandlers.shutdown?.forEach(cb => cb());
+    expect(sparkleEmitter.destroy).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -252,6 +295,22 @@ describe('LevelTokenManager — tokenKey()', () => {
 });
 
 describe('LevelTokenManager — collection callback (via wireColliders overlap)', () => {
+  it('reuses pooled sparkle emitter instead of allocating per pickup', () => {
+    const { mgr, getOverlapCb, scene, sparkleEmitter } = makeHarness(FLOORS.PLATFORM_TEAM, { hasParticleTexture: true });
+    mgr.spawn(makeConfig([{ x: 100, y: 200 }, { x: 300, y: 400 }]));
+    mgr.wireColliders();
+
+    const tokenA = createdTokens[0]!;
+    tokenA.setData('tokenIndex', 0);
+    const tokenB = createdTokens[1]!;
+    tokenB.setData('tokenIndex', 1);
+    getOverlapCb(mgr.tokenGroup)({}, tokenA);
+    getOverlapCb(mgr.tokenGroup)({}, tokenB);
+
+    expect(scene.add.particles).toHaveBeenCalledTimes(1);
+    expect(sparkleEmitter.emitParticleAt).toHaveBeenCalledTimes(2);
+  });
+
   it('increments auCollected when a token is collected', () => {
     const { mgr, getOverlapCb } = makeHarness();
     mgr.spawn(makeConfig([{ x: 100, y: 200 }]));

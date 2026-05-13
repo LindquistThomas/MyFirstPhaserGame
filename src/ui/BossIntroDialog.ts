@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { theme } from '../style/theme';
 import { ModalBase } from './ModalBase';
-import { allKeyLabels } from '../input';
+import { promptLabel } from '../input';
 
 /**
  * First-visit intro card shown at the start of the CEO boss fight.
@@ -72,11 +72,11 @@ export class BossIntroDialog extends ModalBase {
     this.container.add(lore);
 
     // Controls list
-    const attackLabel    = allKeyLabels('Attack');
-    const jumpLabel      = allKeyLabels('Jump', '/');
-    const moveLeftLabel  = allKeyLabels('MoveLeft', '/');
-    const moveRightLabel = allKeyLabels('MoveRight', '/');
-    const moveLabel      = `${moveLeftLabel}/${moveRightLabel}`;
+    const attackLabel = promptLabel('Attack');
+    const jumpLabel = promptLabel('Jump');
+    const moveLeftLabel = promptLabel('MoveLeft');
+    const moveRightLabel = promptLabel('MoveRight');
+    const moveLabel = moveLeftLabel === moveRightLabel ? moveLeftLabel : `${moveLeftLabel}/${moveRightLabel}`;
     const challengeLabel = '1/2/3 or click';
 
     const controlLines = [

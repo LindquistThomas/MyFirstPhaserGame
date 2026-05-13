@@ -13,6 +13,7 @@ import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
+import { reducedDuration } from '../../../systems/motionTween';
 import { allKeyLabels } from '../../../input';
 import {
   PERSISTENT_TEXTURE_KEYS,
@@ -113,12 +114,16 @@ export class BossArenaScene extends Phaser.Scene {
   private promptActive = false;
   private promptPanel?: Phaser.GameObjects.Container;
   private promptTimer = 30000; // ms until first prompt
+  private bombDisarmProgress: BombDisarmProgress = createBombDisarmProgress(1);
+  private projectilePatternRng = new SeededRandom(0);
 
   private isTransitioning = false;
   private playerHitCount = 0;
+  private hasCompletedEncounter = false;
 
   /** Mechanic-hint toast shown at fight start and on phase transitions. Assigned in buildUI(). */
   private mechHintToast!: Toast;
+  private objectiveBanner?: ObjectiveBanner;
 
   /** Per-visit hit / checkpoint tracking. */
   private readonly floorHazard = new FloorHitState();
@@ -141,6 +146,15 @@ export class BossArenaScene extends Phaser.Scene {
     this.floorHazard.reset();
     this.heartbeatElapsed = 0;
     this.playerHitCount = 0;
+    this.hasCompletedEncounter = false;
+    this.promptActive = false;
+    this.promptTimer = 30000;
+    this.bombDisarmProgress = createBombDisarmProgress(1);
+    const registrySeed = this.registry.get('bossPatternSeed');
+    const seed = typeof registrySeed === 'number' && Number.isFinite(registrySeed)
+      ? registrySeed
+      : Date.now();
+    this.projectilePatternRng = new SeededRandom(seed >>> 0);
   }
 
   create(): void {
@@ -193,12 +207,12 @@ export class BossArenaScene extends Phaser.Scene {
       new BossIntroDialog(this, () => {
         this.physics.resume();
         this.isTransitioning = false;
-        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug  |  Collect mugs from the side platforms`);
+        this.showMechanicHint(`${actionPrompt('Attack')} — Throw mug  |  Collect mugs from the side platforms`);
       });
     } else {
       // Brief reminder on every replay — unobtrusive bottom-right toast.
       this.time.delayedCall(1500, () => {
-        this.showMechanicHint(`${allKeyLabels('Attack')} — Throw mug`);
+        this.showMechanicHint(`${actionPrompt('Attack')} — Throw mug`);
       });
     }
   }
@@ -300,7 +314,8 @@ export class BossArenaScene extends Phaser.Scene {
     this.boss.on('throwBriefcase', (playerX: number) => this.spawnBriefcase(playerX));
     this.boss.on('defeatDialogue', () => this.showDefeatDialogue());
     this.boss.on('bossBarrage', () => {
-      for (const offsetY of [-30, 0, 30]) {
+      const pattern = selectProjectilePattern(this.boss.phase, this.projectilePatternRng);
+      for (const offsetY of pattern.yOffsets) {
         this.spawnBriefcase(this.player.sprite.x, offsetY);
       }
     });
@@ -314,12 +329,16 @@ export class BossArenaScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
     }).setScrollFactor(0).setDepth(60);
 
-    const attackHint = allKeyLabels('Attack');
+    const attackHint = actionPrompt('Attack');
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 20, `${attackHint} — Throw Mug  |  Collect mugs from platforms  |  Answer challenges to unlock the final blow`, {
       fontFamily: 'monospace', fontSize: '12px', color: '#888899',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(60);
 
     this.mechHintToast = new Toast(this);
+    this.objectiveBanner = new ObjectiveBanner(this, {
+      getText: () => this.getObjectiveText(),
+      isModalOpen: () => this.promptActive || this.isTransitioning,
+    });
   }
 
   private wireColliders(): void {
@@ -348,6 +367,7 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    this.objectiveBanner?.update();
     if (this.isTransitioning) return;
     if (!this.boss || this.boss.defeated) return;
 
@@ -376,7 +396,10 @@ export class BossArenaScene extends Phaser.Scene {
     if (!this.promptActive) {
       this.promptTimer -= delta;
       if (this.promptTimer <= 0) {
-        this.promptTimer = this.boss.phase === 1 ? 25000 : this.boss.phase === 2 ? 18000 : 12000;
+        this.bombDisarmProgress = applyBombDisarmEvent(this.bombDisarmProgress, BOMB_DISARM_EVENTS.ARM);
+        this.bombDisarmProgress = applyBombDisarmEvent(this.bombDisarmProgress, BOMB_DISARM_EVENTS.START_DISARM);
+        const phase = selectPhase(this.boss.currentHp, 0);
+        this.promptTimer = phase === 1 ? 25000 : phase === 2 ? 18000 : 12000;
         this.showPrompt();
       }
     }
@@ -525,6 +548,11 @@ export class BossArenaScene extends Phaser.Scene {
 
     const correct = chosen === prompt.correct;
     eventBus.emit(correct ? 'sfx:quiz_correct' : 'sfx:quiz_wrong');
+    this.bombDisarmProgress = applyBombDisarmEvent(
+      this.bombDisarmProgress,
+      correct ? BOMB_DISARM_EVENTS.SUCCEED : BOMB_DISARM_EVENTS.FAIL,
+    );
+    this.bombDisarmProgress = applyBombDisarmEvent(this.bombDisarmProgress, BOMB_DISARM_EVENTS.RESET);
 
     // Feedback toast
     const toast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, prompt.feedback, {
@@ -552,12 +580,13 @@ export class BossArenaScene extends Phaser.Scene {
       }
     }
 
+    const reducedMotion = isReducedMotion();
     this.tweens.add({
       targets: toast,
       alpha: 0,
-      y: toast.y - 40,
-      duration: 2000,
-      delay: 1200,
+      y: reducedMotion ? toast.y : toast.y - 40,
+      duration: reducedDuration(2000, 100),
+      delay: reducedMotion ? 0 : 1200,
       onComplete: () => toast.destroy(),
     });
   }
@@ -569,15 +598,24 @@ export class BossArenaScene extends Phaser.Scene {
         color,
         backgroundColor: '#0a0a1a', padding: { x: 12, y: 6 },
       }).setOrigin(0.5).setScrollFactor(0).setDepth(80);
+      const reducedMotion = isReducedMotion();
       this.tweens.add({
         targets: toast,
         alpha: 0,
-        y: toast.y - 40,
-        duration: 2000,
-        delay: 1200,
+        y: reducedMotion ? toast.y : toast.y - 40,
+        duration: reducedDuration(2000, 100),
+        delay: reducedMotion ? 0 : 1200,
         onComplete: () => toast.destroy(),
       });
     });
+  }
+
+  private getObjectiveText(): string {
+    if (!this.boss || this.boss.defeated) return '';
+    if (this.promptActive) return 'Answer the architecture challenge';
+    if (this.boss.phase === 1) return 'Collect mugs and hit the CEO';
+    if (this.boss.phase === 2) return 'Answer challenges to disable briefcases';
+    return 'Stun the CEO, then finish the fight';
   }
 
   private showDefeatDialogue(): void {
@@ -604,7 +642,7 @@ export class BossArenaScene extends Phaser.Scene {
       wordWrap: { width: panelW - 32 }, align: 'center',
     }).setOrigin(0.5);
 
-    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, `Press ${allKeyLabels('Interact')}`, {
+    const hint = this.add.text(panelW / 2 - 12, panelH / 2 - 10, actionPrompt('Interact'), {
       fontFamily: 'monospace', fontSize: '11px', color: '#666677',
     }).setOrigin(1, 1);
 
@@ -639,6 +677,8 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   private showVictory(): void {
+    if (this.hasCompletedEncounter) return;
+    this.hasCompletedEncounter = true;
     const noDamage = this.playerHitCount === 0;
 
     // Award AU

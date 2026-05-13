@@ -56,7 +56,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     sceneKey: 'PlatformTeamScene',
     auRequired: 0,
     auLabel: 'Infrastructure AU',
-    totalAU: 15,
+    totalAU: 12,
     rooms: { left: 'Platform Team', right: 'Architecture Team' },
     theme: {
       platformColor: 0x2d6a4f,
@@ -88,9 +88,9 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Executive Suite',
     description: 'The penthouse. Strategy, vision, and the C-suite.',
     sceneKey: 'ExecutiveSuiteScene',
-    auRequired: 22,
+    auRequired: 24,
     auLabel: 'Strategy AU',
-    totalAU: 6,
+    totalAU: 8,
     theme: {
       platformColor: 0x4a3a1a,
       backgroundColor: 0x1a1208,
@@ -107,9 +107,9 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     // scene. Kept as a symbolic label so levelData stays complete and the
     // floor sceneKey uniqueness test still holds.
     sceneKey: 'ProductsFloor',
-    auRequired: 8,
+    auRequired: 12,
     auLabel: 'Product AU',
-    totalAU: 0,
+    totalAU: 6,
     theme: {
       platformColor: 0x3a3a55,
       backgroundColor: 0x101a2a,
@@ -123,7 +123,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Boardroom',
     description: 'The CEO awaits. Prove your architectural worth.',
     sceneKey: 'BossArenaScene',
-    auRequired: 30,
+    auRequired: 36,
     auLabel: 'Boss AU',
     totalAU: 0,
     theme: {

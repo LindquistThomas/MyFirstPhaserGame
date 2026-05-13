@@ -21,7 +21,9 @@ vi.mock('../systems/InfoDialogManager', () => ({
 }));
 
 vi.mock('../input', () => ({
-  primaryKeyLabel: vi.fn(() => '↑'),
+  actionPrompt: vi.fn(() => 'Press ↑'),
+  initInputModeTracking: vi.fn(),
+  promptLabel: vi.fn(() => '↑'),
 }));
 
 const mockGetCooldownRemaining = vi.fn((_infoId: string) => 0);
@@ -180,10 +182,13 @@ function makeScene() {
 
 // Must be imported after all mocks are declared.
 import { InfoIcon } from './InfoIcon';
+import { eventBus } from '../systems/EventBus';
+import * as input from '../input';
 
 describe('InfoIcon cooldown chip', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    eventBus.removeAllListeners();
     mockGetCooldownRemaining.mockReturnValue(0);
   });
 
@@ -337,6 +342,28 @@ describe('InfoIcon cooldown chip', () => {
 
     scene._triggerHitArea('pointerout');
     expect(bg.clearTint).toHaveBeenCalledTimes(clearTintCallsBefore);
+  });
+
+  it('(h) refreshes visible hint label on input:mode-changed', () => {
+    vi.mocked(input.actionPrompt)
+      .mockReturnValueOnce('Press ↑')
+      .mockReturnValueOnce('Tap');
+
+    const scene = makeScene();
+    const icon = new InfoIcon(
+      scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-quiz',
+    );
+    icon.setVisible(true);
+
+    const firstHintCall = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls
+      .find((call) => call[2] === 'Press ↑');
+    expect(firstHintCall).toBeDefined();
+
+    eventBus.emit('input:mode-changed', 'touch');
+
+    const secondHintCall = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls
+      .find((call) => call[2] === 'Tap');
+    expect(secondHintCall).toBeDefined();
   });
 });
 
