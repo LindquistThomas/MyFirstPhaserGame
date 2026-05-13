@@ -3,6 +3,7 @@ import { eventBus } from '../systems/EventBus';
 import { setTouchPrimaryOverride } from '../ui/touchPrimary';
 import {
   _resetInputModeTrackingForTests,
+  actionPrompt,
   detectInputMode,
   initInputModeTracking,
   promptLabel,
@@ -80,5 +81,29 @@ describe('promptLabel', () => {
     mockGamepads(() => []);
     window.dispatchEvent(new Event('gamepaddisconnected'));
     expect(listener).toHaveBeenLastCalledWith('keyboard');
+  });
+
+  it('detectInputMode falls back to keyboard when navigator.getGamepads throws', () => {
+    mockGamepads(() => {
+      throw new Error('gamepad api failure');
+    });
+    expect(detectInputMode()).toBe('keyboard');
+  });
+
+  it('actionPrompt returns touch verbs unchanged and prefixes keyboard labels', () => {
+    mockGamepads(() => []);
+    expect(actionPrompt('Jump', 'touch')).toBe('Tap and hold');
+    expect(actionPrompt('Interact', 'touch')).toBe('Tap');
+    expect(actionPrompt('MoveLeft', 'touch')).toBe('Swipe');
+    expect(actionPrompt('Confirm', 'keyboard')).toBe('Press X');
+  });
+
+  it('ignores storage events for unrelated keys', () => {
+    const listener = vi.fn();
+    eventBus.on('input:mode-changed', listener);
+    initInputModeTracking();
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'unrelated' }));
+    expect(listener).not.toHaveBeenCalled();
   });
 });

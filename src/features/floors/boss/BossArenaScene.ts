@@ -8,13 +8,23 @@ import { Checkpoint } from '../../../entities/Checkpoint';
 import { BossHealthBar } from '../../../ui/BossHealthBar';
 import { BossIntroDialog } from '../../../ui/BossIntroDialog';
 import { Toast } from '../../../ui/Toast';
+import { ObjectiveBanner } from '../../../ui/ObjectiveBanner';
 import { GameStateManager } from '../../../systems/GameStateManager';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { FloorHitState } from '../../../systems/FloorHitState';
+import { SeededRandom } from '../../../systems/SeededRandom';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 import { reducedDuration } from '../../../systems/motionTween';
-import { allKeyLabels } from '../../../input';
+import { actionPrompt, allKeyLabels } from '../../../input';
+import { selectPhase } from './bossPhaseSelector';
+import { selectProjectilePattern } from './projectilePattern';
+import {
+  applyBombDisarmEvent,
+  BOMB_DISARM_EVENTS,
+  BombDisarmProgress,
+  createBombDisarmProgress,
+} from './bombDisarmStateMachine';
 import {
   PERSISTENT_TEXTURE_KEYS,
   clearSceneOwnedTextureKeys,

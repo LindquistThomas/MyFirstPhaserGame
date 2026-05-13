@@ -20,6 +20,8 @@ vi.mock('../style/theme', () => ({
 // Mock primaryKeyLabel so we avoid real input binding lookups
 vi.mock('../input', () => ({
   primaryKeyLabel: vi.fn((_action: string) => 'Key'),
+  promptLabel: vi.fn((_action: string) => 'Enter'),
+  initInputModeTracking: vi.fn(),
 }));
 
 // Stub createSceneLifecycle — capture the registered teardown callbacks

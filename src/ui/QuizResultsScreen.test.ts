@@ -117,6 +117,7 @@ function makeScene() {
       particles: vi.fn(() => ({
         setDepth: vi.fn().mockReturnThis(),
         setScrollFactor: vi.fn().mockReturnThis(),
+        setPosition: vi.fn().mockReturnThis(),
         explode: vi.fn(),
         destroy: vi.fn(),
       })),
@@ -125,6 +126,7 @@ function makeScene() {
     cameras: { main: { flash: vi.fn() } },
     time: { delayedCall: vi.fn() },
     textures: { exists: vi.fn(() => false) },
+    events: { once: vi.fn() },
     _texts: () => texts,
     _textValues: () => texts.map((t) => t._text),
   };
