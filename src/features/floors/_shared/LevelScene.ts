@@ -749,6 +749,12 @@ export class LevelScene extends Phaser.Scene {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
     this.callElevatorButton.setVisible(false);
+    if (this.floorId !== FLOORS.LOBBY) {
+      const floorBest = this.gameState.playtime.recordFloorBest(this.floorId);
+      if (floorBest.isNewBest && floorBest.runMs !== null) {
+        this.hud.showToast(`⏱ New best for ${this.floorData.name}: ${formatPlaytime(floorBest.runMs)}`);
+      }
+    }
     // When the player first leaves the lobby, start the run timer (no-op if
     // already running from a new-game start or a previous session).
     if (this.floorId === FLOORS.LOBBY) {

@@ -120,7 +120,7 @@ vi.mock('../../ui/SaveRecoveryDialog', () => ({
 
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
-import { SaveSlotScene } from './SaveSlotScene';
+import { SaveSlotScene, formatMs } from './SaveSlotScene';
 import * as SaveManager from '../../systems/SaveManager';
 import type { FloorId } from '../../config/gameConfig';
 
@@ -182,6 +182,39 @@ describe('SaveSlotScene — save card floor display', () => {
     const scene = buildScene();
     const labels = getTextLabels(scene);
     expect(labels).toContain('Floor: Lobby');
+  });
+
+  it('shows formatted best run when present', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return {
+          slotId,
+          exists: true,
+          totalAU: 12,
+          currentFloor: 1 as FloorId,
+          lastPlayedAt: undefined,
+          bestRunMs: 83_000,
+        };
+      }
+      return { slotId, exists: false };
+    });
+
+    const scene = buildScene();
+    const labels = getTextLabels(scene);
+    expect(labels).toContain('Best run: 1:23');
+  });
+
+  it('shows em dash best run fallback when unset', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return { slotId, exists: true, totalAU: 12, currentFloor: 1 as FloorId, lastPlayedAt: undefined };
+      }
+      return { slotId, exists: false };
+    });
+
+    const scene = buildScene();
+    const labels = getTextLabels(scene);
+    expect(labels).toContain('Best run: —');
   });
 
   it('shows "Floor: —" when currentFloor is undefined (unknown/invalid floor)', () => {
@@ -277,5 +310,13 @@ describe('SaveSlotScene — save card floor display', () => {
     const sceneWithoutNg = buildScene();
     (sceneWithoutNg as unknown as { activateSelected: () => void }).activateSelected();
     expect(getTextLabels(sceneWithoutNg)).not.toContain('[ NEW GAME+ ]');
+  });
+});
+
+describe('formatMs', () => {
+  it('formats milliseconds as M:SS', () => {
+    expect(formatMs(0)).toBe('0:00');
+    expect(formatMs(83_000)).toBe('1:23');
+    expect(formatMs(12 * 60_000 + 43_000)).toBe('12:43');
   });
 });

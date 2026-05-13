@@ -300,6 +300,12 @@ export class SettingsScene extends Phaser.Scene {
         set: (v) => settingsStore.setAnalyticsConsent(v),
       },
       {
+        kind: 'toggle',
+        label: 'SHOW RUN TIMER',
+        get: () => settingsStore.read().showRunTimer,
+        set: (v) => settingsStore.setShowRunTimer(v),
+      },
+      {
         kind: 'action',
         label: '[ HOW TO PLAY ]',
         action: () => this.openHowToPlay(),

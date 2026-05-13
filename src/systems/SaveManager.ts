@@ -32,6 +32,10 @@ export interface SaveData {
   firstClearMs?: number;
   /** Best (shortest) run clear time in milliseconds across all runs. */
   bestClearMs?: number;
+  /** Best (shortest) run clear time in milliseconds across all runs (v3+ canonical field). */
+  bestRunMs?: number;
+  /** Best (shortest) per-floor completion time in milliseconds. */
+  bestFloorMs?: Partial<Record<FloorId, number>>;
   /** Unix ms timestamp when the current run was started; absent when not in a run. */
   runStartedAt?: number;
   /** Number of times the CEO has been defeated in this slot (meta progression). */
@@ -50,6 +54,7 @@ export interface SlotInfo {
   exists: boolean;
   totalAU?: number;
   currentFloor?: FloorId;
+  bestRunMs?: number;
   lastPlayedAt?: number;
   bossDefeatedCount?: number;
   mode?: GameMode;
@@ -227,6 +232,11 @@ function isValidSaveData(d: unknown): d is SaveData {
   }
   if (o['firstClearMs'] !== undefined && typeof o['firstClearMs'] !== 'number') return false;
   if (o['bestClearMs'] !== undefined && typeof o['bestClearMs'] !== 'number') return false;
+  if (o['bestRunMs'] !== undefined && typeof o['bestRunMs'] !== 'number') return false;
+  if (o['bestFloorMs'] !== undefined) {
+    if (typeof o['bestFloorMs'] !== 'object' || o['bestFloorMs'] === null || Array.isArray(o['bestFloorMs'])) return false;
+    if (!Object.values(o['bestFloorMs'] as object).every((v) => typeof v === 'number' && isFinite(v))) return false;
+  }
   if (o['runStartedAt'] !== undefined && typeof o['runStartedAt'] !== 'number') return false;
   if (o['bossDefeatedCount'] !== undefined) {
     if (typeof o['bossDefeatedCount'] !== 'number') return false;
@@ -393,6 +403,7 @@ export function loadSlotInfo(slotId: SaveSlotId): SlotInfo {
     exists: true,
     totalAU: data.totalAU,
     currentFloor: validateFloorId(data.currentFloor),
+    bestRunMs: data.bestRunMs,
     lastPlayedAt: data.lastPlayedAt,
     bossDefeatedCount: data.bossDefeatedCount ?? 0,
     mode: data.mode ?? DEFAULT_GAME_MODE,

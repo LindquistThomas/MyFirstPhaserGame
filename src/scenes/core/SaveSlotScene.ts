@@ -19,6 +19,9 @@ import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 import { setDailyState } from '../../systems/DailyChallenge';
 import type { GameMode } from '../../systems/GameMode';
 
+/** Alias for slot-card speedrun PB formatting (milliseconds → M:SS). */
+export const formatMs = formatPlaytime;
+
 /**
  * Slot-picker screen.
  *
