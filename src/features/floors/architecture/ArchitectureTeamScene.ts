@@ -4,6 +4,7 @@ import {
   TIER_Y_T1 as TIER_T1, TIER_Y_T2 as TIER_T2,
   CATWALK_THICKNESS,
 } from '../../../config/levelGeometry';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import { defineFloorScene } from '../_shared/defineFloorScene';
 import { theme } from '../../../style/theme';
 
@@ -309,6 +310,9 @@ export class ArchitectureTeamScene extends defineFloorScene({
     const highlight = this.add.rectangle(sliceX - 2, top, sliceW + 4, sliceH, 0xffffff, 0)
       .setOrigin(0, 0).setDepth(6)
       .setStrokeStyle(2, 0xfff2b0, 0.9);
+    if (isReducedMotion()) {
+      return;
+    }
     const tick = () => {
       active = (active + 1) % slices.length;
       this.tweens.add({

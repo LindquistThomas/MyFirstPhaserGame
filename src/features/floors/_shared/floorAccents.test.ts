@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { drawFloorAccents, _accents, type AccentTheme } from './floorAccents';
 import { FLOORS, type FloorId } from '../../../config/gameConfig';
+import * as MotionPreference from '../../../systems/MotionPreference';
 
 function makeStubScene() {
   const tweens: unknown[] = [];
@@ -13,6 +14,8 @@ function makeStubScene() {
       setStrokeStyle: () => stub,
       setFillStyle: () => stub,
       setRadius: () => stub,
+      setAlpha: () => stub,
+      setScale: () => stub,
     };
     return Object.assign(obj, stub) as T;
   };
@@ -61,6 +64,10 @@ const theme: AccentTheme = {
 };
 
 describe('drawFloorAccents', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   const withAccents: FloorId[] = [
     FLOORS.LOBBY,
     FLOORS.PLATFORM_TEAM,
@@ -70,6 +77,7 @@ describe('drawFloorAccents', () => {
   ];
 
   it.each(withAccents)('renders silhouette + one ambient tween for floor %s', (floorId) => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(false);
     const scene = makeStubScene();
     const g = makeStubGraphics();
     drawFloorAccents(floorId, {
@@ -96,6 +104,27 @@ describe('drawFloorAccents', () => {
     const cfg = scene.tweens.add.mock.calls[0]![0] as { repeat: number; yoyo: boolean };
     expect(cfg.repeat).toBe(-1);
     expect(cfg.yoyo).toBe(true);
+  });
+
+  it.each(withAccents)('renders silhouette + no ambient tween with reduced motion for floor %s', (floorId) => {
+    vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+    const scene = makeStubScene();
+    const g = makeStubGraphics();
+    drawFloorAccents(floorId, {
+      scene: scene as any,
+      g: g as any,
+      width: 1280,
+      height: 720,
+      theme,
+    });
+    const drew =
+      g.fillRect.mock.calls.length +
+      g.fillCircle.mock.calls.length +
+      g.fillEllipse.mock.calls.length +
+      g.strokeRect.mock.calls.length +
+      g.lineBetween.mock.calls.length;
+    expect(drew).toBeGreaterThan(0);
+    expect(scene.tweens.add.mock.calls.length).toBe(0);
   });
 
   it('is a no-op for floors without a registered accent', () => {
