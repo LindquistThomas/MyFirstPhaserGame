@@ -8,7 +8,7 @@ vi.mock('phaser', () => {
     for (const m of [
       'setOrigin', 'setDepth', 'setScrollFactor', 'setInteractive', 'setAlpha',
       'setShadow', 'setColor', 'setScale', 'fillStyle', 'fillRect',
-      'lineStyle', 'strokeRect', 'clear', 'on',
+      'lineStyle', 'strokeRect', 'clear', 'on', 'setText',
     ]) {
       o[m] = vi.fn(() => o);
     }
@@ -85,6 +85,19 @@ vi.mock('../../config/levelData', () => ({
   },
 }));
 
+vi.mock('../../config/quiz', () => ({
+  getLoadedQuizCount: vi.fn(() => 4),
+  preloadAllQuizzes: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../../systems/QuizManager', () => ({
+  getPassedCount: vi.fn((slotId: string) => {
+    if (slotId === 'slot1') return 2;
+    if (slotId === 'slot2') return 1;
+    return 0;
+  }),
+}));
+
 vi.mock('../../systems/SaveManager', () => ({
   SAVE_SLOTS: ['slot1', 'slot2', 'slot3'],
   loadSlotInfo: vi.fn(),
@@ -107,7 +120,7 @@ vi.mock('../../ui/SaveRecoveryDialog', () => ({
 
 // ── Imports (after mocks) ────────────────────────────────────────────────────
 
-import { SaveSlotScene } from './SaveSlotScene';
+import { SaveSlotScene, formatMs } from './SaveSlotScene';
 import * as SaveManager from '../../systems/SaveManager';
 import type { FloorId } from '../../config/gameConfig';
 
@@ -171,6 +184,39 @@ describe('SaveSlotScene — save card floor display', () => {
     expect(labels).toContain('Floor: Lobby');
   });
 
+  it('shows formatted best run when present', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return {
+          slotId,
+          exists: true,
+          totalAU: 12,
+          currentFloor: 1 as FloorId,
+          lastPlayedAt: undefined,
+          bestRunMs: 83_000,
+        };
+      }
+      return { slotId, exists: false };
+    });
+
+    const scene = buildScene();
+    const labels = getTextLabels(scene);
+    expect(labels).toContain('Best run: 1:23');
+  });
+
+  it('shows em dash best run fallback when unset', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return { slotId, exists: true, totalAU: 12, currentFloor: 1 as FloorId, lastPlayedAt: undefined };
+      }
+      return { slotId, exists: false };
+    });
+
+    const scene = buildScene();
+    const labels = getTextLabels(scene);
+    expect(labels).toContain('Best run: —');
+  });
+
   it('shows "Floor: —" when currentFloor is undefined (unknown/invalid floor)', () => {
     vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
       if (slotId === 'slot1') {
@@ -214,5 +260,63 @@ describe('SaveSlotScene — save card floor display', () => {
     const scene = buildScene();
     const labels = getTextLabels(scene);
     expect(labels).not.toContain('Floor 4');
+  });
+
+  it('shows "NG+ AVAILABLE" on slots with bossDefeatedCount >= 1', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return {
+          slotId,
+          exists: true,
+          totalAU: 42,
+          currentFloor: 4 as FloorId,
+          lastPlayedAt: undefined,
+          bossDefeatedCount: 1,
+        };
+      }
+      return { slotId, exists: false };
+    });
+
+    const scene = buildScene();
+    const labels = getTextLabels(scene);
+    expect(labels).toContain('NG+ AVAILABLE');
+  });
+
+  it('action selector shows NEW GAME+ only when bossDefeatedCount >= 1', () => {
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return {
+          slotId,
+          exists: true,
+          totalAU: 42,
+          currentFloor: 4 as FloorId,
+          lastPlayedAt: undefined,
+          bossDefeatedCount: 1,
+        };
+      }
+      return { slotId, exists: false };
+    });
+    const sceneWithNg = buildScene();
+    (sceneWithNg as unknown as { activateSelected: () => void }).activateSelected();
+    expect(getTextLabels(sceneWithNg)).toContain('[ NEW GAME+ ]');
+
+    vi.clearAllMocks();
+    vi.mocked(SaveManager.loadSlotInfo).mockImplementation((slotId) => {
+      if (slotId === 'slot1') {
+        return { slotId, exists: true, totalAU: 42, currentFloor: 4 as FloorId, lastPlayedAt: undefined, bossDefeatedCount: 0 };
+      }
+      return { slotId, exists: false };
+    });
+    const sceneWithoutNg = buildScene();
+    (sceneWithoutNg as unknown as { activateSelected: () => void }).activateSelected();
+    expect(getTextLabels(sceneWithoutNg)).not.toContain('[ NEW GAME+ ]');
+  });
+});
+
+describe('formatMs', () => {
+  it('formats milliseconds as M:SS', () => {
+    expect(formatMs(0)).toBe('0:00');
+    expect(formatMs(83_000)).toBe('1:23');
+    expect(formatMs(12 * 60_000 + 43_000)).toBe('12:43');
   });
 });

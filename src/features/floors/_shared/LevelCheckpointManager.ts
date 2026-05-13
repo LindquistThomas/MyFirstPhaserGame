@@ -1,76 +1,146 @@
 import * as Phaser from 'phaser';
+import { GAME_WIDTH, GAME_HEIGHT, type FloorId } from '../../../config/gameConfig';
+import type { Player } from '../../../entities/Player';
 import { Checkpoint } from '../../../entities/Checkpoint';
-import type { FloorId } from '../../../config/gameConfig';
 import type { ProgressionSystem } from '../../../systems/ProgressionSystem';
-import type { FloorHitState } from '../../../systems/FloorHitState';
+import { FloorHitState } from '../../../systems/FloorHitState';
 import { eventBus } from '../../../systems/EventBus';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import type { LevelConfig } from './LevelConfig';
 
-export interface LevelCheckpointManagerDeps {
+export interface CheckpointManagerDeps {
   scene: Phaser.Scene;
+  player: Player;
   floorId: FloorId;
   progression: ProgressionSystem;
-  floorHazard: FloorHitState;
+  getIsTransitioning: () => boolean;
+  /** Returns the authored `playerStart` from the resolved level config. */
+  getPlayerStart: () => { x: number; y: number };
 }
 
+/**
+ * Owns hit tracking, checkpoints, player respawn, and the danger-zone
+ * vignette + heartbeat SFX.
+ *
+ *   - `createDangerVignette()` — build the red edge-band overlay.
+ *   - `spawn(config)` — place `Checkpoint` entities and wire overlaps.
+ *   - `onPlayerHit()` — record a hit; triggers respawn at 3 hits.
+ *   - `triggerRespawn()` — teleport player to last checkpoint / playerStart.
+ *   - `updateDangerState(delta)` — show/hide vignette, pace heartbeat SFX.
+ */
 export class LevelCheckpointManager {
-  constructor(private readonly deps: LevelCheckpointManagerDeps) {}
+  /** Per-visit hit / checkpoint tracking. */
+  readonly floorHazard = new FloorHitState();
 
-  init(
-    cfg: LevelConfig,
-    physics: Phaser.Physics.Arcade.ArcadePhysics,
-    playerSprite: Phaser.Physics.Arcade.Sprite,
-  ): void {
-    if (!cfg.checkpoints?.length) return;
+  private dangerVignette?: Phaser.GameObjects.Graphics;
+  private heartbeatElapsed = 0;
+  private static readonly HEARTBEAT_INTERVAL_MS = 850;
 
-    const activated = new Set(this.deps.progression.getActivatedCheckpointIds(this.deps.floorId));
-    const latestActivatedId = this.deps.progression.getLatestActivatedCheckpointId(this.deps.floorId);
+  constructor(private readonly deps: CheckpointManagerDeps) {}
 
-    for (const cp of cfg.checkpoints) {
-      const isActivated = activated.has(cp.id);
+  // ---- danger vignette -----------------------------------------------------------
+
+  /**
+   * Build the red screen-edge vignette shown when the player is in the
+   * danger zone.  Must be called once during `LevelScene.create()`.
+   */
+  createDangerVignette(): void {
+    this.dangerVignette = this.deps.scene.add.graphics()
+      .setDepth(98)
+      .setScrollFactor(0)
+      .setVisible(false);
+    const g = this.dangerVignette;
+    const alpha = 0.35;
+    const w = GAME_WIDTH;
+    const h = GAME_HEIGHT;
+    const band = 80;
+    g.fillStyle(0xff2222, alpha);
+    g.fillRect(0,       0,       w,    band); // top
+    g.fillRect(0,       h - band, w,   band); // bottom
+    g.fillRect(0,       0,       band, h);    // left
+    g.fillRect(w - band, 0,      band, h);    // right
+  }
+
+  // ---- checkpoint spawning -------------------------------------------------------
+
+  /**
+   * Place `Checkpoint` entities from `config.checkpoints` and wire overlap
+   * with the player sprite.  Called from `LevelScene.create()`.
+   */
+  spawn(config: LevelConfig): void {
+    if (!config.checkpoints?.length) return;
+    const { scene, player } = this.deps;
+    for (const cp of config.checkpoints) {
       const checkpoint = new Checkpoint(
-        this.deps.scene,
+        scene,
         cp.x,
         cp.y,
         cp.id,
         () => {
-          this.deps.floorHazard.registerCheckpoint(cp.x, cp.y);
-          this.deps.progression.activateCheckpoint(this.deps.floorId, cp.id);
+          this.floorHazard.registerCheckpoint(cp.x, cp.y);
           eventBus.emit('checkpoint:activate', cp.id);
         },
-        isActivated,
       );
+      checkpoint.wireOverlap(scene.physics, player.sprite);
+    }
+  }
 
-      if (cp.id === latestActivatedId) {
-        this.deps.floorHazard.registerCheckpoint(cp.x, cp.y);
+  // ---- hit / respawn -------------------------------------------------------------
+
+  /**
+   * Record one player hit.  If three hits have accumulated, triggers respawn.
+   * Passed as the `onPlayerHit` callback to `LevelEnemySpawner`.
+   */
+  onPlayerHit(): void {
+    const shouldRespawn = this.floorHazard.recordHit();
+    if (shouldRespawn) {
+      this.triggerRespawn();
+    }
+  }
+
+  /**
+   * Teleport the player to the most recent checkpoint (or `playerStart` if
+   * none has been activated) with a brief camera flash.
+   * Called from `LevelScene.triggerRespawn()` (protected stub).
+   */
+  triggerRespawn(): void {
+    if (this.deps.getIsTransitioning()) return;
+
+    const cp = this.floorHazard.getCheckpointPos();
+    const target = cp ?? this.deps.getPlayerStart();
+
+    this.floorHazard.reset();
+    this.heartbeatElapsed = 0;
+    this.dangerVignette?.setVisible(false);
+
+    if (!isReducedMotion()) {
+      this.deps.scene.cameras.main.flash(180, 255, 255, 255, true);
+    }
+    this.deps.player.setPosition(target.x, target.y);
+  }
+
+  // ---- per-frame update ----------------------------------------------------------
+
+  /**
+   * Show/hide the danger vignette and pace heartbeat SFX.
+   * Called from `LevelScene.update()`.
+   */
+  updateDangerState(delta: number): void {
+    const inDanger = this.floorHazard.isDangerZone()
+      && this.deps.progression.getFloorAU(this.deps.floorId) <= 1;
+
+    if (this.dangerVignette) {
+      this.dangerVignette.setVisible(inDanger && !isReducedMotion());
+    }
+
+    if (inDanger) {
+      this.heartbeatElapsed += delta;
+      if (this.heartbeatElapsed >= LevelCheckpointManager.HEARTBEAT_INTERVAL_MS) {
+        this.heartbeatElapsed = 0;
+        eventBus.emit('sfx:heartbeat');
       }
-
-      checkpoint.wireOverlap(physics, playerSprite);
+    } else {
+      this.heartbeatElapsed = 0;
     }
-  }
-
-  resolveEntrySpawn(cfg: LevelConfig): { x: number; y: number } {
-    const latestCheckpointId = this.deps.progression.getLatestActivatedCheckpointId(this.deps.floorId);
-    if (!latestCheckpointId) return cfg.playerStart;
-
-    const checkpoint = cfg.checkpoints?.find((cp) => cp.id === latestCheckpointId);
-    if (!checkpoint) {
-      this.deps.progression.clearActivatedCheckpoints(this.deps.floorId);
-      return cfg.playerStart;
-    }
-
-    return { x: checkpoint.x, y: checkpoint.y };
-  }
-
-  resolveRespawnTarget(defaultRespawn: { x: number; y: number }): { x: number; y: number } {
-    return this.deps.floorHazard.getCheckpointPos() ?? defaultRespawn;
-  }
-
-  update(): void {
-    // Checkpoints are overlap-driven; no per-frame polling needed.
-  }
-
-  shutdown(): void {
-    // Checkpoints are scene-owned game objects; scene shutdown handles destruction.
   }
 }

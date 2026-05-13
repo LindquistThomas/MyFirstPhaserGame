@@ -41,8 +41,11 @@ export class PlaytimeTracker {
   private totalMs = 0;
   private floorMs: Partial<Record<FloorId, number>> = {};
   private firstClearMs: number | undefined;
-  private bestClearMs: number | undefined;
+  private bestRunMs: number | undefined;
+  private bestFloorMs: Partial<Record<FloorId, number>> = {};
   private runStartedAt: number | undefined;
+  /** Total floor time snapshot captured when entering currentFloor. */
+  private floorSegmentStartMs = 0;
 
   private readonly saveAdapter: PlaytimeSaveAdapter;
 
@@ -83,8 +86,10 @@ export class PlaytimeTracker {
     this.totalMs = data.playtimeMs ?? 0;
     this.floorMs = { ...(data.floorPlaytimeMs ?? {}) };
     this.firstClearMs = data.firstClearMs;
-    this.bestClearMs = data.bestClearMs;
+    this.bestRunMs = data.bestRunMs ?? data.bestClearMs;
+    this.bestFloorMs = { ...(data.bestFloorMs ?? {}) };
     this.runStartedAt = data.runStartedAt;
+    this.floorSegmentStartMs = 0;
     // runPausedMs is not persisted — reset on every load so stale pauses don't inflate the timer.
     this.runPausedMs = 0;
     this.runPauseStartAt = null;
@@ -95,8 +100,10 @@ export class PlaytimeTracker {
     this.totalMs = 0;
     this.floorMs = {};
     this.firstClearMs = undefined;
-    this.bestClearMs = undefined;
+    this.bestRunMs = undefined;
+    this.bestFloorMs = {};
     this.runStartedAt = undefined;
+    this.floorSegmentStartMs = 0;
     this.sessionTotalMs = 0;
     this.sessionFloorMs = 0;
     this.activeStartMs = null;
@@ -152,6 +159,24 @@ export class PlaytimeTracker {
     this._flushFloorSession();
     this.currentFloor = floorId;
     this.sessionFloorMs = 0;
+    this.floorSegmentStartMs = this.floorMs[floorId] ?? 0;
+  }
+
+  /**
+   * Compare the current floor-visit time to the stored PB for this floor.
+   * Returns the visit duration and whether a new PB was set.
+   * Returns `runMs: null` when `floorId` is not the currently tracked floor.
+   */
+  recordFloorBest(floorId: FloorId): { isNewBest: boolean; runMs: number | null } {
+    if (this.currentFloor !== floorId) return { isNewBest: false, runMs: null };
+    this._captureActiveDelta();
+    const floorTotal = (this.floorMs[floorId] ?? 0) + this.sessionFloorMs;
+    const runMs = Math.max(0, floorTotal - this.floorSegmentStartMs);
+    if (runMs === 0) return { isNewBest: false, runMs };
+    const prevBest = this.bestFloorMs[floorId];
+    const isNewBest = prevBest === undefined || runMs < prevBest;
+    if (isNewBest) this.bestFloorMs[floorId] = runMs;
+    return { isNewBest, runMs };
   }
 
   // ── run timer ──────────────────────────────────────────────────────────
@@ -170,8 +195,8 @@ export class PlaytimeTracker {
   /**
    * Record a boss-defeat clear time. Computes the active elapsed run time
    * (pauses excluded), sets `firstClearMs` (once only), and updates
-   * `bestClearMs` when the new time is strictly faster.
-   * Returns `true` when `bestClearMs` was updated (new personal best).
+   * `bestRunMs` when the new time is strictly faster.
+   * Returns `true` when `bestRunMs` was updated (new personal best).
    * Returns `false` when there is no active run.
    */
   recordClear(): boolean {
@@ -182,9 +207,9 @@ export class PlaytimeTracker {
     if (this.firstClearMs === undefined) {
       this.firstClearMs = elapsed;
     }
-    const isNewBest = this.bestClearMs === undefined || elapsed < this.bestClearMs;
+    const isNewBest = this.bestRunMs === undefined || elapsed < this.bestRunMs;
     if (isNewBest) {
-      this.bestClearMs = elapsed;
+      this.bestRunMs = elapsed;
     }
     // Clear the run-in-progress marker so the next run starts fresh.
     this.runStartedAt = undefined;
@@ -217,7 +242,10 @@ export class PlaytimeTracker {
   }
 
   /** Best clear time in ms, or undefined when no run has been completed. */
-  getBestClearMs(): number | undefined { return this.bestClearMs; }
+  getBestRunMs(): number | undefined { return this.bestRunMs; }
+  getBestFloorMs(floorId: FloorId): number | undefined { return this.bestFloorMs[floorId]; }
+  // Backward-compatible alias used by existing callers.
+  getBestClearMs(): number | undefined { return this.getBestRunMs(); }
 
   /** First clear time in ms, or undefined when the boss has never been defeated. */
   getFirstClearMs(): number | undefined { return this.firstClearMs; }
@@ -234,6 +262,17 @@ export class PlaytimeTracker {
   }
 
   // ── update / persist ───────────────────────────────────────────────────
+
+  /**
+   * Test-only helper for deterministic floor-PB scenarios.
+   * Seeds the in-memory floor-visit timer state without touching Date.now().
+   */
+  setTestFloorVisit(floorId: FloorId, elapsedMs: number): void {
+    this.currentFloor = floorId;
+    this.floorSegmentStartMs = 0;
+    this.floorMs[floorId] = 0;
+    this.sessionFloorMs = Math.max(0, elapsedMs);
+  }
 
   /**
    * Called every game-loop frame. Only flushes to storage every
@@ -319,7 +358,8 @@ export class PlaytimeTracker {
       playtimeMs: this.totalMs,
       floorPlaytimeMs: { ...this.floorMs },
       firstClearMs: this.firstClearMs,
-      bestClearMs: this.bestClearMs,
+      bestRunMs: this.bestRunMs,
+      bestFloorMs: { ...this.bestFloorMs },
       runStartedAt: this.runStartedAt,
     });
   }

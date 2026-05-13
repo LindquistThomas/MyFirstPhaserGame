@@ -9,6 +9,7 @@ import { settingsStore } from '../systems/SettingsStore';
 import { ModalBase } from './ModalBase';
 import { ModalKeyboardNavigator, makeTextFocusable } from './ModalKeyboardNavigator';
 import { renderQuizResults } from './QuizResultsScreen';
+import type { WorldModifiers } from '../systems/WorldModifiers';
 
 export interface QuizDialogOptions {
   infoId: string;
@@ -78,6 +79,10 @@ export class QuizDialog extends ModalBase {
     };
 
     const selected: QuizQuestion[] = [];
+    const worldModifiers = this.scene.registry.get('worldModifiers') as WorldModifiers | undefined;
+    if (worldModifiers?.hardQuizOnly) {
+      return shuffle(byDiff.hard).slice(0, QUIZ_QUESTION_COUNT);
+    }
     for (const diff of ['easy', 'medium', 'hard'] as QuizDifficulty[]) {
       const want = QUIZ_DIFFICULTY_MIX[diff];
       selected.push(...shuffle(byDiff[diff]).slice(0, want));
