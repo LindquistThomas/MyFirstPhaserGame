@@ -113,6 +113,8 @@ export interface SettingsData {
    * No PII is ever sent (no save data, quiz answers, or identifiable fields).
    */
   analyticsConsent: boolean;
+  /** When true, HUD displays the live speedrun timer. */
+  showRunTimer: boolean;
 }
 
 export const SETTINGS_STORAGE_KEY = 'architect_settings_v1';
@@ -150,6 +152,7 @@ export function defaultSettings(): SettingsData {
     llmProvider: 'none',
     llmApiKey: '',
     analyticsConsent: false,
+    showRunTimer: true,
   };
 }
 
@@ -218,6 +221,7 @@ function parseSettings(raw: unknown): SettingsData {
       : defaults.llmProvider,
     llmApiKey: typeof r['llmApiKey'] === 'string' ? r['llmApiKey'].slice(0, 256) : defaults.llmApiKey,
     analyticsConsent: typeof r['analyticsConsent'] === 'boolean' ? r['analyticsConsent'] : defaults.analyticsConsent,
+    showRunTimer: typeof r['showRunTimer'] === 'boolean' ? r['showRunTimer'] : defaults.showRunTimer,
   };
 }
 
@@ -359,6 +363,10 @@ export const settingsStore = {
 
   setAnalyticsConsent(enabled: boolean): void {
     this.updateNonAudio((prev) => ({ ...prev, analyticsConsent: enabled }));
+  },
+
+  setShowRunTimer(enabled: boolean): void {
+    this.updateNonAudio((prev) => ({ ...prev, showRunTimer: enabled }));
   },
 
   /** Exposed for tests that need to swap the underlying storage. */
