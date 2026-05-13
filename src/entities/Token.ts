@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { getColorBlindPalette } from '../style/theme';
 import { settingsStore } from '../systems/SettingsStore';
 import { eventBus } from '../systems/EventBus';
+import { shouldSkipTween, reducedDuration } from '../systems/motionTween';
 
 export class Token extends Phaser.Physics.Arcade.Sprite {
   private floatTween?: Phaser.Tweens.Tween;
@@ -31,15 +32,17 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
         : textureKey === 'token_floor2' ? 0x90e0ef
         : palette.token;
       this.halo.setTint(rimTint);
-      this.haloTween = scene.tweens.add({
-        targets: this.halo,
-        alpha: { from: 0.25, to: 0.55 },
-        scale: { from: 0.9, to: 1.1 },
-        duration: 1400,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
+      if (!shouldSkipTween()) {
+        this.haloTween = scene.tweens.add({
+          targets: this.halo,
+          alpha: { from: 0.25, to: 0.55 },
+          scale: { from: 0.9, to: 1.1 },
+          duration: 1400,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+      }
 
       // Only the default gold token needs live palette refresh — floor tokens
       // use baked-in per-floor colours. Subscribe here so there is no handler
@@ -55,25 +58,27 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Floating animation
-    this.floatTween = scene.tweens.add({
-      targets: this,
-      y: y - 6,
-      duration: 1000,
-      ease: 'Sine.easeInOut',
-      yoyo: true,
-      repeat: -1,
-    });
+    if (!shouldSkipTween()) {
+      this.floatTween = scene.tweens.add({
+        targets: this,
+        y: y - 6,
+        duration: 1000,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
 
-    // Subtle scale pulse
-    this.pulseTween = scene.tweens.add({
-      targets: this,
-      scaleX: 1.15,
-      scaleY: 1.15,
-      duration: 600,
-      ease: 'Sine.easeInOut',
-      yoyo: true,
-      repeat: -1,
-    });
+      // Subtle scale pulse
+      this.pulseTween = scene.tweens.add({
+        targets: this,
+        scaleX: 1.15,
+        scaleY: 1.15,
+        duration: 600,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
+    }
   }
 
   preUpdate(time: number, delta: number): void {
@@ -116,7 +121,7 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
         targets: halo,
         alpha: 0,
         scale: 1.6,
-        duration: 250,
+        duration: reducedDuration(250, 100),
         onComplete: () => halo.destroy(),
       });
       this.halo = undefined;
@@ -124,13 +129,14 @@ export class Token extends Phaser.Physics.Arcade.Sprite {
 
     // Collection animation — squash-out with a brief vertical lift, reads
     // as the coin being "sucked up" rather than just fading in place.
+    const reduceMotion = shouldSkipTween();
     this.scene.tweens.add({
       targets: this,
-      y: this.y - 18,
+      y: reduceMotion ? this.y : this.y - 18,
       alpha: 0,
-      scaleX: 1.4,
-      scaleY: 0.6,
-      duration: 220,
+      scaleX: reduceMotion ? 1 : 1.4,
+      scaleY: reduceMotion ? 1 : 0.6,
+      duration: reducedDuration(220, 50),
       ease: 'Quad.easeOut',
       onComplete: () => {
         this.destroy();

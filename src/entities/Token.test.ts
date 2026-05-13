@@ -30,6 +30,7 @@ vi.mock('phaser', () => {
 });
 
 import { Token } from './Token';
+import * as MotionPreference from '../systems/MotionPreference';
 
 function makeToken(): { scene: FakeScene; token: Token } {
   const scene = createFakeScene();
@@ -55,6 +56,15 @@ describe('Token', () => {
     expect((token as unknown as { collected: boolean }).collected).toBe(false);
     expect(token.body).toBeDefined();
     expect((token.body as { enable: boolean }).enable).toBe(true);
+  });
+
+  it('skips idle tweens when reduced motion is enabled', () => {
+    const reducedMotionSpy = vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+    const reducedScene = createFakeScene();
+    new Token(reducedScene as unknown as Phaser.Scene, 200, 300);
+    const add = reducedScene.tweens.add as unknown as ReturnType<typeof vi.fn>;
+    expect(add).toHaveBeenCalledTimes(0);
+    reducedMotionSpy.mockRestore();
   });
 
   it('collect() marks collected, disables body, stops float, creates fade tween', () => {

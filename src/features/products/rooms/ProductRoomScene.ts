@@ -1,7 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 import { LevelScene, LevelConfig } from '../../floors/_shared/LevelScene';
-import { allKeyLabels } from '../../../input';
 import type { NavigationContext } from '../../../scenes/NavigationContext';
 import { createSceneLifecycle } from '../../../systems/sceneLifecycle';
 import { PERSISTENT_TEXTURE_KEYS, clearSceneOwnedTextureKeys, getSceneOwnedTextureKeys } from '../../../systems/SpriteGenerator';
@@ -29,6 +28,22 @@ export interface ProductRoomConfig {
   decorations: ProductRoomDecoration[];
 }
 
+const PRODUCT_ROOM_TOKEN_LAYOUT = [
+  { x: 640, yOffset: -130 },
+  { x: 920, yOffset: -170 },
+] as const;
+const PRODUCT_ROOMS_WITH_AU = [
+  'product-isy-project-controls',
+  'product-isy-beskrivelse',
+  'product-isy-road',
+] as const;
+const PRODUCT_ROOM_TOKEN_BASE_INDICES: Readonly<Record<string, number>> = Object.fromEntries(
+  PRODUCT_ROOMS_WITH_AU.map((contentId, roomIndex) => [
+    contentId,
+    roomIndex * PRODUCT_ROOM_TOKEN_LAYOUT.length,
+  ]),
+);
+
 /**
  * A self-contained room dedicated to a single product. Reached from
  * the PRODUCTS floor of the elevator shaft (rendered by
@@ -36,8 +51,8 @@ export interface ProductRoomConfig {
  * pressing Enter (or tapping the door).
  *
  * Same `FLOORS.PRODUCTS` is reused for all product rooms ΓÇö token
- * collection state is shared but no rooms define tokens, so there is
- * no collision risk.
+ * collection state is shared, so each room uses explicit token index
+ * ranges to avoid collisions.
  */
 export class ProductRoomScene extends LevelScene {
   private readonly cfg: ProductRoomConfig;
@@ -92,6 +107,16 @@ export class ProductRoomScene extends LevelScene {
 
   protected override getLevelConfig(): LevelConfig {
     const G = GAME_HEIGHT - TILE_SIZE;
+    const tokenBase = PRODUCT_ROOM_TOKEN_BASE_INDICES[this.cfg.contentId];
+    // Only selected product rooms are currently part of the AU progression
+    // budget. Unlisted rooms intentionally spawn no AU tokens.
+    const tokens = tokenBase === undefined
+      ? []
+      : PRODUCT_ROOM_TOKEN_LAYOUT.map((token, index) => ({
+        x: token.x,
+        y: G + token.yOffset,
+        index: tokenBase + index,
+      }));
 
     return {
       floorId: FLOORS.PRODUCTS,
@@ -103,7 +128,7 @@ export class ProductRoomScene extends LevelScene {
       ],
 
       roomElevators: [],
-      tokens: [],
+      tokens,
 
       infoPoints: [
         {
@@ -136,7 +161,7 @@ export class ProductRoomScene extends LevelScene {
     const near = d < 90;
     this.setExitDoorOpen(near);
     if (near) {
-      this.interactPrompt?.setText(`Press ${allKeyLabels('Interact')} \u2192 Products Floor`).setPosition(
+      this.interactPrompt?.setText(`${this.formatPromptAction('Interact')} \u2192 Products Floor`).setPosition(
         this.exitDoor.x - 60, this.exitDoor.y - 90,
       ).setVisible(true);
       if (this.inputs.justPressed('Interact')) this.returnToElevator();

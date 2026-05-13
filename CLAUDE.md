@@ -28,11 +28,8 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # MissionItem, Checkpoint
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, coachHints,
-│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig,
-│   │   │                       defineFloorScene). One dir per playable floor (lobby/, platform/,
-│   │   │                       architecture/, product/, customer/, executive/, boss/) plus
-│   │   │                       finance/ — a content-only sub-room reached via a door inside
-│   │   │                       the Executive Suite (FloorId reuses FLOORS.EXECUTIVE).
+│   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene, dailyChallengeLayout), one dir per floor (lobby/, platform/, architecture/,
+│   │   │                       finance/, product/, customer/, executive/, boss/)
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
 │   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
 │   ├── plugins/              # MusicPlugin, DebugPlugin, ScopedEventBus (Phaser ScenePlugins)

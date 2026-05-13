@@ -8,6 +8,7 @@
  */
 
 import type { FloorId } from '../config/gameConfig';
+import type { InputMode } from '../input/promptLabel';
 
 /** Event name → payload tuple. Each event's handler arguments are derived from this map. */
 export interface GameEvents {
@@ -80,6 +81,15 @@ export interface GameEvents {
   'sfx:coffee_sip': [];
   /** Energy drink fridge opened — mechanical click + cold air whoosh. */
   'sfx:fridge_open': [];
+  /** Friendly NPC greeting / question prompt. */
+  'sfx:npc_greet': [];
+
+  /** Friendly NPC interaction started. */
+  'npc:interact': [payload: { npcId: string; npcName: string; topic: string }];
+  /** NPC architecture question answered correctly. */
+  'npc:answer:correct': [payload: { npcName: string; questionId: string }];
+  /** NPC architecture question answered incorrectly. */
+  'npc:answer:wrong': [payload: { npcName: string; questionId: string }];
 
   // ---- Boss fight SFX ----
   /** Short percussive thud when CEO is hit. */
@@ -153,6 +163,8 @@ export interface GameEvents {
    * Useful for screen-reader announcements and HUD celebrations.
    */
   'progression:au_milestone': [milestone: number];
+  /** Any progression value changed (AU, floor, load) — UI can refresh derived text. */
+  'progression:changed': [];
 
   /**
    * SaveManager failed to read or write a save slot.
@@ -177,6 +189,8 @@ export interface GameEvents {
    * can listen to activate touch-specific UI without polling.
    */
   'input:touch_detected': [];
+  /** Active prompt input mode changed (keyboard/gamepad/touch). */
+  'input:mode-changed': [mode: InputMode];
 
   /**
    * Emitted by `SettingsStore.updateNonAudio()` whenever a non-audio setting
