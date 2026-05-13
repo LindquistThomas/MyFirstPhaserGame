@@ -6,6 +6,10 @@ import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
 
 const HEARTBEAT_INTERVAL_MS = 850;
+const VIGNETTE_ALPHA = 0.35;
+const VIGNETTE_BAND_WIDTH = 80;
+const VIGNETTE_COLOR = 0xff2222;
+const VIGNETTE_DEPTH = 98;
 
 export interface LevelHeartbeatSfxDeps {
   scene: Phaser.Scene;
@@ -22,19 +26,17 @@ export class LevelHeartbeatSfx {
 
   init(): void {
     const g = this.deps.scene.add.graphics()
-      .setDepth(98)
+      .setDepth(VIGNETTE_DEPTH)
       .setScrollFactor(0)
       .setVisible(false);
 
-    const alpha = 0.35;
     const w = this.deps.scene.scale.width;
     const h = this.deps.scene.scale.height;
-    const band = 80;
-    g.fillStyle(0xff2222, alpha);
-    g.fillRect(0, 0, w, band);
-    g.fillRect(0, h - band, w, band);
-    g.fillRect(0, 0, band, h);
-    g.fillRect(w - band, 0, band, h);
+    g.fillStyle(VIGNETTE_COLOR, VIGNETTE_ALPHA);
+    g.fillRect(0, 0, w, VIGNETTE_BAND_WIDTH);
+    g.fillRect(0, h - VIGNETTE_BAND_WIDTH, w, VIGNETTE_BAND_WIDTH);
+    g.fillRect(0, 0, VIGNETTE_BAND_WIDTH, h);
+    g.fillRect(w - VIGNETTE_BAND_WIDTH, 0, VIGNETTE_BAND_WIDTH, h);
 
     this.dangerVignette = g;
   }

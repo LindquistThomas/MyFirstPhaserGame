@@ -14,9 +14,12 @@ export interface LevelConfig {
   /** Persistent objective shown in HUD while this scene is active. */
   objective?: string;
   platforms: Array<{ x: number; y: number; width: number }>;
-  /** Thin catwalks / walkways. */
+  /**
+   * Thin floating walkways. Use these when a full 128×128 tile body would
+   * block headroom under a mezzanine.
+   */
   catwalks?: Array<{ x: number; y: number; width: number; thickness?: number }>;
-  /** Floating platforms that move along a single axis. */
+  /** Auto-moving platforms (`bounce` or `tween`) for cross-tier traversal. */
   movingPlatforms?: MovingPlatformConfig[];
   /** Token spawns for this room. */
   tokens: Array<{ x: number; y: number; index?: number }>;

@@ -222,13 +222,13 @@ export class LevelScene extends Phaser.Scene {
     });
 
     const cfg = this.getResolvedLevelConfig();
-    this.checkpoints?.init(cfg, this.physics, this.player.sprite);
     this.tokenMgr.spawn(cfg);
     this.enemySpawner.spawn(cfg);
     this.coffeeMgr.spawn(cfg);
     this.fridgeMgr.spawn(cfg);
     this.npcMgr.spawn(cfg);
     this.zones.create(cfg);
+    this.checkpoints?.init(cfg, this.physics, this.player.sprite);
 
     this.physics.add.collider(this.player.sprite, this.platformGroup);
     this.tokenMgr.wireColliders();
