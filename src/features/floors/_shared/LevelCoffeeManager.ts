@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { Coffee } from '../../../entities/Coffee';
 import { Player } from '../../../entities/Player';
 import { eventBus } from '../../../systems/EventBus';
+import { isReducedMotion } from '../../../systems/MotionPreference';
 import { ensureCoffeeFridgeSounds } from '../../../systems/SoundGenerator';
 import type { LevelConfig } from './LevelScene';
 
@@ -13,9 +14,18 @@ export interface CoffeeManagerDeps {
 /** Coffee pickups are consumable — no progression persistence, respawn on scene entry. */
 export class LevelCoffeeManager {
   readonly coffeeGroup: Phaser.Physics.Arcade.StaticGroup;
+  private sipBurstEmitter?: Phaser.GameObjects.Particles.ParticleEmitter;
 
   constructor(private readonly deps: CoffeeManagerDeps) {
     this.coffeeGroup = deps.scene.physics.add.staticGroup();
+    this.sipBurstEmitter = this.createSipBurstEmitter();
+    const destroyEmitter = (): void => {
+      const emitter = this.sipBurstEmitter;
+      this.sipBurstEmitter = undefined;
+      emitter?.destroy();
+    };
+    deps.scene.events.once('shutdown', destroyEmitter);
+    deps.scene.events.once('destroy', destroyEmitter);
   }
 
   spawn(config: LevelConfig): void {
@@ -50,9 +60,15 @@ export class LevelCoffeeManager {
   };
 
   private emitSipBurst(x: number, y: number): void {
+    if (isReducedMotion()) return;
+    this.sipBurstEmitter?.emitParticleAt(x, y - 8, 8);
+  }
+
+  private createSipBurstEmitter(): Phaser.GameObjects.Particles.ParticleEmitter | undefined {
     const scene = this.deps.scene;
-    if (!scene.textures.exists('particle')) return;
-    const emitter = scene.add.particles(x, y - 8, 'particle', {
+    if (isReducedMotion()) return undefined;
+    if (!scene.textures.exists('particle')) return undefined;
+    const emitter = scene.add.particles(0, 0, 'particle', {
       speed: { min: 40, max: 140 },
       angle: { min: 220, max: 320 },
       scale: { start: 0.6, end: 0 },
@@ -63,7 +79,6 @@ export class LevelCoffeeManager {
       emitting: false,
     });
     emitter.setDepth(11);
-    emitter.explode(8);
-    scene.time.delayedCall(600, () => emitter.destroy());
+    return emitter;
   }
 }

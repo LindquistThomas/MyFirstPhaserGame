@@ -51,7 +51,7 @@ export interface MusicAsset {
  */
 export const STATIC_MUSIC_ASSETS: ReadonlyArray<MusicAsset> = [
   { key: 'music_menu',          path: 'music/8bit-chiptune/bgm_menu.ogg', eager: true },
-  { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.mp3', eager: true },
+  { key: 'music_elevator_jazz', path: 'music/elevator-jazz/elevator_jazz.ogg', eager: true },
   { key: 'music_elevator_ride', path: 'music/8bit-chiptune/bgm_action_3.mp3' },
   { key: 'music_floor1',        path: 'music/8bit-chiptune/bgm_action_1.mp3' },
   { key: 'music_floor2',        path: 'music/8bit-chiptune/bgm_action_2.mp3' },
@@ -107,6 +107,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:recover_au':        'recover_au',
   'sfx:coffee_sip':        'coffee_sip',
   'sfx:fridge_open':       'fridge_open',
+  'sfx:npc_greet':         'npc_greet',
   // Boss / hostage SFX
   'sfx:boss_hit':          'boss_hit',
   'sfx:boss_defeated':     'boss_defeated',

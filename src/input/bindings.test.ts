@@ -8,8 +8,8 @@ vi.mock('phaser', () => {
     LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40,
     SPACE: 32, ENTER: 13, ESC: 27,
     PAGE_UP: 33, PAGE_DOWN: 34,
-    A: 65, B: 66, C: 67, D: 68, I: 73, P: 80, S: 83, W: 87,
-    ONE: 49, TWO: 50, THREE: 51, FOUR: 52, FIVE: 53,
+    A: 65, B: 66, C: 67, D: 68, H: 72, I: 73, P: 80, S: 83, W: 87,
+    ZERO: 48, ONE: 49, TWO: 50, THREE: 51, FOUR: 52, FIVE: 53,
     F12: 123,
   };
   class ScenePlugin {
@@ -58,6 +58,7 @@ describe('actions', () => {
       'ElevatorCallFloor3', 'ElevatorCallFloor4', 'ElevatorCallFloor5',
       'Attack',
       'Pause',
+      'ShowControls',
       'ToggleDebug',
     ];
     for (const a of expected) {

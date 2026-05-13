@@ -40,6 +40,7 @@ vi.mock('phaser', () => {
 });
 
 import { Enemy } from './Enemy';
+import * as MotionPreference from '../systems/MotionPreference';
 
 /** Minimal concrete enemy — no patrol logic; only the base class is under test. */
 class MinimalEnemy extends Enemy {
@@ -144,6 +145,20 @@ describe('Enemy (base class)', () => {
 
       e.onStomp();
       expect((scene.tweens.killTweensOf as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callCountAfterFirst);
+    });
+
+    it('skips stomp tween and destroys immediately when reduced motion is enabled', () => {
+      const reducedMotionSpy = vi.spyOn(MotionPreference, 'isReducedMotion').mockReturnValue(true);
+      const scene = createFakeScene();
+      const e = new MinimalEnemy(scene as unknown as Phaser.Scene, 500, 800);
+      const destroy = vi.spyOn(e, 'destroy');
+
+      e.onStomp();
+
+      const tweenAdd = scene.tweens.add as ReturnType<typeof vi.fn>;
+      expect(tweenAdd).not.toHaveBeenCalled();
+      expect(destroy).toHaveBeenCalledTimes(1);
+      reducedMotionSpy.mockRestore();
     });
   });
 });

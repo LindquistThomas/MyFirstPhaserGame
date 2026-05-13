@@ -344,7 +344,7 @@ describe('MusicPlugin', () => {
       // Should have queued the load but NOT yet emitted music:play
       expect(fakeScene.load.audio).toHaveBeenCalledWith(
         'music_elevator_jazz',
-        expect.stringContaining('elevator_jazz.mp3'),
+        expect.stringContaining('elevator_jazz.ogg'),
       );
       expect(spy).not.toHaveBeenCalled();
 

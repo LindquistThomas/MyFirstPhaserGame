@@ -205,9 +205,10 @@ const BUDGETS = /** @type {const} */ ([
   },
   {
     label:    'Eager music assets (raw)',
-    // 1300 KB: allows the two startup UX tracks (`music_menu` + `music_elevator_jazz`)
-    // to be eager while still flagging larger eager-set growth for review.
-    limitKB:  1300,
+    // 750 KB: `music_menu` (OGG q0 22 kHz mono, ~331 KB) + `music_elevator_jazz`
+    // (OGG q0 44 kHz stereo, ~354 KB) = ~685 KB actual; 65 KB headroom.
+    // Previous budget was 1300 KB (pre-re-encode). Tightened 2026-05.
+    limitKB:  750,
     raw:      true,
     required: false,
     measure() {
@@ -231,7 +232,7 @@ const BUDGETS = /** @type {const} */ ([
   },
   {
     label:    'Total music assets (raw)',
-    limitKB:  6656,   // 6.5 MB (6656 = Math.ceil(6.5 * 1024)) — calibrated against the clean post-orphan-cleanup baseline
+    limitKB:  4096,   // 4 MB — calibrated 2026-05 after re-encoding the two eager tracks to OGG (total on disk ~3475 KB with ~620 KB headroom for future tracks)
     raw:      true,
     required: false,
     measure() {
