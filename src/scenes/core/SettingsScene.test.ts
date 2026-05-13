@@ -95,6 +95,7 @@ vi.mock('../../systems/SettingsStore', () => ({
       hideTutorials: false,
       showObjectiveBanner: true,
       analyticsConsent: false,
+      showRunTimer: true,
     })),
     setMasterVolume: vi.fn(),
     setMusicVolume: vi.fn(),
@@ -110,7 +111,6 @@ vi.mock('../../systems/SettingsStore', () => ({
     setShowObjectiveBanner: vi.fn(),
     setAnalyticsConsent: vi.fn(),
     setReducedMotion: vi.fn(),
-    setAnalyticsConsent: vi.fn(),
     setShowRunTimer: vi.fn(),
   },
 }));

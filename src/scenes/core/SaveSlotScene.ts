@@ -18,6 +18,9 @@ import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
 import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 import { setDailyState } from '../../systems/DailyChallenge';
 import type { GameMode } from '../../systems/GameMode';
+import { formatPlaytime } from '../../ui/HUD';
+import { preloadAllQuizzes, getLoadedQuizCount } from '../../config/quiz';
+import { getPassedCount } from '../../systems/QuizManager';
 
 /** Alias for slot-card speedrun PB formatting (milliseconds → M:SS). */
 export const formatMs = formatPlaytime;
@@ -169,8 +172,15 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '12px', color: '#5e6e85',
       }).setOrigin(0.5));
 
+      const bestRunLabel = info.bestRunMs !== undefined
+        ? `Best run: ${formatPlaytime(info.bestRunMs)}`
+        : 'Best run: —';
+      container.add(this.add.text(w / 2, 116, bestRunLabel, {
+        fontFamily: 'monospace', fontSize: '11px', color: '#7a8aa3',
+      }).setOrigin(0.5));
+
       if ((info.bossDefeatedCount ?? 0) >= 1) {
-        container.add(this.add.text(w / 2, 122, 'NG+ AVAILABLE', {
+        container.add(this.add.text(w / 2, 132, 'NG+ AVAILABLE', {
           fontFamily: 'monospace', fontSize: '11px', color: '#ffd700', fontStyle: 'bold',
         }).setOrigin(0.5));
       }

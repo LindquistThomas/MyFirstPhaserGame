@@ -104,6 +104,12 @@ export function renderQuizResults(options: QuizResultsScreenOptions): void {
   curY += 40;
 
   if (passed) {
+    if (score === total) {
+      const perfect = scene.add.text(GAME_WIDTH / 2, curY - 32, 'PERFECT SCORE!', {
+        fontFamily: 'monospace', fontSize: '14px', color: '#ffd700', fontStyle: 'bold',
+      }).setOrigin(0.5, 0);
+      container.add(perfect);
+    }
     const auText = scene.add.text(
       GAME_WIDTH / 2, curY,
       `Quiz Bonus: +${auAwarded} AU`,

@@ -26,6 +26,25 @@ import type { LevelConfig } from './LevelScene';
  */
 export const OFFSCREEN_ENEMY_MARGIN_PX = 256;
 
+/**
+ * Per-type fallback patrol speed in pixels/sec used when a level config
+ * entry omits an explicit `speed` override. Mirrors the defaults each
+ * subclass applies in its constructor — kept here so spawner-level
+ * multipliers (e.g. NG+ {@link WorldModifiers.enemySpeedMultiplier}) can
+ * scale the canonical baseline rather than the post-default value.
+ */
+export const DEFAULT_ENEMY_SPEED_BY_TYPE: Record<
+  NonNullable<LevelConfig['enemies']>[number]['type'],
+  number
+> = {
+  slime: 50,
+  bot: 75,
+  'scope-creep': 35,
+  astronaut: 60,
+  'tech-debt-ghost': 40,
+  terrorist: 90,
+};
+
 export interface EnemySpawnerDeps {
   scene: Phaser.Scene;
   floorId: FloorId;

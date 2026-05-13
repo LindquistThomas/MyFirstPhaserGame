@@ -10,6 +10,7 @@
 
 import type { FloorId } from '../../../config/gameConfig';
 import type { MovingPlatformConfig } from '../../../entities/MovingPlatform';
+import type { NpcConfig } from '../../../entities/Npc';
 
 export interface RoomElevator {
   x: number;
@@ -20,6 +21,10 @@ export interface RoomElevator {
 
 export interface LevelConfig {
   floorId: FloorId;
+  /** Persistent objective shown in HUD while this scene is active. */
+  objective?: string;
+  /** Friendly NPCs that patrol locally and ask architecture questions on interaction. */
+  npcs?: NpcConfig[];
   platforms: Array<{ x: number; y: number; width: number }>;
   /**
    * Thin catwalks / walkways.

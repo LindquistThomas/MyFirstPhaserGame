@@ -3,6 +3,7 @@ import { BOOT_SPRITE_PHASES } from '../../systems/SpriteGenerator';
 import type { GeneratorPhase } from '../../systems/SpriteGenerator';
 import { AudioManager } from '../../systems/AudioManager';
 import { GameStateManager } from '../../systems/GameStateManager';
+import { getWorldModifiers } from '../../systems/WorldModifiers';
 import { eventBus } from '../../systems/EventBus';
 import { STATIC_MUSIC_ASSETS } from '../../config/audioConfig';
 import { COLORS, FLOOR_IDS } from '../../config/gameConfig';
