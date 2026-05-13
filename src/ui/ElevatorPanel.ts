@@ -3,6 +3,8 @@ import { GAME_WIDTH, GAME_HEIGHT, FloorId, COLORS } from '../config/gameConfig';
 import { LEVEL_DATA } from '../config/levelData';
 import { ProgressionSystem } from '../systems/ProgressionSystem';
 import { eventBus } from '../systems/EventBus';
+import { ButtonListNavigator } from './ButtonListNavigator';
+import { theme } from '../style/theme';
 
 /** Height of each floor button row (px). Tall enough to fit the AU-needed hint. */
 const BTN_H = 55;
@@ -25,6 +27,10 @@ export class ElevatorPanel {
   /** True while the panel is faded due to player overlap. */
   private isFaded = false;
   private fadeTween?: Phaser.Tweens.Tween;
+  private floorNavigator: ButtonListNavigator;
+  private floorRows: Array<{ floorId: FloorId; bounds: Phaser.Geom.Rectangle }> = [];
+  private focusedFloorId?: FloorId;
+  private onKeyDown: (event: KeyboardEvent) => void;
 
   constructor(
     scene: Phaser.Scene,
@@ -34,14 +40,28 @@ export class ElevatorPanel {
     this.scene = scene;
     this.progression = progression;
     this.onSelectCallback = onSelect;
+    this.floorNavigator = new ButtonListNavigator(scene, 61);
 
     this.buildContainer();
 
     // Refresh the button list whenever a new floor is unlocked.
     const onUnlock = () => { this.rebuildButtons(); };
     eventBus.on('progression:floor_unlocked', onUnlock);
+    this.onKeyDown = (event: KeyboardEvent) => {
+      if (!this.isVisible || this.floorNavigator.size() === 0) return;
+      if (event.code === 'ArrowUp' || event.code === 'ArrowLeft') {
+        this.floorNavigator.focusPrev();
+      } else if (event.code === 'ArrowDown' || event.code === 'ArrowRight') {
+        this.floorNavigator.focusNext();
+      } else if (event.code === 'Enter') {
+        this.floorNavigator.activateFocused();
+      }
+    };
+    scene.input?.keyboard?.on('keydown', this.onKeyDown);
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       eventBus.off('progression:floor_unlocked', onUnlock);
+      scene.input?.keyboard?.off('keydown', this.onKeyDown);
+      this.floorNavigator.destroy();
     });
   }
 
@@ -53,6 +73,9 @@ export class ElevatorPanel {
     this.isVisible = true;
     this.rebuildButtons();
     this.container.setVisible(true);
+    if (this.floorNavigator.size() > 0) {
+      this.floorNavigator.setFocus(0);
+    }
   }
 
   hide(): void {
@@ -63,6 +86,7 @@ export class ElevatorPanel {
     this.fadeTween = undefined;
     this.isFaded = false;
     this.container.setAlpha(ALPHA_NORMAL);
+    this.floorNavigator.hideRing();
   }
 
   toggle(): void {
@@ -182,6 +206,11 @@ export class ElevatorPanel {
     // Remove all children except the two chrome items (bg at 0, title at 1).
     const toRemove = this.container.list.slice(2) as Phaser.GameObjects.GameObject[];
     toRemove.forEach(child => child.destroy());
+    this.floorNavigator.hideRing();
+    this.floorRows = [];
+    this.focusedFloorId = undefined;
+    this.floorNavigator.destroy();
+    this.floorNavigator = new ButtonListNavigator(this.scene, 61);
 
     const { panelWidth } = this;
     let yOffset = 45;
@@ -236,6 +265,25 @@ export class ElevatorPanel {
 
       // Make interactive only when unlocked.
       if (isUnlocked) {
+        const bounds = {
+          x: this.container.x + 10,
+          y: this.container.y + yOffset,
+          width: panelWidth - 20,
+          height: BTN_H,
+        } as Phaser.Geom.Rectangle;
+        this.floorRows.push({ floorId, bounds });
+        this.floorNavigator.add({
+          focus: () => {
+            this.focusedFloorId = floorId;
+            this.redrawFloorButton(btnBg, true);
+          },
+          blur: () => {
+            if (this.focusedFloorId === floorId) this.focusedFloorId = undefined;
+            this.redrawFloorButton(btnBg, false);
+          },
+          activate: () => this.onSelectCallback(floorId),
+          bounds: () => bounds,
+        });
         const hitArea = this.scene.add.rectangle(
           (panelWidth - 20) / 2, BTN_H / 2, panelWidth - 20, BTN_H
         ).setInteractive({ useHandCursor: true });
@@ -243,24 +291,32 @@ export class ElevatorPanel {
         btnContainer.add(hitArea);
 
         hitArea.on('pointerover', () => {
-          btnBg.clear();
-          btnBg.fillStyle(0x2a5a8a, 0.9);
-          btnBg.fillRoundedRect(0, 0, panelWidth - 20, BTN_H, 4);
+          this.floorNavigator.setFocus(this.floorRows.findIndex((row) => row.floorId === floorId));
         });
 
         hitArea.on('pointerout', () => {
-          btnBg.clear();
-          btnBg.fillStyle(0x1a3a5a, 0.8);
-          btnBg.fillRoundedRect(0, 0, panelWidth - 20, BTN_H, 4);
+          this.redrawFloorButton(btnBg, this.focusedFloorId === floorId);
         });
 
         hitArea.on('pointerdown', () => {
-          this.onSelectCallback(floorId);
+          this.floorNavigator.setFocus(this.floorRows.findIndex((row) => row.floorId === floorId));
+          this.floorNavigator.activateFocused();
         });
       }
 
       this.container.add(btnContainer);
       yOffset += BTN_H + BTN_GAP;
+    }
+    if (this.isVisible && this.floorNavigator.size() > 0) this.floorNavigator.setFocus(0);
+  }
+
+  private redrawFloorButton(bg: Phaser.GameObjects.Graphics, focused: boolean): void {
+    bg.clear();
+    bg.fillStyle(focused ? 0x2a5a8a : 0x1a3a5a, focused ? 0.9 : 0.8);
+    bg.fillRoundedRect(0, 0, this.panelWidth - 20, BTN_H, 4);
+    if (focused) {
+      bg.lineStyle(2, theme.color.ui.hover, 1);
+      bg.strokeRoundedRect(0, 0, this.panelWidth - 20, BTN_H, 4);
     }
   }
 }

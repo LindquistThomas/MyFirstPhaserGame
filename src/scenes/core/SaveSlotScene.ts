@@ -15,9 +15,9 @@ import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
 import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
+import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 import { setDailyState } from '../../systems/DailyChallenge';
-import { getLoadedQuizCount, preloadAllQuizzes } from '../../config/quiz';
-import { getPassedCount } from '../../systems/QuizManager';
+import type { GameMode } from '../../systems/GameMode';
 
 /**
  * Slot-picker screen.
@@ -34,12 +34,18 @@ import { getPassedCount } from '../../systems/QuizManager';
 export class SaveSlotScene extends Phaser.Scene {
   private slotInfos: SlotInfo[] = [];
   private cards: Phaser.GameObjects.Container[] = [];
+  private cardBounds: Phaser.Geom.Rectangle[] = [];
   private selectedIndex = 0;
+  private cardNavigator?: ButtonListNavigator;
   private confirmOverlay?: Phaser.GameObjects.Container;
   private confirmYes?: Phaser.GameObjects.Text;
   private confirmNo?: Phaser.GameObjects.Text;
   private confirmIndex = 0; // 0 = Yes, 1 = No
   private inConfirm = false;
+  private actionOverlay?: Phaser.GameObjects.Container;
+  private actionOptions: Array<{ label: string; loadSave: boolean; startMode?: GameMode }> = [];
+  private actionIndex = 0;
+  private inActionSelect = false;
   /** True while the SaveRecoveryDialog is open; gates scene-level input handlers. */
   private inRecoveryDialog = false;
   private quizCountLabels: Array<Phaser.GameObjects.Text | undefined> = [];
@@ -52,14 +58,17 @@ export class SaveSlotScene extends Phaser.Scene {
   create(): void {
     this.slotInfos = SAVE_SLOTS.map((id) => loadSlotInfo(id));
     this.cards = [];
-    this.quizCountLabels = [];
+    this.cardBounds = [];
     this.selectedIndex = 0;
+    this.cardNavigator?.destroy();
+    this.cardNavigator = undefined;
     this.inConfirm = false;
-    this.totalQuizCount = getLoadedQuizCount() || null;
+    this.inActionSelect = false;
 
     this.drawBackground();
     this.drawTitle();
     this.drawCards();
+    this.setupCardNavigator();
     this.drawFooter();
     this.setupKeyboard();
     this.updateHighlight();
@@ -104,6 +113,7 @@ export class SaveSlotScene extends Phaser.Scene {
       const x = startX + i * (cardW + gapX);
       const container = this.buildCard(x, cardY, cardW, cardH, i + 1, info);
       this.cards.push(container);
+      this.cardBounds.push({ x, y: cardY, width: cardW, height: cardH } as Phaser.Geom.Rectangle);
     });
   }
 
@@ -156,11 +166,11 @@ export class SaveSlotScene extends Phaser.Scene {
         fontFamily: 'monospace', fontSize: '12px', color: '#5e6e85',
       }).setOrigin(0.5));
 
-      const quizLine = this.add.text(w / 2, 122, this.formatQuizProgressLabel(info.slotId), {
-        fontFamily: 'monospace', fontSize: '12px', color: '#88a5c8',
-      }).setOrigin(0.5);
-      container.add(quizLine);
-      this.quizCountLabels[slotNumber - 1] = quizLine;
+      if ((info.bossDefeatedCount ?? 0) >= 1) {
+        container.add(this.add.text(w / 2, 122, 'NG+ AVAILABLE', {
+          fontFamily: 'monospace', fontSize: '11px', color: '#ffd700', fontStyle: 'bold',
+        }).setOrigin(0.5));
+      }
 
       // Delete hint
       container.add(this.add.text(w / 2, h - 16, '[ X ] Delete', {
@@ -178,12 +188,11 @@ export class SaveSlotScene extends Phaser.Scene {
     // Pointer interactivity
     bg.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
     bg.on('pointerover', () => {
-      this.selectedIndex = slotNumber - 1;
-      this.updateHighlight();
+      this.cardNavigator?.setFocus(slotNumber - 1);
     });
     bg.on('pointerdown', () => {
-      this.selectedIndex = slotNumber - 1;
-      this.activateSelected();
+      this.cardNavigator?.setFocus(slotNumber - 1);
+      this.cardNavigator?.activateFocused();
     });
 
     return container;
@@ -267,18 +276,29 @@ export class SaveSlotScene extends Phaser.Scene {
 
   private navigate(delta: number): void {
     if (this.inRecoveryDialog) return;
+    if (this.inActionSelect) {
+      const n = this.actionOptions.length;
+      if (n === 0) return;
+      this.actionIndex = (this.actionIndex + delta + n) % n;
+      this.refreshActionHighlight();
+      return;
+    }
     if (this.inConfirm) {
       this.confirmIndex = (this.confirmIndex + delta + 2) % 2;
       this.refreshConfirmHighlight();
       return;
     }
-    const n = SAVE_SLOTS.length;
-    this.selectedIndex = (this.selectedIndex + delta + n) % n;
-    this.updateHighlight();
+    if (!this.cardNavigator) return;
+    if (delta > 0) this.cardNavigator.focusNext();
+    else this.cardNavigator.focusPrev();
   }
 
   private confirmAction(): void {
     if (this.inRecoveryDialog) return;
+    if (this.inActionSelect) {
+      this.executeActionSelection();
+      return;
+    }
     if (this.inConfirm) {
       if (this.confirmIndex === 0) this.executeDelete();
       else this.closeConfirm();
@@ -287,8 +307,27 @@ export class SaveSlotScene extends Phaser.Scene {
     this.activateSelected();
   }
 
+  private setupCardNavigator(): void {
+    this.cardNavigator = new ButtonListNavigator(this, 45);
+    this.cards.forEach((_card, index) => {
+      this.cardNavigator?.add({
+        focus: () => {
+          this.selectedIndex = index;
+          this.updateHighlight();
+        },
+        blur: () => undefined,
+        activate: () => {
+          this.selectedIndex = index;
+          this.activateSelected();
+        },
+        bounds: () => this.cardBounds[index] ?? ({ x: 0, y: 0, width: 0, height: 0 } as Phaser.Geom.Rectangle),
+      });
+    });
+    this.cardNavigator.setFocus(this.selectedIndex);
+  }
+
   private tryDelete(): void {
-    if (this.inConfirm) return;
+    if (this.inConfirm || this.inActionSelect) return;
     const info = this.slotInfos[this.selectedIndex];
     if (!info?.exists) return;
     this.openDeleteConfirm();
@@ -298,23 +337,121 @@ export class SaveSlotScene extends Phaser.Scene {
   // Actions
 
   private activateSelected(): void {
+    const info = this.slotInfos[this.selectedIndex]!;
+    if (!info.exists) {
+      this.startSelectedSlot({ loadSave: false, startMode: 'normal' });
+      return;
+    }
+    this.openActionPicker(info);
+  }
+
+  private startSelectedSlot(selection: { loadSave: boolean; startMode?: GameMode }): void {
     const slotId = SAVE_SLOTS[this.selectedIndex]!;
     setDailyState(this.registry, null);
     setPlayerSlot(slotId);
-    const info = this.slotInfos[this.selectedIndex]!;
     // Reset the initial-load guard so ElevatorScene re-applies the correct
     // save (or fresh state) for this slot selection.
     (this.registry.get('gameState') as GameStateManager).resetLoadState();
-    const ctx: NavigationContext = { loadSave: info.exists };
+    const ctx: NavigationContext = {
+      loadSave: selection.loadSave,
+      startMode: selection.startMode,
+    };
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.time.delayedCall(400, () => this.scene.start('ElevatorScene', ctx));
   }
 
   private goBack(): void {
     if (this.inRecoveryDialog) return;
+    if (this.inActionSelect) { this.closeActionPicker(); return; }
     if (this.inConfirm) { this.closeConfirm(); return; }
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.time.delayedCall(300, () => this.scene.start('MenuScene'));
+  }
+
+  private openActionPicker(info: SlotInfo): void {
+    this.inActionSelect = true;
+    this.actionIndex = 0;
+    this.actionOptions = [
+      { label: '[ CONTINUE ]', loadSave: true },
+      { label: '[ NEW GAME ]', loadSave: false, startMode: 'normal' },
+    ];
+    if ((info.bossDefeatedCount ?? 0) >= 1) {
+      this.actionOptions.push({ label: '[ NEW GAME+ ]', loadSave: false, startMode: 'ngplus' });
+    }
+
+    const ow = 460;
+    const oh = 200;
+    const ox = (GAME_WIDTH - ow) / 2;
+    const oy = (GAME_HEIGHT - oh) / 2;
+    const overlay = this.add.container(0, 0).setDepth(50);
+    const blocker = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x000000,
+      0.45,
+    ).setInteractive({ useHandCursor: false });
+    blocker.on('pointerdown', (_ptr: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); });
+    blocker.on('pointerup', (_ptr: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); });
+    blocker.on('pointermove', (_ptr: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => { event.stopPropagation(); });
+    overlay.add(blocker);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x0a0d1c, 0.95);
+    bg.fillRect(ox, oy, ow, oh);
+    bg.lineStyle(2, 0x33d6ff, 1);
+    bg.strokeRect(ox, oy, ow, oh);
+    overlay.add(bg);
+
+    overlay.add(this.add.text(ox + ow / 2, oy + 24, 'SELECT MODE', {
+      fontFamily: 'monospace', fontSize: '20px', color: '#33d6ff', fontStyle: 'bold',
+    }).setOrigin(0.5));
+    overlay.add(this.add.text(ox + ow / 2, oy + 50, 'New Game and New Game+ reset slot progress.', {
+      fontFamily: 'monospace', fontSize: '12px', color: '#9fb1c8',
+    }).setOrigin(0.5));
+
+    this.actionOptions.forEach((option, idx) => {
+      const t = this.add.text(ox + ow / 2, oy + 92 + idx * 34, option.label, {
+        fontFamily: 'monospace', fontSize: '18px', color: '#9fb1c8',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      t.on('pointerover', () => { this.actionIndex = idx; this.refreshActionHighlight(); });
+      t.on('pointerdown', () => {
+        this.actionIndex = idx;
+        this.executeActionSelection();
+      });
+      overlay.add(t);
+    });
+
+    this.actionOverlay = overlay;
+    this.refreshActionHighlight();
+  }
+
+  private refreshActionHighlight(): void {
+    if (!this.actionOverlay) return;
+    let optionCursor = 0;
+    for (const child of this.actionOverlay.list) {
+      if (typeof child !== 'object' || child === null) continue;
+      if (!('text' in child) || typeof child.text !== 'string') continue;
+      if (!child.text.startsWith('[')) continue;
+      const active = optionCursor === this.actionIndex;
+      (child as Phaser.GameObjects.Text).setColor(active ? '#ffffff' : '#9fb1c8');
+      optionCursor++;
+    }
+  }
+
+  private executeActionSelection(): void {
+    const selection = this.actionOptions[this.actionIndex];
+    if (!selection) return;
+    this.closeActionPicker();
+    this.startSelectedSlot(selection);
+  }
+
+  private closeActionPicker(): void {
+    this.inActionSelect = false;
+    this.actionOptions = [];
+    this.actionOverlay?.destroy();
+    this.actionOverlay = undefined;
   }
 
   // -------------------------------------------------------------------------
@@ -341,6 +478,7 @@ export class SaveSlotScene extends Phaser.Scene {
   private openDeleteConfirm(): void {
     this.inConfirm = true;
     this.confirmIndex = 1; // default to "No"
+    this.cardNavigator?.hideRing();
 
     const ow = 340, oh = 140;
     const ox = (GAME_WIDTH - ow) / 2;
@@ -415,5 +553,6 @@ export class SaveSlotScene extends Phaser.Scene {
     this.confirmOverlay = undefined;
     this.confirmYes = undefined;
     this.confirmNo = undefined;
+    this.cardNavigator?.setFocus(this.selectedIndex);
   }
 }

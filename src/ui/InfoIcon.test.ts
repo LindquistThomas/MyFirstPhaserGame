@@ -434,3 +434,71 @@ describe('InfoIcon visibility and badge', () => {
     expect(container.destroy).toHaveBeenCalled();
   });
 });
+
+describe('InfoIcon visibility and badge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCooldownRemaining.mockReturnValue(0);
+  });
+
+  it('setVisible(false) hides the container', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-id');
+    icon.setVisible(false);
+    // Container should have setVisible(false) called
+    const container = (scene.add.container as ReturnType<typeof vi.fn>).mock.results[0]?.value as
+      ReturnType<typeof makeContainer>;
+    expect(container.setVisible).toHaveBeenCalledWith(false);
+  });
+
+  it('setVisible(true) on unseen icon starts attention animation', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-id');
+    icon.setVisible(true);
+    // tweens.add should have been called for the animation
+    expect(scene.tweens.add).toHaveBeenCalled();
+  });
+
+  it('setVisible(true) without contentId starts calm pulse', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn());
+    icon.setVisible(true);
+    expect(scene.tweens.add).toHaveBeenCalled();
+  });
+
+  it('markAsSeen() on visible attention-mode icon switches to calm mode', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-id');
+    icon.setVisible(true); // starts in attention mode
+    // Should not throw
+    expect(() => icon.markAsSeen()).not.toThrow();
+  });
+
+  it('setQuizBadge creates badge elements and adds to container', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-id');
+    icon.setQuizBadge(scene as unknown as Phaser.Scene, false);
+    // scene.add.container called for badge
+    expect(scene.add.container).toHaveBeenCalledTimes(2); // main container + badge
+    expect(scene.add.graphics).toHaveBeenCalled();
+    expect(scene.add.text).toHaveBeenCalled();
+  });
+
+  it('setQuizBadge(true) creates a checkmark badge', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-id');
+    // Should not throw
+    expect(() => icon.setQuizBadge(scene as unknown as Phaser.Scene, true)).not.toThrow();
+  });
+
+  it('destroy() stops tweens and destroys container', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-id');
+    // setVisible first to start some tweens
+    icon.setVisible(true);
+    icon.destroy();
+    const container = (scene.add.container as ReturnType<typeof vi.fn>).mock.results[0]?.value as
+      ReturnType<typeof makeContainer>;
+    expect(container.destroy).toHaveBeenCalled();
+  });
+});

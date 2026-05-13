@@ -148,7 +148,10 @@ export class BootScene extends Phaser.Scene {
     // Build the persistent game-state facade once. Subsequent scenes read
     // `gameState` from the registry instead of constructing their own
     // ProgressionSystem or reaching into the singleton save managers.
-    this.registry.set('gameState', new GameStateManager());
+    const gameState = new GameStateManager();
+    this.registry.set('gameState', gameState);
+    const mode = gameState.progression?.getMode?.() ?? 'normal';
+    this.registry.set('worldModifiers', getWorldModifiers(mode));
 
     // Bootstrap opt-in analytics. createAnalyticsService() returns null when
     // VITE_ANALYTICS_ENDPOINT is not set (structurally disabled). When set,
