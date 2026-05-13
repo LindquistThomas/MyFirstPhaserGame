@@ -88,7 +88,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Executive Suite',
     description: 'The penthouse. Strategy, vision, and the C-suite.',
     sceneKey: 'ExecutiveSuiteScene',
-    auRequired: 24,
+    auRequired: 21,
     auLabel: 'Strategy AU',
     totalAU: 8,
     theme: {
@@ -107,7 +107,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     // scene. Kept as a symbolic label so levelData stays complete and the
     // floor sceneKey uniqueness test still holds.
     sceneKey: 'ProductsFloor',
-    auRequired: 12,
+    auRequired: 9,
     auLabel: 'Product AU',
     totalAU: 6,
     theme: {
@@ -123,7 +123,7 @@ export const LEVEL_DATA: Record<FloorId, FloorData> = {
     name: 'Boardroom',
     description: 'The CEO awaits. Prove your architectural worth.',
     sceneKey: 'BossArenaScene',
-    auRequired: 36,
+    auRequired: 28,
     auLabel: 'Boss AU',
     totalAU: 0,
     theme: {
