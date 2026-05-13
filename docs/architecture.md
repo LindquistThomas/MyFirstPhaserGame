@@ -37,6 +37,7 @@ src/
 │       │   ├── sceneBackdrop.ts        Layered gradient/pattern/vignette background.
 │       │   ├── validateLevelConfig.ts  Structural + registry validator for LevelConfig.
 │       │   ├── coachHints.ts           First-visit per-floor toast hint copy.
+│       │   ├── dailyChallengeLayout.ts Deterministic per-day layout overrides for tokens/enemies/consumables.
 │       │   └── defineFloorScene.ts     Factory that builds a LevelScene subclass from declarative options (key, floorId, config, banner, decorations, returnSide). Used by every standard floor.
 │       ├── lobby/            Lobby content — info.ts + quiz.ts (shown on the elevator's ground-floor zone).
 │       ├── platform/         Platform Team — + enemies.ts for the bureaucracy-bot.
@@ -219,6 +220,7 @@ Use this to find the right file to edit for a given feature.
 | Info modal runtime                  | `systems/InfoDialogManager.ts`, `ui/InfoDialog.ts`, `ui/DialogController.ts`           |
 | Input (keyboard + touch)            | `input/*`                                                                              |
 | Audio                               | `systems/AudioManager.ts`, `systems/SoundGenerator.ts` (also generates procedural lullaby), `systems/sounds/*` |
+| Daily challenge                     | `systems/DailyChallenge.ts`, `systems/DailyChallengeStore.ts`, `systems/SeededRandom.ts`, `features/floors/_shared/dailyChallengeLayout.ts` |
 | Procedural sprites                  | `systems/SpriteGenerator.ts`, `systems/sprites/*.ts`                                   |
 | Theme tokens (colours + spacing)    | `style/theme.ts`                                                                       |
 | Analytics / playtime                | `systems/Analytics.ts`, `systems/PlaytimeTracker.ts`                                   |
@@ -364,6 +366,7 @@ automatically.
 | `sfx:recover_au`     | —       | Player (AU recovered)       | AudioManager |
 | `sfx:coffee_sip`     | —       | Coffee                      | AudioManager |
 | `sfx:fridge_open`    | —       | EnergyDrinkFridge           | AudioManager |
+| `sfx:npc_greet`      | —       | LevelNpcManager             | AudioManager |
 | `sfx:boss_hit`       | —       | CEOBoss                     | AudioManager |
 | `sfx:boss_defeated`  | —       | TerroristCommander          | AudioManager |
 | `sfx:boss_phase_2`   | —       | CEOBoss                     | AudioManager |
@@ -381,6 +384,14 @@ automatically.
 | Event                 | Payload       | Emitters | Consumers |
 |-----------------------|---------------|----------|-----------|
 | `checkpoint:activate` | `id: string`  | LevelScene, BossArenaScene | — |
+
+#### `npc:*` — NPC questions
+
+| Event                | Payload                                      | Emitters         | Consumers |
+|----------------------|----------------------------------------------|------------------|-----------|
+| `npc:interact`       | `{ npcId; npcName; topic }`                  | LevelNpcManager  | — |
+| `npc:answer:correct` | `{ npcName; questionId }`                    | NpcDialog        | — |
+| `npc:answer:wrong`   | `{ npcName; questionId }`                    | NpcDialog        | — |
 
 #### `boss:*` — boss lifecycle
 
@@ -479,7 +490,7 @@ automatically.
 - **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
   `src/input/**` at 80%; `src/ui/**` at 65% (60% branches);
   `src/entities/**` at 60%; `src/scenes/**` at 20% (18% functions);
-  `src/features/floors/**` at 25% (20% branches).
+  `src/features/floors/**` at 25% (20% branches, 25% functions, 25% statements).
   `src/plugins/**`, `src/main.ts`, the procedural-generator modules
   (`src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
   `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`), and a

@@ -53,6 +53,7 @@ export class PlatformTeamScene extends defineFloorScene({
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
+      objective: 'Collect AU and reach the elevator exit',
       playerStart: { x: 240, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 
@@ -117,6 +118,20 @@ export class PlatformTeamScene extends defineFloorScene({
 
       fridges: [
         { x: 870, y: T3 },  // T3 Observability station — beside the monitoring desk
+      ],
+
+      npcs: [
+        {
+          id: 'platform-sre',
+          name: 'Sigrid',
+          x: 520,
+          y: G,
+          minX: 430,
+          maxX: 590,
+          speed: 28,
+          topic: 'platform architecture',
+          tint: 0x9fd3ff,
+        },
       ],
 
       infoPoints: [

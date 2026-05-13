@@ -43,7 +43,9 @@ export type GameAction =
   // Pause / resume
   | 'Pause'
   // Debug
-  | 'ToggleDebug';
+  | 'ToggleDebug'
+  // Controls reference
+  | 'ShowControls';
 
 /** The input context a consumer is operating in. */
 export type InputContext = 'gameplay' | 'menu' | 'modal';
@@ -91,6 +93,8 @@ export const ACTION_CONTEXTS: Record<GameAction, readonly ActionContextTag[]> = 
   Attack: ['gameplay'],
 
   Pause: ['gameplay'],
+
+  ShowControls: ['gameplay', 'menu'],
 
   ToggleDebug: [ALWAYS],
 };
