@@ -14,6 +14,7 @@ export type AchievementId =
   | 'tokens-10' | 'tokens-25'
   | 'daily-streak-3'
   | 'boss-defeated' | 'boss-no-damage' | 'hostage-rescue'
+  | 'architect-reborn' | 'master-architect'
   | 'grand-architect';
 
 export interface AchievementDef {
@@ -50,6 +51,8 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'boss-defeated',   label: 'Corner Office',    description: 'Defeat the CEO in the Boardroom.',                     secret: true },
   { id: 'boss-no-damage',  label: 'Untouchable',      description: 'Defeat the CEO without being hit.',                    secret: true },
   { id: 'hostage-rescue',  label: 'Die Hard',         description: 'Rescue the C-suite leadership.',                       secret: true },
+  { id: 'architect-reborn', label: 'Architect Reborn', description: 'Complete New Game+.',                                  secret: true },
+  { id: 'master-architect', label: 'Master Architect', description: 'Complete New Game+ on Hard modifiers.',                secret: true },
   // Secret
   {
     id: 'grand-architect',

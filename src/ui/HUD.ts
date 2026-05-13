@@ -18,6 +18,7 @@ import { isReducedMotion } from '../systems/MotionPreference';
 import { ObjectiveBanner } from './ObjectiveBanner';
 
 const HUD_HEIGHT = 44;
+const RUN_TIMER_Y = 32;
 
 /** Format milliseconds as M:SS (e.g. 125 300 ms → "2:05"). */
 export function formatPlaytime(ms: number): string {
@@ -43,6 +44,7 @@ export class HUD {
   private bg!: Phaser.GameObjects.Graphics;
   private titleText!: Phaser.GameObjects.Text;
   private timerText!: Phaser.GameObjects.Text;
+  private ngPlusBadge!: Phaser.GameObjects.Text;
   private toast!: Toast;
   private muteCtrl!: MuteIconController;
   private coinCtrl!: CoinCounterController;
@@ -102,12 +104,12 @@ export class HUD {
     this.titleText.setVisible(this.sizeClass !== 'compact');
     container.add(this.titleText as unknown as Phaser.GameObjects.GameObject);
 
-    // Floor timer — small M:SS counter in the top-left corner.
-    // Hidden on compact viewports and when reduced-motion is active.
-    this.timerText = this.scene.add.text(8, 14, '0:00', {
+    // Run timer — small M:SS counter in the top-right corner.
+    // Visibility is controlled by SettingsStore.showRunTimer.
+    this.timerText = this.scene.add.text(GAME_WIDTH - 10, RUN_TIMER_Y, '0:00', {
       fontFamily: 'monospace', fontSize: '12px',
       color: theme.color.css.textMuted,
-    }).setOrigin(0, 0.5);
+    }).setOrigin(1, 0.5);
     this.timerText.setVisible(this._isTimerVisible());
     container.add(this.timerText as unknown as Phaser.GameObjects.GameObject);
 
@@ -167,6 +169,7 @@ export class HUD {
     this.titleText.setStyle({ fontSize: this.tokens.hudFontTitle });
     this.titleText.setVisible(this.sizeClass !== 'compact');
     this.timerText.setVisible(this._isTimerVisible());
+    this.ngPlusBadge.setVisible(this.progression.isNgPlusMode());
   }
 
   /**
@@ -234,18 +237,17 @@ export class HUD {
     this.caffeineCtrl.update(this.scene.time.now);
     this.objectiveBanner?.update();
 
-    // Update floor timer.
+    // Update run timer.
     if (this.playtime !== null) {
-      const floorMs = this.playtime.getFloorMs(floor);
-      this.timerText.setText(formatPlaytime(floorMs));
+      const runMs = this.playtime.getRunElapsedMs();
+      this.timerText.setText(formatPlaytime(runMs));
     }
   }
 
-  /** Whether the timer widget should be visible. Hidden on compact viewports and when the user prefers reduced motion (avoids a distracting animated counter). */
+  /** Whether the timer widget should be visible. */
   private _isTimerVisible(): boolean {
     if (this.playtime === null) return false;
-    if (this.sizeClass === 'compact') return false;
-    return !isReducedMotion();
+    return settingsStore.read().showRunTimer;
   }
 
   private destroy(): void {

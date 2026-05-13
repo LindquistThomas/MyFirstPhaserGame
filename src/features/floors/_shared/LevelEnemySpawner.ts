@@ -12,6 +12,7 @@ import { Player } from '../../../entities/Player';
 import { ProgressionSystem } from '../../../systems/ProgressionSystem';
 import { eventBus } from '../../../systems/EventBus';
 import { isReducedMotion } from '../../../systems/MotionPreference';
+import type { WorldModifiers } from '../../../systems/WorldModifiers';
 import type { LevelConfig } from './LevelScene';
 
 /**
@@ -35,6 +36,7 @@ export interface EnemySpawnerDeps {
   camera: Phaser.Cameras.Scene2D.Camera;
   /** Optional callback invoked after every successful player hit. */
   onPlayerHit?: () => void;
+  worldModifiers: WorldModifiers;
 }
 
 /**
@@ -49,10 +51,13 @@ export class LevelEnemySpawner {
 
   spawn(config: LevelConfig): void {
     if (!config.enemies?.length) return;
+    const speedMultiplier = this.deps.worldModifiers.enemySpeedMultiplier;
+    const contactDamageMultiplier = this.deps.worldModifiers.enemyContactDamageMultiplier;
     for (const e of config.enemies) {
       const minX = e.minX ?? e.x - 160;
       const maxX = e.maxX ?? e.x + 160;
-      const opts = { minX, maxX, speed: e.speed };
+      const baseSpeed = e.speed ?? DEFAULT_ENEMY_SPEED_BY_TYPE[e.type];
+      const opts = { minX, maxX, speed: baseSpeed * speedMultiplier };
       let enemy: Enemy;
       switch (e.type) {
         case 'slime':
@@ -74,6 +79,7 @@ export class LevelEnemySpawner {
           enemy = new TerroristCommander(this.deps.scene, e.x, e.y, opts);
           break;
       }
+      enemy.hitCost = Math.max(1, Math.ceil(enemy.hitCost * contactDamageMultiplier));
       this.enemies.push(enemy);
     }
   }
