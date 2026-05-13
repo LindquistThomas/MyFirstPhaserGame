@@ -34,6 +34,7 @@ vi.mock('../../../systems/SoundGenerator', () => ({
 
 vi.mock('../../../input', () => ({
   allKeyLabels: vi.fn(() => 'E'),
+  actionPrompt: vi.fn(() => 'Press E'),
 }));
 
 interface MockFridge {

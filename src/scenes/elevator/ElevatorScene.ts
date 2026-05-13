@@ -25,6 +25,8 @@ import { preloadQuizFor } from '../../config/quiz';
 import { preloadInfoFor } from '../../config/info';
 import { prefetchSceneMusic } from '../../plugins/MusicPlugin';
 import { SceneLoadingOverlay } from '../../ui/SceneLoadingOverlay';
+import { LEVEL_DATA } from '../../config/levelData';
+import { ACHIEVEMENTS } from '../../config/achievements';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.

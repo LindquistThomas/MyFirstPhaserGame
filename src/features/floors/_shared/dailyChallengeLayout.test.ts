@@ -43,5 +43,32 @@ describe('applyDailyChallengeLayout', () => {
       expect((enemy.maxX ?? 0) - (enemy.minX ?? 0)).toBeGreaterThanOrEqual(80);
     }
   });
-});
 
+  it('keeps single-token layouts stable and assigns missing index', () => {
+    const cfg: LevelConfig = {
+      ...BASE_CONFIG,
+      tokens: [{ x: 200, y: 400 }],
+      enemies: [],
+      coffees: [],
+      fridges: [],
+    };
+    const changed = applyDailyChallengeLayout(cfg, 7);
+    expect(changed.tokens).toEqual([{ x: 200, y: 400, index: 0 }]);
+    expect(changed.enemies).toEqual([]);
+    expect(changed.coffees).toEqual([]);
+    expect(changed.fridges).toEqual([]);
+  });
+
+  it('normalises inverted patrol ranges and enforces minimum span', () => {
+    const cfg: LevelConfig = {
+      ...BASE_CONFIG,
+      enemies: [{ type: 'slime', x: 400, y: 590, minX: 500, maxX: 460 }],
+    };
+    const changed = applyDailyChallengeLayout(cfg, 11);
+    const enemy = changed.enemies?.[0];
+    expect(enemy).toBeDefined();
+    expect((enemy?.maxX ?? 0) - (enemy?.minX ?? 0)).toBeGreaterThanOrEqual(80);
+    expect(enemy?.x).toBeGreaterThanOrEqual(enemy?.minX ?? 0);
+    expect(enemy?.x).toBeLessThanOrEqual(enemy?.maxX ?? 0);
+  });
+});

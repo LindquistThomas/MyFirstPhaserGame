@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createFakeScene, type FakeScene, type FakeSprite } from '../../tests/helpers/phaserMock';
 import type * as Phaser from 'phaser';
 import { eventBus } from '../systems/EventBus';
+import * as MotionPreference from '../systems/MotionPreference';
 import {
   PLAYER_COYOTE_MS,
   PLAYER_JUMP_BUFFER_MS,

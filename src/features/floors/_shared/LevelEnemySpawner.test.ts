@@ -453,3 +453,100 @@ describe('LevelEnemySpawner — update()', () => {
     expect(OFFSCREEN_ENEMY_MARGIN_PX).toBe(256);
   });
 });
+
+describe('LevelEnemySpawner — enemy overlap resolution', () => {
+  it('ignores overlap when enemy already defeated', () => {
+    const { spawner, player } = makeHarness();
+    const enemy = {
+      defeated: true,
+      body: { top: 100 },
+    };
+    (spawner as unknown as {
+      onEnemyOverlap: (playerObj: unknown, enemyObj: unknown) => void;
+    }).onEnemyOverlap(player.sprite, enemy);
+    expect(player.takeHit).not.toHaveBeenCalled();
+  });
+
+  it('ignores overlap while player is invulnerable', () => {
+    const { spawner, player } = makeHarness();
+    player.isInvulnerable = vi.fn(() => true);
+    const enemy = {
+      defeated: false,
+      body: { top: 100 },
+    };
+    (spawner as unknown as {
+      onEnemyOverlap: (playerObj: unknown, enemyObj: unknown) => void;
+    }).onEnemyOverlap(player.sprite, enemy);
+    expect(player.takeHit).not.toHaveBeenCalled();
+  });
+
+  it('stomp path triggers stomp bounce + sfx without applying hit', () => {
+    const { spawner, player, camera } = makeHarness();
+    const playerBody = player.sprite.body as { bottom: number; velocity: { y: number } };
+    playerBody.bottom = 110;
+    playerBody.velocity.y = 80;
+    player.getIsFlipping = vi.fn(() => false);
+    vi.mocked(isReducedMotion).mockReturnValue(false);
+
+    const enemy = {
+      defeated: false,
+      canBeStomped: true,
+      body: { top: 95 },
+      onStomp: vi.fn(),
+    };
+    (spawner as unknown as {
+      onEnemyOverlap: (playerObj: unknown, enemyObj: unknown) => void;
+    }).onEnemyOverlap(player.sprite, enemy);
+
+    expect(enemy.onStomp).toHaveBeenCalled();
+    expect(player.sprite.setVelocityY).toHaveBeenCalledWith(-420);
+    expect(camera.shake).toHaveBeenCalledWith(80, 0.004);
+    expect(eventBus.emit).toHaveBeenCalledWith('sfx:stomp');
+    expect(player.takeHit).not.toHaveBeenCalled();
+  });
+
+  it('applyHit path emits hit/drop and skips camera shake in reduced-motion mode', () => {
+    const { spawner, progression, player, camera } = makeHarness();
+    progression.addAU(FLOORS.PLATFORM_TEAM, 2);
+    vi.mocked(isReducedMotion).mockReturnValue(true);
+
+    const enemy = {
+      defeated: false,
+      canBeStomped: false,
+      hitCost: 2,
+      knockbackX: 200,
+      knockbackY: -300,
+      x: 100,
+      body: { top: 10 },
+    };
+    (spawner as unknown as {
+      onEnemyOverlap: (playerObj: unknown, enemyObj: unknown) => void;
+    }).onEnemyOverlap(player.sprite, enemy);
+
+    expect(player.takeHit).toHaveBeenCalled();
+    expect(eventBus.emit).toHaveBeenCalledWith('sfx:drop_au');
+    expect(eventBus.emit).toHaveBeenCalledWith('sfx:hit');
+    expect(camera.shake).not.toHaveBeenCalledWith(120, 0.006);
+  });
+
+  it('applyHit path without AU loss skips drop emission', () => {
+    const { spawner, player } = makeHarness();
+    vi.mocked(isReducedMotion).mockReturnValue(false);
+    const enemy = {
+      defeated: false,
+      canBeStomped: false,
+      hitCost: 2,
+      knockbackX: 200,
+      knockbackY: -300,
+      x: 100,
+      body: { top: 10 },
+    };
+
+    (spawner as unknown as {
+      onEnemyOverlap: (playerObj: unknown, enemyObj: unknown) => void;
+    }).onEnemyOverlap(player.sprite, enemy);
+
+    expect(player.takeHit).toHaveBeenCalled();
+    expect(eventBus.emit).toHaveBeenCalledWith('sfx:hit');
+  });
+});
