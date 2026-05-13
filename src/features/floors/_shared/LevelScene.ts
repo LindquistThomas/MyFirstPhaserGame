@@ -208,18 +208,17 @@ export class LevelScene extends Phaser.Scene {
     this.createExit();
     // Checkpoint manager — owns hit tracking, checkpoints, respawn.
     // Constructed before createPlayer() so the player-spawn helper can read
-    // the active checkpoint position via floorHazard.
+    // the active checkpoint position via floorHazard. Player is injected
+    // explicitly via setPlayer() once createPlayer() finishes.
     this.checkpointMgr = new LevelCheckpointManager({
       scene: this,
-      player: undefined as unknown as Player, // patched below after createPlayer
       floorId: this.floorId,
       progression: this.progression,
       getIsTransitioning: () => this.isTransitioning,
       getPlayerStart: () => this.getResolvedLevelConfig().playerStart,
     });
     this.createPlayer();
-    // Patch player ref now that it exists. Avoids a circular dep with createPlayer().
-    (this.checkpointMgr as unknown as { deps: { player: Player } }).deps.player = this.player;
+    this.checkpointMgr.setPlayer(this.player);
     this.createUI();
 
     // Heartbeat SFX + danger vignette — replaces the legacy in-checkpoint vignette.

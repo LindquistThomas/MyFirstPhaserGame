@@ -10,7 +10,6 @@ import type { LevelConfig } from './LevelConfig';
 
 export interface CheckpointManagerDeps {
   scene: Phaser.Scene;
-  player: Player;
   floorId: FloorId;
   progression: ProgressionSystem;
   getIsTransitioning: () => boolean;
@@ -36,7 +35,18 @@ export class LevelCheckpointManager {
   private heartbeatElapsed = 0;
   private static readonly HEARTBEAT_INTERVAL_MS = 850;
 
+  /** Set after `createPlayer()` via {@link setPlayer}. */
+  private player?: Player;
+
   constructor(private readonly deps: CheckpointManagerDeps) {}
+
+  /**
+   * Inject the player reference once it has been constructed.
+   * Called from `LevelScene.create()` immediately after `createPlayer()`.
+   */
+  setPlayer(player: Player): void {
+    this.player = player;
+  }
 
   // ---- danger vignette -----------------------------------------------------------
 
@@ -69,7 +79,11 @@ export class LevelCheckpointManager {
    */
   spawn(config: LevelConfig): void {
     if (!config.checkpoints?.length) return;
-    const { scene, player } = this.deps;
+    const { scene } = this.deps;
+    if (!this.player) {
+      throw new Error('LevelCheckpointManager.spawn() called before setPlayer()');
+    }
+    const player = this.player;
     for (const cp of config.checkpoints) {
       const checkpoint = new Checkpoint(
         scene,
@@ -116,7 +130,7 @@ export class LevelCheckpointManager {
     if (!isReducedMotion()) {
       this.deps.scene.cameras.main.flash(180, 255, 255, 255, true);
     }
-    this.deps.player.setPosition(target.x, target.y);
+    this.player?.setPosition(target.x, target.y);
   }
 
   // ---- per-frame update ----------------------------------------------------------
