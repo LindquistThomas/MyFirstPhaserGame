@@ -291,7 +291,7 @@ describe('SaveManager — schema versioning & migration', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const incompleteMigrations: SaveMigrationMap = {
       0: (d) => d,
-      // Missing 1 -> 2 migration on purpose.
+      // Missing 1 -> 2+ migration on purpose.
     };
     try {
       expect(load(incompleteMigrations)).toBeNull();
@@ -304,7 +304,7 @@ describe('SaveManager — schema versioning & migration', () => {
     }
   });
 
-  it('v1→v2 migration: loading a v1 save yields zeroed playtime fields', () => {
+  it('v1→current migration: loading a v1 save yields zeroed playtime fields', () => {
     const store = memoryStorage();
     const v1Save = {
       version: 1,
@@ -382,6 +382,28 @@ describe('SaveManager — schema versioning & migration', () => {
     store.store.set('architect_test_v1', JSON.stringify({ ...sample, version: -1 }));
     setStorage(store);
     expect(load()).toBeNull();
+  });
+
+  it('v2→v3 migration: injects NG+ metadata defaults', () => {
+    const store = memoryStorage();
+    const v2Save = {
+      version: 2,
+      totalAU: 7,
+      floorAU: { 0: 1, 1: 4, 3: 2 },
+      unlockedFloors: [0, 1, 3],
+      currentFloor: 1,
+      collectedTokens: { 0: [0], 1: [0, 1, 2], 3: [3] },
+      playtimeMs: 12_000,
+      floorPlaytimeMs: { 1: 9_000 },
+    };
+    store.store.set('architect_test_v1', JSON.stringify(v2Save));
+    setStorage(store);
+
+    const loaded = load();
+    expect(loaded).not.toBeNull();
+    expect(loaded?.version).toBe(CURRENT_SAVE_VERSION);
+    expect(loaded?.bossDefeatedCount).toBe(0);
+    expect(loaded?.mode).toBe('normal');
   });
 });
 
