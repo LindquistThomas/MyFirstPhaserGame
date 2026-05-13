@@ -13,4 +13,11 @@ export {
   type ContextToken,
 } from './InputService';
 export { keyLabel, primaryKeyLabel, allKeyLabels } from './keyLabels';
+export {
+  actionPrompt,
+  detectInputMode,
+  initInputModeTracking,
+  promptLabel,
+  type InputMode,
+} from './promptLabel';
 export { bindPointerAction } from './pointerBindings';

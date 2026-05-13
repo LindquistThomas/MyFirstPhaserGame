@@ -38,6 +38,7 @@ export class ArchitectureTeamScene extends defineFloorScene({
 
     return {
       floorId: FLOORS.PLATFORM_TEAM,
+      objective: 'Read architecture stations and pass the quiz',
       playerStart: { x: 150, y: G - 100 },
       exitPosition: { x: 80, y: G - 56 },
 
@@ -113,6 +114,20 @@ export class ArchitectureTeamScene extends defineFloorScene({
         // Tech Debt Ghost — drifts across the upper half, phases through
         // catwalks so retreating upstairs is no escape.
         { type: 'tech-debt-ghost', x: 700, y: 420, minX: 300, maxX: 1100, speed: 40 },
+      ],
+
+      npcs: [
+        {
+          id: 'architecture-mentor',
+          name: 'Ada',
+          x: 390,
+          y: G,
+          minX: 330,
+          maxX: 460,
+          speed: 24,
+          topic: 'architecture basics',
+          tint: 0xffd6a5,
+        },
       ],
 
       infoPoints: [
