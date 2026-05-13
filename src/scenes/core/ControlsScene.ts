@@ -5,6 +5,7 @@ import { settingsStore } from '../../systems/SettingsStore';
 import { buildEffectiveBindings, type KeyCode } from '../../input/bindings';
 import { ALL_ACTIONS, type GameAction } from '../../input/actions';
 import { keyLabel } from '../../input/keyLabels';
+import { ACTION_LABELS } from '../../input/actionLabels';
 import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
@@ -23,38 +24,6 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
  *   Enter / Confirm — activate / enter capture mode
  *   Escape — back to SettingsScene
  */
-
-/** Human-readable labels for each GameAction. */
-const ACTION_LABELS: Record<GameAction, string> = {
-  MoveLeft: 'Move Left',
-  MoveRight: 'Move Right',
-  MoveUp: 'Move Up',
-  MoveDown: 'Move Down',
-  Jump: 'Jump',
-  Interact: 'Interact',
-  ToggleInfo: 'Toggle Info',
-  NavigateUp: 'Navigate Up',
-  NavigateDown: 'Navigate Down',
-  NavigateLeft: 'Navigate Left',
-  NavigateRight: 'Navigate Right',
-  PageUp: 'Page Up',
-  PageDown: 'Page Down',
-  Confirm: 'Confirm',
-  Cancel: 'Cancel',
-  QuickAnswer1: 'Quick Answer 1',
-  QuickAnswer2: 'Quick Answer 2',
-  QuickAnswer3: 'Quick Answer 3',
-  QuickAnswer4: 'Quick Answer 4',
-  ElevatorCallFloor0: 'Elevator: Floor 0',
-  ElevatorCallFloor1: 'Elevator: Floor 1',
-  ElevatorCallFloor2: 'Elevator: Floor 2',
-  ElevatorCallFloor3: 'Elevator: Floor 3',
-  ElevatorCallFloor4: 'Elevator: Floor 4',
-  ElevatorCallFloor5: 'Elevator: Boardroom',
-  Attack: 'Attack (Throw/Fire)',
-  Pause: 'Pause',
-  ToggleDebug: 'Toggle Debug',
-};
 
 /** Key codes that are not allowed as new bindings (modifiers, lock keys, function keys). */
 const RESERVED_KEYS = new Set<number>([

@@ -56,6 +56,16 @@ export class DialogController {
     return this.dialogOpen;
   }
 
+  /** Open a custom modal while reusing the shared dialog-open guard. */
+  openCustom(create: (onClose: () => void) => void): boolean {
+    if (this.dialogOpen) return false;
+    this.dialogOpen = true;
+    create(() => {
+      this.dialogOpen = false;
+    });
+    return true;
+  }
+
   /** Open the info dialog for `contentId`; no-op if any dialog is already open. */
   open(contentId: string): void {
     void this._openAsync(contentId);
