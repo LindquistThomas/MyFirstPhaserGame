@@ -26,11 +26,24 @@ vi.mock('./TouchHintOverlay', () => ({
   showTouchHintIfNotSeen: vi.fn(),
 }));
 vi.mock('../systems/EventBus', () => ({
-  eventBus: {
-    emit: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-  },
+  eventBus: (() => {
+    const listeners = new Map<string, Array<(...args: unknown[]) => void>>();
+    return {
+      emit: vi.fn((event: string, ...args: unknown[]) => {
+        const handlers = listeners.get(event) ?? [];
+        for (const handler of handlers) handler(...args);
+      }),
+      on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        const handlers = listeners.get(event) ?? [];
+        handlers.push(handler);
+        listeners.set(event, handlers);
+      }),
+      off: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+        const handlers = listeners.get(event) ?? [];
+        listeners.set(event, handlers.filter((candidate) => candidate !== handler));
+      }),
+    };
+  })(),
 }));
 vi.mock('../systems/SettingsStore', () => ({
   settingsStore: {
@@ -50,6 +63,7 @@ import {
   updateVirtualGamepadContrast,
   _resetReactiveDetected,
   _destroyVirtualGamepadForTests,
+  _disposeVirtualGamepadEventBusBindings,
 } from './VirtualGamepad';
 import * as touchPrimary from './touchPrimary';
 import * as TouchHintOverlay from './TouchHintOverlay';
@@ -219,6 +233,7 @@ describe('initVirtualGamepad', () => {
     mockSetting('auto');
     document.getElementById('virtual-pad')?.remove();
     vi.mocked(EventBusModule.eventBus.on).mockClear();
+    vi.mocked(EventBusModule.eventBus.off).mockClear();
   });
 
   afterEach(() => {
@@ -235,6 +250,22 @@ describe('initVirtualGamepad', () => {
       'settings:changed',
       applyVirtualGamepadVisibility,
     );
+    expect(EventBusModule.eventBus.on).toHaveBeenCalledTimes(3);
+  });
+
+  it('binds settings handlers once and disposes them', () => {
+    initVirtualGamepad();
+    initVirtualGamepad();
+
+    vi.mocked(SettingsStoreModule.settingsStore.read).mockClear();
+    EventBusModule.eventBus.emit('settings:changed');
+    // applyVirtualGamepadVisibility + _syncHighContrastToDocument + _syncHapticsFromStore
+    expect(SettingsStoreModule.settingsStore.read).toHaveBeenCalledTimes(3);
+
+    _disposeVirtualGamepadEventBusBindings();
+    vi.mocked(SettingsStoreModule.settingsStore.read).mockClear();
+    EventBusModule.eventBus.emit('settings:changed');
+    expect(SettingsStoreModule.settingsStore.read).not.toHaveBeenCalled();
   });
 
   it('does not show pad on non-touch device with auto setting', () => {
@@ -320,6 +351,12 @@ describe('initVirtualGamepad', () => {
     _destroyVirtualGamepadForTests();
     const finalRemoveTouchStarts = removeSpy.mock.calls.filter(([eventName]) => eventName === 'touchstart');
     expect(finalRemoveTouchStarts.length).toBe(addTouchStarts.length);
+  });
+
+  it('destroy test seam removes all settings handlers', () => {
+    initVirtualGamepad();
+    _destroyVirtualGamepadForTests();
+    expect(EventBusModule.eventBus.off).toHaveBeenCalledTimes(3);
   });
 });
 

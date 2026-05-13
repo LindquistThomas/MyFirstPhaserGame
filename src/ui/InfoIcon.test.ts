@@ -152,6 +152,7 @@ function makeScene() {
       }),
     },
     tweens: { add: vi.fn(() => ({ stop: vi.fn() })) },
+    events: { once: vi.fn() },
     /** Tick the most-recently registered timer callback N times. */
     _tickTimer(times = 1): void {
       const entry = timerCallbacks[timerCallbacks.length - 1];
