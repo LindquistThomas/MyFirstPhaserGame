@@ -42,6 +42,7 @@ const REACTIVE_TOUCH_LISTENER_OPTIONS: AddEventListenerOptions = { passive: true
 let reactiveDetectionDispose: (() => void) | null = null;
 const padListenerDisposers: Array<() => void> = [];
 let activeVirtualGamepadInstance: { destroy: () => void } | null = null;
+let eventBusBindingsBound = false;
 
 /** Reset the session flag — test seam only. */
 export function _resetReactiveDetected(): void {
@@ -293,6 +294,27 @@ function _syncHapticsFromStore(): void {
   hapticsEnabled = settingsStore.read().hapticsEnabled;
 }
 
+function initVirtualGamepadEventBusBindings(): void {
+  if (eventBusBindingsBound) return;
+  // Re-apply visibility whenever any non-audio setting changes (the handler
+  // is idempotent — it only does work when onScreenControls actually matters).
+  eventBus.on('settings:changed', applyVirtualGamepadVisibility);
+  // Keep the document-level high-contrast attribute in sync with the setting.
+  eventBus.on('settings:changed', _syncHighContrastToDocument);
+  // Keep the haptics cache in sync with the persisted setting.
+  eventBus.on('settings:changed', _syncHapticsFromStore);
+  eventBusBindingsBound = true;
+}
+
+/** @internal Test seam for teardown assertions. */
+export function _disposeVirtualGamepadEventBusBindings(): void {
+  if (!eventBusBindingsBound) return;
+  eventBus.off('settings:changed', applyVirtualGamepadVisibility);
+  eventBus.off('settings:changed', _syncHighContrastToDocument);
+  eventBus.off('settings:changed', _syncHapticsFromStore);
+  eventBusBindingsBound = false;
+}
+
 /**
  * Initialise the virtual gamepad subsystem.
  *
@@ -310,16 +332,7 @@ export function initVirtualGamepad(): void {
   activeVirtualGamepadInstance?.destroy();
   activeVirtualGamepadInstance = { destroy: destroyVirtualGamepadInstance };
   registerReactiveDetection();
-
-  // Re-apply visibility whenever any non-audio setting changes (the handler
-  // is idempotent — it only does work when onScreenControls actually matters).
-  eventBus.on('settings:changed', applyVirtualGamepadVisibility);
-  // Keep the document-level high-contrast attribute in sync with the setting.
-  // Module-level named function so repeated initVirtualGamepad() calls (HMR /
-  // test resets) add the same reference to the EventBus Set and stay idempotent.
-  eventBus.on('settings:changed', _syncHighContrastToDocument);
-  // Keep the haptics cache in sync with the persisted setting.
-  eventBus.on('settings:changed', _syncHapticsFromStore);
+  initVirtualGamepadEventBusBindings();
 
   applyVirtualGamepadVisibility();
   // Apply high-contrast at startup so a persisted setting takes effect immediately.
@@ -331,6 +344,7 @@ export function _destroyVirtualGamepadForTests(): void {
   activeVirtualGamepadInstance?.destroy();
   activeVirtualGamepadInstance = null;
   forcedVisible = null;
+  _disposeVirtualGamepadEventBusBindings();
 }
 
 /**
