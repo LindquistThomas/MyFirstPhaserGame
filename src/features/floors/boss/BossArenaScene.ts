@@ -106,6 +106,7 @@ export class BossArenaScene extends Phaser.Scene {
   private healthBar!: BossHealthBar;
   private gameState!: GameStateManager;
   private progression!: ProgressionSystem;
+  private worldModifiers!: WorldModifiers;
 
   private platformGroup!: Phaser.Physics.Arcade.StaticGroup;
   private mugGroup!: Phaser.Physics.Arcade.Group;
@@ -149,6 +150,9 @@ export class BossArenaScene extends Phaser.Scene {
   init(): void {
     this.gameState = this.registry.get('gameState') as GameStateManager;
     this.progression = this.gameState.progression;
+    this.worldModifiers = (this.registry.get('worldModifiers') as WorldModifiers | undefined)
+      ?? getWorldModifiers(this.progression.getMode());
+    this.registry.set('worldModifiers', this.worldModifiers);
     this.floorHazard.reset();
     this.heartbeatElapsed = 0;
     this.playerHitCount = 0;
@@ -313,7 +317,8 @@ export class BossArenaScene extends Phaser.Scene {
 
   private spawnBoss(): void {
     const G = GAME_HEIGHT - 64;
-    this.boss = new CEOBoss(this, GAME_WIDTH - 200, G - 80, 64, GAME_WIDTH - 64);
+    const bossHp = Math.ceil(CEOBoss.MAX_HP * this.worldModifiers.bossHpMultiplier);
+    this.boss = new CEOBoss(this, GAME_WIDTH - 200, G - 80, 64, GAME_WIDTH - 64, bossHp);
     this.physics.add.collider(this.boss, this.platformGroup);
 
     this.boss.on('throwBriefcase', (playerX: number) => this.spawnBriefcase(playerX));
@@ -327,7 +332,8 @@ export class BossArenaScene extends Phaser.Scene {
   }
 
   private buildUI(): void {
-    this.healthBar = new BossHealthBar(this, 'CEO — The Knowledge Cowboy', CEOBoss.MAX_HP);
+    const bossHp = Math.ceil(CEOBoss.MAX_HP * this.worldModifiers.bossHpMultiplier);
+    this.healthBar = new BossHealthBar(this, 'CEO — The Knowledge Cowboy', bossHp);
 
     this.mugCountText = this.add.text(20, 20, 'Mugs: 0', {
       fontFamily: 'monospace', fontSize: '14px', color: '#ffd700',
@@ -686,6 +692,7 @@ export class BossArenaScene extends Phaser.Scene {
     const noDamage = this.playerHitCount === 0;
 
     // Award AU
+    this.progression.recordBossDefeat();
     this.progression.addAU(FLOORS.BOSS, 20);
     this.gameState.checkBossAchievements(true, noDamage);
     eventBus.emit('game:completed');
@@ -717,6 +724,7 @@ export class BossArenaScene extends Phaser.Scene {
       }).setOrigin(0.5).setScrollFactor(0).setDepth(101);
 
       if (isNewBest) {
+        this.mechHintToast.show(`⏱ New best run: ${this._formatMs(thisRunMs)}`);
         this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 34, '⭐ NEW BEST!', {
           fontFamily: 'monospace', fontSize: '17px', color: '#ffd700', fontStyle: 'bold',
         }).setOrigin(0.5).setScrollFactor(0).setDepth(101);

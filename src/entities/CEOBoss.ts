@@ -22,7 +22,8 @@ export type BossPhase = 1 | 2 | 3;
 export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
   static readonly MAX_HP = 10;
 
-  private hp = CEOBoss.MAX_HP;
+  private readonly maxHp: number;
+  private hp: number;
   phase: BossPhase = 1;
   defeated = false;
   /** Tracks correct prompt answers for the current phase (knowledge gate). */
@@ -50,13 +51,15 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
   private minX: number;
   private maxX: number;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, minX: number, maxX: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, minX: number, maxX: number, maxHp = CEOBoss.MAX_HP) {
     super(scene, x, y, 'boss_ceo');
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setDepth(8);
     this.minX = minX;
     this.maxX = maxX;
+    this.maxHp = Math.max(1, Math.floor(maxHp));
+    this.hp = this.maxHp;
 
     const body = this.body as Phaser.Physics.Arcade.Body;
     body.setCollideWorldBounds(true);
@@ -110,7 +113,9 @@ export class CEOBoss extends Phaser.Physics.Arcade.Sprite {
 
   /** Wrong quiz answer: restore 1 HP (capped at phase max), refill charge timer. */
   onWrongAnswer(): void {
-    const phaseMax = this.phase === 1 ? 10 : this.phase === 2 ? 7 : 3;
+    const phase2Threshold = Math.ceil(this.maxHp * 0.7);
+    const phase3Threshold = Math.ceil(this.maxHp * 0.3);
+    const phaseMax = this.phase === 1 ? this.maxHp : this.phase === 2 ? phase2Threshold : phase3Threshold;
     this.hp = Math.min(phaseMax, this.hp + 1);
     this.chargeTimer = 0;
     if (this.phase === 2) {
