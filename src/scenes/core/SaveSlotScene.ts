@@ -15,6 +15,7 @@ import { pushContext, popContext } from '../../input';
 import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 import type { NavigationContext } from '../NavigationContext';
 import { SaveRecoveryDialog } from '../../ui/SaveRecoveryDialog';
+import { ButtonListNavigator } from '../../ui/ButtonListNavigator';
 import { setDailyState } from '../../systems/DailyChallenge';
 
 /**
@@ -32,7 +33,9 @@ import { setDailyState } from '../../systems/DailyChallenge';
 export class SaveSlotScene extends Phaser.Scene {
   private slotInfos: SlotInfo[] = [];
   private cards: Phaser.GameObjects.Container[] = [];
+  private cardBounds: Phaser.Geom.Rectangle[] = [];
   private selectedIndex = 0;
+  private cardNavigator?: ButtonListNavigator;
   private confirmOverlay?: Phaser.GameObjects.Container;
   private confirmYes?: Phaser.GameObjects.Text;
   private confirmNo?: Phaser.GameObjects.Text;
@@ -48,12 +51,16 @@ export class SaveSlotScene extends Phaser.Scene {
   create(): void {
     this.slotInfos = SAVE_SLOTS.map((id) => loadSlotInfo(id));
     this.cards = [];
+    this.cardBounds = [];
     this.selectedIndex = 0;
+    this.cardNavigator?.destroy();
+    this.cardNavigator = undefined;
     this.inConfirm = false;
 
     this.drawBackground();
     this.drawTitle();
     this.drawCards();
+    this.setupCardNavigator();
     this.drawFooter();
     this.setupKeyboard();
     this.updateHighlight();
@@ -96,6 +103,7 @@ export class SaveSlotScene extends Phaser.Scene {
       const x = startX + i * (cardW + gapX);
       const container = this.buildCard(x, cardY, cardW, cardH, i + 1, info);
       this.cards.push(container);
+      this.cardBounds.push({ x, y: cardY, width: cardW, height: cardH } as Phaser.Geom.Rectangle);
     });
   }
 
@@ -164,12 +172,11 @@ export class SaveSlotScene extends Phaser.Scene {
     // Pointer interactivity
     bg.setInteractive(new Phaser.Geom.Rectangle(0, 0, w, h), Phaser.Geom.Rectangle.Contains);
     bg.on('pointerover', () => {
-      this.selectedIndex = slotNumber - 1;
-      this.updateHighlight();
+      this.cardNavigator?.setFocus(slotNumber - 1);
     });
     bg.on('pointerdown', () => {
-      this.selectedIndex = slotNumber - 1;
-      this.activateSelected();
+      this.cardNavigator?.setFocus(slotNumber - 1);
+      this.cardNavigator?.activateFocused();
     });
 
     return container;
@@ -232,9 +239,9 @@ export class SaveSlotScene extends Phaser.Scene {
       this.refreshConfirmHighlight();
       return;
     }
-    const n = SAVE_SLOTS.length;
-    this.selectedIndex = (this.selectedIndex + delta + n) % n;
-    this.updateHighlight();
+    if (!this.cardNavigator) return;
+    if (delta > 0) this.cardNavigator.focusNext();
+    else this.cardNavigator.focusPrev();
   }
 
   private confirmAction(): void {
@@ -245,6 +252,25 @@ export class SaveSlotScene extends Phaser.Scene {
       return;
     }
     this.activateSelected();
+  }
+
+  private setupCardNavigator(): void {
+    this.cardNavigator = new ButtonListNavigator(this, 45);
+    this.cards.forEach((_card, index) => {
+      this.cardNavigator?.add({
+        focus: () => {
+          this.selectedIndex = index;
+          this.updateHighlight();
+        },
+        blur: () => undefined,
+        activate: () => {
+          this.selectedIndex = index;
+          this.activateSelected();
+        },
+        bounds: () => this.cardBounds[index] ?? ({ x: 0, y: 0, width: 0, height: 0 } as Phaser.Geom.Rectangle),
+      });
+    });
+    this.cardNavigator.setFocus(this.selectedIndex);
   }
 
   private tryDelete(): void {
@@ -301,6 +327,7 @@ export class SaveSlotScene extends Phaser.Scene {
   private openDeleteConfirm(): void {
     this.inConfirm = true;
     this.confirmIndex = 1; // default to "No"
+    this.cardNavigator?.hideRing();
 
     const ow = 340, oh = 140;
     const ox = (GAME_WIDTH - ow) / 2;
@@ -375,5 +402,6 @@ export class SaveSlotScene extends Phaser.Scene {
     this.confirmOverlay = undefined;
     this.confirmYes = undefined;
     this.confirmNo = undefined;
+    this.cardNavigator?.setFocus(this.selectedIndex);
   }
 }
