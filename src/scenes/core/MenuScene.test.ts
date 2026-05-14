@@ -37,6 +37,7 @@ vi.mock('phaser', () => {
     registry = { get: vi.fn(), set: vi.fn() };
     textures = { exists: vi.fn(() => false) };
     cache = { audio: { exists: vi.fn(() => false) } };
+    music = { preloadIdle: vi.fn() };
     load = { audio: vi.fn(), start: vi.fn(), once: vi.fn(), on: vi.fn(), off: vi.fn() };
     scene = { key: 'MenuScene' };
     /** Simple events stub: once() stores handlers; emit() fires & removes them. */
@@ -99,18 +100,11 @@ import { createSceneLifecycle } from '../../systems/sceneLifecycle';
 
 /** Build the minimal scene surface idlePreloadMusic reads. */
 function makeScene(cachedKeys: string[] = []) {
-  const loadedKeys: string[] = [];
-  let loadStarted = false;
+  const preloadedKeyBatches: string[][] = [];
 
   const scene = new MenuScene() as unknown as {
     cache: { audio: { exists: (k: string) => boolean } };
-    load: {
-      audio: (k: string, p: string) => void;
-      start: () => void;
-      once: (event: string, cb: () => void) => void;
-      on: (event: string, cb: (file: { key: string; type: string }) => void) => void;
-      off: (event: string, cb: unknown) => void;
-    };
+    music: { preloadIdle: (keys: string[]) => void };
     idlePreloadMusic: () => void;
   };
 
@@ -118,23 +112,17 @@ function makeScene(cachedKeys: string[] = []) {
     value: { audio: { exists: (k: string) => cachedKeys.includes(k) } },
     configurable: true,
   });
-  Object.defineProperty(scene, 'load', {
+  Object.defineProperty(scene, 'music', {
     value: {
-      audio: (k: string, _p: string) => { loadedKeys.push(k); },
-      start: () => { loadStarted = true; },
-      // Immediately invoke filecomplete callbacks so the full chain runs
-      // synchronously in tests, making all queued tracks observable.
-      once: (_event: string, cb: () => void) => { cb(); },
-      on: vi.fn(),
-      off: vi.fn(),
+      preloadIdle: (keys: string[]) => { preloadedKeyBatches.push(keys); },
     },
     configurable: true,
   });
 
   return {
     scene,
-    getLoadedKeys: () => loadedKeys,
-    isLoadStarted: () => loadStarted,
+    getPreloadedKeys: () => preloadedKeyBatches.flat(),
+    getPreloadCalls: () => preloadedKeyBatches,
   };
 }
 
@@ -179,133 +167,76 @@ describe('MenuScene.idlePreloadMusic', () => {
 
   it('queues all non-eager non-own-track uncached tracks and starts the loader', () => {
     setConnection(undefined);
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    const { scene, getPreloadedKeys, getPreloadCalls } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toHaveLength(idlePreloadKeys.length);
-    expect(getLoadedKeys()).toEqual(expect.arrayContaining(idlePreloadKeys));
-    expect(isLoadStarted()).toBe(true);
+    expect(getPreloadedKeys()).toHaveLength(idlePreloadKeys.length);
+    expect(getPreloadedKeys()).toEqual(expect.arrayContaining(idlePreloadKeys));
+    expect(getPreloadCalls()).toHaveLength(1);
   });
 
   it("does not queue the scene's own SCENE_MUSIC track (MusicPlugin handles it)", () => {
     setConnection(undefined);
-    const { scene, getLoadedKeys } = makeScene([]);
+    const { scene, getPreloadedKeys } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).not.toContain(menuOwnTrack);
+    expect(getPreloadedKeys()).not.toContain(menuOwnTrack);
   });
 
   it('skips tracks that are already cached', () => {
     setConnection(undefined);
     const firstKey = idlePreloadKeys[0]!;
-    const { scene, getLoadedKeys } = makeScene([firstKey]);
+    const { scene, getPreloadedKeys } = makeScene([firstKey]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).not.toContain(firstKey);
-    expect(getLoadedKeys().length).toBe(idlePreloadKeys.length - 1);
+    expect(getPreloadedKeys()).not.toContain(firstKey);
+    expect(getPreloadedKeys().length).toBe(idlePreloadKeys.length - 1);
   });
 
   it('does nothing when all eligible tracks are cached', () => {
     setConnection(undefined);
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene(idlePreloadKeys);
+    const { scene, getPreloadedKeys, getPreloadCalls } = makeScene(idlePreloadKeys);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toHaveLength(0);
-    expect(isLoadStarted()).toBe(false);
+    expect(getPreloadedKeys()).toHaveLength(0);
+    expect(getPreloadCalls()).toHaveLength(0);
   });
 
   it('skips when saveData is true', () => {
     setConnection({ saveData: true });
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    const { scene, getPreloadedKeys, getPreloadCalls } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toHaveLength(0);
-    expect(isLoadStarted()).toBe(false);
+    expect(getPreloadedKeys()).toHaveLength(0);
+    expect(getPreloadCalls()).toHaveLength(0);
   });
 
   it('skips on 2g connection', () => {
     setConnection({ effectiveType: '2g' });
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    const { scene, getPreloadedKeys, getPreloadCalls } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toHaveLength(0);
-    expect(isLoadStarted()).toBe(false);
+    expect(getPreloadedKeys()).toHaveLength(0);
+    expect(getPreloadCalls()).toHaveLength(0);
   });
 
   it('skips on slow-2g connection', () => {
     setConnection({ effectiveType: 'slow-2g' });
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    const { scene, getPreloadedKeys, getPreloadCalls } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toHaveLength(0);
-    expect(isLoadStarted()).toBe(false);
+    expect(getPreloadedKeys()).toHaveLength(0);
+    expect(getPreloadCalls()).toHaveLength(0);
   });
 
   it('does not skip on 3g or faster connections', () => {
     setConnection({ effectiveType: '3g' });
-    const { scene, isLoadStarted } = makeScene([]);
+    const { scene, getPreloadCalls } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(isLoadStarted()).toBe(true);
+    expect(getPreloadCalls()).toHaveLength(1);
   });
 
   it('does not queue eager tracks', () => {
     setConnection(undefined);
     const eagerKeys = STATIC_MUSIC_ASSETS.filter((a) => a.eager).map((a) => a.key);
-    const { scene, getLoadedKeys } = makeScene([]);
+    const { scene, getPreloadedKeys } = makeScene([]);
     scene.idlePreloadMusic();
     for (const k of eagerKeys) {
-      expect(getLoadedKeys()).not.toContain(k);
+      expect(getPreloadedKeys()).not.toContain(k);
     }
-  });
-
-  it('continues loading remaining tracks when one asset fails with loaderror', () => {
-    setConnection(undefined);
-    // Build a controllable loader stub: hold callbacks until manually fired.
-    const loadedKeys: string[] = [];
-    const onceHandlers: Record<string, () => void> = {};
-    const errorHandlers: Array<(file: { key: string; type: string }) => void> = [];
-
-    const scene = new MenuScene() as unknown as {
-      cache: { audio: { exists: (k: string) => boolean } };
-      load: {
-        audio: (k: string, p: string) => void;
-        start: () => void;
-        once: (event: string, cb: () => void) => void;
-        on: (event: string, cb: (file: { key: string; type: string }) => void) => void;
-        off: (event: string, cb: unknown) => void;
-      };
-      idlePreloadMusic: () => void;
-    };
-    Object.defineProperty(scene, 'cache', {
-      value: { audio: { exists: () => false } },
-      configurable: true,
-    });
-    Object.defineProperty(scene, 'load', {
-      value: {
-        audio: (k: string) => { loadedKeys.push(k); },
-        start: vi.fn(),
-        once: (event: string, cb: () => void) => { onceHandlers[event] = cb; },
-        on: (_event: string, cb: (file: { key: string; type: string }) => void) => {
-          errorHandlers.push(cb);
-        },
-        off: vi.fn(),
-      },
-      configurable: true,
-    });
-
-    scene.idlePreloadMusic();
-    // At this point only the first 2 slots have been loaded (CONCURRENCY = 2).
-    const firstKey = loadedKeys[0]!;
-    expect(loadedKeys).toHaveLength(2);
-
-    // Simulate a loaderror for the first track.
-    for (const handler of errorHandlers) {
-      handler({ key: firstKey, type: 'audio' });
-    }
-
-    // The slot freed by the error should have caused the next track to load.
-    expect(loadedKeys).toHaveLength(3);
-    // All tracks eventually load after draining the queue via errors/completions.
-    const remaining = idlePreloadKeys.length - 3;
-    for (let i = 0; i < remaining; i++) {
-      const key = loadedKeys[loadedKeys.length - 1]!;
-      const ev = `filecomplete-audio-${key}`;
-      if (onceHandlers[ev]) onceHandlers[ev]!();
-    }
-    expect(loadedKeys).toHaveLength(idlePreloadKeys.length);
   });
 });
 
@@ -330,10 +261,10 @@ describe('MenuScene.idlePreloadMusic — visibility guard', () => {
       configurable: true,
       writable: true,
     });
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    const { scene, getPreloadedKeys, getPreloadCalls } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys()).toHaveLength(0);
-    expect(isLoadStarted()).toBe(false);
+    expect(getPreloadedKeys()).toHaveLength(0);
+    expect(getPreloadCalls()).toHaveLength(0);
   });
 
   it('loads normally when tab is visible', () => {
@@ -342,10 +273,57 @@ describe('MenuScene.idlePreloadMusic — visibility guard', () => {
       configurable: true,
       writable: true,
     });
-    const { scene, getLoadedKeys, isLoadStarted } = makeScene([]);
+    const { scene, getPreloadedKeys, getPreloadCalls } = makeScene([]);
     scene.idlePreloadMusic();
-    expect(getLoadedKeys().length).toBeGreaterThan(0);
-    expect(isLoadStarted()).toBe(true);
+    expect(getPreloadedKeys().length).toBeGreaterThan(0);
+    expect(getPreloadCalls()).toHaveLength(1);
+  });
+});
+
+describe('MenuScene.scheduleIdlePreloadMusic', () => {
+  it('uses requestIdleCallback when available', () => {
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+      writable: true,
+    });
+    const { scene, getPreloadCalls } = makeScene([]);
+    const origRIC = (globalThis as Record<string, unknown>)['requestIdleCallback'];
+    const ric = vi.fn((cb: () => void) => {
+      cb();
+      return 1;
+    });
+    (globalThis as Record<string, unknown>)['requestIdleCallback'] = ric;
+
+    try {
+      (scene as unknown as { scheduleIdlePreloadMusic: () => void }).scheduleIdlePreloadMusic();
+      expect(ric).toHaveBeenCalledTimes(1);
+      expect(getPreloadCalls()).toHaveLength(1);
+    } finally {
+      (globalThis as Record<string, unknown>)['requestIdleCallback'] = origRIC;
+    }
+  });
+
+  it('falls back to setTimeout when requestIdleCallback is unavailable', () => {
+    vi.useFakeTimers();
+    Object.defineProperty(document, 'visibilityState', {
+      value: 'visible',
+      configurable: true,
+      writable: true,
+    });
+    const { scene, getPreloadCalls } = makeScene([]);
+    const origRIC = (globalThis as Record<string, unknown>)['requestIdleCallback'];
+    delete (globalThis as Record<string, unknown>)['requestIdleCallback'];
+
+    try {
+      (scene as unknown as { scheduleIdlePreloadMusic: () => void }).scheduleIdlePreloadMusic();
+      expect(getPreloadCalls()).toHaveLength(0);
+      vi.runAllTimers();
+      expect(getPreloadCalls()).toHaveLength(1);
+    } finally {
+      (globalThis as Record<string, unknown>)['requestIdleCallback'] = origRIC;
+      vi.useRealTimers();
+    }
   });
 });
 

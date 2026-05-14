@@ -65,6 +65,12 @@ export class MenuScene extends Phaser.Scene {
   private _warmupHandle: number | null = null;
   /** Whether requestIdleCallback was used (vs setTimeout) for the warmup handle. */
   private _warmupUseRIC = false;
+  /** Handle for deferred music prewarm kickoff. */
+  private _musicPrewarmHandle: number | null = null;
+  /** Whether requestIdleCallback was used for music prewarm. */
+  private _musicPrewarmUseRIC = false;
+  /** True after music prewarm has finished (loaded or intentionally skipped). */
+  private _musicPrewarmDone = false;
   /**
    * True once the warmup pipeline has committed all work (sprites generated +
    * loader started for audio). Prevents double-invocation if a shutdown handler
@@ -102,12 +108,12 @@ export class MenuScene extends Phaser.Scene {
     this.setupKeyboardNavigation();
     this.updateSelection();
     this.cameras.main.fadeIn(800, 0, 0, 0);
-    this.idlePreloadMusic();
     this.warmupDeferredAssets();
+    this.scheduleIdlePreloadMusic();
 
     const lc = createSceneLifecycle(this);
     const onVisibilityChange = (): void => {
-      if (document.visibilityState === 'visible') this.idlePreloadMusic();
+      if (document.visibilityState === 'visible') this.scheduleIdlePreloadMusic();
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
     lc.add(() => document.removeEventListener('visibilitychange', onVisibilityChange));
@@ -139,7 +145,9 @@ export class MenuScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       this.dailyRefreshTimer?.remove(false);
       this.dailyRefreshTimer = undefined;
+      this.cancelIdleMusicPrewarm();
     });
+    this.events.once('destroy', () => this.cancelIdleMusicPrewarm());
   }
 
   /**
@@ -156,43 +164,50 @@ export class MenuScene extends Phaser.Scene {
    * Skipped automatically on metered or very slow connections so users on
    * limited data plans are not penalised.
    */
-  private idlePreloadMusic(): void {
+  private idlePreloadMusic(): boolean {
     interface NavigatorConnection { saveData?: boolean; effectiveType?: string }
     const conn = (navigator as unknown as { connection?: NavigatorConnection }).connection;
-    if (conn?.saveData) return;
-    if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return;
-    if (document.visibilityState === 'hidden') return;
+    if (conn?.saveData) return true;
+    if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return true;
+    if (document.visibilityState === 'hidden') return false;
 
     // Exclude the current scene's own background track — MusicPlugin.onSceneCreate()
     // calls playOrLoad() for it, which owns the filecomplete→music:play wiring.
     const ownTrack = SCENE_MUSIC[this.scene.key];
     const queue = STATIC_MUSIC_ASSETS.filter(
       (a) => !a.eager && a.key !== ownTrack && !this.cache.audio.exists(a.key),
-    );
-    if (queue.length === 0) return;
+    ).map((a) => a.key);
+    if (queue.length === 0) return true;
 
-    // Load at most 2 tracks simultaneously: enough to stay ahead of playback
-    // without saturating the connection mid-session.
-    const CONCURRENCY = 2;
-    let cursor = 0;
-    const loadNext = (): void => {
-      if (cursor >= queue.length) return;
-      const asset = queue[cursor++];
-      if (!asset) return;
-      const onError = (file: Phaser.Loader.File): void => {
-        if (file.key !== asset.key || file.type !== 'audio') return;
-        this.load.off('loaderror', onError);
-        loadNext();
-      };
-      this.load.once(`filecomplete-audio-${asset.key}`, () => {
-        this.load.off('loaderror', onError);
-        loadNext();
-      });
-      this.load.on('loaderror', onError);
-      this.load.audio(asset.key, asset.path);
-      this.load.start();
+    this.music.preloadIdle(queue);
+    return true;
+  }
+
+  private scheduleIdlePreloadMusic(): void {
+    if (this._musicPrewarmDone) return;
+    if (this._musicPrewarmHandle !== null) return;
+
+    const run = (): void => {
+      this._musicPrewarmHandle = null;
+      this._musicPrewarmDone = this.idlePreloadMusic();
     };
-    for (let i = 0; i < CONCURRENCY; i++) loadNext();
+
+    this._musicPrewarmUseRIC = typeof requestIdleCallback !== 'undefined';
+    if (this._musicPrewarmUseRIC) {
+      this._musicPrewarmHandle = requestIdleCallback(run, { timeout: 1000 });
+    } else {
+      this._musicPrewarmHandle = setTimeout(run, 0) as unknown as number;
+    }
+  }
+
+  private cancelIdleMusicPrewarm(): void {
+    if (this._musicPrewarmHandle === null) return;
+    if (this._musicPrewarmUseRIC && typeof cancelIdleCallback !== 'undefined') {
+      cancelIdleCallback(this._musicPrewarmHandle);
+    } else {
+      clearTimeout(this._musicPrewarmHandle);
+    }
+    this._musicPrewarmHandle = null;
   }
 
   /**

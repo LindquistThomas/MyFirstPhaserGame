@@ -31,15 +31,17 @@ export interface GameEvents {
    * is suspended and restored with `music:pop`. Use instead of `music:push`
    * for non-eager tracks.
    */
-  'music:request-push': [key: string];
-  /**
-   * A lazy-loaded music track failed to load (404, CORS error, network issue).
-   * Emitted by `MusicPlugin` from `playOrLoad` and `loadAndEmitPush` when the
-   * scene's loader fires a `loaderror` event for the queued audio asset.
-   * Payload: `key` — Phaser audio key; `url` — the URL that failed.
-   */
-  'music:load-error': [info: { key: string; url: string }];
-  /** Toggle global audio mute (affects both music and SFX). */
+   'music:request-push': [key: string];
+   /** Menu idle prewarm for lazy tracks has completed (loaded or skipped). */
+   'music:prewarm-complete': [];
+   /**
+    * A lazy-loaded music track failed to load (404, CORS error, network issue).
+    * Emitted by `MusicPlugin` from `playOrLoad` and `loadAndEmitPush` when the
+    * scene's loader fires a `loaderror` event for the queued audio asset.
+    * Payload: `key` — Phaser audio key; `url` — the URL that failed.
+    */
+   'music:load-error': [info: { key: string; url: string }];
+   /** Toggle global audio mute (affects both music and SFX). */
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];

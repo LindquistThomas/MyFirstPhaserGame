@@ -127,6 +127,34 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
   }
 
   /**
+   * Queue a set of music keys for background loading without starting playback.
+   *
+   * Already-cached keys are skipped. Unknown keys are ignored.
+   * Emits `music:prewarm-complete` after all queued loads complete, or
+   * immediately if nothing needed loading.
+   */
+  preloadIdle(keys: string[]): void {
+    const scene = this.scene!;
+    const queue = Array.from(new Set(keys)).filter((key) => {
+      if (scene.cache.audio.exists(key)) return false;
+      return Boolean(MUSIC_PATH[key]);
+    });
+
+    if (queue.length === 0) {
+      eventBus.emit('music:prewarm-complete');
+      return;
+    }
+
+    for (const key of queue) {
+      scene.load.audio(key, MUSIC_PATH[key]!);
+    }
+    scene.load.once('complete', () => {
+      eventBus.emit('music:prewarm-complete');
+    });
+    scene.load.start();
+  }
+
+  /**
    * Like `playOrLoad` but emits `music:push` instead of `music:play`,
    * preserving the AudioManager's push-stack semantics (pair with `music:pop`).
    */
