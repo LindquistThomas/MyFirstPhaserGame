@@ -21,11 +21,11 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   └── music/                # MP3/OGG/WAV music tracks; eager subset preloaded in BootScene, rest lazy-loaded by MusicPlugin
 ├── src/
 │   ├── main.ts               # Phaser.Game bootstrap; spreads SCENE_CLASSES from sceneRegistry
-│   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry, achievements; info/ and quiz/ barrels
+│   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry, achievements, npcQuestionBank; info/ and quiz/ barrels
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator,
 │   │                         # MovingPlatform, Coffee, EnergyDrinkFridge, CEOBoss,
 │   │                         # CoffeeMugProjectile, BriefcaseProjectile, PistolProjectile,
-│   │                         # MissionItem, Checkpoint
+│   │                         # MissionItem, Checkpoint, Npc
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, coachHints,
 │   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene, dailyChallengeLayout), one dir per floor (lobby/, platform/, architecture/,
@@ -50,7 +50,8 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # Analytics, sceneLifecycle, sliderUtils,
 │   │                         # DailyChallenge, DailyChallengeStore, SeededRandom,
 │   │                         # SpriteGenerator (+ sprites/ per-asset families),
-│   │                         # SoundGenerator (+ sounds/ per-SFX families)
+│   │                         # SoundGenerator (+ sounds/ per-SFX families),
+│   │                         # WorldModifiers, GameMode, ContentCache, motionTween, llm/ (LlmClient)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
 │                               InfoIcon, HUD, DialogController, …
 ├── docs/                     # architecture.md, eventbus-audit.md, ci-approval-policy.md, tween-lifecycle.md, archive/ (shipped specs)

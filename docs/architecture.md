@@ -14,6 +14,7 @@ src/
 │   ├── gameConfig.ts         World dimensions, physics, colours, FLOORS enum.
 │   ├── levelData.ts          Per-floor metadata: name, scene key, AU thresholds, theme.
 │   ├── levelGeometry.ts      Shared geometry constants — mezzanine tier Y positions and catwalk thicknesses.
+│   ├── npcQuestionBank.ts    NPC question catalogue + random-per-floor/topic selector.
 │   ├── info/                 Barrel — merges per-floor info into INFO_POINTS.
 │   │   ├── index.ts          Re-export barrel + `getInfoPointsFor(floorId)`.
 │   │   └── types.ts          `InfoPointDef` shape.
@@ -68,6 +69,7 @@ src/
 │   ├── CoffeeMugProjectile.ts  Mug projectile thrown by player (boss arena).
 │   ├── MissionItem.ts          Mission item pickup (e.g. pistol in executive rescue).
 │   ├── PistolProjectile.ts     Pistol projectile (executive rescue).
+│   ├── Npc.ts                NPC sprite entity used by `LevelNpcManager`.
 │   ├── Enemy.ts              Shared enemy base (physics, damage, death cues).
 │   └── enemies/              Per-enemy config & behaviour.
 │       ├── Slime.ts
@@ -117,8 +119,10 @@ src/
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
 │   ├── GameStateManager.ts   Composition root — owns ProgressionSystem + PlaytimeTracker; exposes facades over SaveManager, QuizManager, InfoDialogManager, AchievementManager, TouchHintStore.
+│   ├── GameMode.ts           Game-mode type guards/constants (`normal` and `ngplus`).
 │   ├── ZoneManager.ts        Proximity zones; emits `zone:enter/exit`.
 │   ├── ProgressionSystem.ts  AU accumulation, floor unlocks, token dedupe.
+│   ├── WorldModifiers.ts     Per-game-mode combat/quiz multipliers (enemy damage/speed, boss HP, hard-quiz toggle).
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
 │   ├── QuizManager.ts        Quiz pass/fail records + retry cooldowns.
 │   ├── InfoDialogManager.ts  Remembers which info points have been seen.
@@ -126,15 +130,19 @@ src/
 │   ├── AudioManager.ts       Subscribes to music/sfx events; plays via WebAudio.
 │   ├── SettingsStore.ts      Persisted volume levels + motion/control overrides.
 │   ├── MotionPreference.ts   Reduced-motion helper (reads OS preference + settings).
+│   ├── motionTween.ts        Reduced-motion tween helpers (`reducedDuration`, `shouldSkipTween`).
 │   ├── CaffeineBuff.ts       Pure timer for caffeine buff; callers supply `now`.
 │   ├── DailyChallenge.ts     Daily challenge state helpers: UTC date key, seed + slot-id derivation, midnight timer, and registry read/write.
 │   ├── DailyChallengeStore.ts Persisted daily results store (architect_daily_results_v1) with best-time updates, recent-history reads, and streak checks.
 │   ├── FloorHitState.ts      Per-floor hit / checkpoint tracking; pure (no Phaser/eventBus); 3-hit forced respawn threshold.
+│   ├── ContentCache.ts       Versioned localStorage cache for parsed info/quiz content.
 │   ├── PersistedStore.ts     Generic JSON-backed key/value store factory.
 │   ├── SeededRandom.ts       Deterministic mulberry32 PRNG for seeded systems (daily challenge layout, etc.).
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
 │   ├── PlaytimeTracker.ts    Total + per-floor active-playtime accumulator; persists via PlaytimeSaveAdapter (10 s flush throttle).
 │   ├── Analytics.ts          Opt-in analytics service. Gated on VITE_ANALYTICS_ENDPOINT (build) + SettingsStore.analyticsConsent (runtime). Stashed on scene.registry under "analytics" by BootScene.
+│   ├── llm/                  LLM-backed helpers for dynamic NPC quiz prompts.
+│   │   └── LlmClient.ts      OpenAI chat client with payload validation + fallback to npcQuestionBank.
 │   ├── DailyChallenge.ts     Daily challenge mode — UTC date → deterministic seed; slot id `daily_<YYYYMMDD>`. Persists results via DailyChallengeStore.
 │   ├── DailyChallengeStore.ts  Per-day result persistence (localStorage `architect_daily_results_v1`).
 │   ├── SeededRandom.ts       Deterministic PRNG (used by DailyChallenge).
