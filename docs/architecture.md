@@ -135,9 +135,6 @@ src/
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
 │   ├── PlaytimeTracker.ts    Total + per-floor active-playtime accumulator; persists via PlaytimeSaveAdapter (10 s flush throttle).
 │   ├── Analytics.ts          Opt-in analytics service. Gated on VITE_ANALYTICS_ENDPOINT (build) + SettingsStore.analyticsConsent (runtime). Stashed on scene.registry under "analytics" by BootScene.
-│   ├── DailyChallenge.ts     Daily challenge mode — UTC date → deterministic seed; slot id `daily_<YYYYMMDD>`. Persists results via DailyChallengeStore.
-│   ├── DailyChallengeStore.ts  Per-day result persistence (localStorage `architect_daily_results_v1`).
-│   ├── SeededRandom.ts       Deterministic PRNG (used by DailyChallenge).
 │   ├── sliderUtils.ts        Volume slider clamping utilities.
 │   ├── sceneLifecycle.ts     `createSceneLifecycle(scene)` — uniform teardown.
 │   ├── SpriteGenerator.ts    Composition root → `./sprites/` per-asset modules.
@@ -223,7 +220,6 @@ Use this to find the right file to edit for a given feature.
 | Info modal runtime                  | `systems/InfoDialogManager.ts`, `ui/InfoDialog.ts`, `ui/DialogController.ts`           |
 | Input (keyboard + touch)            | `input/*`                                                                              |
 | Audio                               | `systems/AudioManager.ts`, `systems/SoundGenerator.ts` (also generates procedural lullaby), `systems/sounds/*` |
-| Daily challenge                     | `systems/DailyChallenge.ts`, `systems/DailyChallengeStore.ts`, `systems/SeededRandom.ts`, `features/floors/_shared/dailyChallengeLayout.ts` |
 | Procedural sprites                  | `systems/SpriteGenerator.ts`, `systems/sprites/*.ts`                                   |
 | Theme tokens (colours + spacing)    | `style/theme.ts`                                                                       |
 | Analytics / playtime                | `systems/Analytics.ts`, `systems/PlaytimeTracker.ts`                                   |
