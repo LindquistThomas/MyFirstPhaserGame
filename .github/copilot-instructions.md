@@ -31,7 +31,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene, dailyChallengeLayout), one dir per floor (lobby/, platform/, architecture/,
 │   │   │                       finance/, product/, customer/, executive/, boss/)
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
-│   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
+│   ├── input/                # GameAction string-literal union type + DEFAULT_BINDINGS table; InputService scene plugin
 │   ├── plugins/              # MusicPlugin, DebugPlugin, ScopedEventBus (Phaser ScenePlugins)
 │   ├── scenes/               # core/ (BootScene, MenuScene, SettingsScene,
 │   │                         # ControlsScene, PauseScene, SaveSlotScene),
@@ -123,7 +123,7 @@ Short index of where things live. Reach for these instead of re-implementing.
   - `LevelCheckpointManager` — checkpoint spawning, hit tracking, respawn, danger vignette + heartbeat SFX.
   - `LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, `LevelCoffeeManager`, `LevelFridgeManager`, `LevelRoomElevators`.
   Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a complete `LevelConfig` (type defined in `src/features/floors/_shared/LevelConfig.ts`, re-exported from `LevelScene.ts`). See that file for required fields such as `floorId`, `playerStart`, `exitPosition`, and `roomElevators`, plus authored collections like `platforms`, `tokens`, `enemies`, and `infoPoints`). Enemy entries use `type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist'`. Enemies are scene-local, no persistence; they respawn on re-entry.
-- **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
+- **Input** (`src/input/`) — `GameAction` string-literal union type + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
 
 ## Conventions
 
