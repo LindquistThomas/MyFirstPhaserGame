@@ -117,6 +117,7 @@ describe('ModalBase', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     pushCtxMock.mockImplementation((_ctx: string) => Symbol('token') as unknown);
+    document.body.innerHTML = '';
   });
 
   it('(a) pushes modal context and registers a Cancel listener on construction', () => {
@@ -135,6 +136,16 @@ describe('ModalBase', () => {
     expect(scene.events.once).toHaveBeenCalledWith('destroy', expect.any(Function));
   });
 
+  it('(b2) creates an aria-modal root for accessibility', () => {
+    const scene = makeScene();
+    new TestModal(scene as unknown as Phaser.Scene);
+
+    const modalRoot = document.querySelector<HTMLElement>('[data-modal-root="true"]');
+    expect(modalRoot).not.toBeNull();
+    expect(modalRoot?.getAttribute('role')).toBe('dialog');
+    expect(modalRoot?.getAttribute('aria-modal')).toBe('true');
+  });
+
   it('(c) close() removes the Cancel listener and pops the context', () => {
     const scene = makeScene();
     const modal = new TestModal(scene as unknown as Phaser.Scene);
@@ -151,6 +162,20 @@ describe('ModalBase', () => {
     modal.close();
 
     expect(modal.beforeCloseCalled).toBe(1);
+  });
+
+  it('(c3) close() disposes aria-modal root and restores focus to trigger', () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'trigger';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const scene = makeScene();
+    const modal = new TestModal(scene as unknown as Phaser.Scene);
+    modal.close();
+
+    expect(document.querySelector('[data-modal-root="true"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 
   it('(d) close() calls onBeforeClose and eventually onAfterClose', () => {
