@@ -18,7 +18,16 @@ Configure in **Settings → Branches → `main` → Require status checks to pas
 | `Playwright E2E complete` | Fan-in job; do **not** require individual shard names |
 | `Bundle size budget` | Recommended |
 
-Remove any stale per-shard entries (`Playwright E2E (shard 1/4)` … `shard 4/4`) if present.
+Remove any stale per-shard entries if present:
+
+- `Playwright E2E (shard 1/2)`
+- `Playwright E2E (shard 2/2)`
+- `Playwright E2E (shard 1/4)`
+- `Playwright E2E (shard 2/4)`
+- `Playwright E2E (shard 3/4)`
+- `Playwright E2E (shard 4/4)`
+
+> CI cannot read live branch-protection settings. A repository admin must verify this list manually in the branch settings UI (or via API).
 
 After changing the setting, trigger a new run on each affected PR by either:
 
@@ -40,6 +49,8 @@ In **Settings → Branches → `main` → Require status checks to pass before m
 
 Per-shard names are implementation details and can change over time. Branch protection
 must require only stable fan-in checks.
+
+For a docs-only PR (`docs/**` only), the shard jobs are intentionally skipped by `ci.yml` and `Playwright E2E complete` reports success via fan-in. This is expected and should still allow merge when required checks above are configured correctly.
 
 ## Optional API command to set required checks (maintainer token required)
 
