@@ -367,6 +367,10 @@ export class AudioManager {
   toggleMute(): void {
     // Track whether the settings write succeeds (storage may be unavailable
     // or over quota in private-browsing or restrictive environments).
+    // The subscription window is bounded entirely by the synchronous
+    // `settingsStore.toggleMute()` call below — JavaScript's single-threaded
+    // model ensures no other caller can fire `persistence:error` for
+    // SETTINGS_STORAGE_KEY between the `on` and `off` calls.
     let persisted = true;
     const onError = (key: string): void => {
       if (key === SETTINGS_STORAGE_KEY) persisted = false;
