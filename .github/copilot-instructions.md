@@ -136,7 +136,7 @@ Short index of where things live. Reach for these instead of re-implementing.
   2. Update `defaultState()`, `persist()`, `loadFromSave()`.
   3. Call `this.persist()` after any mutation that must survive a reload.
 - **Text resolution**: `main.ts` monkey-patches `scene.add.text` / `scene.make.text` to default to `resolution: 1.5` so glyphs stay crisp after FIT scaling. Elements that need maximum crispness (HUD AU counter in `CoinCounterController`, dialog title in `InfoDialog`, large menu headings in `MenuScene`) pass `resolution: 2` explicitly in their style object.
-- **Test-hook globals**: `main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz, eventBus }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle without the globals (see README "Build flags").
+- **Test-hook globals**: `main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz, eventBus, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, forceShowVirtualGamepad }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle without the globals (see README "Build flags").
 
 ## How to extend
 
