@@ -161,18 +161,24 @@ src/
 │   ├── BossIntroDialog.ts      Boss-arena intro modal (extends ModalBase).
 │   ├── CallElevatorButton.ts   Call-elevator action button.
 │   ├── ModalBase.ts          Overlay + fade + Esc-key scaffolding for dialogs.
+│   ├── ButtonListNavigator.ts  Shared keyboard nav for list-of-buttons modals.
 │   ├── ModalKeyboardNavigator.ts  Shared keyboard nav for InfoDialog + QuizDialog.
+│   ├── ControlsReferenceModal.ts  Read-only controls reference modal.
 │   ├── AchievementsDialog.ts Modal listing all achievements with lock/unlock status.
 │   ├── WelcomeModal.ts       First-launch onboarding modal (extends ModalBase).
 │   ├── InfoDialog.ts         Info content modal (extends ModalBase).
+│   ├── NpcDialog.ts          NPC question + answer modal (extends ModalBase).
 │   ├── QuizDialog.ts         Quiz flow modal (extends ModalBase).
 │   ├── QuizResultsScreen.ts  Extracted results screen used by QuizDialog.
+│   ├── SaveRecoveryDialog.ts Save-corruption recovery modal (extends ModalBase).
 │   ├── DialogController.ts   Orchestrates info → quiz → badge-refresh flow.
 │   ├── InfoIcon.ts           Floating "i" icon with quiz badge.
 │   ├── Toast.ts              Corner-of-screen transient notification (fade in/out).
 │   ├── ControlHintsOverlay.ts  Transient key-hint chips shown on first lobby entry.
 │   ├── InteractiveDoor.ts    Door sprite toggling open texture on interaction range.
 │   ├── HUD.ts                AU counter, floor label.
+│   ├── ObjectiveBanner.ts    Floor-entry / objective banner with fade-in.
+│   ├── SceneLoadingOverlay.ts  Loading overlay shown while a lazy scene fetches.
 │   ├── hud/                  Per-HUD-feature controllers — one per feature.
 │   │   ├── AchievementBadgeController.ts  Toast badge for unlocked achievements.
 │   │   ├── CaffeineRingController.ts      Caffeine-buff ring overlay around AU counter.
