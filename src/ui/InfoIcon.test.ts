@@ -151,7 +151,10 @@ function makeScene() {
         return event;
       }),
     },
-    tweens: { add: vi.fn(() => ({ stop: vi.fn() })) },
+    tweens: {
+      add: vi.fn(() => ({ stop: vi.fn() })),
+      killTweensOf: vi.fn(),
+    },
     events: { once: vi.fn() },
     /** Tick the most-recently registered timer callback N times. */
     _tickTimer(times = 1): void {
@@ -433,6 +436,21 @@ describe('InfoIcon visibility and badge', () => {
     const container = (scene.add.container as ReturnType<typeof vi.fn>).mock.results[0]?.value as
       ReturnType<typeof makeContainer>;
     expect(container.destroy).toHaveBeenCalled();
+  });
+
+  it('destroy() kills active tweens via tween manager cleanup', () => {
+    const scene = makeScene();
+    const icon = new InfoIcon(scene as unknown as Phaser.Scene, 0, 0, vi.fn(), 'test-id');
+    const ring = scene._image(0);
+    const bg = scene._image(1);
+    const container = (scene.add.container as ReturnType<typeof vi.fn>).mock.results[0]?.value as
+      ReturnType<typeof makeContainer>;
+
+    icon.setVisible(true);
+    icon.destroy();
+
+    expect(scene.tweens.killTweensOf).toHaveBeenCalledWith([bg, container]);
+    expect(scene.tweens.killTweensOf).toHaveBeenCalledWith(ring);
   });
 });
 
