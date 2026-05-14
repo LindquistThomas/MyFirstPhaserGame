@@ -11,6 +11,7 @@ import { theme } from '../../style/theme';
 import { migrateDefaultSlot, setPlayerSlot } from '../../systems/SaveManager';
 import { isPersistenceAvailable } from '../../systems/PersistedStore';
 import { createAnalyticsService } from '../../systems/Analytics';
+import { createGamePerfReporter } from '../../systems/PerfReporter';
 import { setDailyState } from '../../systems/DailyChallenge';
 import { preloadInfoFor } from '../../config/info';
 import { preloadQuizFor } from '../../config/quiz';
@@ -78,6 +79,7 @@ export class BootScene extends Phaser.Scene {
   // it rather than accumulating a second copy on the loader.
   private _onLoaderError: ((file: { key: string; type: string; src: string }) => void) | null = null;
   private _devProfileBoot = false;
+  private _telemetryDestroyCleanupInstalled = false;
 
   constructor() {
     super({ key: 'BootScene' });
@@ -202,6 +204,27 @@ export class BootScene extends Phaser.Scene {
     }
     const analytics = createAnalyticsService();
     if (analytics) this.registry.set('analytics', analytics);
+    const existingPerfReporter = this.registry.get('perfReporter') as import('../../systems/PerfReporter').PerfReporterHandle | undefined;
+    if (existingPerfReporter) {
+      existingPerfReporter.destroy();
+      this.registry.remove('perfReporter');
+    }
+    if (analytics) {
+      const perfReporter = createGamePerfReporter(this.game, analytics);
+      this.registry.set('perfReporter', perfReporter);
+    }
+    if (!this._telemetryDestroyCleanupInstalled) {
+      this._telemetryDestroyCleanupInstalled = true;
+      this.events.once('destroy', () => {
+        const perfReporter = this.registry.get('perfReporter') as import('../../systems/PerfReporter').PerfReporterHandle | undefined;
+        perfReporter?.destroy();
+        this.registry.remove('perfReporter');
+        const cleanupAnalytics = this.registry.get('analytics') as import('../../systems/Analytics').AnalyticsService | undefined;
+        cleanupAnalytics?.unbind();
+        this.registry.remove('analytics');
+        this._telemetryDestroyCleanupInstalled = false;
+      });
+    }
 
     // Global M-key toggles audio mute from any scene or context.
     // Attached to window so it works regardless of which Phaser scene has

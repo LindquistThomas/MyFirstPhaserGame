@@ -25,6 +25,7 @@
 import { eventBus } from './EventBus';
 import type { GameEvents } from './EventBus';
 import { settingsStore } from './SettingsStore';
+import type { PerfSample } from './PerfReporter';
 
 // ---------------------------------------------------------------------------
 // Provider interface
@@ -283,6 +284,10 @@ export class AnalyticsService {
     if (!settingsStore.read().analyticsConsent) return;
     this.provider.capture(event, { ...props, sessionId: this.sessionId });
   }
+
+  capturePerfSample(sample: PerfSample): void {
+    this.capture('perf_sample', { ...sample });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -328,4 +333,3 @@ export function createAnalyticsService(): AnalyticsService | null {
   service.bind();
   return service;
 }
-

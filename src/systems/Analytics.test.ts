@@ -341,6 +341,43 @@ describe('AnalyticsService', () => {
     service.unbind();
   });
 
+  it('captures perf_sample payload when consent is true', () => {
+    settingsStore.setAnalyticsConsent(true);
+    const service = new AnalyticsService(mockProvider, makeSessionId());
+    service.capturePerfSample({
+      scene: 'LobbyScene',
+      mean_fps: 58.3,
+      long_frames: 2,
+      samples: 4,
+      ua_hint: 'desktop',
+    });
+
+    const perfCalls = mockProvider.captureCalls.filter(([event]) => event === 'perf_sample');
+    expect(perfCalls).toHaveLength(1);
+    expect(perfCalls[0]?.[1]).toMatchObject({
+      scene: 'LobbyScene',
+      mean_fps: 58.3,
+      long_frames: 2,
+      samples: 4,
+      ua_hint: 'desktop',
+    });
+  });
+
+  it('does not capture perf_sample payload when consent is false', () => {
+    settingsStore.setAnalyticsConsent(false);
+    const service = new AnalyticsService(mockProvider, makeSessionId());
+    service.capturePerfSample({
+      scene: 'LobbyScene',
+      mean_fps: 58.3,
+      long_frames: 2,
+      samples: 4,
+      ua_hint: 'desktop',
+    });
+
+    const perfCalls = mockProvider.captureCalls.filter(([event]) => event === 'perf_sample');
+    expect(perfCalls).toHaveLength(0);
+  });
+
   it('emits session:start on the EventBus when consent is true', () => {
     settingsStore.setAnalyticsConsent(true);
     const sessionStartHandler = vi.fn();
@@ -424,4 +461,3 @@ describe('AnalyticsService', () => {
     service.unbind();
   });
 });
-
