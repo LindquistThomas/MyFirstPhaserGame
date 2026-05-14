@@ -10,11 +10,11 @@ permissions:
   contents: read
 
 concurrency:
-  # pull_request_target sets github.ref/sha to the BASE branch, so the old
-  # ref-based key would collapse all PR runs into a single group.  Use the PR
-  # number instead (unique per PR) and fall back to the push SHA on main.
-  group: ${{ github.event_name == 'pull_request_target' && format('ci-pr-{0}', github.event.pull_request.number) || github.event_name == 'merge_group' && format('ci-mq-{0}', github.event.merge_group.head_sha) || format('ci-push-{0}', github.sha) }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+  # Group PR runs by PR number so a new push cancels the in-flight run for the
+  # same PR.  Merge-queue entries get their own group (no cancellation needed).
+  # Push-to-main runs are each unique by SHA (no cancellation needed there either).
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || github.event_name == 'merge_group' && format('ci-mq-{0}', github.event.merge_group.head_sha) || format('ci-push-{0}', github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
