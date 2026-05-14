@@ -474,8 +474,14 @@ automatically.
 
 | Event              | Payload                                       | Emitters  | Consumers               |
 |--------------------|-----------------------------------------------|-----------|-------------------------|
-| `boot:reset`       | —                                             | BootScene | MusicPlugin             |
-| `boot:asset-error` | `{ key: string; type: string; url: string }`  | BootScene | MusicPlugin             |
+| `boot:reset`       | —                                             | BootScene | MusicPlugin, BootErrorToast |
+| `boot:asset-error` | `{ key: string; type: string; url: string }`  | BootScene | MusicPlugin, BootErrorToast |
+
+#### `music:load-error` — lazy-music failures
+
+| Event              | Payload                       | Emitters             | Consumers       |
+|--------------------|-------------------------------|----------------------|-----------------|
+| `music:load-error` | `{ key: string; url: string }`| MusicPlugin          | BootErrorToast  |
 
 ## Testing
 
