@@ -26,4 +26,9 @@ describe('CI required-check job names', () => {
     expect(workflowNameValues).not.toContain('Playwright E2E (shard 3/4)');
     expect(workflowNameValues).not.toContain('Playwright E2E (shard 4/4)');
   });
+
+  it('allows doc-only changes to skip shards while keeping fan-in green', () => {
+    expect(ciWorkflow).toContain("if: needs.changes.outputs.code == 'true'");
+    expect(ciWorkflow).toContain('if [ "$e2e" = "success" ] || [ "$e2e" = "skipped" ]; then');
+  });
 });

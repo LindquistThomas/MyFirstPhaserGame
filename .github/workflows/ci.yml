@@ -152,6 +152,8 @@ jobs:
   # Remove stale per-shard branch-protection entries if they exist:
   # - Playwright E2E (shard 1/2), Playwright E2E (shard 2/2)
   # - Playwright E2E (shard 1/4) … (shard 4/4)
+  # CI cannot inspect branch-protection config; repo admin must verify these
+  # required-check names in Settings → Branches → main.
   # Adding/removing shards must not invalidate required checks.
   e2e-complete:
     name: Playwright E2E complete
