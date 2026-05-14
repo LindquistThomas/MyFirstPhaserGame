@@ -31,6 +31,10 @@ src/
 │       │   ├── LevelDialogBindings.ts  Wires dialog triggers to zones.
 │       │   ├── LevelCoffeeManager.ts   Spawns coffee powerup pickups.
 │       │   ├── LevelFridgeManager.ts   Spawns energy-drink fridges + buff trigger.
+│       │   ├── LevelShadowController.ts Renders per-player/enemy drop shadows.
+│       │   ├── LevelHUDBindings.ts    Wires HUD updates/toasts to LevelScene state.
+│       │   ├── LevelHeartbeatSfx.ts   Controls danger heartbeat SFX + vignette.
+│       │   ├── LevelNpcManager.ts     Spawns NPCs, interaction prompts, and dialog hand-off.
 │       │   ├── LevelRoomElevators.ts   In-room elevator triggers (inter-room transport).
 │       │   ├── floorAccents.ts         Per-floor silhouette accent + ambient tween.
 │       │   ├── floorPatterns.ts        Themed decorative patterns for scene backdrop.
