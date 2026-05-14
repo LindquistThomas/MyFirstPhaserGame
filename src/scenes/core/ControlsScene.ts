@@ -137,6 +137,13 @@ export class ControlsScene extends Phaser.Scene {
       fontSize: '14px',
       color: theme.color.css.textAccent,
     }).setOrigin(0.5).setDepth(15);
+
+    // Static global-shortcut note (M key, always active, not rebindable here)
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + (VISIBLE_ROWS * ROW_H) / 2 + 44, 'Global: M = Toggle Mute', {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: theme.color.css.textMuted,
+    }).setOrigin(0.5).setDepth(10);
   }
 
   private buildRows(): void {
