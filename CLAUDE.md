@@ -1,6 +1,6 @@
 # So You Want To Be An Architect
 
-<!-- SYNC NOTICE: This file and .github/copilot-instructions.md share the same
+<!-- SYNC NOTICE: This file and CLAUDE.md + .github/copilot-instructions.md share the same
      project instructions. When you edit one, update the other to match. -->
 
 A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Utility) to unlock floors of a building, each representing a domain team.
@@ -122,6 +122,10 @@ Short index of where things live. Reach for these instead of re-implementing.
   - `LevelDecorationsManager` — background (`createBackground`), atmospheric FX, ambient plants/signposts, catwalk geometry.
   - `LevelExitManager` — exit door placement, proximity detection, elevator-return transition.
   - `LevelCheckpointManager` — checkpoint spawning, hit tracking, respawn, danger vignette + heartbeat SFX.
+  - `LevelShadowController` — per-player/enemy drop-shadow rendering.
+  - `LevelHUDBindings` — HUD ↔ `LevelScene` wiring (AU counter, objective/toast updates).
+  - `LevelHeartbeatSfx` — danger-state heartbeat SFX + vignette controller.
+  - `LevelNpcManager` — NPC spawning, interaction prompts, and dialog hand-off (`npcs?` in `LevelConfig`).
   - `LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, `LevelCoffeeManager`, `LevelFridgeManager`, `LevelRoomElevators`.
   Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a complete `LevelConfig` (type defined in `src/features/floors/_shared/LevelConfig.ts`, re-exported from `LevelScene.ts`). See that file for required fields such as `floorId`, `playerStart`, `exitPosition`, and `roomElevators`, plus authored collections like `platforms`, `tokens`, `enemies`, and `infoPoints`). Enemy entries use `type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist'`. Enemies are scene-local, no persistence; they respawn on re-entry.
 - **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
