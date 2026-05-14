@@ -5,6 +5,7 @@ function pressTab(shiftKey = false): void {
   const event = new KeyboardEvent('keydown', {
     key: 'Tab',
     bubbles: true,
+    cancelable: true,
     shiftKey,
   });
   document.dispatchEvent(event);

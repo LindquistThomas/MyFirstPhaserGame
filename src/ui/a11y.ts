@@ -29,6 +29,10 @@ function focusElement(el: HTMLElement): void {
   }
 }
 
+function getActiveHTMLElement(): HTMLElement | null {
+  return document.activeElement instanceof HTMLElement ? document.activeElement : null;
+}
+
 export function applyModalA11y(
   root: HTMLElement,
   opts: { titleId: string; descId?: string },
@@ -45,8 +49,7 @@ export function applyModalA11y(
     root.setAttribute('tabindex', '-1');
   }
 
-  const previousActive =
-    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const previousActive = getActiveHTMLElement();
 
   const focusFirst = () => {
     const autoFocus = root.querySelector<HTMLElement>('[data-autofocus]');
@@ -72,25 +75,24 @@ export function applyModalA11y(
       return;
     }
 
-    const active =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const active = getActiveHTMLElement();
     const activeIndex = active ? focusables.indexOf(active) : -1;
 
     event.preventDefault();
     if (event.shiftKey) {
       if (activeIndex <= 0) {
-        focusElement(focusables[focusables.length - 1]!);
+        focusElement(focusables[focusables.length - 1] ?? root);
       } else {
-        focusElement(focusables[activeIndex - 1]!);
+        focusElement(focusables[activeIndex - 1] ?? root);
       }
       return;
     }
 
     if (activeIndex < 0 || activeIndex >= focusables.length - 1) {
-      focusElement(focusables[0]!);
+      focusElement(focusables[0] ?? root);
       return;
     }
-    focusElement(focusables[activeIndex + 1]!);
+    focusElement(focusables[activeIndex + 1] ?? root);
   };
 
   document.addEventListener('keydown', onKeyDown, true);
