@@ -10,12 +10,6 @@ import {
   waitForScene,
 } from './helpers/playwright';
 
-declare global {
-  interface Window {
-    __modalA11yTrigger?: Element | null;
-  }
-}
-
 test.describe('Modal accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await clearStorage(page);
@@ -31,11 +25,13 @@ test.describe('Modal accessibility', () => {
     await navigateToElevator(page);
 
     await page.evaluate(() => {
-      window.__modalA11yTrigger = document.activeElement;
+      const trigger = document.activeElement as HTMLElement | null;
+      if (trigger) trigger.setAttribute('data-modal-a11y-trigger', 'true');
       const g = window.__game!;
       const scene = g.scene
         .getScenes(true)
         .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      // DialogController is private on the scene class; tests access it by key to drive a deterministic open.
       const dialogs = scene['dialogs'] as { open: (id: string) => void };
       dialogs.open('architecture-elevator');
     });
@@ -58,9 +54,12 @@ test.describe('Modal accessibility', () => {
     await page.keyboard.press('Escape');
     await waitForDialogClosed(page, 'ElevatorScene');
 
-    const restored = await page.evaluate(
-      () => document.activeElement === window.__modalA11yTrigger,
-    );
+    const restored = await page.evaluate(() => {
+      const active = document.activeElement as HTMLElement | null;
+      const ok = active?.getAttribute('data-modal-a11y-trigger') === 'true';
+      if (active) active.removeAttribute('data-modal-a11y-trigger');
+      return ok;
+    });
     expect(restored).toBe(true);
 
     errors.assertClean();

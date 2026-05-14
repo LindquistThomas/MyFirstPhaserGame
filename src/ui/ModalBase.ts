@@ -172,7 +172,8 @@ export abstract class ModalBase {
   }
 
   private setupA11y(a11yOptions?: ModalA11yOptions): void {
-    const id = `game-modal-${++modalA11yCounter}`;
+    modalA11yCounter = (modalA11yCounter % 10000) + 1;
+    const id = `game-modal-${modalA11yCounter}`;
     const root = document.createElement('div');
     root.id = `${id}-root`;
     root.dataset.modalRoot = 'true';
@@ -186,9 +187,8 @@ export abstract class ModalBase {
     root.style.whiteSpace = 'nowrap';
 
     const titleEl = document.createElement('p');
-    const defaultTitle = this.constructor.name.replace(/([a-z])([A-Z])/g, '$1 $2');
     titleEl.id = `${id}-title`;
-    titleEl.textContent = a11yOptions?.title ?? defaultTitle;
+    titleEl.textContent = a11yOptions?.title ?? 'Modal Dialog';
     root.appendChild(titleEl);
 
     const descEl = document.createElement('p');
@@ -201,7 +201,6 @@ export abstract class ModalBase {
     focusAnchor.type = 'button';
     focusAnchor.setAttribute('data-autofocus', 'true');
     focusAnchor.setAttribute('aria-label', 'Modal dialog');
-    focusAnchor.textContent = 'Modal dialog';
     root.appendChild(focusAnchor);
 
     document.body.appendChild(root);
