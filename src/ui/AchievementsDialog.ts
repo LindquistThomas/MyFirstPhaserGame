@@ -22,7 +22,10 @@ export class AchievementsDialog extends ModalBase {
   private pageDownHandler: (() => void) | null = null;
 
   constructor(scene: Phaser.Scene, onClose?: () => void) {
-    super(scene);
+    super(scene, {
+      title: 'Achievements',
+      description: 'List of locked and unlocked achievements.',
+    });
     this.buildPanel(onClose);
     this.fadeIn();
   }

@@ -41,7 +41,10 @@ export class QuizDialog extends ModalBase {
   private nav!: ModalKeyboardNavigator;
 
   constructor(scene: Phaser.Scene, options: QuizDialogOptions) {
-    super(scene);
+    super(scene, {
+      title: 'Quiz Dialog',
+      description: 'Multiple-choice architecture quiz.',
+    });
     this.options = options;
     this.alreadyPassed = isQuizPassed(options.infoId);
     this.questions = this.selectQuestions(options.infoId);

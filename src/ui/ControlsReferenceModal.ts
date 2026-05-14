@@ -92,7 +92,10 @@ export class ControlsReferenceModal extends ModalBase {
     onClose: () => void = () => { /* no-op */ },
     onRebind?: () => void,
   ) {
-    super(scene);
+    super(scene, {
+      title: 'Controls Reference',
+      description: 'Read-only list of current key bindings.',
+    });
     this.onClose = onClose;
     this.onRebind = onRebind;
 
