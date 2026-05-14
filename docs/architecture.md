@@ -85,7 +85,7 @@ src/
 ├── input/                    Semantic-action input layer.
 │   ├── index.ts              Facade — the only import surface the rest of the game uses.
 │   ├── InputService.ts       Keyboard/touch → semantic actions; context stack.
-│   ├── actions.ts            GameAction catalog ("move-left", "jump", …).
+│   ├── actions.ts            GameAction catalog ('MoveLeft', 'Jump', …).
 │   ├── bindings.ts           Default key bindings per action context.
 │   ├── pointerBindings.ts    Touch/pointer action bindings.
 │   ├── keyLabels.ts          Human-readable key names for UI hints.
