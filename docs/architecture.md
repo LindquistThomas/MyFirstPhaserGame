@@ -490,16 +490,21 @@ automatically.
   `progression`, `visual`).
 - **Type safety** (`npm run build`) runs `tsc` strict before Vite
   bundles.
-- **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
-  `src/input/**` at 80%; `src/ui/**` at 65% (60% branches);
-  `src/entities/**` at 60%; `src/scenes/**` at 20% (18% functions);
-  `src/features/floors/**` at 25% (20% branches, 25% functions, 25% statements).
-  `src/plugins/**`, `src/main.ts`, the procedural-generator modules
-  (`src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
-  `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`), and a
-  small list of UI files
-  (`src/ui/{ElevatorButtons,InfoDialog,InfoIcon,ModalBase,QuizDialog,QuizResultsScreen,ControlHintsOverlay,touchPrimary}.ts`)
-  are excluded entirely from coverage.
+- **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` at
+  80% lines / 75% branches / 80% functions / 80% statements;
+  `src/input/**` at 80% across all metrics; `src/ui/**` at
+  75% lines / 70% branches / 75% functions / 75% statements;
+  `src/entities/**` at 60% across all metrics; `src/scenes/**` at
+  40% lines / 20% branches / 35% functions / 40% statements;
+  `src/features/floors/**` at 45% lines / 40% branches /
+  40% functions / 45% statements; `src/features/floors/boss/**` at
+  75% lines / 60% branches / 70% functions / 75% statements.
+  `src/**/*.test.ts`, `src/main.ts`, `src/plugins/**`,
+  `src/features/floors/boss/BossArenaScene.ts`,
+  `src/input/phaser-augment.d.ts`, and the procedural-generator
+  modules (`src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
+  `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`) are
+  excluded entirely from coverage.
 
 ## Key design choices
 
