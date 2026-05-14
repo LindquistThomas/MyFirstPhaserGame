@@ -44,6 +44,13 @@ export interface GameEvents {
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
   /**
+   * Emitted by AudioManager immediately after the M-key (or any mute-toggle)
+   * completes. Carries the new muted state and whether the change was
+   * successfully persisted to localStorage (`persisted: false` when storage
+   * is unavailable or full).
+   */
+  'audio:mute-toggled': [payload: { muted: boolean; persisted: boolean }];
+  /**
    * Emitted by SettingsStore whenever any volume-related setting changes
    * (masterVolume, musicVolume, sfxVolume, muteAll). AudioManager listens
    * and re-applies the new levels to all active channels.
