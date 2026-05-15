@@ -92,7 +92,7 @@ test.describe('Elevator scene', () => {
       ctrl.requestFloor(5);
     });
 
-    const expectedToast = 'Products locked — need 9 AU (you have 0/9)';
+    const expectedToastMessage = 'Products locked — need 9 AU (you have 0/9)';
     await page.waitForFunction(
       (expected) => {
         const g = window.__game;
@@ -105,7 +105,7 @@ test.describe('Elevator scene', () => {
         const toast = lockedToast?.toast;
         return !!toast && toast.isVisible() && toast.getMessage() === expected;
       },
-      expectedToast,
+      expectedToastMessage,
       { timeout: 10_000 },
     );
 

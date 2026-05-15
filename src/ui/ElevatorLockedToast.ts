@@ -6,9 +6,9 @@ import { announce } from './ariaLive';
 
 const LOCKED_TOAST_DURATION_MS = 2_000;
 
-function formatLockedFloorMessage(floorId: FloorId, requiredAu: number, currentAu: number): string {
+function formatLockedFloorMessage(floorId: FloorId, requiredAU: number, currentAU: number): string {
   const floorName = LEVEL_DATA[floorId]?.name ?? `Floor ${floorId}`;
-  return `${floorName} locked — need ${requiredAu} AU (you have ${currentAu}/${requiredAu})`;
+  return `${floorName} locked — need ${requiredAU} AU (you have ${currentAU}/${requiredAU})`;
 }
 
 export class ElevatorLockedToast {
@@ -28,5 +28,3 @@ export class ElevatorLockedToast {
     this.toast.destroy();
   }
 }
-
-export { formatLockedFloorMessage, LOCKED_TOAST_DURATION_MS };
