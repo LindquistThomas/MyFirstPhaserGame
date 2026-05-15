@@ -63,8 +63,8 @@ export class SettingsScene extends Phaser.Scene {
   private helpModalOpen = false;
   /** True while the import-confirm overlay is open; blocks settings nav. */
   private importConfirmOpen = false;
-  /** Currently focused button in the confirm overlay: 0 = YES, 1 = NO. */
-  private importConfirmIndex = 1; // default to "No" (safer default)
+  /** Currently focused button in the confirm overlay: 0 = REPLACE, 1 = CANCEL. */
+  private importConfirmIndex = 1;
   /** Overlay container shown while the import-confirm dialog is active. */
   private importOverlay?: Phaser.GameObjects.Container;
   /** [ YES ] button reference for keyboard highlight refresh. */
@@ -877,7 +877,7 @@ export class SettingsScene extends Phaser.Scene {
     if (value === undefined) return 'unknown';
     const date = typeof value === 'number' ? new Date(value) : new Date(value);
     if (Number.isNaN(date.getTime())) return 'unknown';
-    return date.toLocaleString();
+    return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
   }
 
   private closeImportConfirm(overlay: Phaser.GameObjects.Container): void {
