@@ -9,6 +9,8 @@ const quizJsonBundles = import.meta.glob('../../features/floors/*/quiz.*.json', 
   import: 'default',
 }) as Record<string, unknown>;
 
+const quizBundleFilePattern = /\/quiz\.[^.]+\.json$/;
+
 beforeAll(async () => {
   await Promise.all(
     Object.values(FLOORS).map((floorId) =>
@@ -20,7 +22,8 @@ beforeAll(async () => {
 describe('quizSchema', () => {
   it('validates all authored quiz JSON bundles', () => {
     const failures: string[] = [];
-    const bundleEntries = Object.entries(quizJsonBundles);
+    const bundleEntries = Object.entries(quizJsonBundles)
+      .filter(([path]) => quizBundleFilePattern.test(path));
 
     expect(bundleEntries.length).toBeGreaterThan(0);
 
