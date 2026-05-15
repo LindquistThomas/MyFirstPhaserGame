@@ -481,6 +481,17 @@ describe('Player', () => {
       }
     });
 
+    it('applyCaffeine emits buff:caffeine-applied', () => {
+      const handler = vi.fn();
+      eventBus.on('buff:caffeine-applied', handler);
+      try {
+        player.applyCaffeine(3000);
+        expect(handler).toHaveBeenCalledOnce();
+      } finally {
+        eventBus.off('buff:caffeine-applied', handler);
+      }
+    });
+
     it('caffeinated jump uses a higher Y velocity', () => {
       const setVelocityY = sprite.setVelocityY as unknown as ReturnType<typeof vi.fn>;
 

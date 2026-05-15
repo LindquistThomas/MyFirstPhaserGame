@@ -543,6 +543,7 @@ export class Player {
     this.caffeine.activate(now, durationMs);
     this.caffeineSteam?.setPosition(this.sprite.x, this.sprite.y - 10);
     this.caffeineSteam?.start();
+    eventBus.emit('buff:caffeine-applied');
     eventBus.emit('buff:caffeine_start', durationMs);
   }
 
