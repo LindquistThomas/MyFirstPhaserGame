@@ -82,10 +82,23 @@ function makeHarness() {
     getIsMoving: vi.fn(() => false),
     getFloorAtCurrentPosition: vi.fn(() => null),
     updateVisuals: vi.fn(),
+    moveToFloor: vi.fn(),
   };
 
-  const controller = new ElevatorController(scene, player as never, elevator as never);
-  return { controller, scene, player, playerBody, elevator, postHandlers, colliderHandlers };
+  const progression = {
+    isFloorUnlocked: vi.fn(() => true),
+    getTotalAU: vi.fn(() => 0),
+  };
+
+  const controller = new ElevatorController(
+    scene,
+    player as never,
+    elevator as never,
+    progression as never,
+  );
+  return {
+    controller, scene, player, playerBody, elevator, progression, postHandlers, colliderHandlers,
+  };
 }
 
 describe('ElevatorController', () => {
@@ -140,5 +153,33 @@ describe('ElevatorController', () => {
     controller.update({ up: false, down: false }, undefined);
 
     expect(controller.isOnElevator).toBe(false);
+  });
+
+  it('requestFloor moves to floor when unlocked', () => {
+    const { controller, elevator, progression } = makeHarness();
+    progression.isFloorUnlocked.mockReturnValue(true);
+
+    const accepted = controller.requestFloor(1 as never);
+
+    expect(accepted).toBe(true);
+    expect(elevator.moveToFloor).toHaveBeenCalledWith(1);
+    expect(emitSpy).not.toHaveBeenCalledWith('ui:locked-floor-attempted', expect.anything());
+  });
+
+  it('requestFloor emits locked-floor event and cancel sfx when locked', () => {
+    const { controller, elevator, progression } = makeHarness();
+    progression.isFloorUnlocked.mockReturnValue(false);
+    progression.getTotalAU.mockReturnValue(0);
+
+    const accepted = controller.requestFloor(3 as never);
+
+    expect(accepted).toBe(false);
+    expect(elevator.moveToFloor).not.toHaveBeenCalled();
+    expect(emitSpy).toHaveBeenCalledWith('ui:locked-floor-attempted', {
+      floorId: 3,
+      requiredAu: 8,
+      currentAu: 0,
+    });
+    expect(emitSpy).toHaveBeenCalledWith('sfx:dialog_cancel');
   });
 });

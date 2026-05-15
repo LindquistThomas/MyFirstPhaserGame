@@ -330,4 +330,26 @@ describe('ElevatorPanel', () => {
     // so new button containers are added even while the panel is hidden.
     expect(scene._containers.length).toBeGreaterThan(containerCountBefore);
   });
+
+  it('renders static "<auRequired> AU" hints for locked floors with a positive requirement', () => {
+    const scene = makeScene();
+    const progression = makeProgression([]);
+
+    const panel = new ElevatorPanel(
+      scene as unknown as Phaser.Scene,
+      progression as never,
+      vi.fn(),
+    );
+
+    panel.show();
+
+    const hintTexts = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls
+      .map((call) => call[2])
+      .filter((text) => typeof text === 'string' && text.endsWith(' AU'));
+    expect(hintTexts).toContain('8 AU');
+    expect(hintTexts).toContain('9 AU');
+    expect(hintTexts).toContain('21 AU');
+    expect(hintTexts).toContain('28 AU');
+    expect(hintTexts).not.toContain('0 AU');
+  });
 });
