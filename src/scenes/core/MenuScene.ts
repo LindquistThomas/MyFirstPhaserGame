@@ -19,6 +19,7 @@ import {
   setDailyState,
 } from '../../systems/DailyChallenge';
 import { getRecentResults, getResult } from '../../systems/DailyChallengeStore';
+import { mountBootErrorToast } from '../../ui/BootErrorToast';
 
 const GUEST_BANNER_ID = 'guest-mode-banner';
 
@@ -130,6 +131,10 @@ export class MenuScene extends Phaser.Scene {
         ).setOrigin(0.5, 0).setScrollFactor(0).setDepth(1000);
       }
     }
+
+    // Surface asset-load failures (boot-time static assets + lazy music) to
+    // the player via a Toast so silent/missing content is not invisible.
+    mountBootErrorToast(this);
 
     this.events.once('shutdown', () => {
       this.dailyRefreshTimer?.remove(false);

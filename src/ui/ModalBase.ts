@@ -3,6 +3,14 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
 import { pushContext, popContext, type ContextToken } from '../input';
 import { theme } from '../style/theme';
 import { shouldSkipTween } from '../systems/motionTween';
+import { applyModalA11y } from './a11y';
+
+let modalA11yCounter = 0;
+
+export interface ModalA11yOptions {
+  title?: string;
+  description?: string;
+}
 
 /**
  * Shared scaffolding for full-screen modal overlays (info + quiz dialogs).
@@ -23,8 +31,13 @@ export abstract class ModalBase {
   private shutdownHandler: (() => void) | null = null;
   private activeTween: Phaser.Tweens.Tween | null = null;
   private destroyed = false;
+  private a11yRoot: HTMLDivElement | null = null;
+  private a11yTitleEl: HTMLParagraphElement | null = null;
+  private a11yDescEl: HTMLParagraphElement | null = null;
+  private a11yDispose: (() => void) | null = null;
+  private a11yDescId: string | null = null;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, a11yOptions?: ModalA11yOptions) {
     this.scene = scene;
 
     this.container = scene.add.container(0, 0);
@@ -33,6 +46,7 @@ export abstract class ModalBase {
     this.container.setAlpha(0);
 
     this.buildOverlay();
+    this.setupA11y(a11yOptions);
     this.enterModalContext();
 
     // If the scene shuts down while the modal is still open, tear everything
@@ -40,6 +54,20 @@ export abstract class ModalBase {
     this.shutdownHandler = () => this.destroyImmediate();
     this.scene.events.once('shutdown', this.shutdownHandler);
     this.scene.events.once('destroy', this.shutdownHandler);
+  }
+
+  protected setA11yContent(title: string, description?: string): void {
+    if (!this.a11yRoot || !this.a11yTitleEl) return;
+    this.a11yTitleEl.textContent = title;
+    if (!this.a11yDescEl || !this.a11yDescId) return;
+
+    const trimmed = description?.trim() ?? '';
+    this.a11yDescEl.textContent = trimmed;
+    if (trimmed.length > 0) {
+      this.a11yRoot.setAttribute('aria-describedby', this.a11yDescId);
+    } else {
+      this.a11yRoot.removeAttribute('aria-describedby');
+    }
   }
 
   /** Dimmed fullscreen rect; added as the first child so subclasses can rely on index 0. */
@@ -130,5 +158,59 @@ export abstract class ModalBase {
       this.scene.events.off('destroy', this.shutdownHandler);
       this.shutdownHandler = null;
     }
+    if (this.a11yDispose) {
+      this.a11yDispose();
+      this.a11yDispose = null;
+    }
+    if (this.a11yRoot) {
+      this.a11yRoot.remove();
+      this.a11yRoot = null;
+      this.a11yTitleEl = null;
+      this.a11yDescEl = null;
+      this.a11yDescId = null;
+    }
+  }
+
+  private setupA11y(a11yOptions?: ModalA11yOptions): void {
+    modalA11yCounter = (modalA11yCounter % 10000) + 1;
+    const id = `game-modal-${modalA11yCounter}`;
+    const root = document.createElement('div');
+    root.id = `${id}-root`;
+    root.dataset.modalRoot = 'true';
+    root.style.position = 'fixed';
+    root.style.top = '0';
+    root.style.left = '0';
+    root.style.width = '1px';
+    root.style.height = '1px';
+    root.style.overflow = 'hidden';
+    root.style.clip = 'rect(0 0 0 0)';
+    root.style.whiteSpace = 'nowrap';
+
+    const titleEl = document.createElement('p');
+    titleEl.id = `${id}-title`;
+    titleEl.textContent = a11yOptions?.title ?? 'Modal Dialog';
+    root.appendChild(titleEl);
+
+    const descEl = document.createElement('p');
+    descEl.id = `${id}-desc`;
+    descEl.textContent = a11yOptions?.description ?? '';
+    root.appendChild(descEl);
+    this.a11yDescId = descEl.id;
+
+    const focusAnchor = document.createElement('button');
+    focusAnchor.type = 'button';
+    focusAnchor.setAttribute('data-autofocus', 'true');
+    focusAnchor.setAttribute('aria-label', 'Modal dialog');
+    root.appendChild(focusAnchor);
+
+    document.body.appendChild(root);
+
+    this.a11yRoot = root;
+    this.a11yTitleEl = titleEl;
+    this.a11yDescEl = descEl;
+    this.a11yDispose = applyModalA11y(root, {
+      titleId: titleEl.id,
+      descId: descEl.textContent?.trim() ? descEl.id : undefined,
+    });
   }
 }

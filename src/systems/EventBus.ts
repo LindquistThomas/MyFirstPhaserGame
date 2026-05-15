@@ -32,10 +32,24 @@ export interface GameEvents {
    * for non-eager tracks.
    */
   'music:request-push': [key: string];
+  /**
+   * A lazy-loaded music track failed to load (404, CORS error, network issue).
+   * Emitted by `MusicPlugin` from `playOrLoad` and `loadAndEmitPush` when the
+   * scene's loader fires a `loaderror` event for the queued audio asset.
+   * Payload: `key` — Phaser audio key; `url` — the URL that failed.
+   */
+  'music:load-error': [info: { key: string; url: string }];
   /** Toggle global audio mute (affects both music and SFX). */
   'audio:toggle-mute': [];
   /** Emitted by AudioManager when the mute state changes. */
   'audio:mute-changed': [muted: boolean];
+  /**
+   * Emitted by AudioManager immediately after the M-key (or any mute-toggle)
+   * completes. Carries the new muted state and whether the change was
+   * successfully persisted to localStorage (`persisted: false` when storage
+   * is unavailable or full).
+   */
+  'audio:mute-toggled': [payload: { muted: boolean; persisted: boolean }];
   /**
    * Emitted by SettingsStore whenever any volume-related setting changes
    * (masterVolume, musicVolume, sfxVolume, muteAll). AudioManager listens

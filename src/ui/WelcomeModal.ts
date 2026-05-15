@@ -34,7 +34,10 @@ export class WelcomeModal extends ModalBase {
     onComplete: () => void = () => { /* no-op */ },
     source: 'first-run' | 'help' = 'first-run',
   ) {
-    super(scene);
+    super(scene, {
+      title: source === 'help' ? 'How to Play' : 'Welcome, Architect!',
+      description: 'Introductory gameplay instructions and controls.',
+    });
     this.onComplete = onComplete;
     this.source = source;
     this.buildPanel();

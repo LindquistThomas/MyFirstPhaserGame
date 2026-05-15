@@ -61,7 +61,10 @@ export class InfoDialog extends ModalBase {
     onClose?: () => void,
     options?: InfoDialogOptions,
   ) {
-    super(scene);
+    super(scene, {
+      title: content.title,
+      description: content.body,
+    });
     this.onCloseCallback = onClose;
 
     this.nav = new ModalKeyboardNavigator(scene);
