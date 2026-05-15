@@ -23,6 +23,16 @@ const SNAPSHOT_OPTS = {
   animations: 'disabled' as const,
 };
 
+async function forceGamepad(page: Page, visible: boolean): Promise<void> {
+  await page.evaluate((v) => {
+    const hooks = (window as unknown as {
+      __testHooks?: { forceShowVirtualGamepad: (visible: boolean) => void };
+    }).__testHooks;
+    if (!hooks) throw new Error('__testHooks not available');
+    hooks.forceShowVirtualGamepad(v);
+  }, visible);
+}
+
 test.describe('@visual Visual regression (static UI)', () => {
   test.beforeEach(async ({ page }) => {
     await clearStorage(page);
@@ -171,6 +181,32 @@ test.describe('@visual Visual regression (static UI)', () => {
       ...SNAPSHOT_OPTS,
       // Clip to the bottom-right corner where the toast appears
       clip: { x: 864, y: 888, width: 416, height: 72 },
+    });
+    errors.assertClean();
+  });
+
+  test('MenuScene — virtual gamepad at 375px viewport', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem('architect_touch_hint_seen_v1', JSON.stringify(true));
+      } catch {
+        /* noop */
+      }
+    });
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await forceGamepad(page, true);
+    await page.waitForTimeout(200);
+
+    await expect(page).toHaveScreenshot('menu-touch-gamepad-375.png', {
+      ...SNAPSHOT_OPTS,
+      clip: { x: 0, y: 375, width: 375, height: 292 },
     });
     errors.assertClean();
   });

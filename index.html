@@ -22,6 +22,35 @@
          each set touch-action individually. */
       touch-action: none;
     }
+    :root {
+      --vpad-btn-visual: 52px;
+      --vpad-btn-action-visual: 60px;
+      --vpad-btn-hit-padding: 0px;
+      --vpad-dpad-gap: 4px;
+      --vpad-actions-gap: 8px;
+      --vpad-actions-padding-bottom: 4px;
+      --vpad-touch-hint-offset: 170px;
+      --vpad-touch-hint-min-clearance: 186px;
+    }
+    @media (min-width: 500px) and (max-width: 699px) {
+      :root {
+        --vpad-btn-visual: 60px;
+        --vpad-btn-action-visual: 64px;
+        --vpad-btn-hit-padding: 2px;
+        --vpad-touch-hint-offset: 202px;
+        --vpad-touch-hint-min-clearance: 218px;
+      }
+    }
+    @media (max-width: 499px) {
+      :root {
+        --vpad-btn-visual: 56px;
+        --vpad-btn-action-visual: 60px;
+        --vpad-btn-hit-padding: 4px;
+        --vpad-actions-padding-bottom: 0px;
+        --vpad-touch-hint-offset: 212px;
+        --vpad-touch-hint-min-clearance: 228px;
+      }
+    }
     /*
      * Pillarbox backdrop: the Phaser canvas is fixed 4:3 and FIT-scaled,
      * so wider viewports show empty bars on either side. This canvas sits
@@ -120,17 +149,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: var(--vpad-dpad-gap);
     }
     .vpad-dpad-row {
       display: flex;
       flex-direction: row;
       align-items: center;
-      gap: 4px;
+      gap: var(--vpad-dpad-gap);
     }
     .vpad-dpad-center {
-      width: 52px;
-      height: 52px;
+      width: calc(var(--vpad-btn-visual) + (var(--vpad-btn-hit-padding) * 2));
+      height: calc(var(--vpad-btn-visual) + (var(--vpad-btn-hit-padding) * 2));
     }
 
     /* Action buttons stacked vertically */
@@ -138,17 +167,19 @@
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 8px;
-      padding-bottom: 4px;
+      gap: var(--vpad-actions-gap);
+      padding-bottom: var(--vpad-actions-padding-bottom);
     }
 
     /* Shared button style */
     .vpad-btn {
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.32);
-      border: 2px solid rgba(255, 255, 255, 0.5);
+      --vpad-btn-current-visual: var(--vpad-btn-visual);
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+      width: calc(var(--vpad-btn-current-visual) + (var(--vpad-btn-hit-padding) * 2));
+      height: calc(var(--vpad-btn-current-visual) + (var(--vpad-btn-hit-padding) * 2));
+      padding: var(--vpad-btn-hit-padding);
       color: rgba(255, 255, 255, 0.9);
       font-size: 20px;
       line-height: 1;
@@ -156,14 +187,26 @@
       pointer-events: auto;
       touch-action: none;
       -webkit-tap-highlight-color: transparent;
-      transition: background 80ms ease;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+      border: 0;
+      background: transparent;
+      box-shadow: none;
       /* Ensure tap/hold state visually responds */
       -webkit-appearance: none;
       appearance: none;
     }
-    .vpad-btn:active,
-    .vpad-btn.pressed {
+    .vpad-btn::before {
+      content: '';
+      position: absolute;
+      inset: var(--vpad-btn-hit-padding);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.32);
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+      transition: background 80ms ease, border-color 80ms ease;
+      pointer-events: none;
+    }
+    .vpad-btn:active::before,
+    .vpad-btn.pressed::before {
       background: rgba(255, 255, 255, 0.55);
       border-color: rgba(255, 255, 255, 0.85);
     }
@@ -173,16 +216,16 @@
     }
 
     /* High-contrast controls — toggled via Settings → "High Contrast Controls" */
-    #virtual-pad.vpad-high-contrast .vpad-btn,
-    html[data-high-contrast="true"] .vpad-btn {
+    #virtual-pad.vpad-high-contrast .vpad-btn::before,
+    html[data-high-contrast="true"] .vpad-btn::before {
       background: rgba(255, 255, 255, 0.55);
       border: 2px solid rgba(255, 255, 255, 0.85);
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
     }
-    #virtual-pad.vpad-high-contrast .vpad-btn:active,
-    #virtual-pad.vpad-high-contrast .vpad-btn.pressed,
-    html[data-high-contrast="true"] .vpad-btn:active,
-    html[data-high-contrast="true"] .vpad-btn.pressed {
+    #virtual-pad.vpad-high-contrast .vpad-btn:active::before,
+    #virtual-pad.vpad-high-contrast .vpad-btn.pressed::before,
+    html[data-high-contrast="true"] .vpad-btn:active::before,
+    html[data-high-contrast="true"] .vpad-btn.pressed::before {
       background: rgba(255, 255, 255, 0.78);
     }
     /* Touch-hint message text is also boosted in high-contrast mode. */
@@ -194,8 +237,7 @@
 
     /* Action buttons (A/B) are slightly larger */
     .vpad-btn--action {
-      width: 60px;
-      height: 60px;
+      --vpad-btn-current-visual: var(--vpad-btn-action-visual);
       font-size: 18px;
       font-weight: bold;
     }
@@ -215,10 +257,12 @@
       display: flex;
       justify-content: center;
       /* Vertically: sit above the virtual-pad cluster.
-         170px ≈ typical vpad-cluster height (buttons + gap + padding-bottom).
-         The max() keeps a minimum of 186px on devices where safe-area insets
-         are absent so the text never overlaps the buttons. */
-      padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 170px), 186px);
+         Tokens track the current vpad size tier so the hint stays above
+         the larger mobile buttons and safe-area inset. */
+      padding-bottom: max(
+        calc(env(safe-area-inset-bottom, 0px) + var(--vpad-touch-hint-offset)),
+        var(--vpad-touch-hint-min-clearance)
+      );
       animation: touch-hint-fadein 400ms ease-out forwards;
     }
     #touch-hint-overlay.touch-hint-fadeout {
