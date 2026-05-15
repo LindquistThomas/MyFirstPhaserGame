@@ -1,5 +1,6 @@
 import { eventBus } from './EventBus';
 import { FloorId, FLOOR_IDS } from '../config/gameConfig';
+import { LEVEL_DATA } from '../config/levelData';
 import { DEFAULT_GAME_MODE, isGameMode, type GameMode } from './GameMode';
 
 /** Pluggable key-value storage. Defaults to localStorage. */
@@ -479,14 +480,7 @@ export interface SaveImportPreview {
 }
 
 function deriveFloorName(currentFloor: FloorId): string {
-  switch (currentFloor) {
-    case 0: return 'Lobby';
-    case 1: return 'Platform Team';
-    case 3: return 'Business';
-    case 4: return 'Executive Suite';
-    case 5: return 'Boardroom';
-    default: return 'Unknown Floor';
-  }
+  return LEVEL_DATA[currentFloor]?.name ?? 'Unknown Floor';
 }
 
 function deriveExportMeta(slotId: string, data: SaveData): SaveExportMeta {
