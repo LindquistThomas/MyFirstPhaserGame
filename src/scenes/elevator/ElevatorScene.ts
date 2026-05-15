@@ -340,7 +340,7 @@ export class ElevatorScene extends Phaser.Scene {
 
   /**
    * Attempt to call the elevator cab to a floor.
-   * Guards both ElevatorPanel pointer interaction and keyboard floor-call path.
+   * Delegates lock/unlock handling to ElevatorController for both panel and keyboard paths.
    */
   private callFloorIfUnlocked(floorId: FloorId): void {
     this.elevatorCtrl.requestFloor(floorId);

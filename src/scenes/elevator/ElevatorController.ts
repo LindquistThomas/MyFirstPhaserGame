@@ -76,9 +76,9 @@ export class ElevatorController {
       return true;
     }
 
-    const currentAu = this.progression.getTotalAU();
-    const requiredAu = LEVEL_DATA[floorId]?.auRequired ?? currentAu;
-    eventBus.emit('ui:locked-floor-attempted', { floorId, requiredAu, currentAu });
+    const currentAU = this.progression.getTotalAU();
+    const requiredAU = LEVEL_DATA[floorId]?.auRequired ?? 0;
+    eventBus.emit('ui:locked-floor-attempted', { floorId, requiredAu: requiredAU, currentAu: currentAU });
     eventBus.emit('sfx:dialog_cancel');
     return false;
   }

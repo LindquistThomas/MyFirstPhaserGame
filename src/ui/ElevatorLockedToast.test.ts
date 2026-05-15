@@ -20,7 +20,7 @@ vi.mock('./ariaLive', () => ({
   announce: announceSpy,
 }));
 
-import { ElevatorLockedToast, LOCKED_TOAST_DURATION_MS } from './ElevatorLockedToast';
+import { ElevatorLockedToast } from './ElevatorLockedToast';
 
 function makeScene() {
   const handlers = new Map<string, (payload: unknown) => void>();
@@ -59,7 +59,7 @@ describe('ElevatorLockedToast', () => {
     });
 
     const expected = 'Business locked — need 8 AU (you have 0/8)';
-    expect(toastShowSpy).toHaveBeenCalledWith(expected, LOCKED_TOAST_DURATION_MS);
+    expect(toastShowSpy).toHaveBeenCalledWith(expected, 2_000);
     expect(announceSpy).toHaveBeenCalledWith(expected);
   });
 
