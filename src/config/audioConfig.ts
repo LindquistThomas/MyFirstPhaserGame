@@ -98,6 +98,7 @@ export const SFX_EVENTS: Record<SfxEventName, string> = {
   'sfx:quiz_wrong':        'quiz_wrong',
   'sfx:quiz_success':      'quiz_success',
   'sfx:quiz_fail':         'quiz_fail',
+  'sfx:dialog_cancel':     'quiz_fail',
   'sfx:info_open':         'info_open',
   'sfx:link_click':        'link_click',
   'sfx:hit':               'hit',

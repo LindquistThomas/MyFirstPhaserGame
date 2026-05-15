@@ -69,8 +69,12 @@ export interface GameEvents {
   'zone:enter': [zoneId: string];
   'zone:exit': [zoneId: string];
 
+  /** Attempted to call a locked floor from the elevator UI / keypad. */
+  'ui:locked-floor-attempted': [payload: { floorId: FloorId; requiredAu: number; currentAu: number }];
+
   'sfx:info_open': [];
   'sfx:link_click': [];
+  'sfx:dialog_cancel': [];
   'sfx:jump': [];
   'sfx:footstep_a': [];
   'sfx:footstep_b': [];
