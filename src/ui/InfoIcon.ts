@@ -445,7 +445,8 @@ export class InfoIcon {
   }
 
   private stopAllTweens(): void {
-    for (const t of this.tweens) t.stop();
+    this.scene.tweens.killTweensOf([this.bg, this.container]);
+    if (this.ring) this.scene.tweens.killTweensOf(this.ring);
     this.tweens = [];
     // Reset any lingering offsets from the bounce tween.
     this.bg.setScale(1).setAlpha(1).setY(0);

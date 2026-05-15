@@ -19,7 +19,41 @@ import { preloadQuizFor } from '../../config/quiz';
 let _bootAssetErrorCount = 0;
 /** Ensure dev profiling logs only once per full page load. */
 let _bootPerfLogged = false;
-const BOOT_HEAVY_PHASE_MS = 16;
+
+/**
+ * Derives an adaptive per-phase yield budget from the first measured phase cost.
+ *
+ * Slower devices see a budget closer to half their observed phase duration so
+ * the frame-yielding loop fires more aggressively and keeps the boot splash
+ * responsive. Clamped to [8, 16] ms — never below a minimal slice and never
+ * above the 60 Hz desktop frame budget.
+ *
+ * Formula: `max(8, min(16, measuredMs / 2))`
+ */
+export function deriveBootBudget(measuredMs: number): number {
+  return Math.max(8, Math.min(16, measuredMs / 2));
+}
+
+/**
+ * Reads the `?bootBudget=N` URL parameter for QA / physical-device overrides.
+ *
+ * When present and valid (a finite positive number), the returned value is used
+ * as the yield budget throughout boot, bypassing the adaptive calculation.
+ * Returns `null` when the parameter is absent or its value is not a finite
+ * positive number.
+ */
+function readBootBudgetOverride(): number | null {
+  try {
+    const param = new URLSearchParams(window.location.search).get('bootBudget');
+    if (param !== null) {
+      const n = Number(param);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+  } catch {
+    // Ignore — location may be unavailable in some test environments.
+  }
+  return null;
+}
 
 export class BootScene extends Phaser.Scene {
   // Guard: window listener is installed once per instance and removed only
@@ -253,6 +287,13 @@ export class BootScene extends Phaser.Scene {
 
     this._devMark('boot:create:start');
 
+    // Yield budget for heavy sprite-generation phases.
+    // Start from a URL-param override (QA) or the 16 ms 60 Hz fallback.
+    // After the first phase is measured, adapt to the actual device speed.
+    const urlBudget = readBootBudgetOverride();
+    let bootBudgetMs = urlBudget ?? 16;
+    let budgetAdapted = false;
+
     // Sprite generation (synchronous canvas ops, frame-yielding for heavy phases).
     let spriteIndex = 0;
     const runSpritePhases = (): void => {
@@ -270,7 +311,16 @@ export class BootScene extends Phaser.Scene {
         this._updateProgress(progress, phase.label);
         spriteIndex++;
 
-        if (elapsed > BOOT_HEAVY_PHASE_MS) {
+        // Adapt the yield budget after the first phase (unless a URL override is active).
+        if (!budgetAdapted && urlBudget === null) {
+          budgetAdapted = true;
+          bootBudgetMs = deriveBootBudget(elapsed);
+          if (import.meta.env.DEV) {
+            console.info(`[BootScene][perf] adaptive phase budget = ${bootBudgetMs.toFixed(1)} ms`);
+          }
+        }
+
+        if (elapsed > bootBudgetMs) {
           this._scheduleNextFrame(runSpritePhases);
           return;
         }

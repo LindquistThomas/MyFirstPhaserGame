@@ -1,6 +1,6 @@
 # Copilot Instructions — So You Want To Be An Architect
 
-<!-- SYNC NOTICE: This file and CLAUDE.md (repo root) share the same
+<!-- SYNC NOTICE: CLAUDE.md and .github/copilot-instructions.md share the same
      project instructions. When you edit one, update the other to match. -->
 
 A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Progression-based: collect AU (Architecture Utility) to unlock floors of a building, each representing a domain team.
@@ -13,7 +13,7 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 ├── package.json              # Scripts, deps (phaser ^3.90)
 ├── tsconfig.json             # TypeScript strict
 ├── vite.config.ts            # Bundler config
-├── vitest.config.ts          # Unit tests (jsdom, 80% floor on src/systems & src/input; 75% (70% branches) on src/ui; 60% on src/entities; 20% on src/scenes; 50% on src/features/floors)
+├── vitest.config.ts          # Unit tests (jsdom, 80% (75% branches) on src/systems/**; 80% on src/input/**; 75% (70% branches) on src/ui/**; 60% on src/entities/**; 40% lines / 20% branches / 35% functions / 40% statements on src/scenes/**; 45% / 40% / 40% / 45% on src/features/floors/**; 75% / 60% / 70% / 75% on src/features/floors/boss/**)
 ├── playwright.config.ts      # E2E / visual tests
 ├── eslint.config.js
 ├── public/
@@ -21,17 +21,17 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   └── music/                # MP3/OGG/WAV music tracks; eager subset preloaded in BootScene, rest lazy-loaded by MusicPlugin
 ├── src/
 │   ├── main.ts               # Phaser.Game bootstrap; spreads SCENE_CLASSES from sceneRegistry
-│   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry, achievements; info/ and quiz/ barrels
+│   ├── config/               # gameConfig, levelData, audioConfig, levelGeometry, achievements, npcQuestionBank; info/ and quiz/ barrels
 │   ├── entities/             # Player, Enemy (+ enemies/), Token, DroppedAU, Elevator,
 │   │                         # MovingPlatform, Coffee, EnergyDrinkFridge, CEOBoss,
 │   │                         # CoffeeMugProjectile, BriefcaseProjectile, PistolProjectile,
-│   │                         # MissionItem, Checkpoint
+│   │                         # MissionItem, Checkpoint, Npc
 │   ├── features/
 │   │   ├── floors/           # _shared/ (LevelScene + Level*Manager helpers, coachHints,
 │   │   │                       floorAccents/Patterns, sceneBackdrop, validateLevelConfig, defineFloorScene, dailyChallengeLayout), one dir per floor (lobby/, platform/, architecture/,
 │   │   │                       finance/, product/, customer/, executive/, boss/)
 │   │   └── products/rooms/   # Per-product content scenes (ProductRoomScene, ProductIsy* etc.)
-│   ├── input/                # GameAction enum + DEFAULT_BINDINGS table; InputService scene plugin
+│   ├── input/                # GameAction union type + DEFAULT_BINDINGS table; InputService scene plugin
 │   ├── plugins/              # MusicPlugin, DebugPlugin, ScopedEventBus (Phaser ScenePlugins)
 │   ├── scenes/               # core/ (BootScene, MenuScene, SettingsScene,
 │   │                         # ControlsScene, PauseScene, SaveSlotScene),
@@ -50,7 +50,8 @@ A TypeScript + Phaser 3 platformer about IT architecture, bundled with Vite. Pro
 │   │                         # Analytics, sceneLifecycle, sliderUtils,
 │   │                         # DailyChallenge, DailyChallengeStore, SeededRandom,
 │   │                         # SpriteGenerator (+ sprites/ per-asset families),
-│   │                         # SoundGenerator (+ sounds/ per-SFX families)
+│   │                         # SoundGenerator (+ sounds/ per-SFX families),
+│   │                         # WorldModifiers, GameMode, ContentCache, motionTween, llm/ (LlmClient)
 │   └── ui/                   # InfoDialog, QuizDialog, ModalBase, ElevatorButtons, ElevatorPanel,
 │                               InfoIcon, HUD, DialogController, …
 ├── docs/                     # architecture.md, eventbus-audit.md, ci-approval-policy.md, tween-lifecycle.md, archive/ (shipped specs)
@@ -82,7 +83,7 @@ Scripts from `package.json`:
 | `npm run lint` | ESLint across the repo. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm run test:unit` | Vitest (pure logic; jsdom). |
-| `npm run test:unit:coverage` | Vitest with coverage; 80% floor on `src/systems/**` and `src/input/**`; 75% (70% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. |
+| `npm run test:unit:coverage` | Vitest with coverage; 80% (75% branches) on `src/systems/**`; 80% on `src/input/**`; 75% (70% branches) on `src/ui/**`; 60% on `src/entities/**`; 40% lines / 20% branches / 35% functions / 40% statements on `src/scenes/**`; 45% / 40% / 40% / 45% on `src/features/floors/**`; 75% / 60% / 70% / 75% on `src/features/floors/boss/**`. |
 | `npm run test:e2e` | Playwright integration specs (excludes `@visual`). |
 | `npm run test:headed` / `test:ui` | Playwright with visible browser / interactive UI. |
 | `npm run test:visual:update` | Run the `@visual` suite and refresh snapshot PNGs — the only script that exercises visual specs. To verify against existing baselines without updating, invoke `npx playwright test tests/visual.spec.ts --grep @visual` directly. |
@@ -121,9 +122,13 @@ Short index of where things live. Reach for these instead of re-implementing.
   - `LevelDecorationsManager` — background (`createBackground`), atmospheric FX, ambient plants/signposts, catwalk geometry.
   - `LevelExitManager` — exit door placement, proximity detection, elevator-return transition.
   - `LevelCheckpointManager` — checkpoint spawning, hit tracking, respawn, danger vignette + heartbeat SFX.
+  - `LevelShadowController` — per-player/enemy drop-shadow rendering.
+  - `LevelHUDBindings` — HUD ↔ `LevelScene` wiring (AU counter, objective/toast updates).
+  - `LevelHeartbeatSfx` — danger-state heartbeat SFX + vignette controller.
+  - `LevelNpcManager` — NPC spawning, interaction prompts, and dialog hand-off (`npcs?` in `LevelConfig`).
   - `LevelDialogBindings`, `LevelEnemySpawner`, `LevelTokenManager`, `LevelZoneSetup`, `LevelCoffeeManager`, `LevelFridgeManager`, `LevelRoomElevators`.
   Floor-specific scenes (`PlatformTeamScene`, `FinanceTeamScene`, etc.) live under `src/features/floors/<floor>/` and provide a complete `LevelConfig` (type defined in `src/features/floors/_shared/LevelConfig.ts`, re-exported from `LevelScene.ts`). See that file for required fields such as `floorId`, `playerStart`, `exitPosition`, and `roomElevators`, plus authored collections like `platforms`, `tokens`, `enemies`, and `infoPoints`). Enemy entries use `type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist'`. Enemies are scene-local, no persistence; they respawn on re-entry.
-- **Input** (`src/input/`) — `GameAction` enum + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
+- **Input** (`src/input/`) — `GameAction` union type + `DEFAULT_BINDINGS` table. Never reference raw `KeyCode`s elsewhere. `InputService` is a Phaser ScenePlugin mapped to `scene.inputs`.
 
 ## Conventions
 
@@ -144,7 +149,7 @@ Short index of where things live. Reach for these instead of re-implementing.
 Follow `.github/skills/new-scene.md`. Key steps: create the scene in the appropriate folder — `src/scenes/core/<Name>Scene.ts` or `src/scenes/elevator/<Name>Scene.ts` for infrastructure scenes, `src/features/products/rooms/<Name>Scene.ts` for product content scenes (floor scenes go under `src/features/floors/` — see the next section) — extend `Phaser.Scene`, register it in `src/scenes/sceneRegistry.ts` (the single source of truth — `main.ts` spreads `SCENE_CLASSES` from there; do **not** edit the `scene:` array in `main.ts` directly), and — if it needs music — add a `SCENE_MUSIC` entry in `src/config/audioConfig.ts`. **Eager vs lazy**: core/elevator scenes go into `EAGER_REGISTRY` in `src/scenes/sceneRegistry.ts` (imported at the top, available at startup); floor, product-room, and boss scenes go into `LOADERS` in `src/scenes/lazySceneLoaders.ts` as `{ key: '<Name>TeamScene', loader: () => import('…').then(m => m.<Name>TeamScene) }` — they are fetched on demand by `ElevatorScene.lazyStartScene()`.
 
 ### Add a floor / level
-Create `src/features/floors/<floor>/<Name>TeamScene.ts` using the `defineFloorScene({ key, floorId, config, returnSide?, banner?, decorations? })` factory from `../_shared/defineFloorScene` (preferred). `returnSide` (`'left' | 'right'`) controls which side of the elevator the player respawns on when returning from the room. For scenes that need extra hook overrides (e.g. `createDecorations`, custom `create()`), `extends defineFloorScene({ … })` and override there — see `src/features/floors/platform/PlatformTeamScene.ts` for an example. Direct `extends LevelScene` is reserved for `BossArenaScene`. Provide a `LevelConfig` with the required fields `floorId`, `playerStart`, `exitPosition`, `platforms`, `tokens`, and `roomElevators` (any of these arrays may be `[]`), plus optional content arrays `catwalks`, `movingPlatforms`, `enemies`, `infoPoints`, `coffees`, `fridges`, and `checkpoints`. See `src/features/floors/_shared/LevelScene.ts` for the authoritative full interface. Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and add a lazy entry `{ key: '<Name>TeamScene', loader: () => import('../features/floors/<floor>/<Name>TeamScene').then(m => m.<Name>TeamScene) }` to the `LOADERS` array in `src/scenes/lazySceneLoaders.ts`. `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys do not match registered scene keys.
+Create `src/features/floors/<floor>/<Name>TeamScene.ts` using the `defineFloorScene({ key, floorId, config, returnSide?, banner?, decorations? })` factory from `../_shared/defineFloorScene` (preferred). `returnSide` (`'left' | 'right'`) controls which side of the elevator the player respawns on when returning from the room. For scenes that need extra hook overrides (e.g. `createDecorations`, custom `create()`), `extends defineFloorScene({ … })` and override there — see `src/features/floors/platform/PlatformTeamScene.ts` for an example. Direct `extends LevelScene` is reserved for `BossArenaScene`. Provide a `LevelConfig` with the required fields `floorId`, `playerStart`, `exitPosition`, `platforms`, `tokens`, and `roomElevators` (any of these arrays may be `[]`), plus optional content arrays `catwalks`, `movingPlatforms`, `enemies`, `npcs`, `infoPoints`, `coffees`, `fridges`, and `checkpoints`. See `src/features/floors/_shared/LevelScene.ts` for the authoritative full interface. Register in `LEVEL_DATA` (`src/config/levelData.ts`) with unlock cost and theme, and add a lazy entry `{ key: '<Name>TeamScene', loader: () => import('../features/floors/<floor>/<Name>TeamScene').then(m => m.<Name>TeamScene) }` to the `LOADERS` array in `src/scenes/lazySceneLoaders.ts`. `validateSceneRegistry()` runs at boot in dev and will fail loudly if `LEVEL_DATA` keys or `SCENE_MUSIC` keys do not match registered scene keys.
 
 ### Add an enemy
 Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' | 'scope-creep' | 'astronaut' | 'tech-debt-ghost' | 'terrorist', x, y, minX?, maxX?, speed? }`. `minX`/`maxX` default to `x ± 160` when omitted (per `LevelEnemySpawner.spawn`). Implementations live in `src/entities/enemies/`. To add a new enemy *type*: (1) create the subclass under `src/entities/enemies/<Name>.ts` extending `Enemy`; (2) add the literal to the `type` union in `LevelConfig.enemies` (`src/features/floors/_shared/LevelConfig.ts`); (3) add a `case` to the `switch` in `LevelEnemySpawner.spawn()` (`src/features/floors/_shared/LevelEnemySpawner.ts`) that constructs the new subclass.
@@ -195,7 +200,7 @@ zoneManager.update();
 
 Two suites, different purposes:
 
-- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% on `src/systems/**` and `src/input/**`; 75% (70% branches) on `src/ui/**`; 60% on `src/entities/**`; 20% (18% functions) on `src/scenes/**`; 50% (40% branches, 45% functions) on `src/features/floors/**`. `src/plugins/**`, the procedural sprite/sound generator modules, and `src/main.ts` are excluded entirely (see `vitest.config.ts` for the full exclusion list). Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
+- **Vitest (`src/**/*.test.ts`, jsdom)** — pure logic, systems, input mapping. Fast. Coverage floors (per `vitest.config.ts`): 80% (75% branches) on `src/systems/**`; 80% on `src/input/**`; 75% (70% branches) on `src/ui/**`; 60% on `src/entities/**`; 40% lines / 20% branches / 35% functions / 40% statements on `src/scenes/**`; 45% / 40% / 40% / 45% on `src/features/floors/**`; 75% / 60% / 70% / 75% on `src/features/floors/boss/**`. `src/plugins/**`, the procedural sprite/sound generator modules, and `src/main.ts` are excluded entirely (see `vitest.config.ts` for the full exclusion list). Phaser is not instantiated; if a test needs scene-like behaviour, use `tests/helpers/phaserMock.ts`-style shims.
 - **Playwright (`tests/*.spec.ts`)** — drives the actual dev server via `window.__game`. Use for end-to-end user flows, scene transitions, and visual snapshots.
 
 Playwright helpers in `tests/helpers/playwright.ts`:

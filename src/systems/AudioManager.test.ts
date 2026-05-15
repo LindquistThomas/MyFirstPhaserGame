@@ -546,6 +546,45 @@ describe('AudioManager', () => {
     });
   });
 
+  describe('audio:mute-toggled', () => {
+    it('emits audio:mute-toggled with muted=true and persisted=true when storage is available', () => {
+      const listener = vi.fn();
+      eventBus.on('audio:mute-toggled', listener);
+      eventBus.emit('audio:toggle-mute');
+      expect(listener).toHaveBeenCalledWith({ muted: true, persisted: true });
+      eventBus.off('audio:mute-toggled', listener);
+    });
+
+    it('emits audio:mute-toggled with muted=false on second toggle', () => {
+      const listener = vi.fn();
+      eventBus.on('audio:mute-toggled', listener);
+      eventBus.emit('audio:toggle-mute'); // mute
+      eventBus.emit('audio:toggle-mute'); // unmute
+      expect(listener).toHaveBeenLastCalledWith({ muted: false, persisted: true });
+      eventBus.off('audio:mute-toggled', listener);
+    });
+
+    it('emits audio:mute-toggled with persisted=false when storage write fails', () => {
+      // Simulate a storage that throws on setItem
+      const failStorage = {
+        getItem: (_key: string) => null,
+        setItem: (_key: string, _value: string) => { throw new Error('QuotaExceededError'); },
+        removeItem: (_key: string) => { /* noop */ },
+      };
+      settingsStore._store.setStorage(failStorage);
+
+      const listener = vi.fn();
+      eventBus.on('audio:mute-toggled', listener);
+      eventBus.emit('audio:toggle-mute');
+      expect(listener).toHaveBeenCalledWith({ muted: true, persisted: false });
+      eventBus.off('audio:mute-toggled', listener);
+
+      // Restore real storage so subsequent tests are not affected
+      settingsStore._store.setStorage(globalThis.localStorage);
+      settingsStore.setMuteAll(false);
+    });
+  });
+
   describe('destroy', () => {
     it('unsubscribes every EventBus handler registered by registerEventListeners()', () => {
       // Sanity check: before destroy the manager reacts to music:play.
