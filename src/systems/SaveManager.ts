@@ -458,10 +458,94 @@ export const SAVE_ENVELOPE_FORMAT = 'architect-save-v1' as const;
 export type SaveEnvelopeFormat = typeof SAVE_ENVELOPE_FORMAT;
 
 /** Top-level wrapper around a save payload for cross-device transfer. */
+export interface SaveExportMeta {
+  floorName: string;
+  totalAu: number;
+  /** Active playtime in seconds. */
+  playTime: number;
+  slotId: string;
+}
+
 export interface SaveEnvelope {
   format: SaveEnvelopeFormat;
   exportedAt: string; // ISO 8601 timestamp
-  payload: SaveData;
+  meta: SaveExportMeta;
+  data: SaveData;
+}
+
+export interface SaveImportPreview {
+  fromFile: SaveExportMeta & { exportedAt: string };
+  currentSlot: (SaveExportMeta & { lastPlayedAt?: number }) | null;
+}
+
+function deriveFloorName(currentFloor: FloorId): string {
+  switch (currentFloor) {
+    case 0: return 'Lobby';
+    case 1: return 'Platform Team';
+    case 3: return 'Business';
+    case 4: return 'Executive Suite';
+    case 5: return 'Boardroom';
+    default: return 'Unknown Floor';
+  }
+}
+
+function deriveExportMeta(slotId: string, data: SaveData): SaveExportMeta {
+  return {
+    floorName: deriveFloorName(data.currentFloor),
+    totalAu: data.totalAU,
+    playTime: Math.max(0, Math.floor((data.playtimeMs ?? 0) / 1000)),
+    slotId,
+  };
+}
+
+function isValidExportMeta(value: unknown): value is SaveExportMeta {
+  if (typeof value !== 'object' || value === null) return false;
+  const meta = value as Record<string, unknown>;
+  if (typeof meta['floorName'] !== 'string') return false;
+  if (typeof meta['totalAu'] !== 'number' || !Number.isFinite(meta['totalAu'])) return false;
+  if (typeof meta['playTime'] !== 'number' || !Number.isFinite(meta['playTime'])) return false;
+  if (typeof meta['slotId'] !== 'string') return false;
+  return true;
+}
+
+function parseEnvelope(slotId: SaveSlotId, json: string): { exportedAt: string; meta: SaveExportMeta; data: SaveData } | null {
+  let envelope: unknown;
+  try { envelope = JSON.parse(json); } catch { return null; }
+  if (typeof envelope !== 'object' || envelope === null) return null;
+  const env = envelope as Record<string, unknown>;
+  if (env['format'] !== SAVE_ENVELOPE_FORMAT) return null;
+  const rawData = env['data'] ?? env['payload'];
+  if (typeof rawData !== 'object' || rawData === null) return null;
+  const data = parseAndValidateSave(JSON.stringify(rawData));
+  if (!data) return null;
+  return {
+    exportedAt: typeof env['exportedAt'] === 'string' ? env['exportedAt'] : new Date(0).toISOString(),
+    meta: isValidExportMeta(env['meta']) ? env['meta'] : deriveExportMeta(slotId, data),
+    data,
+  };
+}
+
+function readCurrentSlotMeta(slotId: SaveSlotId): (SaveExportMeta & { lastPlayedAt?: number }) | null {
+  checkUnavailable();
+  const slotKey = `architect_${slotId}_v1`;
+  let raw: string | null = null;
+  try { raw = getStorage().getItem(slotKey); } catch { return null; }
+  if (!raw) return null;
+  const data = parseAndValidateSave(raw);
+  if (!data) return null;
+  return {
+    ...deriveExportMeta(slotId, data),
+    lastPlayedAt: data.lastPlayedAt,
+  };
+}
+
+export function getImportPreview(slotId: SaveSlotId, json: string): SaveImportPreview | null {
+  const parsed = parseEnvelope(slotId, json);
+  if (!parsed) return null;
+  return {
+    fromFile: { ...parsed.meta, exportedAt: parsed.exportedAt },
+    currentSlot: readCurrentSlotMeta(slotId),
+  };
 }
 
 /**
@@ -480,7 +564,8 @@ export function exportSlot(slotId: SaveSlotId): string | null {
   const envelope: SaveEnvelope = {
     format: SAVE_ENVELOPE_FORMAT,
     exportedAt: new Date().toISOString(),
-    payload: data,
+    meta: deriveExportMeta(slotId, data),
+    data,
   };
   return JSON.stringify(envelope, null, 2);
 }
@@ -496,18 +581,12 @@ export function exportSlot(slotId: SaveSlotId): string | null {
  * Validation rules:
  *  - Must be valid JSON.
  *  - `format` must equal `SAVE_ENVELOPE_FORMAT` (future formats are rejected).
- *  - `payload` must pass `parseAndValidateSave()` (runs migrations).
+ *  - `data` (or legacy `payload`) must pass `parseAndValidateSave()` (runs migrations).
  */
 export function importToSlot(slotId: SaveSlotId, json: string): SaveData | null {
-  let envelope: unknown;
-  try { envelope = JSON.parse(json); } catch { return null; }
-  if (typeof envelope !== 'object' || envelope === null) return null;
-  const env = envelope as Record<string, unknown>;
-  if (env['format'] !== SAVE_ENVELOPE_FORMAT) return null;
-  if (typeof env['payload'] !== 'object' || env['payload'] === null) return null;
-  const payloadRaw = JSON.stringify(env['payload']);
-  const data = parseAndValidateSave(payloadRaw);
-  if (!data) return null;
+  const parsed = parseEnvelope(slotId, json);
+  if (!parsed) return null;
+  const data = parsed.data;
   checkUnavailable();
   const slotKey = `architect_${slotId}_v1`;
   try {
