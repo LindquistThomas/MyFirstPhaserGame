@@ -100,6 +100,7 @@ export const MyFloorTeamScene = defineFloorScene({
     tokens:    [/* … */],
     roomElevators: [],
     enemies:   [{ type: 'slime', x: 400, y: 700 }],
+    // Optional: `npcs?: NpcConfig[]` also supported (see LevelConfig.ts for full shape).
     infoPoints:[{ contentId: 'my-info-card', x: 800, y: 700,
                   zone: { shape: 'circle', radius: 120 } }],
   },
