@@ -326,6 +326,11 @@ export class LevelScene extends Phaser.Scene {
     this.gameState.checkAchievements();
 
     this.showFloorBanner();
+    eventBus.emit('scene:floor-entered', {
+      floorId: this.floorId,
+      displayName: this.getBannerTitle(),
+      objective: cfg.objective ?? '',
+    });
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     // Show a coaching toast on first visit, after the floor banner fades out.
@@ -517,7 +522,7 @@ export class LevelScene extends Phaser.Scene {
       scene: this,
       progression: this.progression,
       playtime: this.gameState.playtime,
-      getObjectiveText: () => this.getLevelConfig().objective ?? '',
+      getObjectiveText: () => this.getResolvedLevelConfig().objective ?? '',
       isObjectiveHidden: () => this.dialogs?.isOpen ?? false,
     });
     this.hudBindings.init();

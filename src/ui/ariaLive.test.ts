@@ -100,6 +100,34 @@ describe('initAriaLive', () => {
     expect(el.textContent).toMatch(/architecture units/i);
   });
 
+  it('announces floor entry with display name and objective', async () => {
+    eventBus.emit('scene:floor-entered', {
+      floorId: FLOORS.PLATFORM_TEAM,
+      displayName: 'Platform Team',
+      objective: 'Collect 3 of 5 tokens.',
+    });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Entered Platform Team. Collect 3 of 5 tokens.');
+  });
+
+  it('announces updated objective text', async () => {
+    eventBus.emit('objective:updated', { text: 'Collect 4 of 5 tokens.' });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Collect 4 of 5 tokens.');
+  });
+
+  it('announces checkpoint reach progress', async () => {
+    eventBus.emit('checkpoint:reached', { index: 2, total: 3 });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Checkpoint 2 of 3 reached.');
+  });
+
+  it('announces caffeine buff activation', async () => {
+    eventBus.emit('buff:caffeine-applied');
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Caffeine buff active.');
+  });
+
   it('(c) announces quiz cooldown expiry on quiz:cooldown_expired', async () => {
     eventBus.emit('quiz:cooldown_expired', 'some-quiz');
     await vi.runAllTimersAsync();
