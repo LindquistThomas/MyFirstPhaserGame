@@ -141,6 +141,8 @@ function normalizeQuestion(value: unknown): QuizSchemaResult<QuizQuestion> {
     id: value.id,
     difficulty: value.difficulty,
     question: value.question,
+    // JSON quiz authoring uses options/correctOption, while runtime types
+    // remain choices/correctIndex for backward compatibility with quiz logic.
     choices: value.choices ?? value.options,
     correctIndex: value.correctIndex ?? value.correctOption,
     explanation: value.explanation,
