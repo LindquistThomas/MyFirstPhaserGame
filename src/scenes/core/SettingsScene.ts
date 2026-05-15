@@ -8,9 +8,10 @@ import { eventBus } from '../../systems/EventBus';
 import { GameStateManager } from '../../systems/GameStateManager';
 import {
   SaveSlotId,
+  SaveImportPreview,
   exportSlot,
+  getImportPreview,
   importToSlot,
-  SAVE_ENVELOPE_FORMAT,
   SAVE_SLOTS,
   getPlayerSlot,
 } from '../../systems/SaveManager';
@@ -71,7 +72,7 @@ export class SettingsScene extends Phaser.Scene {
   /** [ NO ] button reference for keyboard highlight refresh. */
   private importConfirmNoBtn?: Phaser.GameObjects.Text;
   /** Pending import data kept alive between openImportConfirm and confirmImport. */
-  private importConfirmData?: { raw: string; slotId: SaveSlotId };
+  private importConfirmData?: { raw: string; slotId: SaveSlotId; preview: SaveImportPreview };
   /** Inline status message shown after export/import actions. */
   private statusText?: Phaser.GameObjects.Text;
 
@@ -732,23 +733,14 @@ export class SettingsScene extends Phaser.Scene {
           return;
         }
 
-        // Pre-validate before showing the confirm dialog so we fail fast.
-        let envelope: unknown;
-        try { envelope = JSON.parse(raw); } catch {
-          this.showStatus(IMPORT_ERROR_MESSAGE, true);
-          return;
-        }
-        if (
-          typeof envelope !== 'object' || envelope === null ||
-          (envelope as Record<string, unknown>)['format'] !== SAVE_ENVELOPE_FORMAT
-        ) {
-          this.showStatus(IMPORT_ERROR_MESSAGE, true);
-          return;
-        }
-
         const slotId = this.activeSlotId();
+        const preview = getImportPreview(slotId, raw);
+        if (!preview) {
+          this.showStatus(IMPORT_ERROR_MESSAGE, true);
+          return;
+        }
         const slotNum = SAVE_SLOTS.indexOf(slotId) + 1;
-        this.openImportConfirm(raw, slotId, slotNum);
+        this.openImportConfirm(raw, slotId, slotNum, preview);
       };
       reader.onerror = (): void => {
         this.showStatus('Could not read file.', true);
@@ -770,13 +762,13 @@ export class SettingsScene extends Phaser.Scene {
    * Supports both pointer clicks and keyboard (Confirm = Enter, Cancel = Esc,
    * Left/Right/Up/Down = switch YES ↔ NO focus).
    */
-  private openImportConfirm(raw: string, slotId: SaveSlotId, slotNum: number): void {
+  private openImportConfirm(raw: string, slotId: SaveSlotId, slotNum: number, preview: SaveImportPreview): void {
     if (this.importConfirmOpen) return;
     this.importConfirmOpen = true;
-    this.importConfirmIndex = 1; // default focus to "No" (safer)
-    this.importConfirmData = { raw, slotId };
+    this.importConfirmIndex = 0;
+    this.importConfirmData = { raw, slotId, preview };
 
-    const ow = 440, oh = 160;
+    const ow = 700, oh = 230;
     const ox = (GAME_WIDTH - ow) / 2;
     const oy = (GAME_HEIGHT - oh) / 2;
 
@@ -802,18 +794,38 @@ export class SettingsScene extends Phaser.Scene {
       color: theme.color.css.textAccent, fontStyle: 'bold',
     }).setOrigin(0.5));
 
-    overlay.add(this.add.text(ox + ow / 2, oy + 56, `This will replace the contents of Slot ${slotNum}.`, {
-      fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textMuted,
-    }).setOrigin(0.5));
+    const fromFile = this.formatImportSummaryLine(
+      preview.fromFile.floorName,
+      preview.fromFile.totalAu,
+      preview.fromFile.playTime,
+      `exported ${this.formatTimestamp(preview.fromFile.exportedAt)}`,
+    );
+    const currentSlot = preview.currentSlot
+      ? this.formatImportSummaryLine(
+          preview.currentSlot.floorName,
+          preview.currentSlot.totalAu,
+          preview.currentSlot.playTime,
+          `last played ${this.formatTimestamp(preview.currentSlot.lastPlayedAt)}`,
+        )
+      : 'Empty slot';
 
-    const yesBtn = this.add.text(ox + ow / 2 - 70, oy + 110, '[ YES ]', {
+    overlay.add(this.add.text(ox + 18, oy + 56, `From file: ${fromFile}`, {
+      fontFamily: 'monospace', fontSize: '13px', color: '#cfe7ff',
+      wordWrap: { width: ow - 36 },
+    }));
+    overlay.add(this.add.text(ox + 18, oy + 94, `Current slot: ${currentSlot}`, {
+      fontFamily: 'monospace', fontSize: '13px', color: theme.color.css.textMuted,
+      wordWrap: { width: ow - 36 },
+    }));
+
+    const yesBtn = this.add.text(ox + ow / 2 - 90, oy + 180, '[ REPLACE ]', {
       fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textAccent,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     yesBtn.on('pointerdown', () => this.confirmImport(raw, slotId, overlay));
     yesBtn.on('pointerover', () => { this.importConfirmIndex = 0; this.refreshImportConfirmHighlight(); });
     overlay.add(yesBtn);
 
-    const noBtn = this.add.text(ox + ow / 2 + 70, oy + 110, '[ NO ]', {
+    const noBtn = this.add.text(ox + ow / 2 + 90, oy + 180, '[ CANCEL ]', {
       fontFamily: 'monospace', fontSize: '16px', color: theme.color.css.textMuted,
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     noBtn.on('pointerdown', () => this.closeImportConfirm(overlay));
@@ -824,6 +836,7 @@ export class SettingsScene extends Phaser.Scene {
     this.importConfirmNoBtn = noBtn;
     this.importOverlay = overlay;
     this.refreshImportConfirmHighlight();
+    announce(`Import preview. From file: ${fromFile}. Current slot: ${currentSlot}.`);
   }
 
   private refreshImportConfirmHighlight(): void {
@@ -846,6 +859,25 @@ export class SettingsScene extends Phaser.Scene {
     this.closeImportConfirm(overlay);
     this.showStatus('Save imported successfully!');
     announce('Save imported successfully');
+  }
+
+  private formatImportSummaryLine(floorName: string, totalAu: number, playTime: number, dateLabel: string): string {
+    return `${floorName} · ${totalAu} AU · ${this.formatPlayTimeHhMmSs(playTime)} played · ${dateLabel}`;
+  }
+
+  private formatPlayTimeHhMmSs(totalSeconds: number): string {
+    const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+    const hours = Math.floor(safeSeconds / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((safeSeconds % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (safeSeconds % 60).toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  }
+
+  private formatTimestamp(value: string | number | undefined): string {
+    if (value === undefined) return 'unknown';
+    const date = typeof value === 'number' ? new Date(value) : new Date(value);
+    if (Number.isNaN(date.getTime())) return 'unknown';
+    return date.toLocaleString();
   }
 
   private closeImportConfirm(overlay: Phaser.GameObjects.Container): void {
