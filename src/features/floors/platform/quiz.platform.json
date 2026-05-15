@@ -1,0 +1,1036 @@
+{
+  "platform-engineering": {
+    "infoId": "platform-engineering",
+    "questions": [
+      {
+        "id": "pe-e1",
+        "difficulty": "easy",
+        "question": "What does IDP stand for in the context of Platform Engineering?",
+        "explanation": "IDP stands for Internal Developer Platform — a self-service layer for development teams.",
+        "options": [
+          "Internet Data Protocol",
+          "Internal Developer Platform",
+          "Integrated Deployment Pipeline",
+          "Infrastructure Design Pattern"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-e2",
+        "difficulty": "easy",
+        "question": "What are \"golden paths\" in platform engineering?",
+        "explanation": "Golden paths are pre-configured workflows that encode best practices while still allowing flexibility.",
+        "options": [
+          "Physical pathways in the office",
+          "Pre-configured, opinionated workflows that encode best practices",
+          "Premium-tier cloud service plans",
+          "Network routing protocols"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-e3",
+        "difficulty": "easy",
+        "question": "What key principle does a platform team follow regarding development teams?",
+        "explanation": "The platform reduces cognitive load on development teams so they can focus on business logic rather than infrastructure plumbing.",
+        "options": [
+          "All code must be reviewed by the platform team",
+          "Development teams should never touch infrastructure",
+          "Reduce cognitive load so teams focus on business logic",
+          "Every team must use the same programming language"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-m1",
+        "difficulty": "medium",
+        "question": "Instead of every team building their own CI/CD pipelines, what does a platform team provide?",
+        "explanation": "Platform teams create golden paths — reusable, pre-configured workflows — so individual teams don't reinvent the wheel.",
+        "options": [
+          "A mandate that no CI/CD is needed",
+          "Pre-configured, reusable golden path workflows",
+          "A single monolithic deployment pipeline for all teams",
+          "Outsourced DevOps consulting"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m2",
+        "difficulty": "medium",
+        "question": "What is the combined philosophy behind platform engineering?",
+        "explanation": "Platform engineering combines ownership (\"you build it, you run it\") with support (\"we make running it easy\").",
+        "options": [
+          "\"Move fast and break things\"",
+          "\"You build it, you run it\" combined with \"We make running it easy\"",
+          "\"Don't repeat yourself\" and \"Keep it simple\"",
+          "\"Fail fast\" and \"Ship often\""
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m3",
+        "difficulty": "medium",
+        "question": "What is an anti-pattern in platform engineering?",
+        "explanation": "Forcing teams to use a platform that doesn't provide clear value is a common anti-pattern that breeds resentment.",
+        "options": [
+          "Making the platform optional",
+          "Starting with a small platform",
+          "Mandating platform use without providing value",
+          "Measuring developer satisfaction"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-h1",
+        "difficulty": "hard",
+        "question": "According to Team Topologies, what is a Platform Team's primary interaction mode?",
+        "explanation": "Platform Teams provide capabilities via \"X-as-a-Service\" — teams consume with minimal coordination.",
+        "options": [
+          "Collaboration",
+          "Facilitation",
+          "X-as-a-Service",
+          "Pair programming"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-h2",
+        "difficulty": "hard",
+        "question": "What is the \"Thinnest Viable Platform\" (TVP) concept?",
+        "explanation": "TVP means starting small — even a wiki page with best practices — and evolving toward self-service APIs as needs grow.",
+        "options": [
+          "Using the cheapest possible cloud provider",
+          "Starting with the smallest platform that provides value, possibly just documentation",
+          "Removing all features except deployment",
+          "Running on the minimum number of servers"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-h3",
+        "difficulty": "hard",
+        "question": "Which of these is a key metric for platform success according to the deep dive?",
+        "explanation": "Key metrics include onboarding time, time to first deploy, change failure rate, and developer satisfaction surveys.",
+        "options": [
+          "Lines of code written per day",
+          "Number of microservices deployed",
+          "Developer onboarding time and developer satisfaction",
+          "Total number of cloud resources provisioned"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-e4",
+        "difficulty": "easy",
+        "question": "Which book is a primary theoretical foundation of Platform Engineering?",
+        "explanation": "Team Topologies by Matthew Skelton and Manuel Pais defines four team types, including the Platform team and its X-as-a-Service interaction mode.",
+        "options": [
+          "\"Clean Code\" by Robert C. Martin",
+          "\"Team Topologies\" by Skelton and Pais",
+          "\"The Phoenix Project\" by Gene Kim",
+          "\"Accelerate\" by Nicole Forsgren"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-e5",
+        "difficulty": "easy",
+        "question": "How many fundamental team types does Team Topologies identify?",
+        "explanation": "Team Topologies defines four team types: Stream-aligned, Enabling, Complicated Subsystem, and Platform.",
+        "options": [
+          "Two",
+          "Three",
+          "Four",
+          "Six"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-e6",
+        "difficulty": "easy",
+        "question": "Which of these is NOT one of the four team types in Team Topologies?",
+        "explanation": "\"Architecture team\" is not one of the four Team Topologies types. The four are: Stream-aligned, Enabling, Complicated Subsystem, and Platform.",
+        "options": [
+          "Stream-aligned",
+          "Enabling",
+          "Architecture",
+          "Complicated Subsystem"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-e7",
+        "difficulty": "easy",
+        "question": "What does a Platform team provide to enable \"You build it, you run it\"?",
+        "explanation": "The platform makes \"running it easy\" so product teams can own their services without being overwhelmed by infrastructure complexity.",
+        "options": [
+          "A separate operations team to handle production incidents",
+          "A self-service platform that reduces the cognitive load of owning services",
+          "Code reviews for every production deployment",
+          "Mandatory training on cloud infrastructure"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-e8",
+        "difficulty": "easy",
+        "question": "Without golden paths, what problem does each development team face?",
+        "explanation": "Without golden paths, every team reinvents the same infrastructure — creating inconsistency and wasting effort on undifferentiated work.",
+        "options": [
+          "They cannot write tests",
+          "Every team must reinvent CI/CD, monitoring, and infrastructure from scratch",
+          "Teams cannot deploy independently",
+          "Teams must use the same programming language"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-e9",
+        "difficulty": "easy",
+        "question": "What does \"self-service\" mean in the context of an Internal Developer Platform?",
+        "explanation": "Self-service means teams access platform capabilities on demand — no tickets, no waiting for a human in the platform team to act.",
+        "options": [
+          "Teams write all their own tools",
+          "Teams can provision infrastructure and run workflows without waiting for the platform team",
+          "Developers interview and hire themselves",
+          "Teams manage their own payroll systems"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-e10",
+        "difficulty": "easy",
+        "question": "What is the primary goal of reducing cognitive load on development teams?",
+        "explanation": "Cognitive load reduction means developers can focus on the unique value they create — the business problem — rather than infrastructure boilerplate.",
+        "options": [
+          "To make developers work fewer hours",
+          "To let teams focus on business logic and product delivery instead of infrastructure plumbing",
+          "To reduce the number of engineers needed",
+          "To simplify the codebase"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m4",
+        "difficulty": "medium",
+        "question": "A developer needs a new database environment for testing. In an ideal Platform Engineering setup, they should:",
+        "explanation": "X-as-a-Service means stream-aligned teams consume platform capabilities on demand — self-service with minimal coordination.",
+        "options": [
+          "Open a ticket and wait for the platform team to provision it",
+          "Provision it themselves via a self-service API with no coordination needed",
+          "Ask their manager to escalate to ops",
+          "Use their local laptop instead"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m5",
+        "difficulty": "medium",
+        "question": "Which scenario is an example of the \"mandating platform use without providing value\" anti-pattern?",
+        "explanation": "Forcing adoption of a platform that slows teams down breeds resentment and resistance — the opposite of what Platform Engineering aims for.",
+        "options": [
+          "Requiring teams to use a platform that halves their deployment time",
+          "Forcing teams to use a slow, unreliable CI/CD system with no alternative",
+          "Providing a golden path that most teams adopt voluntarily",
+          "Offering optional platform tooling with good documentation"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m6",
+        "difficulty": "medium",
+        "question": "What is the key reason a Platform team should treat its platform as a \"product\"?",
+        "explanation": "Treating the platform as a product means understanding developer needs, gathering feedback, and iterating — just like any customer-facing product.",
+        "options": [
+          "It generates direct revenue for the company",
+          "It has internal customers whose feedback should shape its features and evolution",
+          "Products have better tooling than platforms",
+          "It helps justify the platform team's headcount"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m7",
+        "difficulty": "medium",
+        "question": "Why is measuring \"developer onboarding time\" a useful platform metric?",
+        "explanation": "Onboarding time reflects the platform's ability to make new engineers productive quickly — a direct signal of self-service quality.",
+        "options": [
+          "It measures the quality of the HR hiring process",
+          "It reveals whether the platform truly makes it easy for new engineers to become productive quickly",
+          "It tracks how fast developers learn to program",
+          "It measures documentation quality in isolation"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m8",
+        "difficulty": "medium",
+        "question": "A stream-aligned team wants to use a technology not covered by any golden path. What should the platform team's response be?",
+        "explanation": "Golden paths provide defaults and best practices but are not prisons — allowing flexibility while encoding opinions is core to the design.",
+        "options": [
+          "Refuse — all teams must use golden paths strictly",
+          "Mandate they adopt an existing path regardless of fit",
+          "Golden paths are opinionated but flexible; support the team in making an appropriate choice",
+          "Transfer the team to a different business unit"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-m9",
+        "difficulty": "medium",
+        "question": "What distinguishes a Platform team's interaction mode from an Enabling team's?",
+        "explanation": "X-as-a-Service means minimum coordination; facilitation means active collaboration to raise capability. These are distinct interaction modes in Team Topologies.",
+        "options": [
+          "Platform teams pair-program with stream-aligned teams; Enabling teams don't",
+          "Platform teams provide X-as-a-Service (minimal coordination); Enabling teams facilitate and upskill (temporary collaboration)",
+          "Enabling teams are always larger than Platform teams",
+          "Platform teams are owned by IT; Enabling teams by engineering"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-m10",
+        "difficulty": "medium",
+        "question": "What does \"building too much too early\" risk in a Platform Engineering context?",
+        "explanation": "The Thinnest Viable Platform principle guards against this: start with what provides value now and evolve based on actual demand.",
+        "options": [
+          "Building a platform that is too fast to use",
+          "Overinvesting in features nobody needs yet, delaying value delivery and creating a maintenance burden",
+          "Creating security vulnerabilities",
+          "Hiring too many platform engineers"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-h4",
+        "difficulty": "hard",
+        "question": "The four team types in Team Topologies, in full, are:",
+        "explanation": "Team Topologies identifies exactly four types: Stream-aligned (delivery), Enabling (upskilling), Complicated Subsystem (specialist knowledge), and Platform (X-as-a-Service).",
+        "options": [
+          "Product, Dev, Ops, QA",
+          "Frontend, Backend, Infrastructure, Security",
+          "Stream-aligned, Enabling, Complicated Subsystem, Platform",
+          "Feature, Support, Architecture, Operations"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-h5",
+        "difficulty": "hard",
+        "question": "According to the deep dive, which signal most directly indicates that developers actually value the platform?",
+        "explanation": "A good platform is one developers voluntarily choose — forced adoption masks whether the platform actually helps.",
+        "options": [
+          "The number of golden paths defined",
+          "The size of the platform engineering team",
+          "Voluntary adoption — developers choose to use it without being mandated",
+          "The number of cloud resources the platform manages"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-h6",
+        "difficulty": "hard",
+        "question": "The deep dive identifies \"treating the platform as a pure infrastructure concern\" as an anti-pattern. What should it be treated as instead?",
+        "explanation": "A platform that ignores its users' experience fails. Treating it as a product means continuous discovery of developer needs and iterating on the offering.",
+        "options": [
+          "A security system",
+          "A cost center",
+          "A product with internal customers",
+          "A compliance tool"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-h7",
+        "difficulty": "hard",
+        "question": "Which of the following is explicitly cited as a key platform success metric in the deep dive?",
+        "explanation": "Time to first deploy — how quickly a new team can ship to production — is a direct indicator of how well the platform reduces friction.",
+        "options": [
+          "Cost per cloud resource",
+          "Number of microservices deployed",
+          "Time to first deploy",
+          "Lines of platform code written"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-h8",
+        "difficulty": "hard",
+        "question": "What distinguishes the \"Complicated Subsystem\" team type from a Platform team?",
+        "explanation": "Complicated Subsystem teams exist for genuinely complex technical domains requiring deep expertise (e.g. video encoding). Platform teams provide broad, reusable capabilities as a service.",
+        "options": [
+          "Complicated Subsystem teams provide infrastructure; Platform teams provide expertise",
+          "Complicated Subsystem teams own deep specialist knowledge for a complex domain; Platform teams provide broad self-service capabilities",
+          "Platform teams are always larger",
+          "Complicated Subsystem teams use X-as-a-Service"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "pe-h9",
+        "difficulty": "hard",
+        "question": "The \"Thinnest Viable Platform\" can start as just a wiki page. What principle does this reflect?",
+        "explanation": "TVP is a lean approach: deliver value immediately with minimal investment, then add self-service APIs, portals, and automation as actual needs emerge.",
+        "options": [
+          "Documentation is always more important than code",
+          "Platform Engineering doesn't require any tooling",
+          "Start with the minimum that provides real value and evolve incrementally based on proven demand",
+          "Wikis are the best developer tooling available"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "pe-h10",
+        "difficulty": "hard",
+        "question": "According to Team Topologies, what is the \"cognitive load\" problem that Platform teams are specifically designed to solve for stream-aligned teams?",
+        "explanation": "Stream-aligned teams focus on delivering value; offloading infrastructure complexity to a Platform team keeps that cognitive load within manageable bounds.",
+        "options": [
+          "Too many programming languages to learn",
+          "The burden of managing infrastructure, tooling, and operational complexity on top of delivering product features",
+          "Too many meetings with stakeholders",
+          "Having too many microservices to maintain"
+        ],
+        "correctOption": 1
+      }
+    ]
+  },
+  "scaling": {
+    "infoId": "scaling",
+    "questions": [
+      {
+        "id": "scl-e1",
+        "difficulty": "easy",
+        "question": "Which statement best describes vertical scaling (\"scale up\")?",
+        "explanation": "Scaling up means replacing the existing machine with a larger one. There is still only one node.",
+        "options": [
+          "Adding more identical servers behind a load balancer",
+          "Making a single server bigger — more CPU, more RAM, faster disks",
+          "Splitting the database into many shards",
+          "Moving the workload to a different data centre"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "scl-e2",
+        "difficulty": "easy",
+        "question": "Which statement best describes horizontal scaling (\"scale out\")?",
+        "explanation": "Scaling out means adding more nodes so the workload can be spread across them.",
+        "options": [
+          "Upgrading the CPU to a higher clock speed",
+          "Running more copies of the service behind a load balancer",
+          "Rewriting the application in a faster language",
+          "Moving from spinning disks to SSDs"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "scl-e3",
+        "difficulty": "easy",
+        "question": "A key reliability advantage of horizontal scaling over vertical scaling is…",
+        "explanation": "A fleet of N nodes behind a load balancer tolerates single-node failure; one big box does not.",
+        "options": [
+          "Lower software-licence cost per core",
+          "No single point of failure — one node can die and the service stays up",
+          "Guaranteed strong consistency without any extra work",
+          "Faster CPU per request"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "scl-e4",
+        "difficulty": "easy",
+        "question": "Which kind of workload is the easiest to scale horizontally?",
+        "explanation": "Stateless services can run as N identical copies — any request can land on any node.",
+        "options": [
+          "A stateful legacy monolith that holds sessions in memory",
+          "A stateless HTTP service behind a load balancer",
+          "A single-writer SQL database",
+          "A desktop application"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "scl-m1",
+        "difficulty": "medium",
+        "question": "Why do teams often reach for vertical scaling first on a classic SQL database?",
+        "explanation": "Keeping everything on one node sidesteps the hard problems of replication and partitioning, at least for a while.",
+        "options": [
+          "It is always cheaper at every scale",
+          "A single node preserves a single source of truth — no need to redesign for distribution",
+          "Vertical scaling automatically turns the database into a NoSQL store",
+          "It removes the need for backups"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "scl-m2",
+        "difficulty": "medium",
+        "question": "Which pattern extends horizontal scaling to stateful systems by partitioning data by key?",
+        "explanation": "Sharding partitions data (by user id, tenant, range, etc.) so each shard fits on a node that can still be scaled up.",
+        "options": [
+          "Caching",
+          "Sharding",
+          "Blue-green deployment",
+          "Feature flagging"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "scl-m3",
+        "difficulty": "medium",
+        "question": "Which of these is a real limitation of vertical scaling?",
+        "explanation": "The top instance SKUs are disproportionately expensive and eventually run out — physics and vendor price lists both impose ceilings.",
+        "options": [
+          "There is always a hard ceiling — even the biggest instance has a top size, and cost rises non-linearly near it",
+          "Vertical scaling prevents the use of containers",
+          "Scaling up requires rewriting the application in a new language",
+          "Vertical scaling makes horizontal scaling impossible later"
+        ],
+        "correctOption": 0
+      },
+      {
+        "id": "scl-h1",
+        "difficulty": "hard",
+        "question": "Which trade-off is introduced specifically by scaling a stateful system horizontally (vs keeping it vertical)?",
+        "explanation": "A distributed stateful system must pick, during a partition, between rejecting writes (CP) or serving stale data (AP). A single node sidesteps the question.",
+        "options": [
+          "The CAP trade-off between Consistency and Availability during network partitions",
+          "The need to compile code to native binaries",
+          "A requirement to use a proprietary operating system",
+          "The loss of all ACID guarantees in every case"
+        ],
+        "correctOption": 0
+      },
+      {
+        "id": "scl-h2",
+        "difficulty": "hard",
+        "question": "Horizontal scaling pairs naturally with which operational technique for elastic capacity?",
+        "explanation": "Adding/removing nodes is what autoscalers (Kubernetes HPA, AWS ASG, serverless concurrency) do in response to live load signals.",
+        "options": [
+          "Scheduled downtime windows for weekly resizing",
+          "Autoscaling driven by signals such as CPU, queue depth, or p95 latency",
+          "Manual re-provisioning per release",
+          "Fixing the fleet size permanently at its peak demand"
+        ],
+        "correctOption": 1
+      }
+    ]
+  },
+  "you-build-you-run": {
+    "infoId": "you-build-you-run",
+    "questions": [
+      {
+        "id": "ybyr-e1",
+        "difficulty": "easy",
+        "question": "Who coined the phrase \"You build it, you run it\"?",
+        "explanation": "Werner Vogels coined the phrase in a 2006 ACM Queue interview to describe how AWS teams work.",
+        "options": [
+          "Martin Fowler",
+          "Werner Vogels (Amazon CTO)",
+          "Kent Beck",
+          "Gene Kim"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-e2",
+        "difficulty": "easy",
+        "question": "In \"you build it, you run it,\" who carries the pager when a service breaks in production?",
+        "explanation": "The team that built the service also operates it — closing the feedback loop between design and production behaviour.",
+        "options": [
+          "A separate 24/7 operations team",
+          "The developers who wrote the service",
+          "The security team",
+          "The CTO"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-e3",
+        "difficulty": "easy",
+        "question": "Which model does \"you build it, you run it\" replace?",
+        "explanation": "It replaces the old relay race where developers handed finished code to a separate ops team that hadn't designed it.",
+        "options": [
+          "Agile sprints",
+          "Test-driven development",
+          "The \"throw code over the wall\" handoff between dev and ops",
+          "Pair programming"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-m1",
+        "difficulty": "medium",
+        "question": "Why does being on-call for your own service tend to improve its design?",
+        "explanation": "The pager is a direct feedback signal: pain felt by the author becomes reliability improvements in the next release.",
+        "options": [
+          "It forces developers to work longer hours",
+          "On-call hours count toward performance reviews",
+          "When you personally get paged at 3 a.m., you invest in reliability and fix root causes",
+          "On-call rotations generate more commits"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-m2",
+        "difficulty": "medium",
+        "question": "Which advantage for a dev team does \"you build it, you run it\" NOT directly provide?",
+        "explanation": "Ownership is end-to-end, but teams still collaborate — typically with a Platform team that makes \"running it\" easy.",
+        "options": [
+          "Faster feedback from production",
+          "Tighter ownership and autonomy",
+          "A guarantee that the team never needs other teams",
+          "Growth of SRE / deployment skills across the team"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-m3",
+        "difficulty": "medium",
+        "question": "Which real-world analogy best captures \"you build it, you run it\"?",
+        "explanation": "The chef hears complaints in real time and iterates the menu — a tight feedback loop the factory-canteen model lacks.",
+        "options": [
+          "A novelist who hires a ghostwriter",
+          "A restaurant chef who also works the dining room and hears customers directly",
+          "A courier who only delivers pre-packaged boxes",
+          "A librarian organizing other people's books"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h1",
+        "difficulty": "hard",
+        "question": "Which research programme links end-to-end team ownership to the \"four key metrics\" (deployment frequency, lead time, change failure rate, MTTR)?",
+        "explanation": "DORA's Accelerate research shows teams practicing \"you build it, you run it\" consistently outperform on all four key delivery metrics.",
+        "options": [
+          "ISO 9001",
+          "DORA / State of DevOps (Accelerate)",
+          "ITIL",
+          "CMMI"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h2",
+        "difficulty": "hard",
+        "question": "What is the main risk of adopting \"you build it, you run it\" without a supporting Platform team?",
+        "explanation": "Without a \"thinnest viable platform\" to reduce cognitive load, full ownership can crush product teams — Team Topologies pairs the two patterns deliberately.",
+        "options": [
+          "Developers become too specialized in one area",
+          "Cognitive overload — every team must also master Kubernetes, tracing and incident response",
+          "Code reviews become mandatory",
+          "Services are deployed too infrequently"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h3",
+        "difficulty": "hard",
+        "question": "Which complementary practice is NOT typically listed alongside \"you build it, you run it\"?",
+        "explanation": "Quarterly change-board releases are the opposite pattern — they recreate the dev/ops wall the principle is designed to remove.",
+        "options": [
+          "Blameless post-mortems and error budgets",
+          "Feature flags and progressive (canary / blue-green) deployment",
+          "Production-grade observability built in from day one",
+          "Quarterly \"big bang\" release windows managed by a change board"
+        ],
+        "correctOption": 3
+      },
+      {
+        "id": "ybyr-e4",
+        "difficulty": "easy",
+        "question": "In what year did Werner Vogels describe \"You build it, you run it\" in ACM Queue?",
+        "explanation": "Werner Vogels described the approach in a 2006 ACM Queue interview about how AWS teams operate.",
+        "options": [
+          "1998",
+          "2002",
+          "2006",
+          "2010"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-e5",
+        "difficulty": "easy",
+        "question": "\"You build it, you run it\" is primarily about closing which gap?",
+        "explanation": "The principle closes the loop between writing software and operating it in production — making developers feel the consequences of their own decisions.",
+        "options": [
+          "The gap between frontend and backend teams",
+          "The gap between developers and the operational reality of their software",
+          "The gap between senior and junior engineers",
+          "The gap between engineering and HR"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-e6",
+        "difficulty": "easy",
+        "question": "Which of these is part of \"end-to-end ownership\" in \"You build it, you run it\"?",
+        "explanation": "End-to-end ownership means the team is responsible for the full lifecycle — from design through to post-incident reviews.",
+        "options": [
+          "Only writing and testing the code",
+          "Only deploying the code to staging",
+          "Design, code, CI/CD, deployment, observability, on-call, and post-incident learning",
+          "Writing code and handing it to a separate ops team"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-e7",
+        "difficulty": "easy",
+        "question": "What was the key problem with the old \"relay race\" development model?",
+        "explanation": "In the relay race, responsibility was split: devs wrote code they didn't run; ops ran code they didn't write. Incidents dragged because understanding and accountability were separated.",
+        "options": [
+          "It was too fast for organizations to manage",
+          "Developers handed code to ops who hadn't designed it — ops couldn't diagnose problems; developers didn't feel the pain",
+          "Ops teams were less skilled than developers",
+          "It required too many project managers"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-e8",
+        "difficulty": "easy",
+        "question": "How does \"You build it, you run it\" improve the quality of technical design?",
+        "explanation": "On-call is a powerful design signal: pain caused by your own code motivates you to fix root causes and build reliability in from the start.",
+        "options": [
+          "By requiring more code reviews",
+          "By giving developers financial incentives for reliability",
+          "When you get paged for your own service's failures, you stop shipping code that causes them",
+          "By assigning dedicated QA engineers to each team"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-e9",
+        "difficulty": "easy",
+        "question": "What skills do developers gain through \"You build it, you run it\"?",
+        "explanation": "End-to-end ownership exposes developers to the full operational landscape, growing skills in deployment, observability, and incident response.",
+        "options": [
+          "Primarily UI/UX design skills",
+          "Deployment, monitoring, and SRE skills that make them stronger engineers",
+          "Marketing and sales skills",
+          "Project management certifications"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-e10",
+        "difficulty": "easy",
+        "question": "What does \"clear ownership\" mean in the context of \"You build it, you run it\"?",
+        "explanation": "Clear ownership means one team is accountable end-to-end — for how the service performs in production, not just whether the code compiles.",
+        "options": [
+          "One developer owns all the code",
+          "One team is accountable for outcomes, not just outputs",
+          "One manager signs off on all changes",
+          "One repository per team"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-m4",
+        "difficulty": "medium",
+        "question": "A team is on-call for their own service and notices the same alert fires every Monday morning. What should they do under \"You build it, you run it\"?",
+        "explanation": "The on-call rotation is a feedback signal. The team that owns the service is in the best position — and has the strongest motivation — to fix root causes, not just escalate.",
+        "options": [
+          "Accept it as normal maintenance overhead",
+          "Escalate to the ops team for investigation",
+          "Fix the root cause — they have both the authority and the motivation to do so",
+          "Mute the alert until the next quarter's prioritization"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-m5",
+        "difficulty": "medium",
+        "question": "What does \"autonomy\" specifically mean for a team practicing \"You build it, you run it\"?",
+        "explanation": "Autonomy means the team controls its own destiny: no waiting for ops approvals, no handoff queues — the same people who build can deploy and iterate.",
+        "options": [
+          "The team works without any coordination with other teams",
+          "No tickets to another team, no handoff delays — the team controls its own deployment decisions",
+          "The team has no technical standards to follow",
+          "Developers choose their own compensation"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-m6",
+        "difficulty": "medium",
+        "question": "Why does \"You build it, you run it\" lead to \"pride of craftsmanship\"?",
+        "explanation": "Owning outcomes means the team sees the full picture including failures. That accountability and visibility restores pride in the quality of the work.",
+        "options": [
+          "Because teams are evaluated on code quality metrics",
+          "Because when you own outcomes end-to-end — not just outputs — you care whether the service actually works well in production",
+          "Because managers reward quality more under this model",
+          "Because the team presents their work to the CEO"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-m7",
+        "difficulty": "medium",
+        "question": "Which scenario best illustrates why \"You build it, you run it\" breaks down WITHOUT platform support?",
+        "explanation": "Without a platform to absorb infrastructure complexity, full ownership becomes cognitive overload — defeating the purpose of the principle.",
+        "options": [
+          "A team deploys to staging without running tests",
+          "A team must also master Kubernetes, distributed tracing, and incident response simultaneously — leaving no capacity for product work",
+          "A team ships features too infrequently",
+          "A team has no QA engineer"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-m8",
+        "difficulty": "medium",
+        "question": "How does \"You build it, you run it\" change the relationship between code quality and developer incentives?",
+        "explanation": "Unlike the relay-race model where devs never feel production pain, YBYR makes poor reliability personally painful for its authors — aligning incentives powerfully.",
+        "options": [
+          "Code quality becomes a management concern only",
+          "Developers are paid more for reliable code",
+          "Poor reliability means worse on-call for the authors, so reliability becomes a first-class design goal from the start",
+          "Quality gates are enforced entirely by the build system"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "ybyr-m9",
+        "difficulty": "medium",
+        "question": "What does \"pager fatigue\" refer to, and why is it a risk under \"You build it, you run it\"?",
+        "explanation": "Pager fatigue occurs when on-call becomes a constant burden — poor alert hygiene, no follow-the-sun rotation, and insufficient tooling turn ownership into punishment.",
+        "options": [
+          "Fatigue from carrying heavy physical pagers",
+          "Burnout caused by excessive on-call alerts without good tooling or rotation — unsustainable over time",
+          "Alert desensitization from too many monitoring dashboards",
+          "Developers refusing to participate in on-call at all"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-m10",
+        "difficulty": "medium",
+        "question": "The info content says YBYR is \"less a process than a feedback loop.\" What does this mean?",
+        "explanation": "The insight is that YBYR's value is systemic: every architectural decision receives an operational signal, and that continuous feedback transforms how teams think and design.",
+        "options": [
+          "It cannot be documented or standardized",
+          "The value isn't in the process steps but in the continuous signal flowing from operational reality back to design decisions",
+          "Feedback loops require automated testing only",
+          "It means retrospectives are more important than releases"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h4",
+        "difficulty": "hard",
+        "question": "Which of the four DORA metrics specifically measures the time from code commit to running in production?",
+        "explanation": "Lead time for changes measures the elapsed time between committing code and that code running in production — a key indicator of delivery efficiency.",
+        "options": [
+          "Deployment frequency",
+          "Lead time for changes",
+          "Change failure rate",
+          "Mean Time to Restore (MTTR)"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h5",
+        "difficulty": "hard",
+        "question": "The deep dive describes \"unclear boundaries\" as a failure mode. Why does a shared monolith with no ownership lines cause this?",
+        "explanation": "YBYR requires clear service boundaries. Without them, ownership is diffuse — the on-call question \"who's responsible?\" has no answer, and incidents drag on.",
+        "options": [
+          "Monoliths are inherently unreliable",
+          "No team has a clear boundary, so production problems become \"no-one's problem\" — everyone is accountable, so no-one is",
+          "Monoliths cannot be deployed independently",
+          "Shared code always has slower test suites"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h6",
+        "difficulty": "hard",
+        "question": "According to the deep dive, how is a well-run on-call rotation different from a punishment?",
+        "explanation": "On-call is a feedback mechanism: each page is information about a design flaw the team is uniquely positioned to fix. Handled well, it continuously improves the system.",
+        "options": [
+          "Well-run on-call pays more per alert",
+          "It is the signal that drives design improvement — repeated alerts give the team both the motivation and authority to fix root causes",
+          "It involves fewer alerts by design",
+          "It runs only during business hours"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h7",
+        "difficulty": "hard",
+        "question": "The deep dive lists \"feature flags\" as a complementary practice. What specific risk do feature flags help manage?",
+        "explanation": "Feature flags decouple deployment from release — code goes to production (fast feedback) while only being exposed to a subset of users, limiting risk.",
+        "options": [
+          "They reduce the total number of features shipped",
+          "They allow teams to release code to production while controlling exposure — reducing blast radius if something goes wrong",
+          "They replace automated testing",
+          "They prevent the need for rollbacks entirely"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h8",
+        "difficulty": "hard",
+        "question": "The deep dive says YBYR is the \"cultural foundation of DevOps.\" What does \"cultural foundation\" mean here?",
+        "explanation": "YBYR is not a practice or tool — it's the cultural shift that makes DevOps practices meaningful. Without the ownership mindset, tools alone don't deliver the benefits.",
+        "options": [
+          "DevOps is a culture created by Werner Vogels",
+          "YBYR embodies the values and mindset that DevOps practices are built on — ownership, feedback, and shared accountability between build and run",
+          "YBYR requires a specific DevOps toolchain to work",
+          "DevOps culture is defined by DORA metrics alone"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h9",
+        "difficulty": "hard",
+        "question": "The deep dive says YBYR turns a developer into a \"systems thinker.\" What specific capability does this describe?",
+        "explanation": "A systems thinker understands the full feedback loop: design choices become operational realities, and operational pain is a signal about design flaws.",
+        "options": [
+          "Thinking only about distributed systems patterns",
+          "Understanding that every architectural decision has operational consequences, and designing with both in mind",
+          "Learning Kubernetes and observability tools",
+          "Managing a team as well as writing code"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "ybyr-h10",
+        "difficulty": "hard",
+        "question": "Progressive deployment (canary / blue-green) is listed as complementary to YBYR. What specific problem does it solve?",
+        "explanation": "Progressive deployment reduces risk by limiting blast radius: a canary rollout exposes a small percentage of traffic to the new version before full release.",
+        "options": [
+          "It automates documentation updates after deployment",
+          "It reduces cloud costs through resource sharing",
+          "It allows teams to validate changes in production incrementally before full rollout — reducing change failure rate",
+          "It replaces the need for a staging environment entirely"
+        ],
+        "correctOption": 2
+      }
+    ]
+  },
+  "web-application-firewall": {
+    "infoId": "web-application-firewall",
+    "questions": [
+      {
+        "id": "waf-e1",
+        "difficulty": "easy",
+        "question": "What does a Web Application Firewall (WAF) primarily inspect?",
+        "explanation": "A WAF operates at layer 7 — it inspects HTTP(S) traffic and blocks requests that match attack patterns before they reach the application.",
+        "options": [
+          "Disk I/O on the application server",
+          "HTTP(S) requests and responses to the application",
+          "Outbound DNS lookups from the datacentre",
+          "SSH sessions to production hosts"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "waf-e2",
+        "difficulty": "easy",
+        "question": "Which of the following is a classic attack a WAF is designed to stop?",
+        "explanation": "WAFs specialise in application-layer attacks such as SQL injection, XSS, path traversal and command injection — the OWASP Top 10 territory.",
+        "options": [
+          "A phishing email sent to an employee",
+          "SQL injection in a login form",
+          "A stolen laptop in an airport",
+          "A misconfigured backup job"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "waf-e3",
+        "difficulty": "easy",
+        "question": "Where is a WAF typically deployed?",
+        "explanation": "A WAF sits at the edge so one rule set protects every service behind it, including legacy apps that cannot easily be changed.",
+        "options": [
+          "Inside the database engine",
+          "On every developer laptop",
+          "In front of the application — at the CDN, load balancer or ingress",
+          "As a client-side JavaScript library"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "waf-e4",
+        "difficulty": "easy",
+        "question": "What is a \"false positive\" in WAF terms?",
+        "explanation": "A false positive is a legitimate request wrongly flagged as malicious. False negatives are the opposite — real attacks that slip through.",
+        "options": [
+          "An attack the WAF failed to detect",
+          "A legitimate request that the WAF incorrectly blocks",
+          "A rule that has been disabled",
+          "A successful deployment of a new rule"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "waf-m1",
+        "difficulty": "medium",
+        "question": "Why are false positives particularly painful for a product team?",
+        "explanation": "False positives present to users as cryptic 403s and to the team as \"the app is broken\" tickets — the cost is visible on the product side, not the security side.",
+        "options": [
+          "They make the security dashboard look too green",
+          "They silently break real user journeys and generate support tickets that look like application bugs",
+          "They reduce CPU utilisation on the WAF",
+          "They force a rollback of the application version"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "waf-m2",
+        "difficulty": "medium",
+        "question": "What is the recommended way to roll out a new WAF rule in production?",
+        "explanation": "Detect-only first lets you see which legitimate traffic the rule would have blocked. Skipping this step is the most common way a WAF takes down its own application.",
+        "options": [
+          "Enable it in prevent mode immediately so no attacks slip through",
+          "Deploy it only on weekends",
+          "Start in detect-only (log) mode, observe a full traffic cycle, then switch to prevent mode",
+          "Apply it exclusively to authenticated users first"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "waf-m3",
+        "difficulty": "medium",
+        "question": "Why is tuning a WAF a collaboration between the platform team and the product team?",
+        "explanation": "The platform team owns the WAF capability; the product team owns the knowledge of normal traffic. Good rules are a joint product of both.",
+        "options": [
+          "Because the platform team needs the product team's AWS credentials",
+          "Because only the product team knows what \"normal traffic\" looks like for the workload — which fields accept HTML, expected rates, upload endpoints, legitimate bots",
+          "Because product teams enjoy writing regular expressions",
+          "Because security rules are classified information"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "waf-h1",
+        "difficulty": "hard",
+        "question": "A rich-text editor in your CMS lets authors paste \"<script>\" tags intentionally. The OWASP CRS blocks every save with an XSS rule. What is the best fix?",
+        "explanation": "Surgical scoping is the right answer: exempt the one endpoint where rich HTML is legitimate, keep the rule active everywhere else, and handle sanitisation server-side where context is known.",
+        "options": [
+          "Disable the entire CRS globally",
+          "Ask authors to avoid HTML in their articles",
+          "Scope the XSS rule to exclude the specific editor endpoint (and sanitize server-side instead)",
+          "Lower the paranoia level of every rule to PL1"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "waf-h2",
+        "difficulty": "hard",
+        "question": "Which statement best captures a WAF's limitations?",
+        "explanation": "A WAF is not a silver bullet. Pair it with secure coding, SAST/DAST, dependency scanning, bot management and runtime protection for full coverage.",
+        "options": [
+          "A WAF replaces the need for secure coding, SAST and dependency scanning",
+          "A WAF stops business-logic abuse and broken authentication out of the box",
+          "A WAF is one layer of defence — it does not stop business-logic abuse or attacks that use legitimate API calls in legitimate ways",
+          "A WAF makes TLS termination unnecessary"
+        ],
+        "correctOption": 2
+      }
+    ]
+  }
+}
