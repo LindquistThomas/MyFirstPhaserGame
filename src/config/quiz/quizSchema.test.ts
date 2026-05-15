@@ -2,7 +2,12 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { FLOORS } from '../gameConfig';
 import { INFO_POINTS, preloadInfoFor } from '../info';
 import { QUIZ_DATA, preloadQuizFor } from './index';
-import { quizDefinitionSchema, quizQuestionSchema } from './quizSchema';
+import { parseQuizBundle, quizDefinitionSchema, quizQuestionSchema } from './quizSchema';
+
+const quizJsonBundles = import.meta.glob('../../features/floors/*/quiz.*.json', {
+  eager: true,
+  import: 'default',
+}) as Record<string, unknown>;
 
 beforeAll(async () => {
   await Promise.all(
@@ -13,6 +18,23 @@ beforeAll(async () => {
 });
 
 describe('quizSchema', () => {
+  it('validates all authored quiz JSON bundles', () => {
+    const failures: string[] = [];
+    const bundleEntries = Object.entries(quizJsonBundles);
+
+    expect(bundleEntries.length).toBeGreaterThan(0);
+
+    for (const [path, bundle] of bundleEntries) {
+      try {
+        parseQuizBundle(bundle);
+      } catch (error) {
+        failures.push(`${path}: ${(error as Error).message}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
   it('validates every loaded quiz definition and question', () => {
     const failures: string[] = [];
 

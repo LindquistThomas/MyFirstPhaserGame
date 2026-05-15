@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import architectureQuizSource from '../../features/floors/architecture/quiz.ts?raw';
+import platformQuizSource from '../../features/floors/platform/quiz.ts?raw';
 import {
   QUIZ_DATA,
   QUIZ_DIFFICULTY_MIX,
@@ -151,16 +152,23 @@ describe('quiz constants', () => {
   });
 });
 
-describe('architecture quiz module organization', () => {
-  it('enforces the 2,000-line split trigger for architecture quiz.ts', () => {
-    const normalizedSource = architectureQuizSource.replace(/\r\n/g, '\n');
-    const withoutTrailingNewline = normalizedSource.endsWith('\n')
-      ? normalizedSource.slice(0, -1)
-      : normalizedSource;
-    const lineCount = withoutTrailingNewline === '' ? 0 : withoutTrailingNewline.split('\n').length;
-    expect(
-      lineCount,
-      'src/features/floors/architecture/quiz.ts crossed 2,000 lines; split it into topic modules (integration/cloud/patterns/soa + index.ts).',
-    ).toBeLessThanOrEqual(2000);
+describe('quiz module organization', () => {
+  it('keeps thin floor loader modules under 20 lines', () => {
+    const sources = [
+      ['architecture', architectureQuizSource],
+      ['platform', platformQuizSource],
+    ] as const;
+
+    for (const [floorName, source] of sources) {
+      const normalizedSource = source.replace(/\r\n/g, '\n');
+      const withoutTrailingNewline = normalizedSource.endsWith('\n')
+        ? normalizedSource.slice(0, -1)
+        : normalizedSource;
+      const lineCount = withoutTrailingNewline === '' ? 0 : withoutTrailingNewline.split('\n').length;
+      expect(
+        lineCount,
+        `src/features/floors/${floorName}/quiz.ts should stay a thin loader; move authored content to quiz.${floorName}.json`,
+      ).toBeLessThan(20);
+    }
   });
 });
