@@ -24,6 +24,7 @@ A **Daily Challenge** mode is available from the main menu: each UTC day generat
 | I | Show info card for nearby zone |
 | Esc / P | Pause (during gameplay) |
 | M | Toggle audio mute (any scene) |
+| H | Show controls reference (any scene — pauses gameplay) |
 | 0–5 | Call elevator to floor (inside the cab) |
 | X | Attack — throw mug (boss arena) / fire pistol (executive rescue) |
 
