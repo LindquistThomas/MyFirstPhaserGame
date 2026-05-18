@@ -144,14 +144,24 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
       eventBus.emit('music:prewarm-complete');
       return;
     }
+    const BATCH_SIZE = 2;
+    let cursor = 0;
+    const loadBatch = (): void => {
+      const batch = queue.slice(cursor, cursor + BATCH_SIZE);
+      if (batch.length === 0) {
+        eventBus.emit('music:prewarm-complete');
+        return;
+      }
 
-    for (const key of queue) {
-      scene.load.audio(key, MUSIC_PATH[key]!);
-    }
-    scene.load.once('complete', () => {
-      eventBus.emit('music:prewarm-complete');
-    });
-    scene.load.start();
+      cursor += batch.length;
+      for (const key of batch) {
+        scene.load.audio(key, MUSIC_PATH[key]!);
+      }
+      scene.load.once('complete', loadBatch);
+      scene.load.start();
+    };
+
+    loadBatch();
   }
 
   /**

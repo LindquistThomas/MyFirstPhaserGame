@@ -262,15 +262,25 @@ describe('MusicPlugin', () => {
   });
 
   describe('preloadIdle()', () => {
-    it('skips already-cached keys before queueing loader audio calls', () => {
+    it('dedupes keys and ignores unknown/cached keys before queueing loader audio calls', () => {
       const { plugin, fakeScene } = mountPlugin('MenuScene', ['music_quiz']);
-      plugin.preloadIdle(['music_quiz', 'music_platform']);
+      plugin.preloadIdle(['music_quiz', 'music_platform', 'music_platform', 'music_unknown_xyz']);
       expect(fakeScene.load.audio).toHaveBeenCalledTimes(1);
       expect(fakeScene.load.audio).toHaveBeenCalledWith(
         'music_platform',
         expect.stringContaining('shadow_operations-loop1.ogg'),
       );
       expect(fakeScene.load.start).toHaveBeenCalledTimes(1);
+    });
+
+    it('queues at most two tracks per loader burst', () => {
+      const { plugin, fakeScene } = mountPlugin('MenuScene');
+      plugin.preloadIdle(['music_platform', 'music_quiz', 'music_executive']);
+
+      expect(fakeScene.load.audio).toHaveBeenCalledTimes(2);
+
+      fakeScene.load.triggerEvent('complete');
+      expect(fakeScene.load.audio).toHaveBeenCalledTimes(3);
     });
 
     it('emits music:prewarm-complete after queued loads complete', () => {
