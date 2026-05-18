@@ -14,12 +14,15 @@ export default defineConfig({
         'src/main.ts',
         'src/plugins/**',
         'src/features/floors/boss/BossArenaScene.ts',
+        'src/features/floors/_shared/LevelScene.ts',
         'src/systems/SpriteGenerator.ts',
         'src/systems/sprites/**',
         'src/systems/SoundGenerator.ts',
         'src/systems/sounds/**',
 
         'src/input/phaser-augment.d.ts',
+        'src/features/floors/_shared/LevelConfig.ts',
+        'src/features/floors/index.ts',
       ],
       thresholds: {
         'src/systems/**': { lines: 80, branches: 75, functions: 80, statements: 80 },

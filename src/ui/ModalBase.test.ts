@@ -111,6 +111,11 @@ class TestModal extends ModalBase {
 
   /** Expose protected fadeIn for direct testing. */
   public callFadeIn(duration?: number): void { this.fadeIn(duration); }
+
+  /** Expose protected setA11yContent for direct testing. */
+  public callSetA11yContent(title: string, description?: string): void {
+    this.setA11yContent(title, description);
+  }
 }
 
 describe('ModalBase', () => {
@@ -242,5 +247,33 @@ describe('ModalBase', () => {
 
     // After onComplete, calling fadeIn again should NOT call stop on a null tween
     expect(() => modal.callFadeIn(200)).not.toThrow();
+  });
+
+  it('(g) setA11yContent updates title and sets aria-describedby for non-empty description', () => {
+    const scene = makeScene();
+    const modal = new TestModal(scene as unknown as Phaser.Scene);
+
+    const modalRoot = document.querySelector<HTMLElement>('[data-modal-root="true"]');
+    expect(modalRoot).not.toBeNull();
+
+    modal.callSetA11yContent('New Title', 'Some description');
+
+    const titleEl = modalRoot?.querySelector('p');
+    expect(titleEl?.textContent).toBe('New Title');
+    expect(modalRoot?.getAttribute('aria-describedby')).not.toBeNull();
+  });
+
+  it('(g2) setA11yContent removes aria-describedby for empty description', () => {
+    const scene = makeScene();
+    const modal = new TestModal(scene as unknown as Phaser.Scene);
+
+    // First set a description to ensure aria-describedby is present
+    modal.callSetA11yContent('Title', 'Some description');
+    const modalRoot = document.querySelector<HTMLElement>('[data-modal-root="true"]');
+    expect(modalRoot?.getAttribute('aria-describedby')).not.toBeNull();
+
+    // Now clear it with empty description
+    modal.callSetA11yContent('Title', '');
+    expect(modalRoot?.getAttribute('aria-describedby')).toBeNull();
   });
 });
