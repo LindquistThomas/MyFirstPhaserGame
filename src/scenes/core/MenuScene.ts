@@ -167,8 +167,14 @@ export class MenuScene extends Phaser.Scene {
   private idlePreloadMusic(): boolean {
     interface NavigatorConnection { saveData?: boolean; effectiveType?: string }
     const conn = (navigator as unknown as { connection?: NavigatorConnection }).connection;
-    if (conn?.saveData) return true;
-    if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') return true;
+    if (conn?.saveData) {
+      eventBus.emit('music:prewarm-complete');
+      return true;
+    }
+    if (conn?.effectiveType === '2g' || conn?.effectiveType === 'slow-2g') {
+      eventBus.emit('music:prewarm-complete');
+      return true;
+    }
     if (document.visibilityState === 'hidden') return false;
 
     // Exclude the current scene's own background track — MusicPlugin.onSceneCreate()
@@ -177,7 +183,10 @@ export class MenuScene extends Phaser.Scene {
     const queue = STATIC_MUSIC_ASSETS.filter(
       (a) => !a.eager && a.key !== ownTrack && !this.cache.audio.exists(a.key),
     ).map((a) => a.key);
-    if (queue.length === 0) return true;
+    if (queue.length === 0) {
+      eventBus.emit('music:prewarm-complete');
+      return true;
+    }
 
     this.music.preloadIdle(queue);
     return true;
