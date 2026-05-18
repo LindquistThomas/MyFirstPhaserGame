@@ -200,11 +200,32 @@ export async function seedFullProgressSave(
  *
  * Assumes the caller has already waited for `MenuScene` to be active.
  * Selects slot 1 (the first / default slot) via Enter.
+ *
+ * Since the NG+ feature added a "SELECT MODE" picker that appears when a slot
+ * has existing save data, we check for that dialog and press Enter once more
+ * to confirm CONTINUE before waiting for ElevatorScene.
  */
 export async function navigateToElevator(page: Page): Promise<void> {
   await page.keyboard.press('Enter');
   await waitForScene(page, 'SaveSlotScene');
   await page.keyboard.press('Enter');
+  // If the slot has save data the mode-selection overlay appears (inActionSelect).
+  // Poll for up to 2 s; if it shows, confirm the default selection (CONTINUE).
+  const modeDialogVisible = await page.waitForFunction(
+    () => {
+      const g = window.__game;
+      if (!g) return false;
+      // SaveSlotScene may have already transitioned; treat absence as "no dialog".
+      const scene = g.scene.getScenes(true).find(
+        (s) => s.sys.settings.key === 'SaveSlotScene',
+      ) as unknown as Record<string, unknown> | undefined;
+      if (!scene) return false;
+      return scene['inActionSelect'] === true;
+    },
+    undefined,
+    { timeout: 2_000 },
+  ).catch(() => false as const);
+  if (modeDialogVisible) await page.keyboard.press('Enter');
   await waitForScene(page, 'ElevatorScene');
 }
 

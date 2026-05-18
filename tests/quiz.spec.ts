@@ -109,12 +109,17 @@ interface QuizStoreRecord {
   bestScore: number;
   lastAttemptTime: number;
   attempts: number;
+  awarded?: boolean;
 }
 
 async function readQuizStore(page: import('@playwright/test').Page): Promise<Record<string, QuizStoreRecord>> {
   const raw = await page.evaluate(() => window.localStorage.getItem('architect_quiz_v1'));
   expect(raw).toBeTruthy();
-  return JSON.parse(raw!) as Record<string, QuizStoreRecord>;
+  // The quiz store is slot-keyed: { slots: { slot1: { quizzes: { [infoId]: record } } } }
+  const parsed = JSON.parse(raw!) as {
+    slots?: Record<string, { quizzes?: Record<string, QuizStoreRecord> }>;
+  };
+  return parsed.slots?.['slot1']?.quizzes ?? {};
 }
 
 test.describe('Quiz flows', () => {
