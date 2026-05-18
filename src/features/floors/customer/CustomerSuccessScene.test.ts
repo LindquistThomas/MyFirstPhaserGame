@@ -36,6 +36,10 @@ class TestableCustomerSuccessScene extends CustomerSuccessScene {
   public getConfig(): LevelConfig {
     return this.getLevelConfig();
   }
+
+  public runCreateDecorations(): void {
+    this.createDecorations();
+  }
 }
 
 describe('CustomerSuccessScene — LevelConfig', () => {
@@ -92,5 +96,27 @@ describe('CustomerSuccessScene — LevelConfig', () => {
     expect(typeof cfg.exitPosition.y).toBe('number');
     expect(typeof cfg.playerStart.x).toBe('number');
     expect(typeof cfg.playerStart.y).toBe('number');
+  });
+
+  it('createDecorations adds expected flora, signpost, and monitors', () => {
+    const scene = new TestableCustomerSuccessScene() as unknown as {
+      addAmbientPlants: ReturnType<typeof vi.fn>;
+      addSignpost: ReturnType<typeof vi.fn>;
+      add: { image: ReturnType<typeof vi.fn> };
+      runCreateDecorations: () => void;
+    };
+    const image = vi.fn(() => ({ setDepth: vi.fn() }));
+    scene.addAmbientPlants = vi.fn();
+    scene.addSignpost = vi.fn();
+    scene.add = { image };
+
+    scene.runCreateDecorations();
+
+    expect(scene.addAmbientPlants).toHaveBeenCalledWith([
+      { x: 1180, kind: 'tall' },
+      { x: 1120, kind: 'small' },
+    ]);
+    expect(scene.addSignpost).toHaveBeenCalled();
+    expect(image).toHaveBeenCalledTimes(4);
   });
 });
