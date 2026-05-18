@@ -18,14 +18,7 @@ Configure in **Settings → Branches → `main` → Require status checks to pas
 | `Playwright E2E complete` | Fan-in job; do **not** require individual shard names |
 | `Bundle size budget` | Recommended |
 
-Remove any stale per-shard entries if present:
-
-- `Playwright E2E (shard 1/2)`
-- `Playwright E2E (shard 2/2)`
-- `Playwright E2E (shard 1/4)`
-- `Playwright E2E (shard 2/4)`
-- `Playwright E2E (shard 3/4)`
-- `Playwright E2E (shard 4/4)`
+Remove any stale per-shard entries listed in **Branch protection required checks (`main`)** below.
 
 > CI cannot read live branch-protection settings. A repository admin must verify this list manually in the branch settings UI (or via API).
 

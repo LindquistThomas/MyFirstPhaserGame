@@ -8,6 +8,16 @@ const workflowNameValues = ciWorkflow
   .filter((line) => line.startsWith('name: '))
   .map((line) => line.slice('name: '.length));
 
+function getJobBlock(jobId: string): string {
+  const lines = ciWorkflow.split('\n');
+  const start = lines.findIndex((line) => line === `  ${jobId}:`);
+  if (start < 0) return '';
+
+  const end = lines.findIndex((line, index) => index > start && /^ {2}[a-z0-9-]+:$/.test(line));
+  const jobLines = end < 0 ? lines.slice(start) : lines.slice(start, end);
+  return jobLines.join('\n');
+}
+
 describe('CI required-check job names', () => {
   it('keeps the lint/unit required check name stable', () => {
     expect(workflowNameValues).toContain('Lint + typecheck + unit tests');
@@ -28,7 +38,10 @@ describe('CI required-check job names', () => {
   });
 
   it('allows doc-only changes to skip shards while keeping fan-in green', () => {
-    expect(ciWorkflow).toContain("if: needs.changes.outputs.code == 'true'");
-    expect(ciWorkflow).toContain('if [ "$e2e" = "success" ] || [ "$e2e" = "skipped" ]; then');
+    const e2eJobBlock = getJobBlock('e2e');
+    const e2eCompleteJobBlock = getJobBlock('e2e-complete');
+
+    expect(e2eJobBlock).toContain("if: needs.changes.outputs.code == 'true'");
+    expect(e2eCompleteJobBlock).toContain('if [ "$e2e" = "success" ] || [ "$e2e" = "skipped" ]; then');
   });
 });
