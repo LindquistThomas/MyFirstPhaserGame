@@ -93,6 +93,12 @@ describe('initAriaLive', () => {
     expect(el.textContent).toMatch(/unlocked/i);
   });
 
+  it('falls back to a generic floor unlock label for unknown floor ids', async () => {
+    eventBus.emit('progression:floor_unlocked', -1 as never);
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('a new floor unlocked!');
+  });
+
   it('announces AU milestone with total count', async () => {
     eventBus.emit('progression:au_milestone', 50);
     await vi.runAllTimersAsync();
@@ -108,6 +114,16 @@ describe('initAriaLive', () => {
     });
     await vi.runAllTimersAsync();
     expect(el.textContent).toBe('Entered Platform Team. Collect 3 of 5 tokens.');
+  });
+
+  it('announces floor entry without trailing objective punctuation when objective is empty', async () => {
+    eventBus.emit('scene:floor-entered', {
+      floorId: FLOORS.BOSS,
+      displayName: 'Boardroom',
+      objective: '',
+    });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Entered Boardroom.');
   });
 
   it('announces updated objective text', async () => {
