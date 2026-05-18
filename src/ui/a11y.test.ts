@@ -93,10 +93,11 @@ describe('applyModalA11y', () => {
     root.append(title, a, b, c);
     document.body.appendChild(root);
 
-    applyModalA11y(root, { titleId: title.id });
+    const dispose = applyModalA11y(root, { titleId: title.id });
     b.focus();
     pressTab(true);
     expect(document.activeElement).toBe(a);
+    dispose();
   });
 
   it('focuses root when Tab is pressed with no focusable elements inside', () => {
@@ -108,9 +109,10 @@ describe('applyModalA11y', () => {
     root.appendChild(title);
     document.body.appendChild(root);
 
-    applyModalA11y(root, { titleId: title.id });
+    const dispose = applyModalA11y(root, { titleId: title.id });
     pressTab();
     expect(document.activeElement).toBe(root);
+    dispose();
   });
 
   it('focuses canvas fallback when previousActive is no longer connected', () => {
