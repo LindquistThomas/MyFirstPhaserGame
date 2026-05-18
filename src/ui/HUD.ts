@@ -138,6 +138,11 @@ export class HUD {
       }
       this.toast.show(persistenceMessage(payload.reason));
     });
+    lifecycle.bindEventBus('audio:mute-toggled', ({ muted, persisted }) => {
+      const base = muted ? '\uD83D\uDD07 Muted (M)' : '\uD83D\uDD0A Unmuted (M)';
+      const msg = persisted ? base : `${base} \u2014 not saved`;
+      this.toast.show(msg, 1_500);
+    });
     // Re-render the title text colour when the high-contrast setting changes
     // so canvas HUD text also benefits from the accessibility toggle.
     // Also refresh the coin icon when the color-blind mode changes.

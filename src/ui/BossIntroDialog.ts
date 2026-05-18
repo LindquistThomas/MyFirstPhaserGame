@@ -17,7 +17,10 @@ export class BossIntroDialog extends ModalBase {
   private confirmHandler: (() => void) | null = null;
 
   constructor(scene: Phaser.Scene, onComplete: () => void) {
-    super(scene);
+    super(scene, {
+      title: 'Face the CEO',
+      description: 'Boss fight introduction and controls.',
+    });
     this.onComplete = onComplete;
     this.buildPanel();
     this.fadeIn();

@@ -56,7 +56,8 @@ const CATEGORIES: Array<{ header: string; actions: GameAction[] }> = [
 
 type ListItem =
   | { kind: 'header'; label: string }
-  | { kind: 'action'; action: GameAction };
+  | { kind: 'action'; action: GameAction }
+  | { kind: 'hotkey'; label: string; key: string };
 
 /**
  * Read-only controls reference modal.
@@ -92,7 +93,10 @@ export class ControlsReferenceModal extends ModalBase {
     onClose: () => void = () => { /* no-op */ },
     onRebind?: () => void,
   ) {
-    super(scene);
+    super(scene, {
+      title: 'Controls Reference',
+      description: 'Read-only list of current key bindings.',
+    });
     this.onClose = onClose;
     this.onRebind = onRebind;
 
@@ -104,6 +108,9 @@ export class ControlsReferenceModal extends ModalBase {
         this.listItems.push({ kind: 'action', action });
       }
     }
+    // Global shortcuts (raw window-level hotkeys, not rebindable via InputService)
+    this.listItems.push({ kind: 'header', label: 'GLOBAL SHORTCUTS' });
+    this.listItems.push({ kind: 'hotkey', label: 'Toggle Mute', key: 'M' });
 
     // Click-outside-to-close: attach to the ModalBase dim overlay (always the
     // first container child). Only close when the pointer is genuinely outside
@@ -288,6 +295,12 @@ export class ControlsReferenceModal extends ModalBase {
         // Subtle tinted background for category headers
         this.highlightBar.fillStyle(theme.color.ui.accent, 0.06);
         this.highlightBar.fillRect(panelX + 4, y - 2, PANEL_W - 8, ROW_H - 4);
+      } else if (item.kind === 'hotkey') {
+        rowLbl.setText(item.label)
+          .setColor(theme.color.css.textPrimary)
+          .setFontSize('14px');
+        rowKey.setText(item.key)
+          .setColor(theme.color.css.textMuted);
       } else {
         const { action } = item;
         const keys = effective[action];

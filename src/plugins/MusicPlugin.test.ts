@@ -64,26 +64,45 @@ function makeFakeEvents(): FakeEvents {
 interface FakeLoader {
   loadedKeys: string[];
   onceHandlers: Record<string, (() => void)[]>;
+  onHandlers: Record<string, ((file: { key: string; src: string }) => void)[]>;
   audio: ReturnType<typeof vi.fn>;
   once: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
+  off: ReturnType<typeof vi.fn>;
   start: ReturnType<typeof vi.fn>;
   /** Helper: fire the filecomplete event for a key (simulates Phaser finishing load). */
   triggerComplete: (key: string) => void;
+  /** Helper: fire the loaderror event for a key (simulates Phaser failing to load). */
+  triggerError: (key: string, src?: string) => void;
 }
 
 function makeFakeLoader(): FakeLoader {
   const loader: FakeLoader = {
     loadedKeys: [],
     onceHandlers: {},
+    onHandlers: {},
     audio: vi.fn((key: string) => { loader.loadedKeys.push(key as string); }),
     once: vi.fn((event: string, fn: () => void) => {
       (loader.onceHandlers[event as string] ??= []).push(fn);
+    }),
+    on: vi.fn((event: string, fn: (file: { key: string; src: string }) => void) => {
+      (loader.onHandlers[event as string] ??= []).push(fn);
+    }),
+    off: vi.fn((event: string, fn: (file: { key: string; src: string }) => void) => {
+      const list = loader.onHandlers[event as string];
+      if (!list) return;
+      const i = list.indexOf(fn);
+      if (i >= 0) list.splice(i, 1);
     }),
     start: vi.fn(),
     triggerComplete(key: string) {
       const ev = `filecomplete-audio-${key}`;
       for (const fn of (loader.onceHandlers[ev] ?? [])) fn();
       delete loader.onceHandlers[ev];
+    },
+    triggerError(key: string, src = `music/${key}.ogg`) {
+      const handlers = (loader.onHandlers['loaderror'] ?? []).slice();
+      for (const fn of handlers) fn({ key, src });
     },
   };
   return loader;
@@ -499,6 +518,83 @@ describe('prefetchSceneMusic()', () => {
     prefetchSceneMusic(fakeScene as never, 'PlatformTeamScene');
 
     expect(playSpy).not.toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ── music:load-error emission tests ────────────────────────────────────────
+// Verify that playOrLoad() and loadAndEmitPush() emit music:load-error when
+// the Phaser loader reports a loaderror for the queued file.
+
+describe('MusicPlugin — music:load-error emission', () => {
+  beforeEach(() => {
+    eventBus.removeAllListeners();
+  });
+
+  it('playOrLoad() emits music:load-error when the file fails to load', () => {
+    const { plugin, fakeScene } = mountPlugin('MenuScene');
+    const errorSpy = vi.fn();
+    eventBus.on('music:load-error', errorSpy);
+
+    plugin.playOrLoad('music_menu');
+    fakeScene.load.triggerError('music_menu');
+
+    expect(errorSpy).toHaveBeenCalledWith({
+      key: 'music_menu',
+      url: expect.stringContaining('music_menu'),
+    });
+    // music:play must NOT fire on error
+    const playSpy = vi.fn();
+    eventBus.on('music:play', playSpy);
+    expect(playSpy).not.toHaveBeenCalled();
+  });
+
+  it('playOrLoad() does NOT emit music:load-error after a successful load', () => {
+    const { plugin, fakeScene } = mountPlugin('MenuScene');
+    const errorSpy = vi.fn();
+    eventBus.on('music:load-error', errorSpy);
+
+    plugin.playOrLoad('music_menu');
+    fakeScene.load.triggerComplete('music_menu');
+
+    // Trigger error for a DIFFERENT key — our handler should have been removed.
+    fakeScene.load.triggerError('music_menu');
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('playOrLoad() ignores loaderror events for other keys', () => {
+    const { plugin, fakeScene } = mountPlugin('MenuScene');
+    const errorSpy = vi.fn();
+    eventBus.on('music:load-error', errorSpy);
+
+    plugin.playOrLoad('music_menu');
+    fakeScene.load.triggerError('music_other_key');
+
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('loadAndEmitPush() emits music:load-error when the file fails to load', () => {
+    const { plugin, fakeScene } = mountPlugin('PlatformTeamScene');
+    const errorSpy = vi.fn();
+    eventBus.on('music:load-error', errorSpy);
+
+    plugin.loadAndEmitPush('music_quiz');
+    fakeScene.load.triggerError('music_quiz');
+
+    expect(errorSpy).toHaveBeenCalledWith({
+      key: 'music_quiz',
+      url: expect.stringContaining('music_quiz'),
+    });
+  });
+
+  it('loadAndEmitPush() does NOT emit music:push after a load error', () => {
+    const { plugin, fakeScene } = mountPlugin('PlatformTeamScene');
+    const pushSpy = vi.fn();
+    eventBus.on('music:push', pushSpy);
+
+    plugin.loadAndEmitPush('music_quiz');
+    fakeScene.load.triggerError('music_quiz');
+
     expect(pushSpy).not.toHaveBeenCalled();
   });
 });

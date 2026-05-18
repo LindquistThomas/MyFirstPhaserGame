@@ -91,7 +91,10 @@ export class BombDisarmDialog extends ModalBase {
   private flashTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, opts: BombDisarmOptions) {
-    super(scene);
+    super(scene, {
+      title: 'Bomb Disarm Sequence',
+      description: 'Cut wires in the shown order before time runs out.',
+    });
     this.opts = { timeLimit: 12, ...opts };
     this.timeRemaining = this.opts.timeLimit;
     this.reducedMotion = settingsStore.read().reducedMotion;

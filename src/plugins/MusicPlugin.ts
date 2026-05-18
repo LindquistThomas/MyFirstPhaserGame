@@ -113,7 +113,14 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
     // Using 'once' on filecomplete so each plugin instance fires at most once
     // per load — AudioManager's same-key guard handles any duplicate emits.
     scene.load.audio(musicKey, path);
+    const onError = (file: { key: string; src: string }): void => {
+      if (file.key !== musicKey) return;
+      scene.load.off('loaderror', onError);
+      eventBus.emit('music:load-error', { key: musicKey, url: file.src ?? '' });
+    };
+    scene.load.on('loaderror', onError);
     scene.load.once(`filecomplete-audio-${musicKey}`, () => {
+      scene.load.off('loaderror', onError);
       eventBus.emit('music:play', musicKey);
     });
     scene.load.start();
@@ -138,7 +145,14 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
     }
 
     scene.load.audio(musicKey, path);
+    const onError = (file: { key: string; src: string }): void => {
+      if (file.key !== musicKey) return;
+      scene.load.off('loaderror', onError);
+      eventBus.emit('music:load-error', { key: musicKey, url: file.src ?? '' });
+    };
+    scene.load.on('loaderror', onError);
     scene.load.once(`filecomplete-audio-${musicKey}`, () => {
+      scene.load.off('loaderror', onError);
       eventBus.emit('music:push', musicKey);
     });
     scene.load.start();
