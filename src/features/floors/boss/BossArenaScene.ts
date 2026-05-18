@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, FLOORS } from '../../../config/gameConfig';
+import { LEVEL_DATA } from '../../../config/levelData';
 import { Player } from '../../../entities/Player';
 import { CEOBoss } from '../../../entities/CEOBoss';
 import { CoffeeMugProjectile } from '../../../entities/CoffeeMugProjectile';
@@ -198,6 +199,7 @@ export class BossArenaScene extends Phaser.Scene {
     const isFirstVisit = !this.progression.hasVisitedFloor(FLOORS.BOSS);
     this.progression.markFloorVisited(FLOORS.BOSS);
     this.gameState.checkAchievements();
+    this.announceFloorEntry();
 
     this.scopedEvents.on('boss:phase_changed', this.onPhaseChanged);
     const lc = createSceneLifecycle(this);
@@ -814,11 +816,20 @@ export class BossArenaScene extends Phaser.Scene {
       this.floorHazard.registerCheckpoint(cpX, cpY);
       this.progression.activateCheckpoint(FLOORS.BOSS, cpId);
       eventBus.emit('checkpoint:activate', cpId);
+      eventBus.emit('checkpoint:reached', { index: 1, total: 1 });
     }, activatedOnSpawn);
     if (activatedOnSpawn) {
       this.floorHazard.registerCheckpoint(cpX, cpY);
     }
     cp.wireOverlap(this.physics, this.player.sprite);
+  }
+
+  private announceFloorEntry(): void {
+    eventBus.emit('scene:floor-entered', {
+      floorId: FLOORS.BOSS,
+      displayName: LEVEL_DATA[FLOORS.BOSS].name,
+      objective: this.getObjectiveText(),
+    });
   }
 
   private getCheckpointPlacement(): { cpX: number; cpY: number; defaultSpawn: { x: number; y: number } } {
