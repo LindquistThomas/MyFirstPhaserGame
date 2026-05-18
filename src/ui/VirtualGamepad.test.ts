@@ -61,6 +61,7 @@ import {
   registerReactiveDetection,
   initVirtualGamepad,
   updateVirtualGamepadContrast,
+  forceShowVirtualGamepad,
   _resetReactiveDetected,
   _destroyVirtualGamepadForTests,
   _disposeVirtualGamepadEventBusBindings,
@@ -404,6 +405,37 @@ describe('updateVirtualGamepadContrast', () => {
     expect(pad.classList.contains('vpad-high-contrast')).toBe(false);
     updateVirtualGamepadContrast(true);
     expect(pad.classList.contains('vpad-high-contrast')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('forceShowVirtualGamepad', () => {
+  beforeEach(() => {
+    _resetReactiveDetected();
+    vi.mocked(touchPrimary.isTouchPrimary).mockReturnValue(false);
+    mockSetting('never');
+    document.getElementById('virtual-pad')?.remove();
+    vi.mocked(TouchHintOverlay.showTouchHintIfNotSeen).mockClear();
+  });
+
+  afterEach(() => {
+    _destroyVirtualGamepadForTests();
+    document.getElementById('virtual-pad')?.remove();
+    vi.restoreAllMocks();
+  });
+
+  it('force-shows the pad and routes through showTouchHintIfNotSeen', () => {
+    forceShowVirtualGamepad(true);
+    expect(getPad()?.classList.contains('active')).toBe(true);
+    expect(TouchHintOverlay.showTouchHintIfNotSeen).toHaveBeenCalledTimes(1);
+  });
+
+  it('force-hide destroys the mounted pad', () => {
+    forceShowVirtualGamepad(true);
+    expect(getPad()).not.toBeNull();
+
+    forceShowVirtualGamepad(false);
+    expect(getPad()).toBeNull();
   });
 });
 

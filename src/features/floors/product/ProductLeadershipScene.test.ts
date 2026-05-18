@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { assertValidLevelConfig } from '../_shared/validateLevelConfig';
 import type { LevelConfig } from '../_shared/LevelScene';
 import { INFO_POINTS, preloadInfoFor } from '../../../config/info';
-import { GAME_WIDTH, GAME_HEIGHT, FLOORS } from '../../../config/gameConfig';
+import { GAME_WIDTH, GAME_HEIGHT, TILE_SIZE, FLOORS } from '../../../config/gameConfig';
 
 vi.mock('phaser', () => {
   class Scene {
@@ -14,6 +14,9 @@ vi.mock('phaser', () => {
 vi.mock('../_shared/LevelScene', () => ({
   LevelScene: class LevelScene {
     protected floorId: unknown;
+    public add = {
+      image: vi.fn(() => ({ setDepth: vi.fn() })),
+    };
     constructor(_key: string, floorId: unknown) {
       this.floorId = floorId;
     }
@@ -27,6 +30,8 @@ vi.mock('../_shared/LevelScene', () => ({
         playerStart: { x: 0, y: 0 },
       };
     }
+    protected addAmbientPlants(_plants: unknown): void {}
+    protected addSignpost(_config: unknown): void {}
   },
 }));
 
@@ -35,6 +40,10 @@ import { ProductLeadershipScene } from './ProductLeadershipScene';
 class TestableProductLeadershipScene extends ProductLeadershipScene {
   public getConfig(): LevelConfig {
     return this.getLevelConfig();
+  }
+
+  public runCreateDecorations(): void {
+    this.createDecorations();
   }
 }
 
@@ -93,5 +102,37 @@ describe('ProductLeadershipScene — LevelConfig', () => {
     expect(typeof cfg.exitPosition.y).toBe('number');
     expect(typeof cfg.playerStart.x).toBe('number');
     expect(typeof cfg.playerStart.y).toBe('number');
+  });
+
+  it('creates the expected product leadership decorations', () => {
+    const scene = new TestableProductLeadershipScene() as TestableProductLeadershipScene & {
+      addAmbientPlants: (...args: unknown[]) => void;
+      addSignpost: (...args: unknown[]) => void;
+      add: { image: (...args: unknown[]) => { setDepth: (...depthArgs: unknown[]) => void } };
+    };
+    const addAmbientPlants = vi.fn();
+    const addSignpost = vi.fn();
+    const addImage = vi.fn(() => ({ setDepth: vi.fn() }));
+    scene.addAmbientPlants = addAmbientPlants as unknown as typeof scene.addAmbientPlants;
+    scene.addSignpost = addSignpost as unknown as typeof scene.addSignpost;
+    scene.add.image = addImage as unknown as typeof scene.add.image;
+
+    scene.runCreateDecorations();
+
+    expect(addAmbientPlants).toHaveBeenCalledWith([
+      { x: 90, kind: 'tall' },
+      { x: 160, kind: 'small' },
+    ]);
+    expect(addSignpost).toHaveBeenCalledWith(expect.objectContaining({
+      x: 230,
+      label: '  PRODUCT\nLEADERSHIP',
+      color: '#ffd6f0',
+      fontSize: 12,
+    }));
+    expect(addImage).toHaveBeenCalledTimes(4);
+    expect(addImage).toHaveBeenNthCalledWith(1, 560, GAME_HEIGHT - TILE_SIZE - 36, 'desk_monitor');
+    expect(addImage).toHaveBeenNthCalledWith(2, 720, GAME_HEIGHT - TILE_SIZE - 22, 'monitor_dash');
+    expect(addImage).toHaveBeenNthCalledWith(3, 900, GAME_HEIGHT - TILE_SIZE - 36, 'desk_monitor');
+    expect(addImage).toHaveBeenNthCalledWith(4, 1080, GAME_HEIGHT - TILE_SIZE - 22, 'monitor_dash');
   });
 });

@@ -23,7 +23,7 @@ test.describe('Menu scene', () => {
     errors.assertClean();
   });
 
-  test('keyboard Down Down Enter activates the third menu option', async ({ page }) => {
+  test('keyboard navigation can open settings from the menu list', async ({ page }) => {
     await clearStorage(page);
     const errors = attachErrorWatchers(page);
 
@@ -31,8 +31,24 @@ test.describe('Menu scene', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
+    const settingsIndex = await page.evaluate(() => {
+      const game = window.__game as unknown as {
+        scene: {
+          getScenes: (active?: boolean) => Array<{ sys: { settings: { key: string } } }>;
+        };
+      };
+      const scene = game.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'MenuScene') as unknown as {
+          ['menuButtons']?: Array<{ btn?: { text?: string } }>;
+        } | undefined;
+      if (!scene?.['menuButtons']) throw new Error('Menu buttons not found');
+      return scene['menuButtons'].findIndex((entry) => entry.btn?.text === '[ SETTINGS ]');
+    });
+    expect(settingsIndex).toBeGreaterThanOrEqual(0);
+    for (let i = 0; i < settingsIndex; i += 1) {
+      await page.keyboard.press('ArrowDown');
+    }
     await page.keyboard.press('Enter');
 
     await waitForScene(page, 'SettingsScene');
@@ -89,22 +105,6 @@ test.describe('Menu scene', () => {
         .cache.audio.exists('music_elevator_jazz'),
     );
     expect(stillCached).toBe(true);
-    errors.assertClean();
-  });
-
-  test('keyboard Down Down Enter activates the third menu option', async ({ page }) => {
-    await clearStorage(page);
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('Enter');
-
-    await waitForScene(page, 'SettingsScene');
     errors.assertClean();
   });
 });

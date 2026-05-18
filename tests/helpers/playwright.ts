@@ -205,6 +205,22 @@ export async function navigateToElevator(page: Page): Promise<void> {
   await page.keyboard.press('Enter');
   await waitForScene(page, 'SaveSlotScene');
   await page.keyboard.press('Enter');
+  const actionPickerOpened = await page
+    .waitForFunction(() => {
+      const g = window.__game;
+      if (!g) return false;
+      const saveSlotScene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'SaveSlotScene') as unknown as
+          | { ['inActionSelect']?: boolean }
+          | undefined;
+      return saveSlotScene?.['inActionSelect'] === true;
+    }, undefined, { timeout: 1_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (actionPickerOpened) {
+    await page.keyboard.press('Enter');
+  }
   await waitForScene(page, 'ElevatorScene');
 }
 
