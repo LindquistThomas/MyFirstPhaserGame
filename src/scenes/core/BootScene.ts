@@ -14,6 +14,7 @@ import { createAnalyticsService } from '../../systems/Analytics';
 import { setDailyState } from '../../systems/DailyChallenge';
 import { preloadInfoFor } from '../../config/info';
 import { preloadQuizFor } from '../../config/quiz';
+import { getWorldModifiers } from '../../systems/WorldModifiers';
 
 /** Count of static assets that failed to load during this boot pass. */
 let _bootAssetErrorCount = 0;
