@@ -93,12 +93,13 @@ vi.mock('../../config/gameConfig', () => ({
 vi.mock('../../style/theme', () => ({ theme: { color: { ui: { accent: 0xffffff } } } }));
 vi.mock('../../config/info', () => ({ preloadInfoFor: vi.fn(() => Promise.resolve()) }));
 vi.mock('../../config/quiz', () => ({ preloadQuizFor: vi.fn(() => Promise.resolve()) }));
+vi.mock('../../systems/WorldModifiers', () => ({ getWorldModifiers: vi.fn(() => ({})) }));
 
 // isPersistenceAvailable is the module under test — NOT mocked by default.
 // Individual tests that need to control the return value use vi.spyOn.
 
 import { eventBus } from '../../systems/EventBus';
-import { BootScene } from './BootScene';
+import { BootScene, deriveBootBudget } from './BootScene';
 import * as PersistedStore from '../../systems/PersistedStore';
 import * as InfoModule from '../../config/info';
 import * as QuizModule from '../../config/quiz';
@@ -403,5 +404,35 @@ describe('BootScene — eager info/quiz preloads', () => {
     }
     vi.useRealTimers();
     (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
+  });
+});
+
+describe('deriveBootBudget — adaptive phase yield budget math', () => {
+  it('returns 8 ms for a very fast device (phase ≤ 16 ms)', () => {
+    expect(deriveBootBudget(0)).toBe(8);
+    expect(deriveBootBudget(5)).toBe(8);
+    expect(deriveBootBudget(16)).toBe(8);
+  });
+
+  it('returns half the measured ms for mid-range devices (17 ms ≤ phase < 32 ms)', () => {
+    expect(deriveBootBudget(17)).toBeCloseTo(8.5);
+    expect(deriveBootBudget(20)).toBe(10);
+    expect(deriveBootBudget(24)).toBe(12);
+    expect(deriveBootBudget(30)).toBe(15);
+    expect(deriveBootBudget(31)).toBeCloseTo(15.5);
+  });
+
+  it('returns 16 ms for a slow device (phase >= 32 ms)', () => {
+    expect(deriveBootBudget(32)).toBe(16);
+    expect(deriveBootBudget(60)).toBe(16);
+    expect(deriveBootBudget(100)).toBe(16);
+  });
+
+  it('is clamped to min 8 ms regardless of very short phase times', () => {
+    expect(deriveBootBudget(1)).toBeGreaterThanOrEqual(8);
+  });
+
+  it('is clamped to max 16 ms regardless of very long phase times', () => {
+    expect(deriveBootBudget(1000)).toBeLessThanOrEqual(16);
   });
 });

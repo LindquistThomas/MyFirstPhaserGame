@@ -425,6 +425,50 @@ describe('HUD', () => {
     expect(showSpy).toHaveBeenCalledWith(expect.stringContaining('Storage full'));
   });
 
+  it('shows muted toast when audio:mute-toggled fires with muted=true, persisted=true', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string, duration?: number) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('audio:mute-toggled', { muted: true, persisted: true });
+    expect(showSpy).toHaveBeenCalledWith(expect.stringContaining('Muted (M)'), 1_500);
+    expect(showSpy.mock.calls[0]?.[0]).not.toContain('not saved');
+  });
+
+  it('shows unmuted toast when audio:mute-toggled fires with muted=false, persisted=true', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string, duration?: number) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('audio:mute-toggled', { muted: false, persisted: true });
+    expect(showSpy).toHaveBeenCalledWith(expect.stringContaining('Unmuted (M)'), 1_500);
+    expect(showSpy.mock.calls[0]?.[0]).not.toContain('not saved');
+  });
+
+  it('appends "not saved" when audio:mute-toggled fires with persisted=false', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string, duration?: number) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    eventBus.emit('audio:mute-toggled', { muted: true, persisted: false });
+    expect(showSpy).toHaveBeenCalledWith(expect.stringContaining('not saved'), 1_500);
+  });
+
+  it('unsubscribes audio:mute-toggled toast handler on shutdown', () => {
+    scene = makeScene(false);
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression);
+    const toast = (hud as unknown as { toast: { show: (msg: string, duration?: number) => void } }).toast;
+    const showSpy = vi.spyOn(toast, 'show').mockImplementation(() => {});
+
+    scene.events.emit('shutdown');
+    showSpy.mockClear();
+    eventBus.emit('audio:mute-toggled', { muted: true, persisted: true });
+    expect(showSpy).not.toHaveBeenCalled();
+  });
+
   it('destroys subcontrollers and toast on shutdown', () => {
     scene = makeScene(false);
     const hud = new HUD(scene as unknown as Phaser.Scene, progression) as unknown as {

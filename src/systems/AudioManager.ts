@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { eventBus, type GameEventName, type GameEventHandler } from './EventBus';
 import { SFX_EVENTS, MUSIC_VOLUME, MUSIC_FADE_MS, AMBIENCE_VOLUME } from '../config/audioConfig';
-import { settingsStore } from './SettingsStore';
+import { settingsStore, SETTINGS_STORAGE_KEY } from './SettingsStore';
 
 /**
  * Thin wrapper around Phaser's sound manager.
@@ -365,7 +365,21 @@ export class AudioManager {
   }
 
   toggleMute(): void {
+    // Track whether the settings write succeeds (storage may be unavailable
+    // or over quota in private-browsing or restrictive environments).
+    // The subscription window is bounded entirely by the synchronous
+    // `settingsStore.toggleMute()` call below — JavaScript's single-threaded
+    // model ensures no other caller can fire `persistence:error` for
+    // SETTINGS_STORAGE_KEY between the `on` and `off` calls.
+    let persisted = true;
+    const onError = (key: string): void => {
+      if (key === SETTINGS_STORAGE_KEY) persisted = false;
+    };
+    eventBus.on('persistence:error', onError);
     settingsStore.toggleMute();
+    eventBus.off('persistence:error', onError);
+    const muted = settingsStore.read().muteAll;
+    eventBus.emit('audio:mute-toggled', { muted, persisted });
     // applyVolumeSettings is called via the audio:volume-changed event emitted
     // by settingsStore.update(), so we only need to keep isMuted() consistent.
   }

@@ -37,7 +37,11 @@ export class SaveRecoveryDialog extends ModalBase {
     reason: FailureReason,
     onDismiss: () => void = () => { /* no-op */ },
   ) {
-    super(scene);
+    const slotNum = SAVE_SLOTS.indexOf(slotId) + 1;
+    super(scene, {
+      title: `Save Data Recovery Slot ${slotNum}`,
+      description: `Recovery reason: ${REASON_TEXT[reason] ?? REASON_TEXT['unknown']}`,
+    });
     this.slotId = slotId;
     this.onDismiss = onDismiss;
     this.nav = new ModalKeyboardNavigator(scene);

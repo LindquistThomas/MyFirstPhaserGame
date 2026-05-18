@@ -24,7 +24,10 @@ export class NpcDialog extends ModalBase {
   private source: 'llm' | 'fallback' = 'fallback';
 
   constructor(scene: Phaser.Scene, private readonly options: NpcDialogOptions) {
-    super(scene);
+    super(scene, {
+      title: `${options.npcName} question`,
+      description: `Architecture topic: ${options.topic}.`,
+    });
     this.nav = new ModalKeyboardNavigator(scene);
     this.registerKeyboardBindings();
     this.showLoading();

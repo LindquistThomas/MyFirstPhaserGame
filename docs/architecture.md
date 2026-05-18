@@ -14,6 +14,7 @@ src/
 │   ├── gameConfig.ts         World dimensions, physics, colours, FLOORS enum.
 │   ├── levelData.ts          Per-floor metadata: name, scene key, AU thresholds, theme.
 │   ├── levelGeometry.ts      Shared geometry constants — mezzanine tier Y positions and catwalk thicknesses.
+│   ├── npcQuestionBank.ts    NPC question catalogue + random-per-floor/topic selector.
 │   ├── info/                 Barrel — merges per-floor info into INFO_POINTS.
 │   │   ├── index.ts          Re-export barrel + `getInfoPointsFor(floorId)`.
 │   │   └── types.ts          `InfoPointDef` shape.
@@ -31,6 +32,10 @@ src/
 │       │   ├── LevelDialogBindings.ts  Wires dialog triggers to zones.
 │       │   ├── LevelCoffeeManager.ts   Spawns coffee powerup pickups.
 │       │   ├── LevelFridgeManager.ts   Spawns energy-drink fridges + buff trigger.
+│       │   ├── LevelShadowController.ts Renders per-player/enemy drop shadows.
+│       │   ├── LevelHUDBindings.ts    Wires HUD updates/toasts to LevelScene state.
+│       │   ├── LevelHeartbeatSfx.ts   Controls danger heartbeat SFX + vignette.
+│       │   ├── LevelNpcManager.ts     Spawns NPCs, interaction prompts, and dialog hand-off.
 │       │   ├── LevelRoomElevators.ts   In-room elevator triggers (inter-room transport).
 │       │   ├── floorAccents.ts         Per-floor silhouette accent + ambient tween.
 │       │   ├── floorPatterns.ts        Themed decorative patterns for scene backdrop.
@@ -68,6 +73,7 @@ src/
 │   ├── CoffeeMugProjectile.ts  Mug projectile thrown by player (boss arena).
 │   ├── MissionItem.ts          Mission item pickup (e.g. pistol in executive rescue).
 │   ├── PistolProjectile.ts     Pistol projectile (executive rescue).
+│   ├── Npc.ts                NPC sprite entity used by `LevelNpcManager`.
 │   ├── Enemy.ts              Shared enemy base (physics, damage, death cues).
 │   └── enemies/              Per-enemy config & behaviour.
 │       ├── Slime.ts
@@ -79,7 +85,7 @@ src/
 ├── input/                    Semantic-action input layer.
 │   ├── index.ts              Facade — the only import surface the rest of the game uses.
 │   ├── InputService.ts       Keyboard/touch → semantic actions; context stack.
-│   ├── actions.ts            GameAction catalog ("move-left", "jump", …).
+│   ├── actions.ts            GameAction catalog ('MoveLeft', 'Jump', …).
 │   ├── bindings.ts           Default key bindings per action context.
 │   ├── pointerBindings.ts    Touch/pointer action bindings.
 │   ├── keyLabels.ts          Human-readable key names for UI hints.
@@ -117,8 +123,10 @@ src/
 ├── systems/                  Cross-cutting logic — no Phaser GameObject deps.
 │   ├── EventBus.ts           Typed pub/sub; `GameEvents` is the event catalog.
 │   ├── GameStateManager.ts   Composition root — owns ProgressionSystem + PlaytimeTracker; exposes facades over SaveManager, QuizManager, InfoDialogManager, AchievementManager, TouchHintStore.
+│   ├── GameMode.ts           Game-mode type guards/constants (`normal` and `ngplus`).
 │   ├── ZoneManager.ts        Proximity zones; emits `zone:enter/exit`.
 │   ├── ProgressionSystem.ts  AU accumulation, floor unlocks, token dedupe.
+│   ├── WorldModifiers.ts     Per-game-mode combat/quiz multipliers (enemy damage/speed, boss HP, hard-quiz toggle).
 │   ├── SaveManager.ts        LocalStorage with pluggable `KVStorage` for tests.
 │   ├── QuizManager.ts        Quiz pass/fail records + retry cooldowns.
 │   ├── InfoDialogManager.ts  Remembers which info points have been seen.
@@ -126,15 +134,19 @@ src/
 │   ├── AudioManager.ts       Subscribes to music/sfx events; plays via WebAudio.
 │   ├── SettingsStore.ts      Persisted volume levels + motion/control overrides.
 │   ├── MotionPreference.ts   Reduced-motion helper (reads OS preference + settings).
+│   ├── motionTween.ts        Reduced-motion tween helpers (`reducedDuration`, `shouldSkipTween`).
 │   ├── CaffeineBuff.ts       Pure timer for caffeine buff; callers supply `now`.
 │   ├── DailyChallenge.ts     Daily challenge state helpers: UTC date key, seed + slot-id derivation, midnight timer, and registry read/write.
 │   ├── DailyChallengeStore.ts Persisted daily results store (architect_daily_results_v1) with best-time updates, recent-history reads, and streak checks.
 │   ├── FloorHitState.ts      Per-floor hit / checkpoint tracking; pure (no Phaser/eventBus); 3-hit forced respawn threshold.
+│   ├── ContentCache.ts       Versioned localStorage cache for parsed info/quiz content.
 │   ├── PersistedStore.ts     Generic JSON-backed key/value store factory.
 │   ├── SeededRandom.ts       Deterministic mulberry32 PRNG for seeded systems (daily challenge layout, etc.).
 │   ├── TouchHintStore.ts     Persistent flag for first-run virtual-gamepad hint.
 │   ├── PlaytimeTracker.ts    Total + per-floor active-playtime accumulator; persists via PlaytimeSaveAdapter (10 s flush throttle).
 │   ├── Analytics.ts          Opt-in analytics service. Gated on VITE_ANALYTICS_ENDPOINT (build) + SettingsStore.analyticsConsent (runtime). Stashed on scene.registry under "analytics" by BootScene.
+│   ├── llm/                  LLM-backed helpers for dynamic NPC quiz prompts.
+│   │   └── LlmClient.ts      OpenAI chat client with payload validation + fallback to npcQuestionBank.
 │   ├── DailyChallenge.ts     Daily challenge mode — UTC date → deterministic seed; slot id `daily_<YYYYMMDD>`. Persists results via DailyChallengeStore.
 │   ├── DailyChallengeStore.ts  Per-day result persistence (localStorage `architect_daily_results_v1`).
 │   ├── SeededRandom.ts       Deterministic PRNG (used by DailyChallenge).
@@ -161,18 +173,24 @@ src/
 │   ├── BossIntroDialog.ts      Boss-arena intro modal (extends ModalBase).
 │   ├── CallElevatorButton.ts   Call-elevator action button.
 │   ├── ModalBase.ts          Overlay + fade + Esc-key scaffolding for dialogs.
+│   ├── ButtonListNavigator.ts  Shared keyboard nav for list-of-buttons modals.
 │   ├── ModalKeyboardNavigator.ts  Shared keyboard nav for InfoDialog + QuizDialog.
+│   ├── ControlsReferenceModal.ts  Read-only controls reference modal.
 │   ├── AchievementsDialog.ts Modal listing all achievements with lock/unlock status.
 │   ├── WelcomeModal.ts       First-launch onboarding modal (extends ModalBase).
 │   ├── InfoDialog.ts         Info content modal (extends ModalBase).
+│   ├── NpcDialog.ts          NPC question + answer modal (extends ModalBase).
 │   ├── QuizDialog.ts         Quiz flow modal (extends ModalBase).
 │   ├── QuizResultsScreen.ts  Extracted results screen used by QuizDialog.
+│   ├── SaveRecoveryDialog.ts Save-corruption recovery modal (extends ModalBase).
 │   ├── DialogController.ts   Orchestrates info → quiz → badge-refresh flow.
 │   ├── InfoIcon.ts           Floating "i" icon with quiz badge.
 │   ├── Toast.ts              Corner-of-screen transient notification (fade in/out).
 │   ├── ControlHintsOverlay.ts  Transient key-hint chips shown on first lobby entry.
 │   ├── InteractiveDoor.ts    Door sprite toggling open texture on interaction range.
 │   ├── HUD.ts                AU counter, floor label.
+│   ├── ObjectiveBanner.ts    Floor-entry / objective banner with fade-in.
+│   ├── SceneLoadingOverlay.ts  Loading overlay shown while a lazy scene fetches.
 │   ├── hud/                  Per-HUD-feature controllers — one per feature.
 │   │   ├── AchievementBadgeController.ts  Toast badge for unlocked achievements.
 │   │   ├── CaffeineRingController.ts      Caffeine-buff ring overlay around AU counter.
@@ -365,7 +383,7 @@ automatically.
 | `sfx:hit`            | —       | Player (damage)             | AudioManager |
 | `sfx:stomp`          | —       | Enemy (stomped)             | AudioManager |
 | `sfx:heartbeat`      | —       | Player (danger zone)        | AudioManager |
-| `sfx:drop_au`        | —       | Player (AU dropped on hit)  | AudioManager |
+| `sfx:drop_au`        | —       | LevelEnemySpawner           | AudioManager |
 | `sfx:recover_au`     | —       | Player (AU recovered)       | AudioManager |
 | `sfx:coffee_sip`     | —       | Coffee                      | AudioManager |
 | `sfx:fridge_open`    | —       | EnergyDrinkFridge           | AudioManager |
@@ -374,12 +392,12 @@ automatically.
 | `sfx:boss_defeated`  | —       | TerroristCommander          | AudioManager |
 | `sfx:boss_phase_2`   | —       | CEOBoss                     | AudioManager |
 | `sfx:boss_phase_3`   | —       | CEOBoss                     | AudioManager |
-| `sfx:mug_throw`      | —       | Player (mug projectile)     | AudioManager |
+| `sfx:mug_throw`      | —       | BossArenaScene              | AudioManager |
 | `sfx:briefcase_throw`| —       | CEOBoss                     | AudioManager |
 | `sfx:item_pickup`    | —       | MissionItem                 | AudioManager |
 | `sfx:bomb_disarm`    | —       | ExecutiveSuiteScene         | AudioManager |
 | `sfx:hostage_freed`  | —       | ExecutiveSuiteScene         | AudioManager |
-| `sfx:pistol_shot`    | —       | CEOBoss (pistol)            | AudioManager |
+| `sfx:pistol_shot`    | —       | ExecutiveSuiteScene         | AudioManager |
 | `sfx:floor_unlocked` | —       | ProgressStripController (HUD) | AudioManager |
 
 #### `checkpoint:*` — save points
@@ -400,7 +418,7 @@ automatically.
 
 | Event               | Payload          | Emitters | Consumers     |
 |---------------------|------------------|----------|---------------|
-| `boss:defeated`     | —                | CEOBoss  | BossArenaScene |
+| `boss:defeated`     | —                | CEOBoss  | Analytics            |
 | `boss:phase_changed`| `phase: number`  | CEOBoss  | BossArenaScene |
 
 #### `buff:*` — player buffs
@@ -474,8 +492,14 @@ automatically.
 
 | Event              | Payload                                       | Emitters  | Consumers               |
 |--------------------|-----------------------------------------------|-----------|-------------------------|
-| `boot:reset`       | —                                             | BootScene | MusicPlugin             |
-| `boot:asset-error` | `{ key: string; type: string; url: string }`  | BootScene | MusicPlugin             |
+| `boot:reset`       | —                                             | BootScene | MusicPlugin, BootErrorToast |
+| `boot:asset-error` | `{ key: string; type: string; url: string }`  | BootScene | MusicPlugin, BootErrorToast |
+
+#### `music:load-error` — lazy-music failures
+
+| Event              | Payload                       | Emitters             | Consumers       |
+|--------------------|-------------------------------|----------------------|-----------------|
+| `music:load-error` | `{ key: string; url: string }`| MusicPlugin          | BootErrorToast  |
 
 ## Testing
 
@@ -490,16 +514,17 @@ automatically.
   `progression`, `visual`).
 - **Type safety** (`npm run build`) runs `tsc` strict before Vite
   bundles.
-- **Coverage thresholds** (`vitest.config.ts`): `src/systems/**` and
-  `src/input/**` at 80%; `src/ui/**` at 65% (60% branches);
-  `src/entities/**` at 60%; `src/scenes/**` at 20% (18% functions);
-  `src/features/floors/**` at 25% (20% branches, 25% functions, 25% statements).
-  `src/plugins/**`, `src/main.ts`, the procedural-generator modules
-  (`src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
-  `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`), and a
-  small list of UI files
-  (`src/ui/{ElevatorButtons,InfoDialog,InfoIcon,ModalBase,QuizDialog,QuizResultsScreen,ControlHintsOverlay,touchPrimary}.ts`)
-  are excluded entirely from coverage.
+- **Coverage thresholds** (`vitest.config.ts`): 80% (75% branches) on
+  `src/systems/**`; 80% on `src/input/**`; 75% (70% branches) on
+  `src/ui/**`; 60% on `src/entities/**`; 40% lines / 20% branches /
+  35% functions / 40% statements on `src/scenes/**`; 45% / 40% / 40% /
+  45% on `src/features/floors/**`; 75% / 60% / 70% / 75% on
+  `src/features/floors/boss/**`.
+  `src/**/*.test.ts`, `src/main.ts`, `src/plugins/**`,
+  `src/features/floors/boss/BossArenaScene.ts`,
+  `src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
+  `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`, and
+  `src/input/phaser-augment.d.ts` are excluded entirely from coverage.
 
 ## Key design choices
 
