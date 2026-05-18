@@ -71,4 +71,19 @@ describe('ElevatorLockedToast', () => {
 
     expect(toastDestroySpy).toHaveBeenCalledTimes(1);
   });
+
+  it('falls back to generic floor label when floor id is not in level data', () => {
+    const scene = makeScene();
+    new ElevatorLockedToast(scene as never);
+
+    scene._emitScoped('ui:locked-floor-attempted', {
+      floorId: 999,
+      requiredAu: 42,
+      currentAu: 0,
+    });
+
+    const expected = 'Floor 999 locked — need 42 AU (you have 0/42)';
+    expect(toastShowSpy).toHaveBeenCalledWith(expected, 2_000);
+    expect(announceSpy).toHaveBeenCalledWith(expected);
+  });
 });

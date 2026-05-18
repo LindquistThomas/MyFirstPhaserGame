@@ -352,4 +352,41 @@ describe('ElevatorPanel', () => {
     expect(hintTexts).toContain('28 AU');
     expect(hintTexts).not.toContain('0 AU');
   });
+
+  it('fades panel when player overlaps it while visible', () => {
+    const scene = makeScene();
+    const progression = makeProgression([FLOORS.LOBBY]);
+    const panel = new ElevatorPanel(
+      scene as unknown as Phaser.Scene,
+      progression as never,
+      vi.fn(),
+    );
+    panel.show();
+
+    panel.update(10, 10);
+
+    expect(scene.tweens.add).toHaveBeenCalledWith(expect.objectContaining({
+      alpha: 0.25,
+      duration: 150,
+    }));
+  });
+
+  it('restores panel opacity after player moves away', () => {
+    const scene = makeScene();
+    const progression = makeProgression([FLOORS.LOBBY]);
+    const panel = new ElevatorPanel(
+      scene as unknown as Phaser.Scene,
+      progression as never,
+      vi.fn(),
+    );
+    panel.show();
+
+    panel.update(10, 10);
+    panel.update(1000, 1000);
+
+    expect(scene.tweens.add).toHaveBeenCalledWith(expect.objectContaining({
+      alpha: 1,
+      duration: 150,
+    }));
+  });
 });
