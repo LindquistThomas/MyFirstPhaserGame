@@ -1,10 +1,10 @@
 import { registerSW } from 'virtual:pwa-register';
 
-function shouldDisableServiceWorker(): boolean {
+function shouldDisableServiceWorker() {
   return new URLSearchParams(window.location.search).get('nosw') === '1';
 }
 
-async function unregisterServiceWorker(): Promise<void> {
+async function unregisterServiceWorker() {
   try {
     if (!('serviceWorker' in navigator)) return;
     const registrations = await navigator.serviceWorker.getRegistrations();

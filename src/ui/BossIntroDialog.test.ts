@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type * as Phaser from 'phaser';
+import { promptLabel } from '../input';
 import { BossIntroDialog } from './BossIntroDialog';
 
 vi.mock('phaser', () => ({ default: {} }));
@@ -92,5 +93,59 @@ describe('BossIntroDialog', () => {
     expect(scene.inputs.off).toHaveBeenCalledWith('Confirm', expect.any(Function));
     expect(complete).toHaveBeenCalled();
     expect(dialog).toBeDefined();
+  });
+
+  it('renders compact move hint when left/right labels match', () => {
+    const promptLabelMock = promptLabel as unknown as ReturnType<typeof vi.fn>;
+    promptLabelMock.mockImplementation((action: string) => {
+      if (action === 'Attack') return 'X';
+      if (action === 'Jump') return 'Space';
+      if (action === 'MoveLeft' || action === 'MoveRight') return 'Arrows';
+      return 'Enter';
+    });
+
+    const scene = {
+      add: {
+        existing: vi.fn(),
+        container: vi.fn(() => ({
+          add: vi.fn(),
+          setDepth: vi.fn().mockReturnThis(),
+          setScrollFactor: vi.fn().mockReturnThis(),
+          setAlpha: vi.fn().mockReturnThis(),
+          removeAll: vi.fn(),
+          destroy: vi.fn(),
+        })),
+        rectangle: vi.fn(() => ({
+          setDepth: vi.fn().mockReturnThis(),
+          setScrollFactor: vi.fn().mockReturnThis(),
+          setInteractive: vi.fn().mockReturnThis(),
+          on: vi.fn().mockReturnThis(),
+          destroy: vi.fn(),
+        })),
+        graphics: vi.fn(() => makeGraphics()),
+        text: vi.fn(() => makeText()),
+      },
+      tweens: { add: vi.fn((cfg: { onComplete?: () => void }) => cfg.onComplete?.()) },
+      inputs: {
+        on: vi.fn(),
+        off: vi.fn(),
+        justPressed: vi.fn(() => false),
+      },
+      events: { once: vi.fn(), off: vi.fn() },
+      scale: { on: vi.fn(), off: vi.fn() },
+      cameras: { main: { width: 1280, height: 720 } },
+    } as unknown as Phaser.Scene;
+
+    const dialog = new BossIntroDialog(scene, vi.fn()) as unknown as {
+      onBeforeClose: () => void;
+      confirmHandler: (() => void) | null;
+    };
+    const controlsText = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls
+      .map((call) => call[2])
+      .find((value): value is string => typeof value === 'string' && value.includes('Move'));
+    expect(controlsText).toContain('Arrows');
+
+    dialog.confirmHandler = null;
+    expect(() => dialog.onBeforeClose()).not.toThrow();
   });
 });
