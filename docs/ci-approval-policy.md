@@ -41,6 +41,16 @@ In **Settings → Branches → `main` → Require status checks to pass before m
 Per-shard names are implementation details and can change over time. Branch protection
 must require only stable fan-in checks.
 
+## Copilot agent auto-merge
+
+The Copilot agent automation in [agent-automation.md](agent-automation.md)
+uses GitHub auto-merge rather than direct merges. Branch protection remains the
+gate: the auto-merge request only completes after the required checks above pass.
+
+For fully automatic Copilot-agent PRs, keep required pull request reviews
+disabled on `main`. If reviews are required, auto-merge will wait for a
+maintainer approval and is no longer fully automatic.
+
 ## Optional API command to set required checks (maintainer token required)
 
 ```bash

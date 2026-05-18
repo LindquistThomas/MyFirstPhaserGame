@@ -1,0 +1,117 @@
+name: Copilot issue routing
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: copilot-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  assign-to-copilot:
+    name: Assign labelled issue to Copilot
+    if: github.event.label.name == 'agent:ready' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure agent labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh label create agent:assigned --color 0E8A16 --description "Assigned to Copilot coding agent" --force
+          gh label create agent:auto-merge --color 5319E7 --description "Eligible for guarded Copilot PR auto-merge" --force
+          gh label create agent:needs-human --color D93F0B --description "Agent routing needs maintainer attention" --force
+          gh label create agent:hold --color B60205 --description "Stop Copilot auto-merge for this work" --force
+
+      - name: Assign issue to Copilot coding agent
+        id: assign
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_AGENT_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "COPILOT_AGENT_TOKEN is not configured. Add a user token that can assign Copilot coding agent." >&2
+            exit 1
+          fi
+
+          OWNER="${GH_REPO%%/*}"
+          REPO="${GH_REPO#*/}"
+          REPOSITORY_JSON="$(gh api graphql \
+            -H 'GraphQL-Features: issues_copilot_assignment_api_support,coding_agent_model_selection' \
+            -f owner="$OWNER" \
+            -f repo="$REPO" \
+            -f query='
+              query($owner: String!, $repo: String!) {
+                repository(owner: $owner, name: $repo) {
+                  id
+                  suggestedActors(capabilities: [CAN_BE_ASSIGNED], first: 100) {
+                    nodes {
+                      login
+                      __typename
+                      ... on Bot { id }
+                      ... on User { id }
+                    }
+                  }
+                }
+              }
+            ')"
+
+          REPOSITORY_ID="$(jq -r '.data.repository.id // empty' <<<"$REPOSITORY_JSON")"
+          BOT_ID="$(jq -r '.data.repository.suggestedActors.nodes[]? | select(.login == "copilot-swe-agent") | .id' <<<"$REPOSITORY_JSON")"
+          if [ -z "$REPOSITORY_ID" ] || [ -z "$BOT_ID" ]; then
+            echo "Copilot coding agent is not available to this token/repository." >&2
+            exit 1
+          fi
+
+          jq -n \
+            --arg targetRepo "$GH_REPO" \
+            --arg baseBranch "$BASE_BRANCH" \
+            --arg instructions "Work from the issue title, body, and comments. Open a ready-for-review PR, link it to this issue, and add the agent:auto-merge label to the PR when implementation and tests are complete." \
+            '{
+              assignees: ["copilot-swe-agent[bot]"],
+              agent_assignment: {
+                target_repo: $targetRepo,
+                base_branch: $baseBranch,
+                custom_instructions: $instructions,
+                custom_agent: "",
+                model: ""
+              }
+            }' > assignment.json
+
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/$GH_REPO/issues/$ISSUE_NUMBER/assignees" \
+            --input assignment.json
+
+      - name: Mark issue as routed
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          gh issue edit "$ISSUE_NUMBER" --add-label agent:assigned
+          gh issue comment "$ISSUE_NUMBER" --body "Assigned to GitHub Copilot coding agent. When Copilot opens a linked PR, the PR can auto-merge after required checks pass unless agent:hold is applied."
+
+      - name: Report routing failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+          gh issue edit "$ISSUE_NUMBER" --add-label agent:needs-human
+          gh issue comment "$ISSUE_NUMBER" --body "Copilot routing failed. Check COPILOT_AGENT_TOKEN, Copilot coding-agent availability for this repository, and Actions logs."

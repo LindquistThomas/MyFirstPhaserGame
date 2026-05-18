@@ -1,0 +1,107 @@
+name: Copilot PR auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  issues: write
+
+concurrency:
+  group: copilot-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  enable-auto-merge:
+    name: Enable guarded Copilot auto-merge
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.type == 'Bot' && github.event.pull_request.user.login == 'copilot-swe-agent[bot]' && startsWith(github.event.pull_request.head.ref, 'copilot/') && github.event.pull_request.draft == false && !contains(github.event.pull_request.labels.*.name, 'agent:hold')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure agent labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh label create agent:auto-merge --color 5319E7 --description "Eligible for guarded Copilot PR auto-merge" --force
+          gh label create agent:hold --color B60205 --description "Stop Copilot auto-merge for this work" --force
+
+      - name: Verify repository auto-merge setting
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ALLOW_AUTO_MERGE="$(gh api "repos/$GH_REPO" --jq '.allow_auto_merge')"
+          if [ "$ALLOW_AUTO_MERGE" != "true" ]; then
+            echo "Repository auto-merge is disabled. Enable Settings > General > Pull Requests > Allow auto-merge." >&2
+            exit 1
+          fi
+
+      - name: Evaluate auto-merge policy
+        id: policy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          OWNER="${GH_REPO%%/*}"
+          REPO="${GH_REPO#*/}"
+          PR_JSON="$(gh api graphql \
+            -f owner="$OWNER" \
+            -f repo="$REPO" \
+            -F number="$PR_NUMBER" \
+            -f query='
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    labels(first: 50) {
+                      nodes { name }
+                    }
+                    closingIssuesReferences(first: 20) {
+                      nodes {
+                        number
+                        labels(first: 50) {
+                          nodes { name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ')"
+          HAS_HOLD="$(jq -r 'any(.data.repository.pullRequest.labels.nodes[]?; .name == "agent:hold")' <<<"$PR_JSON")"
+          HAS_PR_LABEL="$(jq -r 'any(.data.repository.pullRequest.labels.nodes[]?; .name == "agent:auto-merge")' <<<"$PR_JSON")"
+          HAS_READY_ISSUE="$(jq -r 'any(.data.repository.pullRequest.closingIssuesReferences.nodes[]?; any(.labels.nodes[]?; .name == "agent:ready"))' <<<"$PR_JSON")"
+
+          if [ "$HAS_HOLD" = "true" ]; then
+            echo "merge=false" >> "$GITHUB_OUTPUT"
+            echo "agent:hold present; auto-merge skipped."
+            exit 0
+          fi
+
+          if [ "$HAS_PR_LABEL" != "true" ] && [ "$HAS_READY_ISSUE" != "true" ]; then
+            echo "merge=false" >> "$GITHUB_OUTPUT"
+            echo "PR lacks agent:auto-merge and no closing issue has agent:ready; auto-merge skipped."
+            exit 0
+          fi
+
+          if [ "$HAS_PR_LABEL" != "true" ]; then
+            gh pr edit "$PR_NUMBER" --add-label agent:auto-merge
+          fi
+
+          echo "merge=true" >> "$GITHUB_OUTPUT"
+
+      - name: Enable auto-merge
+        if: steps.policy.outputs.merge == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh pr merge "$PR_NUMBER" --auto --squash --delete-branch
