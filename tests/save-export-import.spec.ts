@@ -190,13 +190,20 @@ test.describe('Save export / import', () => {
     await page.goto('/');
     await waitForGame(page);
 
+    await page.evaluate(() => {
+      const game = window.__game as unknown as {
+        scene: { start: (key: string, data?: unknown) => void };
+      } | undefined;
+      game?.scene.start('SettingsScene', { from: 'MenuScene' });
+    });
+    await waitForScene(page, 'SettingsScene');
+
     const result = await page.evaluate(() => {
       const hooks = (window as unknown as {
         __testHooks?: { exportSlot: (s: string) => string | null };
       }).__testHooks;
       const game = window.__game as unknown as {
         scene: {
-          start: (key: string, data?: unknown) => void;
           getScene: (key: string) => unknown;
         };
       } | undefined;
@@ -218,8 +225,9 @@ test.describe('Save export / import', () => {
       };
       window.localStorage.setItem('architect_slot2_v1', JSON.stringify(slot2));
 
-      game.scene.start('SettingsScene', { from: 'MenuScene' });
       const scene = game.scene.getScene('SettingsScene') as unknown as {
+        importConfirmOpen?: boolean;
+        importOverlay?: { list?: unknown[] };
         openImportConfirm: (raw: string, slotId: 'slot1' | 'slot2' | 'slot3', slotNum: number, preview: unknown) => void;
       };
       if (!scene || typeof scene.openImportConfirm !== 'function') {
@@ -244,19 +252,27 @@ test.describe('Save export / import', () => {
       };
       scene.openImportConfirm(json, 'slot2', 2, preview);
 
-      const texts = (game.scene.getScene('SettingsScene') as { children: { list: unknown[] } })
-        .children
-        .list
-        .filter((go) => typeof (go as { text?: unknown }).text === 'string')
-        .map((go) => (go as { text: string }).text);
-      return { ok: true, texts };
+      const collectTexts = (nodes: unknown[] | undefined): string[] =>
+        (nodes ?? []).flatMap((node) => {
+          if (typeof (node as { text?: unknown }).text === 'string') {
+            return [(node as { text: string }).text];
+          }
+          if (Array.isArray((node as { list?: unknown[] }).list)) {
+            return collectTexts((node as { list: unknown[] }).list);
+          }
+          return [];
+        });
+      return {
+        ok: scene.importConfirmOpen === true,
+        texts: collectTexts(scene.importOverlay?.list),
+      };
     });
 
     expect(result.ok).toBe(true);
     const texts = (result as { texts: string[] }).texts.join('\n');
     expect(texts).toContain('From file:');
     expect(texts).toContain('Current slot:');
-    expect(texts).toContain('Platform Team');
+    expect(texts).toContain('Lobby');
     expect(texts).toContain('Business');
     expect(texts).toContain('[ REPLACE ]');
     expect(texts).toContain('[ CANCEL ]');
