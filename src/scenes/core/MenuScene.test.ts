@@ -57,6 +57,15 @@ vi.mock('../../config/gameConfig', () => ({
   GAME_WIDTH: 1280,
   GAME_HEIGHT: 720,
   COLORS: { titleText: '#ffffff', hudText: '#ffffff' },
+  FLOORS: {
+    LOBBY: 0,
+    PLATFORM_TEAM: 1,
+    PRODUCTS: 2,
+    BUSINESS: 3,
+    EXECUTIVE: 4,
+    BOSS: 5,
+  },
+  FLOOR_IDS: [0, 1, 2, 3, 4, 5],
 }));
 vi.mock('../../systems/EventBus', () => ({ eventBus: { emit: vi.fn(), on: vi.fn(), off: vi.fn() } }));
 vi.mock('../../input', () => ({ pushContext: vi.fn(() => 0), popContext: vi.fn() }));

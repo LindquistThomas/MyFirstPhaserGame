@@ -126,3 +126,111 @@ export const quizDefinitionSchema = {
     return { success: true, data: value as unknown as QuizDefinition };
   },
 };
+
+type QuizBundle = Record<string, QuizDefinition>;
+
+function normalizeQuestion(value: unknown): QuizSchemaResult<QuizQuestion> {
+  if (!isRecord(value)) {
+    return {
+      success: false,
+      errors: [{ path: 'question', message: 'question must be an object' }],
+    };
+  }
+
+  const normalized = {
+    id: value.id,
+    difficulty: value.difficulty,
+    question: value.question,
+    // JSON quiz authoring uses options/correctOption, while runtime types
+    // remain choices/correctIndex for backward compatibility with quiz logic.
+    choices: value.choices ?? value.options,
+    correctIndex: value.correctIndex ?? value.correctOption,
+    explanation: value.explanation,
+  };
+
+  return quizQuestionSchema.safeParse(normalized);
+}
+
+function parseQuizDefinition(value: unknown): QuizSchemaResult<QuizDefinition> {
+  const errors: QuizSchemaIssue[] = [];
+
+  if (!isRecord(value)) {
+    pushIssue(errors, 'quiz', 'quiz must be an object');
+    return { success: false, errors };
+  }
+
+  const infoId = typeof value.infoId === 'string' ? value.infoId : null;
+  if (infoId === null || infoId.trim().length === 0) {
+    pushIssue(errors, 'infoId', 'infoId must be a non-empty string');
+  }
+
+  if (!Array.isArray(value.questions) || value.questions.length === 0) {
+    pushIssue(errors, 'questions', 'questions must contain at least one question');
+    return { success: false, errors };
+  }
+
+  const questionIds = new Set<string>();
+  const normalizedQuestions: QuizQuestion[] = [];
+
+  value.questions.forEach((question, index) => {
+    const result = normalizeQuestion(question);
+    if (!result.success) {
+      result.errors.forEach((error) => {
+        pushIssue(errors, `questions[${index}].${error.path}`, error.message);
+      });
+      return;
+    }
+
+    if (questionIds.has(result.data.id)) {
+      pushIssue(errors, `questions[${index}].id`, `duplicate question id: ${result.data.id}`);
+      return;
+    }
+
+    questionIds.add(result.data.id);
+    normalizedQuestions.push(result.data);
+  });
+
+  if (errors.length > 0) {
+    return { success: false, errors };
+  }
+
+  return {
+    success: true,
+    data: {
+      infoId: infoId as string,
+      questions: normalizedQuestions,
+    },
+  };
+}
+
+export function parseQuizBundle(value: unknown): QuizBundle {
+  if (!isRecord(value)) {
+    throw new Error('Quiz bundle must be an object keyed by infoId');
+  }
+
+  const parsed: QuizBundle = {};
+  const failures: string[] = [];
+
+  for (const [infoId, definition] of Object.entries(value)) {
+    const result = parseQuizDefinition(definition);
+    if (!result.success) {
+      failures.push(
+        `${infoId}: ${result.errors.map((error) => `${error.path} ${error.message}`).join('; ')}`,
+      );
+      continue;
+    }
+
+    if (result.data.infoId !== infoId) {
+      failures.push(`${infoId}: infoId must match record key`);
+      continue;
+    }
+
+    parsed[infoId] = result.data;
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`Invalid quiz bundle:\n${failures.join('\n')}`);
+  }
+
+  return parsed;
+}

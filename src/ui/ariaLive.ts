@@ -6,7 +6,8 @@
  * read it out without moving focus.
  *
  * `initAriaLive()` subscribes to the EventBus events that should be
- * announced (quiz results, floor unlocks, AU milestones). Call it once
+ * announced (quiz results, floor unlocks, floor entry, objectives, checkpoints,
+ * caffeine buffs, AU milestones). Call it once
  * at game startup.
  */
 
@@ -89,5 +90,21 @@ export function initAriaLive(): void {
 
   sub('progression:au_milestone', (total) => {
     announce(`${total} Architecture Units collected.`);
+  });
+
+  sub('scene:floor-entered', ({ displayName, objective }) => {
+    announce(objective.trim().length > 0 ? `Entered ${displayName}. ${objective}` : `Entered ${displayName}.`);
+  });
+
+  sub('objective:updated', ({ text }) => {
+    announce(text);
+  });
+
+  sub('checkpoint:reached', ({ index, total }) => {
+    announce(`Checkpoint ${index} of ${total} reached.`);
+  });
+
+  sub('buff:caffeine-applied', () => {
+    announce('Caffeine buff active.');
   });
 }

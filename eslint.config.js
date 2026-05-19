@@ -38,6 +38,7 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-empty-function': 'off',
       'no-empty': ['warn', { allowEmptyCatch: true }],
+      'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     },
   },
   {

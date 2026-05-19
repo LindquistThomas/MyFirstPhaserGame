@@ -169,7 +169,7 @@ Declare it in the scene's `LevelConfig.enemies` array: `{ type: 'slime' | 'bot' 
 Add the entry to the relevant floor's `src/features/floors/<floor>/info.ts`. The barrel `src/config/info/index.ts` lazy-loads each floor's content via `INFO_LOADERS` and merges it into `INFO_POINTS` when `preloadInfoFor(floorId)` runs (called from `LevelScene.init()` and `ElevatorScene.init()`). For an **existing** floor, no other edits needed. For a **new** floor, also add an `INFO_LOADERS` entry keyed by `FLOORS.<NAME>`. Place an info point in the scene's `LevelConfig.infoPoints` with matching `contentId`. Zone IDs default to the content ID.
 
 ### Add a quiz
-Add the question set to the relevant floor's `src/features/floors/<floor>/quiz.ts`, keyed by `infoId`. The barrel `src/config/quiz/index.ts` mirrors the info-loader pattern — an existing floor needs no further edits; a new floor also needs a `QUIZ_LOADERS` entry. Quiz state is tracked by `QuizManager`.
+Add the question set to the relevant floor's `src/features/floors/<floor>/quiz.<floor>.json`, keyed by `infoId` (question fields: `id`, `difficulty`, `question`, `options`, `correctOption`, `explanation`). Keep `quiz.ts` as a thin loader that imports JSON and runs `parseQuizBundle`. The barrel `src/config/quiz/index.ts` mirrors the info-loader pattern — an existing floor needs no further edits; a new floor also needs a `QUIZ_LOADERS` entry. Quiz state is tracked by `QuizManager`.
 
 ### Add a zone
 Register in the scene's `create()`:
