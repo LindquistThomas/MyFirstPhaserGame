@@ -210,22 +210,28 @@ export async function navigateToElevator(page: Page): Promise<void> {
   await waitForScene(page, 'SaveSlotScene');
   await page.keyboard.press('Enter');
   // If the slot has save data the mode-selection overlay appears (inActionSelect).
-  // Poll for up to 2 s; if it shows, confirm the default selection (CONTINUE).
-  const modeDialogVisible = await page.waitForFunction(
-    () => {
+  // Race between two outcomes:
+  //   'dialog'  — inActionSelect is true → press Enter to confirm CONTINUE.
+  //   'gone'    — SaveSlotScene already transitioned away (fresh slot, no dialog).
+  // Returning a truthy string for both cases lets waitForFunction exit immediately
+  // on either path instead of burning the full 2 s timeout on the no-dialog path.
+  const dialogHandle = await page.waitForFunction(
+    (): 'dialog' | 'gone' | false => {
       const g = window.__game;
       if (!g) return false;
-      // SaveSlotScene may have already transitioned; treat absence as "no dialog".
       const scene = g.scene.getScenes(true).find(
         (s) => s.sys.settings.key === 'SaveSlotScene',
       ) as unknown as Record<string, unknown> | undefined;
-      if (!scene) return false;
-      return scene['inActionSelect'] === true;
+      if (!scene) return 'gone';
+      return scene['inActionSelect'] === true ? 'dialog' : false;
     },
     undefined,
     { timeout: 2_000 },
-  ).catch(() => false as const);
-  if (modeDialogVisible) await page.keyboard.press('Enter');
+  ).catch(() => null);
+  if (dialogHandle) {
+    const outcome = await dialogHandle.jsonValue().catch(() => '');
+    if (outcome === 'dialog') await page.keyboard.press('Enter');
+  }
   await waitForScene(page, 'ElevatorScene');
 }
 
