@@ -243,13 +243,11 @@ export class ElevatorPanel {
       });
       btnContainer.add(floorName);
 
-      if (!isUnlocked) {
-        // "X AU needed" hint for locked floors.
-        const auNeeded = this.progression.getAUNeededForFloor(floorId);
-        const hint = this.scene.add.text(10, 38, `${auNeeded} AU needed`, {
+      if (!isUnlocked && floorData.auRequired > 0) {
+        const hint = this.scene.add.text(10, 38, `${floorData.auRequired} AU`, {
           fontFamily: 'monospace',
           fontSize: '11px',
-          color: '#995555',
+          color: theme.color.css.textMuted,
         });
         btnContainer.add(hint);
       }

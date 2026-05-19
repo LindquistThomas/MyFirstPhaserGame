@@ -28,6 +28,7 @@ import { prefetchSceneMusic } from '../../plugins/MusicPlugin';
 import { SceneLoadingOverlay } from '../../ui/SceneLoadingOverlay';
 import { LEVEL_DATA } from '../../config/levelData';
 import { ACHIEVEMENTS } from '../../config/achievements';
+import { ElevatorLockedToast } from '../../ui/ElevatorLockedToast';
 
 /**
  * Elevator-shaft scene — Impossible-Mission style.
@@ -58,6 +59,7 @@ export class ElevatorScene extends Phaser.Scene {
 
   private elevatorButtons?: ElevatorButtons;
   private elevatorPanel?: ElevatorPanel;
+  private lockedFloorToast?: ElevatorLockedToast;
   private floorCallButtons: FloorCallButton[] = [];
 
   /** Scene-transition hints derived from NavigationContext.init(). */
@@ -166,7 +168,7 @@ export class ElevatorScene extends Phaser.Scene {
     });
     this.transitions.setSkipFloorEntry(this.spawnAtFloor, this.spawnAtFloorSide);
 
-    this.elevatorCtrl = new ElevatorController(this, this.player, this.buildElevator(positions));
+    this.elevatorCtrl = new ElevatorController(this, this.player, this.buildElevator(positions), this.progression);
 
     const productsWalkY = positions[FLOORS.PRODUCTS] + ElevatorScene.FLOOR_H;
     this.doors = new ProductDoorManager({
@@ -331,19 +333,17 @@ export class ElevatorScene extends Phaser.Scene {
       this.progression,
       (floorId) => this.callFloorIfUnlocked(floorId),
     );
+    this.lockedFloorToast = new ElevatorLockedToast(this);
 
     this.sceneLoadingOverlay = new SceneLoadingOverlay(this);
   }
 
   /**
    * Attempt to call the elevator cab to a floor.
-   * Silently ignores the request if the floor is still locked — guards both
-   * the ElevatorPanel pointer interaction and the keyboard floor-call path.
+   * Delegates lock/unlock handling to ElevatorController for both panel and keyboard paths.
    */
   private callFloorIfUnlocked(floorId: FloorId): void {
-    if (this.progression.isFloorUnlocked(floorId)) {
-      this.elevatorCtrl.elevator.moveToFloor(floorId);
-    }
+    this.elevatorCtrl.requestFloor(floorId);
   }
 
   /** Draw one hallway call button on each side of every shaft opening. */

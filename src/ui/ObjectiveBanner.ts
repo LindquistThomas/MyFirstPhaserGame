@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { GAME_WIDTH } from '../config/gameConfig';
+import { eventBus } from '../systems/EventBus';
 import { settingsStore } from '../systems/SettingsStore';
 import { createSceneLifecycle } from '../systems/sceneLifecycle';
 
@@ -51,14 +52,18 @@ export class ObjectiveBanner extends Phaser.GameObjects.Container {
   }
 
   update(): void {
-    this.refreshVisibility();
+    this.refreshText();
   }
 
   private refreshText(): void {
     const next = this.getText().trim();
     if (next !== this.currentText) {
+      const previous = this.currentText;
       this.currentText = next;
       this.label.setText(next);
+      if (previous.length > 0 && next.length > 0) {
+        eventBus.emit('objective:updated', { text: next });
+      }
     }
     this.refreshVisibility();
   }

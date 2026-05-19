@@ -84,7 +84,8 @@ export class LevelCheckpointManager {
       throw new Error('LevelCheckpointManager.spawn() called before setPlayer()');
     }
     const player = this.player;
-    for (const cp of config.checkpoints) {
+    const total = config.checkpoints.length;
+    for (const [index, cp] of config.checkpoints.entries()) {
       const checkpoint = new Checkpoint(
         scene,
         cp.x,
@@ -93,6 +94,7 @@ export class LevelCheckpointManager {
         () => {
           this.floorHazard.registerCheckpoint(cp.x, cp.y);
           eventBus.emit('checkpoint:activate', cp.id);
+          eventBus.emit('checkpoint:reached', { index: index + 1, total });
         },
       );
       checkpoint.wireOverlap(scene.physics, player.sprite);

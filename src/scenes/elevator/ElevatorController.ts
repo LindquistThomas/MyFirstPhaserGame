@@ -1,9 +1,12 @@
 import * as Phaser from 'phaser';
 import { eventBus } from '../../systems/EventBus';
+import type { FloorId } from '../../config/gameConfig';
+import { LEVEL_DATA } from '../../config/levelData';
 import { Player } from '../../entities/Player';
 import { Elevator } from '../../entities/Elevator';
 import { clampRiderToCab } from './elevatorCabGeometry';
 import { isReducedMotion } from '../../systems/MotionPreference';
+import type { ProgressionSystem } from '../../systems/ProgressionSystem';
 
 // Cab half-width (80) minus the walkway-overlap strip (WALK_OVERLAP = 4
 // in ElevatorSceneLayout), so the latch only engages when the player is
@@ -28,14 +31,16 @@ export class ElevatorController {
 
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
+  private readonly progression: ProgressionSystem;
 
   private playerOnElevator = false;
   private wasElevatorMoving = false;
 
-  constructor(scene: Phaser.Scene, player: Player, elevator: Elevator) {
+  constructor(scene: Phaser.Scene, player: Player, elevator: Elevator, progression: ProgressionSystem) {
     this.scene = scene;
     this.player = player;
     this.elevator = elevator;
+    this.progression = progression;
 
     scene.physics.add.collider(player.sprite, elevator.platform, () => {
       this.playerOnElevator = true;
@@ -59,6 +64,23 @@ export class ElevatorController {
 
   get isMoving(): boolean {
     return this.elevator.getIsMoving();
+  }
+
+  /**
+   * Attempt to call the elevator cab to `floorId`.
+   * Returns `true` when the call is accepted, `false` when the floor is still locked.
+   */
+  requestFloor(floorId: FloorId): boolean {
+    if (this.progression.isFloorUnlocked(floorId)) {
+      this.elevator.moveToFloor(floorId);
+      return true;
+    }
+
+    const currentAU = this.progression.getTotalAU();
+    const requiredAU = LEVEL_DATA[floorId]?.auRequired ?? 0;
+    eventBus.emit('ui:locked-floor-attempted', { floorId, requiredAu: requiredAU, currentAu: currentAU });
+    eventBus.emit('sfx:dialog_cancel');
+    return false;
   }
 
   /**

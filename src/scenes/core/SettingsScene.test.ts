@@ -55,6 +55,15 @@ vi.mock('phaser', () => {
 vi.mock('../../config/gameConfig', () => ({
   GAME_WIDTH: 1280,
   GAME_HEIGHT: 720,
+  FLOORS: {
+    LOBBY: 0,
+    PLATFORM_TEAM: 1,
+    PRODUCTS: 2,
+    BUSINESS: 3,
+    EXECUTIVE: 4,
+    BOSS: 5,
+  },
+  FLOOR_IDS: [0, 1, 2, 3, 4, 5],
 }));
 
 vi.mock('../../style/theme', () => ({

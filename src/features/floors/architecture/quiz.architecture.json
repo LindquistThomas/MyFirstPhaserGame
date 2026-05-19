@@ -1,0 +1,1582 @@
+{
+  "architecture-team": {
+    "infoId": "architecture-team",
+    "questions": [
+      {
+        "id": "at-e1",
+        "difficulty": "easy",
+        "question": "Which of these best describes what an architecture team primarily does?",
+        "explanation": "A healthy architecture team amplifies other teams — guiding, connecting, and translating — rather than shipping the product themselves.",
+        "options": [
+          "Writes the majority of the production code",
+          "Helps other teams make better decisions",
+          "Approves every pull request in the company",
+          "Picks the programming language for every project"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e2",
+        "difficulty": "easy",
+        "question": "According to Gregor Hohpe, architects should sell ___ instead of issuing mandates.",
+        "explanation": "Hohpe's phrase \"sell options, don't issue mandates\" captures the idea that architects preserve flexibility by deferring commitments until they're necessary.",
+        "options": [
+          "orders",
+          "options",
+          "diagrams",
+          "roadmaps"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e3",
+        "difficulty": "easy",
+        "question": "Which is NOT a typical role of the architecture team?",
+        "explanation": "Architects guide and connect; they do not centralise all decisions. Empowering teams to decide is the point.",
+        "options": [
+          "Connector between teams working on overlapping problems",
+          "Steward of cross-cutting concerns like security and reliability",
+          "Single approver of every tech choice in the company",
+          "Translator between business strategy and engineering"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "at-m1",
+        "difficulty": "medium",
+        "question": "In Hohpe's framing, what is the \"strike price\" of an architectural option?",
+        "explanation": "The \"strike price\" is the cost of exercising the option — i.e. how expensive it is to switch later. Good architects keep it bounded.",
+        "options": [
+          "The cost to start a new project",
+          "The rework cost to change course later",
+          "The licence fee of the chosen technology",
+          "The time spent in design meetings"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-m2",
+        "difficulty": "medium",
+        "question": "Why do mandates from an architecture team often fail in practice?",
+        "explanation": "Premature commitment removes flexibility; teams routing around mandates is a symptom, not the cause.",
+        "options": [
+          "Teams secretly dislike the architects",
+          "Mandates commit the organisation before the commitment is needed, and are often ignored or worked around",
+          "Mandates are always technically wrong",
+          "Mandates violate open-source licences"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-m3",
+        "difficulty": "medium",
+        "question": "An architect notices two teams are independently building almost the same service. The best first action is to:",
+        "explanation": "Connecting teams is a core architecture-team function. Mandates would override autonomy; ignoring it wastes organisational effort.",
+        "options": [
+          "Order one of the teams to stop immediately",
+          "Connect the two teams and surface the overlap so they can decide together",
+          "Build a third version themselves",
+          "Ignore it — team autonomy is sacred"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h1",
+        "difficulty": "hard",
+        "question": "Which book by Gregor Hohpe popularised the \"Architecture Elevator\" metaphor?",
+        "explanation": "Hohpe's \"The Software Architect Elevator\" frames the architect's job as riding between penthouse (strategy) and engine room (technology).",
+        "options": [
+          "\"Release It!\"",
+          "\"The Software Architect Elevator\"",
+          "\"Domain-Driven Design\"",
+          "\"Accelerate\""
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h2",
+        "difficulty": "hard",
+        "question": "What does it mean for an architectural option to \"expire\"?",
+        "explanation": "Options have an implicit expiry — scale, integration, or deadlines eventually force the decision to be taken. Good architects flag the expiry explicitly.",
+        "options": [
+          "The licence of a chosen technology runs out",
+          "The moment the decision stops being cheap to defer — external pressure forces a commitment",
+          "A new architect takes over and cancels it",
+          "The option moves to a different team"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h3",
+        "difficulty": "hard",
+        "question": "Which statement best captures the architect's output in Hohpe's model?",
+        "explanation": "Architects are leverage: their value shows up indirectly, in the decisions made by the teams around them.",
+        "options": [
+          "The number of architecture diagrams produced",
+          "The quality of decisions made by the teams they support",
+          "The count of mandates published per quarter",
+          "Uptime of production systems"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e4",
+        "difficulty": "easy",
+        "question": "What does \"selling options\" mean for an architect?",
+        "explanation": "Selling options means keeping decisions flexible — naming the trigger that will force a commitment rather than deciding prematurely.",
+        "options": [
+          "Selling software licences to other teams",
+          "Deferring irreversible commitments until needed, and making it cheap to change course later",
+          "Providing multiple vendor quotes for a purchase",
+          "Offering different pricing tiers for cloud services"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e5",
+        "difficulty": "easy",
+        "question": "Which cross-cutting concern is the architecture team typically the steward of?",
+        "explanation": "Cross-cutting concerns like security, reliability, and cost are not owned by any one product team — the architecture team stewards them across the organization.",
+        "options": [
+          "Individual developer performance reviews",
+          "Sprint planning for each product team",
+          "Security, reliability, and cost — concerns that span team boundaries",
+          "Recruitment and hiring processes"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "at-e6",
+        "difficulty": "easy",
+        "question": "According to Gregor Hohpe, where does an architect's value actually show up?",
+        "explanation": "Architects work as leverage — their impact is indirect, appearing in the quality and speed of decisions made by the teams they guide and connect.",
+        "options": [
+          "In the number of diagrams they produce",
+          "In the quality of decisions made by the teams they support",
+          "In the lines of code they contribute",
+          "In the number of mandates they publish"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e7",
+        "difficulty": "easy",
+        "question": "What is the GUIDE role of the architecture team?",
+        "explanation": "The guide role is about expanding teams' awareness of options and trade-offs — not directing, but illuminating so teams can decide well.",
+        "options": [
+          "Directing teams with binding technical decisions",
+          "Helping teams see trade-offs and options they might otherwise miss",
+          "Approving all technical choices before implementation",
+          "Managing the backlog of all technical tasks"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e8",
+        "difficulty": "easy",
+        "question": "What is the CONNECTOR role of the architecture team?",
+        "explanation": "Connectors reduce duplicated effort and missed synergies by making sure teams with overlapping problems find each other.",
+        "options": [
+          "Connecting cloud infrastructure components",
+          "Linking teams working on overlapping problems so they can coordinate and learn from each other",
+          "Connecting developers to job opportunities",
+          "Connecting business to vendor contracts"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e9",
+        "difficulty": "easy",
+        "question": "What does the architecture team's TRANSLATOR role involve?",
+        "explanation": "Translation is a core architect skill: business and engineering speak different languages; the architecture team makes each comprehensible to the other.",
+        "options": [
+          "Translating technical documentation into other languages",
+          "Bridging business strategy and engineering — converting between their different vocabularies",
+          "Translating user requirements into wireframes",
+          "Converting code from one programming language to another"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-e10",
+        "difficulty": "easy",
+        "question": "Which of these is something a healthy architecture team does NOT do?",
+        "explanation": "Centralizing all technology decisions defeats the purpose — it recreates the ivory tower. A healthy architecture team empowers teams to decide, not replaces their judgment.",
+        "options": [
+          "Help teams understand trade-offs",
+          "Connect teams with overlapping concerns",
+          "Own all technology decisions centrally for the organization",
+          "Bridge business strategy and engineering"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "at-m4",
+        "difficulty": "medium",
+        "question": "An architect tells a team \"you don't need to choose your message broker yet — but when you hit 10 k events/sec, that decision cannot wait.\" Which principle is this?",
+        "explanation": "Naming the trigger (\"at 10 k events/sec\") and the action (\"you must decide\") is how architects keep options alive without making premature commitments.",
+        "options": [
+          "Issuing a mandate about message broker selection",
+          "Selling an option — naming the trigger that will force a commitment while deferring it until needed",
+          "Suggesting the team should ignore the problem",
+          "Over-engineering by planning for 10 k events/sec immediately"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-m5",
+        "difficulty": "medium",
+        "question": "Why do architecture team mandates \"often get ignored or worked around,\" according to Hohpe?",
+        "explanation": "When a mandate removes genuinely needed flexibility, teams find workarounds. The issue is premature commitment, not team culture.",
+        "options": [
+          "Teams are lazy or disrespectful of authority",
+          "Mandates commit before the commitment is needed and remove flexibility, so teams route around them when they cause friction",
+          "Mandates are always technically wrong",
+          "Teams prefer to make decisions themselves for ego reasons"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-m6",
+        "difficulty": "medium",
+        "question": "What does \"the team writes the code; the architect keeps the option space alive\" mean in practice?",
+        "explanation": "Division of labour: teams deliver features; architects ensure the decisions those features depend on are made at the right time with full information.",
+        "options": [
+          "Architects refuse to take any implementation responsibility",
+          "Architects focus on maintaining flexibility and pointing out consequences while teams make day-to-day implementation decisions",
+          "Architects review all code before merge",
+          "Teams don't need architects if they write good code"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-m7",
+        "difficulty": "medium",
+        "question": "Two teams are independently building near-identical customer notification services. The architecture team's best first action is to:",
+        "explanation": "The connector role surfaces overlaps. Letting teams see each other's work and decide for themselves preserves autonomy while eliminating blind duplication.",
+        "options": [
+          "Order one team to stop building immediately",
+          "Build a third shared notification service themselves",
+          "Connect the two teams to surface the overlap and let them decide together how to align",
+          "Ignore it — team autonomy is more important than efficiency"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "at-m8",
+        "difficulty": "medium",
+        "question": "In Hohpe's framing, what is the \"expiry\" of an architectural option?",
+        "explanation": "Options have an implicit expiry: conditions that make the decision unavoidable. Good architects name this trigger explicitly so teams aren't surprised.",
+        "options": [
+          "The moment the software license expires",
+          "The moment the decision becomes too expensive to defer — scale, integrations, or deadlines force a commitment",
+          "When the architect leaves the organization",
+          "When a new technology makes the old choice obsolete automatically"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-m9",
+        "difficulty": "medium",
+        "question": "A team asks \"which database should we use?\" The architect responds by presenting three options with trade-offs and the conditions under which each is optimal. This is an example of:",
+        "explanation": "Presenting options with trade-offs enables an informed decision by the team closest to the problem — rather than imposing a potentially premature commitment.",
+        "options": [
+          "Passing the buck to the team",
+          "Selling options — helping the team make a well-informed decision rather than imposing one choice",
+          "Avoiding commitment irresponsibly",
+          "Being indecisive under pressure"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-m10",
+        "difficulty": "medium",
+        "question": "What makes an architectural option different from simple indecision?",
+        "explanation": "Managing options means explicitly tracking what can be deferred, when it must be decided, and what it will cost to change — indecision is the absence of that management.",
+        "options": [
+          "They look identical from the outside",
+          "An option is an explicit, named flexibility with a known trigger and bounded cost to exercise; indecision is an unmanaged unknown",
+          "Options are written down; indecision isn't",
+          "Options always involve financial instruments"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h4",
+        "difficulty": "hard",
+        "question": "In Hohpe's finance analogy, the \"strike price\" of an architectural option is the cost to:",
+        "explanation": "The strike price is what you pay when you exercise the option: the rework cost of switching course. Good architects keep it bounded and known.",
+        "options": [
+          "Buy a software licence",
+          "Change course later — the rework cost if the deferred decision is eventually exercised",
+          "Start a new project from scratch",
+          "Hire an architect to make the decision"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h5",
+        "difficulty": "hard",
+        "question": "Hohpe's deep dive says architects \"work to keep options cheap to exercise.\" What does this mean concretely?",
+        "explanation": "Keeping options cheap means reducing coupling and designing for replaceability — so when the trigger fires, exercising the option doesn't break everything.",
+        "options": [
+          "Buy cheap software licences up front",
+          "Design systems so that switching a key component later doesn't require a massive rewrite",
+          "Avoid all irreversible decisions permanently",
+          "Hire cheaper developers who are more flexible"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h6",
+        "difficulty": "hard",
+        "question": "\"Architects collaborate with rather than command teams.\" According to the deep dive, why is this more effective?",
+        "explanation": "Mandates that bypass team buy-in get ignored or worked around. Options and informed guidance produce decisions teams own and execute well.",
+        "options": [
+          "It avoids HR complaints about workplace culture",
+          "Command-and-control architecture produces mandates teams route around; collaboration produces informed decisions teams own and execute",
+          "Collaboration is always faster than issuing mandates",
+          "Teams are always more technically competent than architects"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h7",
+        "difficulty": "hard",
+        "question": "Which paper, linked in the architecture-team info content, asks \"Who Needs an Architect?\"",
+        "explanation": "Martin Fowler's \"Who Needs an Architect?\" challenges and reframes what architects actually do in modern software development.",
+        "options": [
+          "A paper by Kent Beck",
+          "A paper by Martin Fowler",
+          "A paper by Gregor Hohpe",
+          "A paper by Sam Newman"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h8",
+        "difficulty": "hard",
+        "question": "According to Hohpe's options framing, why is it valuable to explicitly name the trigger that forces a decision?",
+        "explanation": "Naming the trigger prevents both under- and over-committing. Teams know exactly when they must decide, so they can prepare without premature optimization.",
+        "options": [
+          "It gives architects credit for predicting the future",
+          "It prevents teams from deciding too early (before needed) or too late (surprise rework cost)",
+          "It satisfies audit requirements",
+          "It allows decisions to be automated"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h9",
+        "difficulty": "hard",
+        "question": "An option has a \"strike price\" of six months of rework. The trigger is \"when we integrate with System X.\" What should the architect do?",
+        "explanation": "Defer until the trigger fires. Deciding before the trigger wastes optionality; ignoring the trigger risks a surprise commitment cost when it arrives.",
+        "options": [
+          "Make the integration decision now to avoid the rework cost",
+          "Defer the decision until integration with System X becomes a real requirement, then decide with full information",
+          "Avoid integrating with System X entirely to preserve the option indefinitely",
+          "Delegate the decision to the team with no further tracking"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "at-h10",
+        "difficulty": "hard",
+        "question": "The deep dive says the architect's job is to ensure \"the cost of changing course later is bounded.\" What happens when this is neglected?",
+        "explanation": "Unbounded rework cost is the architectural equivalent of unmanaged debt: invisible until it must be paid, and potentially existential when it arrives.",
+        "options": [
+          "Architecture diagrams become outdated",
+          "Decisions are made with hidden costs — the rework price of reversing them is unknown and potentially enormous",
+          "Teams gain too much flexibility",
+          "Architects lose influence over time"
+        ],
+        "correctOption": 1
+      }
+    ]
+  },
+  "c4-diagrams": {
+    "infoId": "c4-diagrams",
+    "questions": [
+      {
+        "id": "c4-e1",
+        "difficulty": "easy",
+        "question": "Who created the C4 model?",
+        "explanation": "Simon Brown created C4 as a lightweight way to describe software architecture at different levels of abstraction.",
+        "options": [
+          "Martin Fowler",
+          "Simon Brown",
+          "Eric Evans",
+          "Gregor Hohpe"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-e2",
+        "difficulty": "easy",
+        "question": "What are the four levels of the C4 model, from highest to lowest?",
+        "explanation": "Context → Containers → Components → Code. Each step zooms in one level.",
+        "options": [
+          "Class, Container, Component, Context",
+          "Context, Container, Component, Code",
+          "Code, Component, Container, Context",
+          "System, Service, Module, Method"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-e3",
+        "difficulty": "easy",
+        "question": "In C4, a \"container\" is best described as:",
+        "explanation": "A C4 container is simply \"a thing that runs\" — a web app, a SPA, a job, or a database are all containers. Not specifically Docker.",
+        "options": [
+          "A Docker container, specifically",
+          "A deployable or executable unit (app, service, database)",
+          "A UML package",
+          "A folder on disk"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m1",
+        "difficulty": "medium",
+        "question": "Most teams using C4 day-to-day rely on which diagrams most often?",
+        "explanation": "Context and Container diagrams answer most conversations. Component is occasional; Code is usually skipped.",
+        "options": [
+          "Only the Code level",
+          "The Context and Container diagrams",
+          "All four levels equally",
+          "Component and Code only"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m2",
+        "difficulty": "medium",
+        "question": "Which statement is TRUE about C4 notation?",
+        "explanation": "C4 is deliberately NOT UML — it trades formality for readability. A simple legend is enough.",
+        "options": [
+          "C4 is a strict UML profile",
+          "C4 favours plain readability over formal notation; a legend explains colours and shapes",
+          "C4 requires at least ten shape types per diagram",
+          "C4 diagrams must be drawn in Visio"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m3",
+        "difficulty": "medium",
+        "question": "What problem do \"diagrams as code\" tools like Structurizr solve for C4 adoption?",
+        "explanation": "Diagrams-as-code puts the diagram in the repo, tied to the code, so it stays current instead of going stale in a wiki.",
+        "options": [
+          "They replace the need for any diagrams at all",
+          "They keep diagrams version-controlled and regenerable from a single source, so they don't silently rot",
+          "They make diagrams harder to share",
+          "They remove the need for a legend"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-h1",
+        "difficulty": "hard",
+        "question": "A common C4 mistake is to assume a container is:",
+        "explanation": "Beginners often equate \"container\" with \"microservice\". A container is any deployable unit — mobile apps, SPAs, databases, and batch jobs all qualify.",
+        "options": [
+          "Always a microservice",
+          "The same as a UML class",
+          "A single source file",
+          "An AWS EC2 instance"
+        ],
+        "correctOption": 0
+      },
+      {
+        "id": "c4-h2",
+        "difficulty": "hard",
+        "question": "Which C4 level is most useful for explaining the system to a NON-technical stakeholder?",
+        "explanation": "Context treats the system as a black box surrounded by people and external systems — the clearest view for business stakeholders.",
+        "options": [
+          "Code",
+          "Component",
+          "Container",
+          "Context"
+        ],
+        "correctOption": 3
+      },
+      {
+        "id": "c4-h3",
+        "difficulty": "hard",
+        "question": "What is the main purpose of the \"Code\" level in C4, and why is it often skipped?",
+        "explanation": "Code-level diagrams duplicate what modern IDEs show at a click. C4 recommends skipping them unless genuinely helpful.",
+        "options": [
+          "To replace unit tests; it's skipped because tests suffice",
+          "To show classes/interfaces inside a component; it's skipped because IDEs already generate this on demand",
+          "To produce deployment diagrams; it's skipped because operations owns those",
+          "To act as a legal record of the architecture"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-e4",
+        "difficulty": "easy",
+        "question": "What philosophy does Simon Brown use to describe the C4 model?",
+        "explanation": "Brown describes C4 as \"a map of your code, at different zoom levels\" — emphasising that each level serves a different audience and conversation.",
+        "options": [
+          "\"One diagram to rule them all\"",
+          "\"A map of your code, at different zoom levels\"",
+          "\"Always use formal UML notation\"",
+          "\"Diagrams must be maintained by architects only\""
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-e5",
+        "difficulty": "easy",
+        "question": "What does the C4 Context diagram show?",
+        "explanation": "Context is the outermost view: your system as a black box, surrounded by the actors and external systems that interact with it.",
+        "options": [
+          "The classes inside the application",
+          "The system as a black box, plus the people and external systems it interacts with",
+          "The deployment infrastructure in detail",
+          "The release pipeline steps"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-e6",
+        "difficulty": "easy",
+        "question": "In C4, what does a \"Component\" represent?",
+        "explanation": "Components live inside containers and are the logical building blocks: modules, packages, named services. They are NOT the same as microservices.",
+        "options": [
+          "A microservice",
+          "A cloud region",
+          "A building block inside a container — a module, package, or internal service",
+          "A type of user"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "c4-e7",
+        "difficulty": "easy",
+        "question": "Who should be able to understand a C4 Context diagram without any prior technical training?",
+        "explanation": "The Context diagram is the most accessible level: simple enough that any stakeholder can understand who uses the system and what it connects to.",
+        "options": [
+          "Only software architects",
+          "Only senior engineers",
+          "Only DevOps engineers",
+          "A new joiner or business stakeholder — it is designed for broad readability"
+        ],
+        "correctOption": 3
+      },
+      {
+        "id": "c4-e8",
+        "difficulty": "easy",
+        "question": "Which C4 level is frequently skipped because modern IDEs generate the same information on demand?",
+        "explanation": "The Code level (classes, interfaces) is often skipped because IDEs show this automatically. Maintaining a separate Code-level diagram rarely adds value.",
+        "options": [
+          "Context",
+          "Container",
+          "Component",
+          "Code"
+        ],
+        "correctOption": 3
+      },
+      {
+        "id": "c4-e9",
+        "difficulty": "easy",
+        "question": "What do arrows in a C4 diagram represent?",
+        "explanation": "In C4, an arrow consistently means \"depends on\" or \"calls.\" This consistent meaning is part of the notation's readability.",
+        "options": [
+          "Only network traffic flows",
+          "Dependency or calling relationships — \"A depends on / calls B\"",
+          "Data volumes per second",
+          "Security boundaries"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-e10",
+        "difficulty": "easy",
+        "question": "C4 diagrams are deliberately NOT which type of formal notation?",
+        "explanation": "C4 favours plain readability over formal UML notation. A simple legend replaces the need to learn a standard notation.",
+        "options": [
+          "Markdown",
+          "UML",
+          "JSON",
+          "YAML"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m4",
+        "difficulty": "medium",
+        "question": "A team needs to explain their system to a new CTO with no technical background. Which C4 level should they use first?",
+        "explanation": "Context is the most accessible: the system as a black box, surrounded by users and external systems. Perfect for business stakeholders.",
+        "options": [
+          "Code",
+          "Component",
+          "Container",
+          "Context"
+        ],
+        "correctOption": 3
+      },
+      {
+        "id": "c4-m5",
+        "difficulty": "medium",
+        "question": "A developer says \"our C4 container diagram shows all 27 of our microservices.\" What is the likely problem?",
+        "explanation": "The confusion of \"container = microservice\" is common. More importantly, 27 items on one diagram often defeats C4's readability purpose.",
+        "options": [
+          "Nothing — containers ARE microservices in C4",
+          "27 items on one diagram may defeat C4's readability goal; a C4 container is also not specifically a microservice",
+          "Microservices should only appear in the Component diagram",
+          "The diagram must be split by team ownership"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m6",
+        "difficulty": "medium",
+        "question": "What specific problem do \"diagrams-as-code\" tools like Structurizr solve for C4?",
+        "explanation": "Diagrams-as-code in a repo ages with the code — when the architecture changes, the diagram can be regenerated. Diagrams in wikis drift silently.",
+        "options": [
+          "They generate diagrams automatically from source code without any input",
+          "They keep diagrams version-controlled and regenerable from a single source, preventing silent staleness",
+          "They replace the need for architecture reviews",
+          "They enforce UML compliance"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m7",
+        "difficulty": "medium",
+        "question": "A container diagram shows a web app, an API, a database, and a message queue. Which are correctly described as C4 \"containers\"?",
+        "explanation": "A C4 container is anything that runs: a web app, an API server, a database, a message queue, or a batch job all qualify.",
+        "options": [
+          "Only the web app",
+          "Only the database",
+          "Only the API",
+          "All four — each is a deployable or executable unit"
+        ],
+        "correctOption": 3
+      },
+      {
+        "id": "c4-m8",
+        "difficulty": "medium",
+        "question": "The C4 Component level zooms inside which element?",
+        "explanation": "Component diagrams live inside a single container, showing its internal building blocks. You choose one container to zoom into at a time.",
+        "options": [
+          "A person or external system in the Context diagram",
+          "A specific container",
+          "The entire system context",
+          "A code-level class"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m9",
+        "difficulty": "medium",
+        "question": "Why does C4 advise to \"be ruthless about what to leave out\"?",
+        "explanation": "The value of C4 diagrams is their focus. Every element added for completeness reduces the diagram's usefulness for the conversation it is designed to support.",
+        "options": [
+          "Diagrams must fit on a single A4 page by standard",
+          "Clarity comes from omission; including every detail recreates the spider-web diagrams C4 was designed to replace",
+          "There is a technical limit to C4 diagram size",
+          "Leaving things out protects intellectual property"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-m10",
+        "difficulty": "medium",
+        "question": "Which C4 diagram would you choose to show which technology stack runs in each deployable unit?",
+        "explanation": "The Container diagram shows the deployable/executable units, their technologies, and how they communicate — the right level for deployment and technology questions.",
+        "options": [
+          "Context",
+          "Component",
+          "Container",
+          "Code"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "c4-h4",
+        "difficulty": "hard",
+        "question": "The deep dive says most architecture diagrams \"fail because they try to say everything on one page.\" What is the specific consequence?",
+        "explanation": "The \"say everything\" impulse produces diagrams that are unreadable and unmaintainable. C4's hierarchy solves this by giving each zoom level ONE job.",
+        "options": [
+          "Legal liability for incorrect information",
+          "A spider web of boxes nobody can read that goes stale the day it is drawn",
+          "Too much information for the build system to parse",
+          "Expensive licensing costs for diagram tools"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-h5",
+        "difficulty": "hard",
+        "question": "According to the deep dive, which three explicit choices make C4 succeed?",
+        "explanation": "The deep dive names three design decisions: hierarchical abstraction (each diagram has one job), notation consistency (terms mean one thing), and living artifacts (diagrams-as-code).",
+        "options": [
+          "Colour coding, icon libraries, and layered templates",
+          "Hierarchical abstraction, notation consistency, and living artefacts",
+          "XML schema, version numbers, and access controls",
+          "Simplicity, brevity, and formal review processes"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-h6",
+        "difficulty": "hard",
+        "question": "According to the deep dive, what is the key consequence of \"notation consistency\"?",
+        "explanation": "Consistent notation means \"container\" always means one thing and arrows always mean one thing. Once learned, the notation is universal across all C4 diagrams.",
+        "options": [
+          "Every diagram looks visually identical",
+          "A reader learns the notation once and applies it everywhere — reducing the cognitive overhead of reading any C4 diagram",
+          "All diagrams must be drawn by the same person",
+          "Consistency is enforced by a linting tool"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-h7",
+        "difficulty": "hard",
+        "question": "A common C4 mistake is assuming \"Container\" and \"Microservice\" are synonyms. Why is this wrong?",
+        "explanation": "The term \"container\" is independent of microservices. It means \"a thing that runs\" — which includes apps, services, jobs, databases, and message buses.",
+        "options": [
+          "Microservices don't run in containers",
+          "A container is any deployable unit — a mobile app, SPA, batch job, or database are all containers but not necessarily microservices",
+          "Microservices are shown at the Component level",
+          "Containers are only databases and message queues"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-h8",
+        "difficulty": "hard",
+        "question": "The deep dive states that \"service boundaries show up at the COMPONENT level, if at all.\" What does this imply about the Container level?",
+        "explanation": "Container diagrams show \"what runs and how they communicate.\" The decomposition into service boundaries is a Component-level concern, if it needs to be shown at all.",
+        "options": [
+          "Container diagrams must show service boundaries explicitly",
+          "Container diagrams show deployable units and communication, not internal service boundary decisions",
+          "Service boundaries don't exist in C4 at any level",
+          "Component diagrams are only relevant for microservices"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-h9",
+        "difficulty": "hard",
+        "question": "What does \"living artefact\" mean for a C4 diagram maintained with Structurizr or PlantUML C4 extension?",
+        "explanation": "Diagrams-as-code means the diagram lives in the repo, is regenerable, and can be reviewed and updated in the same workflow as the code it describes.",
+        "options": [
+          "The diagram updates automatically on every code deploy",
+          "The diagram is in source control, regenerable from the same model, so it can be updated when the architecture changes",
+          "The diagram has an expiry date and must be redrawn annually",
+          "The diagram is connected to a live production database"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "c4-h10",
+        "difficulty": "hard",
+        "question": "A practical implication of \"service boundaries show up at the COMPONENT level, if at all\" is that Container diagrams should:",
+        "explanation": "Container diagrams are for deployment topology and technology choices. Showing internal service decomposition at this level adds noise rather than clarity.",
+        "options": [
+          "List every microservice for completeness and accuracy",
+          "Focus on deployable units and their communication, not on internal decomposition decisions",
+          "Always be more important than Component diagrams",
+          "Show service boundaries as separate nested boxes"
+        ],
+        "correctOption": 1
+      }
+    ]
+  },
+  "vertical-slice-architecture": {
+    "infoId": "vertical-slice-architecture",
+    "questions": [
+      {
+        "id": "vsa-e1",
+        "difficulty": "easy",
+        "question": "Vertical Slice Architecture organises code primarily by:",
+        "explanation": "Each slice contains everything one feature needs — HTTP, validation, business logic, persistence — in one place.",
+        "options": [
+          "Technical layer",
+          "Feature",
+          "Team",
+          "Programming language"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-e2",
+        "difficulty": "easy",
+        "question": "Who popularised Vertical Slice Architecture?",
+        "explanation": "Jimmy Bogard (author of MediatR and AutoMapper) wrote the seminal posts on vertical slices.",
+        "options": [
+          "Eric Evans",
+          "Jimmy Bogard",
+          "Kent Beck",
+          "Uncle Bob"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-e3",
+        "difficulty": "easy",
+        "question": "In a traditional n-layer architecture, changing one feature typically means editing:",
+        "explanation": "Horizontal layering spreads one feature across every layer — vertical slices collapse that into a single folder.",
+        "options": [
+          "A single file",
+          "One folder",
+          "Multiple files across multiple layer folders (Controllers, Services, Repositories, etc.)",
+          "Only the database"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "vsa-m1",
+        "difficulty": "medium",
+        "question": "Which of these is a real trade-off of Vertical Slice Architecture?",
+        "explanation": "Vertical slices intentionally accept some duplication to avoid the wrong shared abstraction. \"A little duplication is cheaper than the wrong coupling.\"",
+        "options": [
+          "It cannot be tested",
+          "Some code that would be shared in an n-layer design ends up duplicated across slices",
+          "It only works in Java",
+          "It removes the need for a database"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m2",
+        "difficulty": "medium",
+        "question": "Vertical slices pair naturally with which pattern?",
+        "explanation": "Each slice is typically one command or one query handler — a CQRS-shaped unit of behaviour.",
+        "options": [
+          "Singleton everywhere",
+          "CQRS — separate Command and Query handlers",
+          "Global mutable state",
+          "Inheritance over composition"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m3",
+        "difficulty": "medium",
+        "question": "In vertical-slice parlance, what is meant by \"tailored design per slice\"?",
+        "explanation": "Vertical slices free you from forcing every feature through the same layered template. Design complexity goes where it earns its keep.",
+        "options": [
+          "Each slice must use a different framework",
+          "Simple features stay simple; complex ones can add layers only where those layers genuinely help",
+          "Each slice needs its own database",
+          "Only senior developers can design a slice"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h1",
+        "difficulty": "hard",
+        "question": "Why is CreateInvoice able to use a totally different design (e.g. event-sourced) from VoidInvoice in a vertical-slice codebase?",
+        "explanation": "Independence is the point: each slice is free to pick the design best suited to its feature, since slices don't funnel through a shared service layer.",
+        "options": [
+          "Because the compiler enforces it",
+          "Because the two slices are independent — they do not share a central Service<Invoice> that couples them",
+          "Because Jimmy Bogard requires it",
+          "Because they use different programming languages"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h2",
+        "difficulty": "hard",
+        "question": "Vertical Slice Architecture echoes which idea from Uncle Bob?",
+        "explanation": "Screaming Architecture: a new joiner reading the top-level folders should see \"CreateInvoice, SendReceipt, RefundOrder\" — the business — not \"Controllers, Services, Repos\".",
+        "options": [
+          "The Repository Pattern",
+          "Screaming Architecture — the folder structure should scream what the system DOES, not what framework it uses",
+          "Dependency Injection as a religion",
+          "The Open/Closed Principle"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h3",
+        "difficulty": "hard",
+        "question": "What is the relationship between vertical slices and MediatR-style \"request/handler\" libraries?",
+        "explanation": "MediatR's request→handler mapping naturally expresses \"one feature, one handler\", making vertical slices easy to implement.",
+        "options": [
+          "MediatR is required by the vertical-slice pattern",
+          "MediatR (or equivalents) provide a clean way to pipe one request to one handler, matching the one-slice-one-feature shape",
+          "Vertical slices are only legal in C#",
+          "MediatR forces horizontal layering"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-e4",
+        "difficulty": "easy",
+        "question": "In a vertical-slice codebase, what does the folder name \"CreateOrder/\" immediately tell a developer?",
+        "explanation": "In vertical slices, folder names reflect business capabilities. \"CreateOrder/\" tells you what the feature does before you open a single file.",
+        "options": [
+          "Which programming language is used",
+          "Which team owns the code",
+          "What business capability the feature implements",
+          "Which database table is involved"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "vsa-e5",
+        "difficulty": "easy",
+        "question": "What does the term \"slice\" refer to in Vertical Slice Architecture?",
+        "explanation": "A slice is a self-contained unit for one feature: it owns everything from the HTTP handler through validation, business logic, and persistence.",
+        "options": [
+          "A network partition",
+          "A feature containing all the code it needs — from HTTP handler to database access",
+          "A horizontal layer of the application",
+          "A team boundary"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-e6",
+        "difficulty": "easy",
+        "question": "What makes it easier to DELETE a feature in a vertical-slice codebase?",
+        "explanation": "High cohesion and low coupling per slice means deleting a feature is as simple as removing its folder — nothing in other slices depends on it.",
+        "options": [
+          "Because slices are always small in size",
+          "Because each feature is isolated in one folder with high cohesion and low coupling to unrelated features",
+          "Because there is no database involved",
+          "Because features are deployed as separate services"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-e7",
+        "difficulty": "easy",
+        "question": "What does \"low coupling\" mean in the context of vertical slices?",
+        "explanation": "Low coupling means unrelated features are independent — changes in one slice cannot accidentally break another.",
+        "options": [
+          "Slices share absolutely no code with each other",
+          "Unrelated features cannot accidentally share state or constrain each other's design",
+          "Each slice has its own dedicated server",
+          "Slices only communicate via a REST API"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-e8",
+        "difficulty": "easy",
+        "question": "Which library does Jimmy Bogard maintain that enables the request/handler pattern commonly used in vertical slices?",
+        "explanation": "MediatR provides the request→handler pipeline that makes it easy to implement one-slice-one-handler in C# projects.",
+        "options": [
+          "Entity Framework",
+          "AutoMapper only",
+          "MediatR",
+          "ASP.NET Core"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "vsa-e9",
+        "difficulty": "easy",
+        "question": "What is \"high cohesion\" in the context of a vertical slice?",
+        "explanation": "High cohesion means everything that belongs to one feature lives together — the command, handler, validator, and query are all in the same slice.",
+        "options": [
+          "Everything about one feature is co-located in one place",
+          "All database code lives in one central folder",
+          "All HTTP handlers live in one central folder",
+          "All validators are grouped together"
+        ],
+        "correctOption": 0
+      },
+      {
+        "id": "vsa-e10",
+        "difficulty": "easy",
+        "question": "Vertical Slice Architecture is most directly an alternative to which traditional approach?",
+        "explanation": "Vertical slices invert the n-layer split: instead of organising by technical layer, you organise by feature/business capability.",
+        "options": [
+          "Domain-Driven Design",
+          "Microservices",
+          "Horizontal n-layer architecture (Controllers, Services, Repositories)",
+          "Event-driven architecture"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "vsa-m4",
+        "difficulty": "medium",
+        "question": "A team is adding a feature to a vertical-slice codebase. Which files are most likely to change?",
+        "explanation": "In vertical slices, a feature change touches only its own slice. No other folders need to open.",
+        "options": [
+          "Controllers.cs, Services.cs, and Repositories.cs across multiple folders",
+          "Only the files within the single feature's slice folder",
+          "The shared BaseController and the ServiceRegistry",
+          "The entire persistence layer"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m5",
+        "difficulty": "medium",
+        "question": "In a vertical-slice system, where does shared infrastructure like authentication or logging go?",
+        "explanation": "Shared infrastructure exists but is minimal and explicit — small \"shared\" modules that slices reference intentionally, not giant layers every slice inherits from.",
+        "options": [
+          "It is duplicated in every slice",
+          "It lives in small explicit \"shared\" modules that slices consciously consume",
+          "It doesn't exist — each slice handles it independently",
+          "It goes in a giant horizontal layer at the top of the codebase"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m6",
+        "difficulty": "medium",
+        "question": "What does Jimmy Bogard mean by \"the wrong abstraction\"?",
+        "explanation": "The wrong abstraction is one where unrelated features must share a design just to fit through a central layer — coupling them in ways that hurt both.",
+        "options": [
+          "An abstraction that is too large for its purpose",
+          "A shared layer that forces unrelated features to conform to one design, creating accidental coupling",
+          "An abstraction written in the wrong programming language",
+          "An abstraction that is insufficiently documented"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m7",
+        "difficulty": "medium",
+        "question": "How does a vertical-slice codebase \"scream what the system does,\" in Uncle Bob's phrase?",
+        "explanation": "A new joiner reading \"CreateOrder/, CancelOrder/, ShipOrder/\" immediately understands the system's purpose — not its technical stack.",
+        "options": [
+          "The code comments describe every business rule",
+          "The top-level folder structure reflects business capabilities rather than framework layers",
+          "The README lists all features explicitly",
+          "Class names use business terminology throughout"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m8",
+        "difficulty": "medium",
+        "question": "What problem does a typical n-layer Service<Invoice> class create as the system grows?",
+        "explanation": "A central Service<Invoice> accumulates every invoice operation, making unrelated features depend on each other's constraints and side-effects.",
+        "options": [
+          "It is too slow at runtime",
+          "It grows to handle ALL invoice scenarios, coupling unrelated features through one central class",
+          "It uses too much memory",
+          "It violates the Open/Closed Principle by definition"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m9",
+        "difficulty": "medium",
+        "question": "Why does vertical-slice architecture consider some duplication acceptable?",
+        "explanation": "Forced sharing through an imperfect abstraction creates coupling that's harder to remove than duplicated code. VSA accepts the trade-off deliberately.",
+        "options": [
+          "Because storage is cheap in modern cloud environments",
+          "Because a little duplication is less harmful than coupling features through the wrong shared abstraction",
+          "Because teams prefer simpler code overall",
+          "Because duplicated code is easier to test in isolation"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-m10",
+        "difficulty": "medium",
+        "question": "A new developer joins and sees top-level folders named \"CreateOrder/\", \"CancelOrder/\", \"ShipOrder/\". What do they immediately know?",
+        "explanation": "Feature-named folders communicate the system's purpose instantly — the \"screaming architecture\" benefit of vertical slices.",
+        "options": [
+          "The technical stack the system uses",
+          "The business operations the system supports — they understand what the system does before reading any code",
+          "The database schema structure",
+          "The team's sprint history"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h4",
+        "difficulty": "hard",
+        "question": "The deep dive says horizontal layering \"optimises for the wrong thing.\" What does it actually optimise for?",
+        "explanation": "Horizontal layers look tidy on a diagram but optimise for that visual cleanliness, not for the actual axis of change: features.",
+        "options": [
+          "Developer experience during feature work",
+          "Ease of drawing architecture diagrams",
+          "Runtime performance",
+          "Testing isolation"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h5",
+        "difficulty": "hard",
+        "question": "Why can CreateInvoice use pure CRUD while VoidInvoice uses event-sourcing in a vertical-slice codebase?",
+        "explanation": "Independence is the point: each slice is free to pick the design best suited to its feature, since slices don't funnel through a shared service layer.",
+        "options": [
+          "Because they use different frameworks",
+          "Because they are independent slices with no shared service layer constraining their design",
+          "Because CRUD and event-sourcing use different databases",
+          "Because the compiler enforces different patterns per folder"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h6",
+        "difficulty": "hard",
+        "question": "According to the deep dive, what is the \"axis of change\" that vertical slices optimise for?",
+        "explanation": "Vertical slices align the code structure with the most common kind of change: adding, modifying, or removing a feature.",
+        "options": [
+          "Changes to the technical stack",
+          "Feature changes — the unit of work is a feature, so the unit of code is also a feature",
+          "Database schema changes",
+          "Infrastructure changes"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h7",
+        "difficulty": "hard",
+        "question": "What is the relationship between \"Screaming Architecture\" (Uncle Bob) and Vertical Slice Architecture?",
+        "explanation": "VSA is one concrete realisation of Screaming Architecture: a new joiner reads the folders and sees the business domain, not the framework.",
+        "options": [
+          "They are unrelated concepts from different eras",
+          "Screaming Architecture says structure should reveal intent; VSA implements this by making top-level folders reflect business capabilities",
+          "Screaming Architecture requires vertical slices by definition",
+          "Uncle Bob invented vertical slices"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h8",
+        "difficulty": "hard",
+        "question": "According to the deep dive, CQRS pairs well with VSA because:",
+        "explanation": "CQRS's request→handler shape maps directly to the one-slice-one-feature structure, making the two patterns highly complementary.",
+        "options": [
+          "CQRS requires microservices, and VSA requires microservices",
+          "Each slice is typically one command or one query handler — a natural one-to-one mapping",
+          "CQRS mandates vertical slices in its specification",
+          "CQRS solves the duplication problem that VSA introduces"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h9",
+        "difficulty": "hard",
+        "question": "Why does Jimmy Bogard argue that \"a little duplication beats the wrong abstraction\"?",
+        "explanation": "The cost of the wrong abstraction compounds over time as more features adapt to fit through it. Localised duplication stays localised and can be removed cleanly.",
+        "options": [
+          "Duplication is always cheaper than abstraction",
+          "Forced sharing through an imperfect abstraction creates coupling that is harder to remove than duplicated code",
+          "Duplication is easier to test in isolation",
+          "The wrong abstraction can always be refactored easily later"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "vsa-h10",
+        "difficulty": "hard",
+        "question": "In the deep dive, what does \"shared infrastructure\" look like in a well-designed vertical-slice system?",
+        "explanation": "Shared modules exist but are small and explicit — not the dominant structure of the codebase. Slices reference them intentionally, not by default.",
+        "options": [
+          "Placed in giant horizontal layers above each slice",
+          "Small, explicit \"shared\" modules that slices actively and consciously consume",
+          "Merged directly into every slice via copy-paste",
+          "It does not exist at all in a pure vertical-slice system"
+        ],
+        "correctOption": 1
+      }
+    ]
+  },
+  "architecture-decision-records": {
+    "infoId": "architecture-decision-records",
+    "questions": [
+      {
+        "id": "adr-e1",
+        "difficulty": "easy",
+        "question": "What does ADR stand for?",
+        "explanation": "ADR stands for Architecture Decision Record — a short, numbered document capturing one significant architectural decision.",
+        "options": [
+          "Application Deployment Record",
+          "Architecture Decision Record",
+          "Automated Data Recovery",
+          "Agile Delivery Roadmap"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e2",
+        "difficulty": "easy",
+        "question": "Where do ADRs typically live?",
+        "explanation": "ADRs live next to the code they describe — usually in a docs/adr/ folder — so they're version-controlled and reviewed with the same workflow as the code.",
+        "options": [
+          "Only in a shared confluence space nobody reads",
+          "In the repository alongside the code (e.g. docs/adr/)",
+          "In the architect's private notebook",
+          "On the company wiki, separate from the code"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e3",
+        "difficulty": "easy",
+        "question": "Which section of a typical ADR captures \"what becomes easier, harder, or riskier\" after the decision?",
+        "explanation": "The Consequences section is where trade-offs are made explicit — arguably the most valuable part of an ADR for future readers.",
+        "options": [
+          "Status",
+          "Context",
+          "Decision",
+          "Consequences"
+        ],
+        "correctOption": 3
+      },
+      {
+        "id": "adr-m1",
+        "difficulty": "medium",
+        "question": "What should you do when an accepted ADR no longer reflects the chosen architecture?",
+        "explanation": "ADRs are immutable. You write a new ADR that supersedes the old one, preserving the history of why the earlier decision was made.",
+        "options": [
+          "Edit the original ADR to reflect the new decision",
+          "Delete the ADR so it does not confuse readers",
+          "Write a new ADR that supersedes it; mark the old one superseded",
+          "Move the ADR to an archive folder and start over"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "adr-m2",
+        "difficulty": "medium",
+        "question": "Which of these is the best scope for a single ADR?",
+        "explanation": "Granularity matters: one ADR = one decision. Small, focused ADRs are easier to read, supersede, and search later.",
+        "options": [
+          "One ADR covering all persistence, messaging, and auth decisions",
+          "One ADR per major quarter of work",
+          "One ADR per architectural decision",
+          "One ADR per microservice"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "adr-m3",
+        "difficulty": "medium",
+        "question": "Why are ADRs usually append-only and never edited after acceptance?",
+        "explanation": "Immutability preserves the record of *why* a decision was made at a point in time — critical context when the world changes and a new ADR supersedes it.",
+        "options": [
+          "File systems make editing hard",
+          "To preserve the history of thinking so future teams can understand why decisions were made",
+          "Because tooling requires it",
+          "To discourage people from ever revisiting decisions"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h1",
+        "difficulty": "hard",
+        "question": "Who is generally credited with popularizing the lightweight ADR format?",
+        "explanation": "Michael Nygard proposed lightweight ADRs in his 2011 post \"Documenting Architecture Decisions\" as an alternative to heavyweight architecture docs.",
+        "options": [
+          "Martin Fowler",
+          "Michael Nygard",
+          "Gregor Hohpe",
+          "Robert C. Martin"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h2",
+        "difficulty": "hard",
+        "question": "Which statement best captures why ADRs pair naturally with \"You build it, you run it\"?",
+        "explanation": "Autonomous delivery teams benefit most when the \"why\" travels with the code — the same people who ship it live with the consequences and write them down.",
+        "options": [
+          "Running systems require fewer decisions than building them",
+          "ADRs replace the need for runbooks",
+          "The team that owns the system also owns the record of why it is the way it is",
+          "Operational teams refuse to take over systems without ADRs"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "adr-h3",
+        "difficulty": "hard",
+        "question": "What is the primary intent of the Status field on an ADR (proposed / accepted / superseded)?",
+        "explanation": "Status makes the lifecycle of a decision legible: readers can immediately see whether an ADR represents the current design or a chapter in its history.",
+        "options": [
+          "To trigger an approval workflow in a ticket system",
+          "To let readers tell at a glance which decisions are current and which are history",
+          "To grant the author editing rights",
+          "To determine code review ownership"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e4",
+        "difficulty": "easy",
+        "question": "Who is generally credited with proposing the lightweight ADR format in 2011?",
+        "explanation": "Michael Nygard proposed lightweight ADRs in his 2011 post \"Documenting Architecture Decisions\" as an alternative to heavyweight architecture documents.",
+        "options": [
+          "Martin Fowler",
+          "Michael Nygard",
+          "Gregor Hohpe",
+          "Simon Brown"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e5",
+        "difficulty": "easy",
+        "question": "Which of these is a valid ADR status?",
+        "explanation": "ADR statuses are: Proposed (under discussion), Accepted (current decision), and Superseded (replaced by a newer ADR).",
+        "options": [
+          "Open, In Progress, Closed",
+          "Proposed, Accepted, Superseded",
+          "Draft, Review, Published",
+          "New, Active, Archived"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e6",
+        "difficulty": "easy",
+        "question": "What does the \"Context\" section of an ADR capture?",
+        "explanation": "Context captures the background: the forces, constraints, and situation that made the decision necessary in the first place.",
+        "options": [
+          "The code changes made to implement the decision",
+          "The forces in play that made the decision necessary",
+          "The team members involved in the discussion",
+          "The budget allocated for the decision"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e7",
+        "difficulty": "easy",
+        "question": "What is the purpose of numbering ADRs sequentially?",
+        "explanation": "Sequential numbering gives each ADR a stable reference (e.g. \"see ADR-0012\") and makes the history of decisions easy to navigate.",
+        "options": [
+          "To rank decisions by importance",
+          "To provide a unique identifier and show the chronological order of decisions",
+          "To allocate review bandwidth among team members",
+          "To set priority for implementation order"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e8",
+        "difficulty": "easy",
+        "question": "An ADR's \"Decision\" section states:",
+        "explanation": "The Decision section is a clear statement of what was chosen — not the context or consequences, just the choice itself.",
+        "options": [
+          "The problem background and forces in play",
+          "What was chosen, stated clearly and unambiguously",
+          "Who made the decision and when",
+          "When the decision will next be reviewed"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e9",
+        "difficulty": "easy",
+        "question": "How long is a typical ADR supposed to be?",
+        "explanation": "ADRs are intentionally one page: short enough to actually be written during the decision, and read by future team members.",
+        "options": [
+          "10–20 pages with full design rationale",
+          "One page — short and focused on one decision",
+          "As long as needed for comprehensive documentation",
+          "3–5 pages covering all related decisions"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-e10",
+        "difficulty": "easy",
+        "question": "What problem do ADRs solve six months after a decision is made?",
+        "explanation": "Without ADRs, the reasoning behind past decisions is lost. New joiners re-open old debates; teams waste time second-guessing well-considered choices.",
+        "options": [
+          "They automate rollback of bad decisions",
+          "They preserve the \"why\" behind decisions so future teams can understand, re-evaluate, or intentionally replace them",
+          "They measure the quality of architectural decisions",
+          "They enforce consistency across teams"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-m4",
+        "difficulty": "medium",
+        "question": "A team discovers that ADR-005 (use REST APIs) is no longer appropriate as they now need event-driven communication. The correct action is:",
+        "explanation": "ADRs are immutable. Write a new ADR referencing the old one, mark the old one superseded, and preserve the full history of the thinking.",
+        "options": [
+          "Edit ADR-005 to change it to event-driven",
+          "Delete ADR-005 and create a fresh replacement",
+          "Write a new ADR that supersedes ADR-005 and mark ADR-005 as superseded",
+          "Archive ADR-005 in a separate folder without a replacement"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "adr-m5",
+        "difficulty": "medium",
+        "question": "Which scenario best illustrates why ADRs prevent \"reopening old debates\"?",
+        "explanation": "The ADR acts as institutional memory: the new joiner gets the full context of the decision without needing to gather it from people who may have left.",
+        "options": [
+          "A new team member asks \"why PostgreSQL?\" — the ADR gives the context, options considered, and trade-offs accepted at the time",
+          "The CTO has an excellent memory for past decisions",
+          "A ticketing system tracks which decisions were made",
+          "All team members were present when every decision was made"
+        ],
+        "correctOption": 0
+      },
+      {
+        "id": "adr-m6",
+        "difficulty": "medium",
+        "question": "Why is the Consequences section more valuable than the Decision section for future readers?",
+        "explanation": "Future readers need to know what the decision constrains, enables, and risks — not just what was chosen, but what living with it means.",
+        "options": [
+          "Because the decision is usually obvious in hindsight",
+          "Because consequences show what trade-offs were accepted, helping future teams understand what they are working within",
+          "Because the decision section is usually incorrect",
+          "Because consequences are easier and faster to write"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-m7",
+        "difficulty": "medium",
+        "question": "Who should ideally write an ADR, according to the deep dive?",
+        "explanation": "ADRs work best when written by the people making the decision, capturing live context — not delegated to a separate documentation role.",
+        "options": [
+          "Only the chief architect",
+          "Anyone making the decision — architect, tech lead, or the team itself",
+          "A dedicated technical writing team",
+          "The project manager after the decision is finalised"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-m8",
+        "difficulty": "medium",
+        "question": "A team writes \"We chose PostgreSQL AND Redis AND Kafka\" in a single ADR. What is wrong with this?",
+        "explanation": "Small, focused ADRs are easier to read, easier to supersede individually, and easier to search for later. One decision per ADR is the rule.",
+        "options": [
+          "Nothing — comprehensive ADRs are more useful",
+          "It violates the \"one ADR = one decision\" principle; these should be three separate ADRs",
+          "Using three technologies is too complex for a single system",
+          "Kafka is not an architectural decision"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-m9",
+        "difficulty": "medium",
+        "question": "When is the ideal time to write an ADR?",
+        "explanation": "Writing during the meeting captures the actual options, the live trade-off reasoning, and the real context — all of which erode quickly after the fact.",
+        "options": [
+          "A week after the decision, when the dust has settled",
+          "During the decision meeting itself — as a working document capturing live context",
+          "During the annual architecture review",
+          "After the feature implementing the decision has shipped"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-m10",
+        "difficulty": "medium",
+        "question": "What does \"append-only\" mean for an ADR repository?",
+        "explanation": "Append-only preserves the full historical record. The sequence of ADRs tells the story of how the architecture evolved and why.",
+        "options": [
+          "You can only add text to an ADR, never delete any",
+          "New information or changed decisions require a new ADR; old ADRs are never edited",
+          "ADRs are stored in append-only databases",
+          "Only one person can contribute to each ADR"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h4",
+        "difficulty": "hard",
+        "question": "According to the deep dive, a \"retrospective artefact\" ADR (filled in after the fact) is inferior because:",
+        "explanation": "The value of an ADR is its capture of live thinking. Written retrospectively, it becomes a rationalisation rather than a record of what was actually considered.",
+        "options": [
+          "It is harder to format correctly",
+          "It loses the live context, options considered, and reasoning that only exist during the actual decision moment",
+          "The team has already forgotten all the alternatives by then",
+          "Retrospective ADRs are always too long"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h5",
+        "difficulty": "hard",
+        "question": "Why does ADR immutability specifically preserve the history of thinking?",
+        "explanation": "The sequence of ADRs and their superseding relationships shows how the architecture evolved — which is impossible to reconstruct if old ADRs are overwritten.",
+        "options": [
+          "Because immutable files physically cannot be deleted",
+          "Because future readers can see what was true at the time of each decision and why each subsequent ADR was necessary",
+          "Because git history alone is insufficient for this purpose",
+          "Because regulations require it"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h6",
+        "difficulty": "hard",
+        "question": "The deep dive says \"Consequences matter more than the decision.\" What evidence supports this claim?",
+        "explanation": "The decision is history; the consequences are what future teams live with. Acknowledging trade-offs explicitly prevents the ADR from pretending a silver bullet was found.",
+        "options": [
+          "The Consequences section is always shorter and therefore easier to scan",
+          "Writing consequences forces the author to acknowledge trade-offs — the information future readers most need",
+          "Consequences are more factual than decisions and therefore more reliable",
+          "Consequences are the only section that cannot be superseded"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h7",
+        "difficulty": "hard",
+        "question": "Why were lightweight ADRs proposed as an alternative to heavyweight architecture documents?",
+        "explanation": "A 50-page architecture document no-one reads provides no value. A one-page ADR that teams actually write, read, and refer to provides compounding value.",
+        "options": [
+          "Lightweight documents are always preferable to heavyweight ones",
+          "Heavyweight docs become outdated quickly and are rarely read; lightweight ADRs stay small enough to remain current and useful",
+          "ADRs require less formal formatting than architecture documents",
+          "Architects simply prefer shorter documents"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h8",
+        "difficulty": "hard",
+        "question": "ADR-022 has status \"superseded by ADR-037.\" What status does ADR-037 most likely carry?",
+        "explanation": "ADR-037 supersedes ADR-022, so it should be the currently accepted decision. Accepted means it represents the current architectural choice.",
+        "options": [
+          "Also superseded by a later ADR",
+          "Proposed — it is still under discussion",
+          "Accepted — it is the current active decision",
+          "Archived — it is no longer relevant"
+        ],
+        "correctOption": 2
+      },
+      {
+        "id": "adr-h9",
+        "difficulty": "hard",
+        "question": "How do ADRs complement \"You build it, you run it\" specifically?",
+        "explanation": "YBYR gives teams end-to-end ownership. ADRs ensure the \"why\" travels with that ownership — the team is accountable for both the decisions and their consequences.",
+        "options": [
+          "They reduce the number of deployment decisions a team must make",
+          "The team that owns and operates the system also owns the record of why it was built that way — accountability follows the code",
+          "They automate operational decision-making",
+          "ADRs replace runbooks for common operational procedures"
+        ],
+        "correctOption": 1
+      },
+      {
+        "id": "adr-h10",
+        "difficulty": "hard",
+        "question": "What distinguishes an ADR written as a \"working document\" from one written retrospectively?",
+        "explanation": "A working document is a live record of the decision process. A retrospective one reconstructs it from memory — losing the options that were rejected and the reasoning that was live.",
+        "options": [
+          "Working documents are always longer and more detailed",
+          "Working documents capture the actual options and reasoning as they existed during the decision; retrospective ones often rationalise choices after the fact",
+          "Working documents require more formal approvals",
+          "Working documents use a different template structure"
+        ],
+        "correctOption": 1
+      }
+    ]
+  }
+}

@@ -72,6 +72,41 @@ describe('ObjectiveBanner', () => {
     expect(textObj.setText).toHaveBeenCalledWith('Reach Platform floor');
   });
 
+  it('updates text during update() and emits objective:updated for later changes only', () => {
+    const scene = makeScene();
+    let objective = 'Collect mugs and hit the CEO';
+    const handler = vi.fn();
+    eventBus.on('objective:updated', handler);
+    try {
+      const banner = new ObjectiveBanner(scene as never, { getText: () => objective });
+      const textObj = scene.add.text.mock.results[0]!.value;
+
+      objective = 'Answer the architecture challenge';
+      banner.update();
+
+      expect(textObj.setText).toHaveBeenCalledWith('Answer the architecture challenge');
+      expect(handler).toHaveBeenCalledWith({ text: 'Answer the architecture challenge' });
+      expect(handler).toHaveBeenCalledTimes(1);
+    } finally {
+      eventBus.off('objective:updated', handler);
+    }
+  });
+
+  it('does not emit objective:updated when text becomes empty', () => {
+    const scene = makeScene();
+    let objective = 'Stun the CEO, then finish the fight';
+    const handler = vi.fn();
+    eventBus.on('objective:updated', handler);
+    try {
+      const banner = new ObjectiveBanner(scene as never, { getText: () => objective });
+      objective = '';
+      banner.update();
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      eventBus.off('objective:updated', handler);
+    }
+  });
+
   it('hides and shows based on modal state', () => {
     const scene = makeScene();
     let modalOpen = false;
