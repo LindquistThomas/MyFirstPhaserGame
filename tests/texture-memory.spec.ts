@@ -87,13 +87,28 @@ test.describe('Texture lifecycle regression', () => {
     });
     await waitForScene(page, 'BossArenaScene');
 
+    // Use ScenePlugin (this.scene.start) not SceneManager (game.scene.start) so
+    // the transition properly stops BossArenaScene (triggering its texture cleanup)
+    // before starting ElevatorScene.
     await page.evaluate(() => {
-      window.__game!.scene.start('ElevatorScene');
+      const g = window.__game!;
+      const boss = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'BossArenaScene') as unknown as {
+          scene: { start: (key: string) => void };
+        };
+      boss.scene.start('ElevatorScene');
     });
     await waitForScene(page, 'ElevatorScene');
 
     await page.evaluate(() => {
-      window.__game!.scene.start('MenuScene');
+      const g = window.__game!;
+      const elevator = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as {
+          scene: { start: (key: string) => void };
+        };
+      elevator.scene.start('MenuScene');
     });
     await waitForScene(page, 'MenuScene');
 
