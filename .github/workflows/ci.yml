@@ -10,9 +10,10 @@ permissions:
   contents: read
 
 concurrency:
-  # pull_request sets github.sha to the unique merge-commit SHA, so a plain
-  # ref-based key would give each push its own group and never cancel.  Use
-  # the PR number instead so rapid pushes to the same PR cancel the prior run.
+  # The old condition checked `github.event_name == 'pull_request_target'`,
+  # which is always false on a `pull_request` trigger, so every push fell
+  # through to the `ci-push-{sha}` fallback (unique per push → no cancellation).
+  # Use the PR number explicitly so rapid pushes to the same PR cancel the prior run.
   group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || github.event_name == 'merge_group' && format('ci-mq-{0}', github.event.merge_group.head_sha) || format('ci-push-{0}', github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
