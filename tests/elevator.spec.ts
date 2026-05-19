@@ -72,4 +72,44 @@ test.describe('Elevator scene', () => {
     errors.assertClean();
   });
 
+  test('locked floor call shows AU requirement toast at 0 AU', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+    await navigateToElevator(page);
+    await waitForScene(page, 'ElevatorScene');
+
+    // Products floor is locked on a fresh save (requires 9 AU).
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+      if (!scene) throw new Error('ElevatorScene not active');
+      const ctrl = scene['elevatorCtrl'] as { requestFloor: (floorId: number) => boolean };
+      ctrl.requestFloor(5);
+    });
+
+    const expectedToastMessage = 'Products locked — need 9 AU (you have 0/9)';
+    await page.waitForFunction(
+      (expected) => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene
+          .getScenes(true)
+          .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
+        if (!scene) return false;
+        const lockedToast = scene['lockedFloorToast'] as { toast?: { getMessage: () => string; isVisible: () => boolean } };
+        const toast = lockedToast?.toast;
+        return !!toast && toast.isVisible() && toast.getMessage() === expected;
+      },
+      expectedToastMessage,
+      { timeout: 10_000 },
+    );
+
+    errors.assertClean();
+  });
+
 });

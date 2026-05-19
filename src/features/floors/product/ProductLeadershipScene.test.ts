@@ -37,7 +37,7 @@ class TestableProductLeadershipScene extends ProductLeadershipScene {
     return this.getLevelConfig();
   }
 
-  public runDecorationsForTest(): void {
+  public runCreateDecorations(): void {
     this.createDecorations();
   }
 }
@@ -99,23 +99,25 @@ describe('ProductLeadershipScene — LevelConfig', () => {
     expect(typeof cfg.playerStart.y).toBe('number');
   });
 
-  it('createDecorations adds plants, signpost, and roadmap desks', () => {
+  it('createDecorations adds expected flora, signpost, and monitors', () => {
     const scene = new TestableProductLeadershipScene() as unknown as {
-      runDecorationsForTest: () => void;
       addAmbientPlants: ReturnType<typeof vi.fn>;
       addSignpost: ReturnType<typeof vi.fn>;
       add: { image: ReturnType<typeof vi.fn> };
+      runCreateDecorations: () => void;
     };
-    const setDepth = vi.fn().mockReturnThis();
+    const image = vi.fn(() => ({ setDepth: vi.fn() }));
     scene.addAmbientPlants = vi.fn();
     scene.addSignpost = vi.fn();
-    scene.add = { image: vi.fn(() => ({ setDepth })) };
+    scene.add = { image };
 
-    scene.runDecorationsForTest();
+    scene.runCreateDecorations();
 
-    expect(scene.addAmbientPlants).toHaveBeenCalledTimes(1);
-    expect(scene.addSignpost).toHaveBeenCalledTimes(1);
-    expect(scene.add.image).toHaveBeenCalledTimes(4);
-    expect(setDepth).toHaveBeenCalledTimes(4);
+    expect(scene.addAmbientPlants).toHaveBeenCalledWith([
+      { x: 90, kind: 'tall' },
+      { x: 160, kind: 'small' },
+    ]);
+    expect(scene.addSignpost).toHaveBeenCalled();
+    expect(image).toHaveBeenCalledTimes(4);
   });
 });

@@ -93,11 +93,55 @@ describe('initAriaLive', () => {
     expect(el.textContent).toMatch(/unlocked/i);
   });
 
+  it('falls back to a generic floor unlock label for unknown floor ids', async () => {
+    eventBus.emit('progression:floor_unlocked', -1 as never);
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('a new floor unlocked!');
+  });
+
   it('announces AU milestone with total count', async () => {
     eventBus.emit('progression:au_milestone', 50);
     await vi.runAllTimersAsync();
     expect(el.textContent).toContain('50');
     expect(el.textContent).toMatch(/architecture units/i);
+  });
+
+  it('announces floor entry with display name and objective', async () => {
+    eventBus.emit('scene:floor-entered', {
+      floorId: FLOORS.PLATFORM_TEAM,
+      displayName: 'Platform Team',
+      objective: 'Collect 3 of 5 tokens.',
+    });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Entered Platform Team. Collect 3 of 5 tokens.');
+  });
+
+  it('announces floor entry without trailing objective punctuation when objective is empty', async () => {
+    eventBus.emit('scene:floor-entered', {
+      floorId: FLOORS.BOSS,
+      displayName: 'Boardroom',
+      objective: '',
+    });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Entered Boardroom.');
+  });
+
+  it('announces updated objective text', async () => {
+    eventBus.emit('objective:updated', { text: 'Collect 4 of 5 tokens.' });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Collect 4 of 5 tokens.');
+  });
+
+  it('announces checkpoint reach progress', async () => {
+    eventBus.emit('checkpoint:reached', { index: 2, total: 3 });
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Checkpoint 2 of 3 reached.');
+  });
+
+  it('announces caffeine buff activation', async () => {
+    eventBus.emit('buff:caffeine-applied');
+    await vi.runAllTimersAsync();
+    expect(el.textContent).toBe('Caffeine buff active.');
   });
 
   it('(c) announces quiz cooldown expiry on quiz:cooldown_expired', async () => {

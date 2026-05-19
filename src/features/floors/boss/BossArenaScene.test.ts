@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { FLOORS } from '../../../config/gameConfig';
 
 // ── Minimal Phaser stub ──────────────────────────────────────────────────────
 
@@ -25,6 +26,11 @@ vi.mock('phaser', () => {
   return { default: { Scene, Physics, GameObjects }, Scene, Physics, GameObjects };
 });
 
+const checkpointRecords = vi.hoisted(() => [] as Array<{
+  onReach: () => void;
+  wireOverlap: ReturnType<typeof vi.fn>;
+}>);
+
 // ── Stub all heavy entity/system imports ─────────────────────────────────────
 
 vi.mock('../../../entities/Player', () => ({ Player: class Player {} }));
@@ -40,7 +46,21 @@ vi.mock('../../../entities/BriefcaseProjectile', () => ({
   BriefcaseProjectile: class BriefcaseProjectile {},
 }));
 vi.mock('../../../entities/Checkpoint', () => ({
-  Checkpoint: class Checkpoint {},
+  Checkpoint: class Checkpoint {
+    wireOverlap = vi.fn();
+    constructor(
+      _scene: unknown,
+      _x: number,
+      _y: number,
+      _id: string,
+      onReach: () => void,
+    ) {
+      checkpointRecords.push({
+        onReach,
+        wireOverlap: this.wireOverlap,
+      });
+    }
+  },
 }));
 vi.mock('../../../ui/BossHealthBar', () => ({
   BossHealthBar: class BossHealthBar {},
@@ -80,6 +100,11 @@ import {
   createBombDisarmProgress,
   isBombDisarmWin,
 } from './bombDisarmStateMachine';
+
+beforeEach(() => {
+  checkpointRecords.length = 0;
+  (eventBus.emit as ReturnType<typeof vi.fn>).mockClear();
+});
 
 // ── Static properties ────────────────────────────────────────────────────────
 
@@ -284,5 +309,41 @@ describe('BossArenaScene — deterministic disarm to defeat integration', () => 
     expect((eventBus.emit as ReturnType<typeof vi.fn>)).toHaveBeenCalledWith('game:completed');
     expect((eventBus.emit as ReturnType<typeof vi.fn>).mock.calls.filter(([evt]) => evt === 'game:completed'))
       .toHaveLength(1);
+  });
+});
+
+describe('BossArenaScene — accessibility events', () => {
+  it('announces boss floor entry with the current objective', () => {
+    const scene = new BossArenaScene() as unknown as Record<string, unknown>;
+    scene.getObjectiveText = () => 'Collect mugs and hit the CEO';
+
+    (scene.announceFloorEntry as () => void)();
+
+    expect(eventBus.emit).toHaveBeenCalledWith('scene:floor-entered', {
+      floorId: FLOORS.BOSS,
+      displayName: 'Boardroom',
+      objective: 'Collect mugs and hit the CEO',
+    });
+  });
+
+  it('emits checkpoint progress when the boss checkpoint is reached', () => {
+    const scene = new BossArenaScene() as unknown as Record<string, unknown>;
+    scene.progression = {
+      getActivatedCheckpointIds: () => [],
+      activateCheckpoint: vi.fn(),
+    };
+    scene.floorHazard = { registerCheckpoint: vi.fn() };
+    scene.physics = {};
+    scene.player = { sprite: {} };
+
+    (scene.spawnCheckpoint as () => void)();
+    checkpointRecords[0]!.onReach();
+
+    expect(checkpointRecords[0]!.wireOverlap).toHaveBeenCalledWith(
+      scene.physics,
+      (scene.player as { sprite: unknown }).sprite,
+    );
+    expect(eventBus.emit).toHaveBeenCalledWith('checkpoint:activate', 'boss-cp-1');
+    expect(eventBus.emit).toHaveBeenCalledWith('checkpoint:reached', { index: 1, total: 1 });
   });
 });

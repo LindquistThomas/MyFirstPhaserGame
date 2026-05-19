@@ -85,7 +85,7 @@ src/
 ├── input/                    Semantic-action input layer.
 │   ├── index.ts              Facade — the only import surface the rest of the game uses.
 │   ├── InputService.ts       Keyboard/touch → semantic actions; context stack.
-│   ├── actions.ts            GameAction catalog ("move-left", "jump", …).
+│   ├── actions.ts            GameAction catalog ('MoveLeft', 'Jump', …).
 │   ├── bindings.ts           Default key bindings per action context.
 │   ├── pointerBindings.ts    Touch/pointer action bindings.
 │   ├── keyLabels.ts          Human-readable key names for UI hints.
@@ -383,7 +383,7 @@ automatically.
 | `sfx:hit`            | —       | Player (damage)             | AudioManager |
 | `sfx:stomp`          | —       | Enemy (stomped)             | AudioManager |
 | `sfx:heartbeat`      | —       | Player (danger zone)        | AudioManager |
-| `sfx:drop_au`        | —       | Player (AU dropped on hit)  | AudioManager |
+| `sfx:drop_au`        | —       | LevelEnemySpawner           | AudioManager |
 | `sfx:recover_au`     | —       | Player (AU recovered)       | AudioManager |
 | `sfx:coffee_sip`     | —       | Coffee                      | AudioManager |
 | `sfx:fridge_open`    | —       | EnergyDrinkFridge           | AudioManager |
@@ -392,12 +392,12 @@ automatically.
 | `sfx:boss_defeated`  | —       | TerroristCommander          | AudioManager |
 | `sfx:boss_phase_2`   | —       | CEOBoss                     | AudioManager |
 | `sfx:boss_phase_3`   | —       | CEOBoss                     | AudioManager |
-| `sfx:mug_throw`      | —       | Player (mug projectile)     | AudioManager |
+| `sfx:mug_throw`      | —       | BossArenaScene              | AudioManager |
 | `sfx:briefcase_throw`| —       | CEOBoss                     | AudioManager |
 | `sfx:item_pickup`    | —       | MissionItem                 | AudioManager |
 | `sfx:bomb_disarm`    | —       | ExecutiveSuiteScene         | AudioManager |
 | `sfx:hostage_freed`  | —       | ExecutiveSuiteScene         | AudioManager |
-| `sfx:pistol_shot`    | —       | CEOBoss (pistol)            | AudioManager |
+| `sfx:pistol_shot`    | —       | ExecutiveSuiteScene         | AudioManager |
 | `sfx:floor_unlocked` | —       | ProgressStripController (HUD) | AudioManager |
 
 #### `checkpoint:*` — save points
@@ -418,7 +418,7 @@ automatically.
 
 | Event               | Payload          | Emitters | Consumers     |
 |---------------------|------------------|----------|---------------|
-| `boss:defeated`     | —                | CEOBoss  | BossArenaScene |
+| `boss:defeated`     | —                | CEOBoss  | Analytics            |
 | `boss:phase_changed`| `phase: number`  | CEOBoss  | BossArenaScene |
 
 #### `buff:*` — player buffs

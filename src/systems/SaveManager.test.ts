@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach, afterAll } from 'vitest';
-import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot, getRecoveryReason } from './SaveManager';
+import { setStorage, setPlayerSlot, save, load, hasSave, clear, noopStorage, KVStorage, SaveData, CURRENT_SAVE_VERSION, loadSlotInfo, migrateDefaultSlot, clearSlot, SAVE_SLOTS, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, wasSlotRecovered, getCorruptBackup, clearRecoveredSlot, getRecoveryReason, getImportPreview } from './SaveManager';
 import type { SaveMigrationMap } from './SaveManager';
 import { eventBus } from './EventBus';
 
@@ -1160,15 +1160,21 @@ describe('SaveManager — exportSlot / importToSlot', () => {
     expect(exportSlot('slot1')).toBeNull();
   });
 
-  it('exportSlot produces a valid JSON envelope with the correct format', () => {
+  it('exportSlot produces a valid JSON envelope with metadata', () => {
     save(sample);
     const json = exportSlot('slot1');
     expect(json).not.toBeNull();
     const envelope = JSON.parse(json!);
     expect(envelope.format).toBe(SAVE_ENVELOPE_FORMAT);
     expect(typeof envelope.exportedAt).toBe('string');
-    expect(envelope.payload.totalAU).toBe(sample.totalAU);
-    expect(envelope.payload.currentFloor).toBe(sample.currentFloor);
+    expect(envelope.meta).toMatchObject({
+      floorName: 'Platform Team',
+      totalAu: sample.totalAU,
+      playTime: 0,
+      slotId: 'slot1',
+    });
+    expect(envelope.data.totalAU).toBe(sample.totalAU);
+    expect(envelope.data.currentFloor).toBe(sample.currentFloor);
   });
 
   it('round-trip: export → clear storage → import → data restored exactly', () => {
@@ -1207,7 +1213,7 @@ describe('SaveManager — exportSlot / importToSlot', () => {
     const badPayload = JSON.stringify({
       format: SAVE_ENVELOPE_FORMAT,
       exportedAt: new Date().toISOString(),
-      payload: { totalAU: 5 }, // missing required fields
+      data: { totalAU: 5 }, // missing required fields
     });
     expect(importToSlot('slot1', badPayload)).toBeNull();
   });
@@ -1225,7 +1231,7 @@ describe('SaveManager — exportSlot / importToSlot', () => {
     const envelope = JSON.stringify({
       format: SAVE_ENVELOPE_FORMAT,
       exportedAt: new Date().toISOString(),
-      payload: v0Payload,
+      data: v0Payload,
     });
     const result = importToSlot('slot1', envelope);
     expect(result).not.toBeNull();
@@ -1238,12 +1244,63 @@ describe('SaveManager — exportSlot / importToSlot', () => {
     const envelope = JSON.stringify({
       format: SAVE_ENVELOPE_FORMAT,
       exportedAt: new Date().toISOString(),
-      payload: sample,
+      data: sample,
     });
     importToSlot('slot1', envelope); // write to slot1 explicitly
 
     // slot1 should have the data; slot2 should remain empty
     expect(mem.store.has('architect_slot1_v1')).toBe(true);
     expect(mem.store.has('architect_slot2_v1')).toBe(false);
+  });
+
+  it('importToSlot accepts legacy envelopes without metadata', () => {
+    const legacyEnvelope = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: new Date().toISOString(),
+      payload: sample,
+    });
+    const result = importToSlot('slot1', legacyEnvelope);
+    expect(result).not.toBeNull();
+    expect(result!.totalAU).toBe(sample.totalAU);
+  });
+
+  it('getImportPreview extracts file metadata and current-slot comparison', () => {
+    const slot2Save: SaveData = {
+      ...sample,
+      currentFloor: 3,
+      totalAU: 99,
+      playtimeMs: 3723000,
+      lastPlayedAt: Date.parse('2026-01-01T10:00:00.000Z'),
+    };
+    mem.store.set('architect_slot2_v1', JSON.stringify(slot2Save));
+
+    const imported = JSON.stringify({
+      format: SAVE_ENVELOPE_FORMAT,
+      exportedAt: '2026-04-05T12:34:56.000Z',
+      data: sample,
+      meta: {
+        floorName: 'Platform Team',
+        totalAu: 7,
+        playTime: 5432,
+        slotId: 'slot1',
+      },
+    });
+
+    const preview = getImportPreview('slot2', imported);
+    expect(preview).not.toBeNull();
+    expect(preview?.fromFile).toMatchObject({
+      floorName: 'Platform Team',
+      totalAu: 7,
+      playTime: 5432,
+      slotId: 'slot1',
+      exportedAt: '2026-04-05T12:34:56.000Z',
+    });
+    expect(preview?.currentSlot).toMatchObject({
+      floorName: 'Business',
+      totalAu: 99,
+      playTime: 3723,
+      slotId: 'slot2',
+      lastPlayedAt: Date.parse('2026-01-01T10:00:00.000Z'),
+    });
   });
 });
