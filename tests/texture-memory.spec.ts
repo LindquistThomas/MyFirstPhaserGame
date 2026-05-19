@@ -49,7 +49,8 @@ test.describe('Texture lifecycle regression', () => {
       return menu?._warmupDone === true;
     });
 
-    const baselineTextureCount = await page.evaluate(() => window.__game!.textures.getTextureKeys().length);
+    const baselineTextureKeys = await page.evaluate(() => window.__game!.textures.getTextureKeys());
+    const baselineTextureCount = baselineTextureKeys.length;
 
     await navigateToElevator(page);
 
@@ -96,8 +97,13 @@ test.describe('Texture lifecycle regression', () => {
     });
     await waitForScene(page, 'MenuScene');
 
-    const finalTextureCount = await page.evaluate(() => window.__game!.textures.getTextureKeys().length);
-    expect(finalTextureCount - baselineTextureCount).toBeLessThanOrEqual(5);
+    const { finalTextureCount, leakedKeys } = await page.evaluate((baselineKeys) => {
+      const allKeys = window.__game!.textures.getTextureKeys();
+      const baselineSet = new Set(baselineKeys);
+      const leaked = allKeys.filter((k) => !baselineSet.has(k));
+      return { finalTextureCount: allKeys.length, leakedKeys: leaked };
+    }, baselineTextureKeys);
+    expect(finalTextureCount - baselineTextureCount, `Leaked texture keys: ${leakedKeys.join(', ')}`).toBeLessThanOrEqual(5);
 
     errors.assertClean();
   });
