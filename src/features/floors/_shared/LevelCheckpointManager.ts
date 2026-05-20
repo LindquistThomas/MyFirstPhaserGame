@@ -1,4 +1,4 @@
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, type FloorId } from '../../../config/gameConfig';
 import type { Player } from '../../../entities/Player';
 import { Checkpoint } from '../../../entities/Checkpoint';
