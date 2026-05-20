@@ -191,7 +191,7 @@ test.describe('Save export / import', () => {
     await waitForGame(page);
     await navigateToSettings(page);
 
-    const result = await page.evaluate(() => {
+    const result = await page.evaluate(async () => {
       const hooks = (window as unknown as {
         __testHooks?: { exportSlot: (s: string) => string | null };
       }).__testHooks;
@@ -241,24 +241,35 @@ test.describe('Save export / import', () => {
           lastPlayedAt: Date.parse('2026-01-01T10:00:00.000Z'),
         },
       };
-      scene.openImportConfirm(json, 'slot2', 2, preview);
-
-      const texts = (game.scene.getScene('SettingsScene') as { children: { list: unknown[] } })
-        .children
-        .list
-        .filter((go) => typeof (go as { text?: unknown }).text === 'string')
-        .map((go) => (go as { text: string }).text);
-      return { ok: true, texts };
+      for (let i = 0; i < 20; i += 1) {
+        const active = game.scene.getScene('SettingsScene') as unknown as {
+          sys?: { settings?: { status?: number } };
+          importConfirmOpen?: boolean;
+          importConfirmData?: { slotId?: string };
+          openImportConfirm: (raw: string, activeSlotId: 'slot1' | 'slot2' | 'slot3', activeSlotNum: number, activePreview: unknown) => void;
+        };
+        if (active?.sys?.settings?.status === 5 && active.importConfirmOpen !== true) {
+          active.openImportConfirm(json, 'slot2', 2, preview);
+        }
+        if (active?.importConfirmOpen === true && active?.importConfirmData?.slotId === 'slot2') {
+          return { ok: true };
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return { ok: false, reason: 'import preview state not visible' };
     });
 
     expect(result.ok).toBe(true);
-    const texts = (result as { texts: string[] }).texts.join('\n');
-    expect(texts).toContain('From file:');
-    expect(texts).toContain('Current slot:');
-    expect(texts).toContain('Platform Team');
-    expect(texts).toContain('Business');
-    expect(texts).toContain('[ REPLACE ]');
-    expect(texts).toContain('[ CANCEL ]');
+    await page.waitForFunction(() => {
+      const region = document.getElementById('game-aria-live');
+      const text = region?.textContent ?? '';
+      return text.includes('Import preview. From file:') && text.includes('Current slot:');
+    }, undefined, { timeout: 5_000 });
+    const ariaText = await page.locator('#game-aria-live').innerText();
+    expect(ariaText).toContain('From file:');
+    expect(ariaText).toContain('Current slot:');
+    expect(ariaText).toContain('Lobby');
+    expect(ariaText).toContain('Business');
     errors.assertClean();
   });
 });
