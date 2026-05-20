@@ -212,9 +212,11 @@ export async function navigateToElevator(page: Page): Promise<void> {
   // If the slot has save data the mode-selection overlay appears (inActionSelect).
   // Race between two outcomes:
   //   'dialog'  — inActionSelect is true → press Enter to confirm CONTINUE.
-  //   'gone'    — SaveSlotScene already transitioned away (fresh slot, no dialog).
-  // Returning a truthy string for both cases lets waitForFunction exit immediately
-  // on either path instead of burning the full 2 s timeout on the no-dialog path.
+  //   'gone'    — SaveSlotScene already transitioned away (fresh slot starts a
+  //               400 ms camera-fade-out before scene.start, so the scene goes
+  //               away in ~400–500 ms; 'gone' is returned once it shuts down).
+  // Returning a truthy string for both cases lets waitForFunction exit as soon
+  // as either condition is met instead of waiting for the full timeout.
   const dialogHandle = await page.waitForFunction(
     (): 'dialog' | 'gone' | false => {
       const g = window.__game;
