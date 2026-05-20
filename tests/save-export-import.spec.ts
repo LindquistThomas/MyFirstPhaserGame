@@ -189,6 +189,7 @@ test.describe('Save export / import', () => {
     const errors = attachErrorWatchers(page);
     await page.goto('/');
     await waitForGame(page);
+    await navigateToSettings(page);
 
     const result = await page.evaluate(() => {
       const hooks = (window as unknown as {
@@ -196,7 +197,6 @@ test.describe('Save export / import', () => {
       }).__testHooks;
       const game = window.__game as unknown as {
         scene: {
-          start: (key: string, data?: unknown) => void;
           getScene: (key: string) => unknown;
         };
       } | undefined;
@@ -218,7 +218,6 @@ test.describe('Save export / import', () => {
       };
       window.localStorage.setItem('architect_slot2_v1', JSON.stringify(slot2));
 
-      game.scene.start('SettingsScene', { from: 'MenuScene' });
       const scene = game.scene.getScene('SettingsScene') as unknown as {
         openImportConfirm: (raw: string, slotId: 'slot1' | 'slot2' | 'slot3', slotNum: number, preview: unknown) => void;
       };
