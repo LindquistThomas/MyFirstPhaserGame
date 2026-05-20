@@ -243,11 +243,23 @@ test.describe('Save export / import', () => {
       };
       scene.openImportConfirm(json, 'slot2', 2, preview);
 
-      const texts = (game.scene.getScene('SettingsScene') as { children: { list: unknown[] } })
-        .children
-        .list
-        .filter((go) => typeof (go as { text?: unknown }).text === 'string')
-        .map((go) => (go as { text: string }).text);
+      // Collect text from the scene's display list recursively — openImportConfirm
+      // wraps everything in a Phaser Container (overlay), which removes children
+      // from the top-level display list (Phaser exclusive-Container behaviour).
+      // A shallow scene.children.list scan misses them; this helper walks into
+      // Container.list so the overlay text is included.
+      function collectTexts(items: unknown[]): string[] {
+        const result: string[] = [];
+        for (const go of items) {
+          const obj = go as { text?: unknown; list?: unknown[] };
+          if (typeof obj.text === 'string') result.push(obj.text);
+          if (Array.isArray(obj.list)) result.push(...collectTexts(obj.list));
+        }
+        return result;
+      }
+      const displayList = (game.scene.getScene('SettingsScene') as { children: { list: unknown[] } })
+        .children.list;
+      const texts = collectTexts(displayList);
       return { ok: true, texts };
     });
 
