@@ -7,6 +7,25 @@ import {
   waitForScene,
 } from './helpers/playwright';
 
+const SCENE_READY_POLL_INTERVAL_MS = 100;
+const MAX_SCENE_READY_RETRIES = 20;
+const ARIA_LIVE_BUFFER_MS = 500;
+const SETTINGS_SCENE_STATUS_RUNNING = 5;
+const IMPORT_PREVIEW_WAIT_TIMEOUT_MS =
+  MAX_SCENE_READY_RETRIES * SCENE_READY_POLL_INTERVAL_MS + ARIA_LIVE_BUFFER_MS;
+
+type SettingsSceneWithImportState = {
+  sys?: { settings?: { status?: number } };
+  importConfirmOpen?: boolean;
+  importConfirmData?: { slotId?: string };
+  openImportConfirm: (
+    raw: string,
+    activeSlotId: 'slot1' | 'slot2' | 'slot3',
+    activeSlotNum: number,
+    activePreview: unknown,
+  ) => void;
+};
+
 /**
  * End-to-end tests for the Save Export / Import feature.
  *
@@ -191,7 +210,7 @@ test.describe('Save export / import', () => {
     await waitForGame(page);
     await navigateToSettings(page);
 
-    const result = await page.evaluate(async () => {
+    const result = await page.evaluate(async ({ maxRetries, pollMs, runningStatus }) => {
       const hooks = (window as unknown as {
         __testHooks?: { exportSlot: (s: string) => string | null };
       }).__testHooks;
@@ -241,22 +260,21 @@ test.describe('Save export / import', () => {
           lastPlayedAt: Date.parse('2026-01-01T10:00:00.000Z'),
         },
       };
-      for (let i = 0; i < 20; i += 1) {
-        const active = game.scene.getScene('SettingsScene') as unknown as {
-          sys?: { settings?: { status?: number } };
-          importConfirmOpen?: boolean;
-          importConfirmData?: { slotId?: string };
-          openImportConfirm: (raw: string, activeSlotId: 'slot1' | 'slot2' | 'slot3', activeSlotNum: number, activePreview: unknown) => void;
-        };
-        if (active?.sys?.settings?.status === 5 && active.importConfirmOpen !== true) {
+      for (let i = 0; i < maxRetries; i += 1) {
+        const active = game.scene.getScene('SettingsScene') as unknown as SettingsSceneWithImportState;
+        if (active?.sys?.settings?.status === runningStatus && active.importConfirmOpen !== true) {
           active.openImportConfirm(json, 'slot2', 2, preview);
         }
         if (active?.importConfirmOpen === true && active?.importConfirmData?.slotId === 'slot2') {
-          return { ok: true };
+          return { ok: true, fromFileFloorName: fromFile.meta.floorName };
         }
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, pollMs));
       }
       return { ok: false, reason: 'import preview state not visible' };
+    }, {
+      maxRetries: MAX_SCENE_READY_RETRIES,
+      pollMs: SCENE_READY_POLL_INTERVAL_MS,
+      runningStatus: SETTINGS_SCENE_STATUS_RUNNING,
     });
 
     expect(result.ok).toBe(true);
@@ -264,11 +282,11 @@ test.describe('Save export / import', () => {
       const region = document.getElementById('game-aria-live');
       const text = region?.textContent ?? '';
       return text.includes('Import preview. From file:') && text.includes('Current slot:');
-    }, undefined, { timeout: 5_000 });
+    }, undefined, { timeout: IMPORT_PREVIEW_WAIT_TIMEOUT_MS });
     const ariaText = await page.locator('#game-aria-live').innerText();
     expect(ariaText).toContain('From file:');
     expect(ariaText).toContain('Current slot:');
-    expect(ariaText).toContain('Lobby');
+    expect(ariaText).toContain((result as { fromFileFloorName: string }).fromFileFloorName);
     expect(ariaText).toContain('Business');
     errors.assertClean();
   });
