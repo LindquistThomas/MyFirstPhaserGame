@@ -141,7 +141,7 @@ Short index of where things live. Reach for these instead of re-implementing.
   2. Update `defaultState()`, `persist()`, `loadFromSave()`.
   3. Call `this.persist()` after any mutation that must survive a reload.
 - **Text resolution**: `main.ts` monkey-patches `scene.add.text` / `scene.make.text` to default to `resolution: 1.5` so glyphs stay crisp after FIT scaling. Elements that need maximum crispness (HUD AU counter in `CoinCounterController`, dialog title in `InfoDialog`, large menu headings in `MenuScene`) pass `resolution: 2` explicitly in their style object.
-- **Test-hook globals**: `main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz, eventBus }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on both. Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle without the globals (see README "Build flags").
+- **Test-hook globals**: `main.ts` exposes `window.__game` (Phaser.Game) and `window.__testHooks` (`{ QuizDialog, canRetryQuiz, eventBus, exportSlot, importToSlot, SAVE_ENVELOPE_FORMAT, forceShowVirtualGamepad }`) whenever `VITE_EXPOSE_TEST_HOOKS !== 'false'` — default-on in dev, preview, and production. Playwright relies on all of them (`tests/save-export-import.spec.ts` uses the save hooks; `tests/touch.spec.ts` uses `forceShowVirtualGamepad`). Build with `VITE_EXPOSE_TEST_HOOKS=false` for a hardened bundle without the globals (see README "Build flags").
 
 ## How to extend
 
@@ -212,9 +212,6 @@ Playwright helpers in `tests/helpers/playwright.ts`:
 - `seedFullProgressSave(page, { totalAU?, floorAU? })` — pre-populates the save slot and marks the elevator info dialog as seen so it doesn't swallow input.
 - `clearStorage(page)` — wipes localStorage before boot.
 - `attachErrorWatchers(page).assertClean()` — fails the test if any uncaught `pageerror`/console error leaked.
-
-`window.__testHooks` extras (available when `VITE_EXPOSE_TEST_HOOKS !== 'false'`):
-- `forceShowVirtualGamepad(visible: boolean)` — imperatively mount (`true`) or unmount (`false`) the virtual gamepad without writing localStorage. Use this to cover touch UI in Playwright tests on non-touch Chromium. `true` also shows the first-run hint if `TouchHintStore.hasSeen()` is still `false`.
 
 For detailed Playwright debugging recipes, see `.github/skills/debug-with-playwright.md`.
 
