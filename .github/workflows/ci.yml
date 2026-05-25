@@ -25,14 +25,23 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Detect whether this push/PR touches anything outside docs/**.
-      # If only docs/** changed, downstream jobs are skipped — skipped jobs
-      # satisfy required status checks, so doc-only PRs can still merge.
+      # Detect whether this push/PR touches anything outside docs/** and
+      # .github/workflows/**. If only those paths changed, downstream jobs
+      # are skipped — skipped jobs satisfy required status checks, so
+      # doc-only / workflow-only PRs can still merge.
+      #
+      # The leading '**' positive pattern is required: dorny/paths-filter
+      # only includes files matching at least one positive pattern, so a
+      # filter consisting solely of negations produces an empty include set
+      # and undefined output (observed: workflow-only PRs reporting
+      # code=true on #760 and the filter job hard-failing on #767). See
+      # https://github.com/dorny/paths-filter#filter-pattern-cheat-sheet.
       - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
             code:
+              - '**'
               - '!docs/**'
               - '!.github/workflows/**'
 
