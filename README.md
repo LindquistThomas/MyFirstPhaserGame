@@ -123,7 +123,7 @@ To install the Claude GitHub App on a personal account:
 
 ## Privacy
 
-When the **Send anonymous gameplay data** toggle is enabled in Settings *and* the game is deployed with a configured analytics endpoint (`VITE_ANALYTICS_ENDPOINT`), the game sends anonymous telemetry to help us understand the player progression funnel. The data collected is strictly limited to:
+When the **Send analytics** toggle is enabled in Settings *and* the game is deployed with a configured analytics endpoint (`VITE_ANALYTICS_ENDPOINT`), the game sends anonymous telemetry to help us understand the player progression funnel. The data collected is strictly limited to:
 
 - **Event names** — which floors were entered, when a quiz was passed or failed, which achievements were unlocked, when a session started and ended.
 - **Aggregate numbers** — AU totals at milestone thresholds (sampled every 25 AU), quiz scores (pass/fail, not individual answers).

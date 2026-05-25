@@ -4,7 +4,7 @@
  * Gated behind two independent conditions — both must be true before any
  * network request is ever made:
  *   1. `VITE_ANALYTICS_ENDPOINT` is set at build time (production-only env var).
- *   2. The player has explicitly enabled the "Send anonymous gameplay data"
+ *   2. The player has explicitly enabled the "Send analytics"
  *      toggle in Settings (`SettingsStore.analyticsConsent === true`).
  *
  * When the endpoint is absent, `AnalyticsService` is never created (returns null
