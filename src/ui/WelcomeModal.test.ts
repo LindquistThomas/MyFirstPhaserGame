@@ -64,6 +64,18 @@ vi.mock('../input', () => ({
   promptLabel: vi.fn(() => 'K'),
 }));
 
+vi.mock('../config/levelData', () => ({
+  LEVEL_DATA: {
+    boss: { auRequired: 28 },
+  },
+}));
+
+vi.mock('../config/gameConfig', () => ({
+  GAME_WIDTH: 800,
+  GAME_HEIGHT: 600,
+  FLOORS: { BOSS: 'boss' },
+}));
+
 // ---------------------------------------------------------------------------
 // Scene stub helpers
 // ---------------------------------------------------------------------------
@@ -313,5 +325,32 @@ describe('WelcomeModal', () => {
     // No onComplete provided — exercises the default parameter arrow function
     const modal = new WelcomeModal(scene as unknown as Phaser.Scene);
     expect(() => modal.close()).not.toThrow();
+  });
+
+  // -------------------------------------------------------------------------
+  // Win-condition copy correctness (#794)
+  // -------------------------------------------------------------------------
+
+  it('body copy references the Boardroom/CEO goal, not "100 AU"', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn());
+    const allTextArgs: string[] = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => c[2])
+      .filter((t): t is string => typeof t === 'string');
+    const bodyCall = allTextArgs.find((t) => t.includes('Architecture Units'));
+    expect(bodyCall).toBeDefined();
+    expect(bodyCall).not.toMatch(/100 AU/);
+    expect(bodyCall).toMatch(/Boardroom/);
+    expect(bodyCall).toMatch(/CEO/);
+  });
+
+  it('body copy AU threshold is sourced from LEVEL_DATA (28), not a hardcoded literal', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn());
+    const allTextArgs: string[] = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls
+      .map((c) => c[2])
+      .filter((t): t is string => typeof t === 'string');
+    const bodyCall = allTextArgs.find((t) => t.includes('Architecture Units'));
+    expect(bodyCall).toMatch(/28/);
   });
 });

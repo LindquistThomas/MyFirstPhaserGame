@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config/gameConfig';
+import { GAME_WIDTH, GAME_HEIGHT, FLOORS } from '../config/gameConfig';
+import { LEVEL_DATA } from '../config/levelData';
 import { theme } from '../style/theme';
 import { ModalBase } from './ModalBase';
 import { isTouchPrimary } from './touchPrimary';
@@ -103,7 +104,8 @@ export class WelcomeModal extends ModalBase {
       'talk to people, and learn their architectural challenges.',
       '',
       'Collecting AU (Architecture Units) proves your expertise.',
-      'Reach 100 AU to graduate as a full architect!',
+      `Unlock every floor, reach the Boardroom, and defeat the CEO`,
+      `to graduate as a full architect! (${LEVEL_DATA[FLOORS.BOSS].auRequired} AU to reach the top)`,
       '',
       'CONTROLS',
       ...controlsRows,
