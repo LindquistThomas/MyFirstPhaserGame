@@ -103,7 +103,7 @@ export class WelcomeModal extends ModalBase {
       'talk to people, and learn their architectural challenges.',
       '',
       'Collecting AU (Architecture Units) proves your expertise.',
-      'Reach 100 AU to graduate as a full architect!',
+      'Unlock the Boardroom and beat the CEO boss to graduate!',
       '',
       'CONTROLS',
       ...controlsRows,

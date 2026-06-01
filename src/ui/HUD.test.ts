@@ -557,6 +557,31 @@ describe('HUD — playtime timer widget', () => {
     expect(timerText).toBeDefined();
   });
 
+  it('updates timer text at most once per elapsed second', () => {
+    scene = makeScene(false);
+    let runMs = 90_000;
+    const tracker = {
+      getRunElapsedMs: vi.fn(() => runMs),
+    };
+    const hud = new HUD(scene as unknown as Phaser.Scene, progression, tracker as never);
+
+    hud.update();
+    hud.update();
+    runMs = 90_999;
+    hud.update();
+
+    const timerText = scene.texts.find((t) =>
+      (t.setText as ReturnType<typeof vi.fn>).mock.calls.some(([s]) => s === '1:30'),
+    );
+    expect(timerText).toBeDefined();
+    if (!timerText) throw new Error('timer text not found');
+    expect(timerText.setText).toHaveBeenCalledTimes(1);
+
+    runMs = 91_000;
+    hud.update();
+    expect(timerText.setText).toHaveBeenCalledWith('1:31');
+  });
+
   it('timer text is created but hidden when no tracker is provided', () => {
     scene = makeScene(false);
     new HUD(scene as unknown as Phaser.Scene, progression);
