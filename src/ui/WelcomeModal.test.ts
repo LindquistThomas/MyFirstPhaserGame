@@ -173,6 +173,18 @@ describe('WelcomeModal', () => {
     expect(scene.add.graphics).toHaveBeenCalled();
   });
 
+  it('describes the actual win condition instead of a 100 AU target', () => {
+    const scene = makeScene();
+    new WelcomeModal(scene as unknown as Phaser.Scene, vi.fn());
+    const allTextArgs = (scene.add.text as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2]);
+    const bodyText = allTextArgs.find((text): text is string =>
+      typeof text === 'string' && text.includes('Collecting AU'),
+    );
+
+    expect(bodyText).toContain('Unlock the Boardroom and beat the CEO boss to graduate!');
+    expect(bodyText).not.toContain('Reach 100 AU');
+  });
+
   it('calls onComplete when close() is invoked', () => {
     const scene = makeScene();
     const onComplete = vi.fn();

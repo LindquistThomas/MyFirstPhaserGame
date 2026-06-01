@@ -91,6 +91,12 @@ type SceneInternal = {
     add: ReturnType<typeof vi.fn>;
     start: ReturnType<typeof vi.fn>;
   };
+  registry: {
+    get: ReturnType<typeof vi.fn>;
+    events: {
+      once: ReturnType<typeof vi.fn>;
+    };
+  };
   cameras: { main: { fadeIn: ReturnType<typeof vi.fn>; fadeOut: ReturnType<typeof vi.fn> } };
   sceneLoadingOverlay?: {
     showLoading: ReturnType<typeof vi.fn>;
@@ -130,6 +136,12 @@ function makeStub(): SceneInternal {
     get: vi.fn(() => null),
     add: vi.fn(),
     start: vi.fn(),
+  };
+  stub.registry = {
+    get: vi.fn((key: string) => (key === 'proceduralAssetsReady' ? true : undefined)),
+    events: {
+      once: vi.fn(),
+    },
   };
 
   stub.cameras = {
@@ -218,6 +230,7 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
     const transition = stub.lazyStartScene('PlatformTeamScene');
     await Promise.resolve();
     await Promise.resolve();
+    await Promise.resolve();
 
     expect(stub.sceneLoadingOverlay?.showLoading).toHaveBeenCalledTimes(1);
     expect(stub.sceneLoadingOverlay?.message).toContain('Loading');
@@ -239,6 +252,42 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
       'Could not load floor',
       'Press Enter to retry',
     );
+  });
+
+  it('caps lazy-load retries and leaves the player in the elevator after persistent failure', async () => {
+    testLazyLoaders.set(
+      'PlatformTeamScene',
+      () => Promise.reject(new Error('chunk download failed')),
+    );
+
+    await stub.lazyStartScene('PlatformTeamScene');
+    await stub.lazyStartScene('PlatformTeamScene');
+    await stub.lazyStartScene('PlatformTeamScene');
+
+    expect(stub.retrySceneKey).toBeNull();
+    expect(stub.scene.start).not.toHaveBeenCalled();
+    expect(stub.sceneLoadingOverlay?.showError).toHaveBeenLastCalledWith(
+      'Floor unavailable',
+      'Choose another floor',
+    );
+  });
+
+  it('waits for deferred procedural assets before starting a floor scene', async () => {
+    let ready = false;
+    let markReady: (() => void) | undefined;
+    stub.registry.get = vi.fn((key: string) => (key === 'proceduralAssetsReady' ? ready : undefined));
+    stub.registry.events.once = vi.fn((_event: string, handler: () => void) => {
+      markReady = handler;
+    });
+
+    const transition = stub.lazyStartScene('PlatformTeamScene');
+    await Promise.resolve();
+    expect(stub.scene.start).not.toHaveBeenCalled();
+
+    ready = true;
+    markReady?.();
+    await transition;
+    expect(stub.scene.start).toHaveBeenCalledWith('PlatformTeamScene');
   });
 
   it('retry prompt binds Confirm to reattempt lazyStartScene()', () => {

@@ -103,6 +103,8 @@ export class ElevatorScene extends Phaser.Scene {
   private static readonly TRANSITION_FADE_MS = 500;
   private static readonly LOADING_OVERLAY_DELAY_MS = 250;
   private static readonly LOADING_OVERLAY_MIN_VISIBLE_MS = 150;
+  private static readonly MAX_LAZY_SCENE_LOAD_ATTEMPTS = 3;
+  private readonly lazySceneLoadAttempts = new Map<string, number>();
 
   constructor() {
     super({ key: 'ElevatorScene' });
@@ -673,6 +675,7 @@ export class ElevatorScene extends Phaser.Scene {
     this.sceneLoadingOverlay?.hide();
 
     try {
+      await this.waitForProceduralAssetsReady();
       const loader = LAZY_SCENE_LOADERS.get(sceneKey);
       if (loader && !this.scene.get(sceneKey)) {
         let loaderSettled = false;
@@ -704,17 +707,43 @@ export class ElevatorScene extends Phaser.Scene {
         await this.waitMs(ElevatorScene.TRANSITION_FADE_MS);
       }
       this.sceneLoadingOverlay?.hide();
+      this.lazySceneLoadAttempts.delete(sceneKey);
       this.scene.start(sceneKey);
     } catch (err: unknown) {
       console.error(`[ElevatorScene] Failed to load scene "${sceneKey}":`, err);
-      this.sceneLoadingOverlay?.showError(
-        'Could not load floor',
-        'Press Enter to retry',
-      );
-      this.retrySceneKey = sceneKey;
+      const attempts = (this.lazySceneLoadAttempts.get(sceneKey) ?? 0) + 1;
+      this.lazySceneLoadAttempts.set(sceneKey, attempts);
+      if (attempts >= ElevatorScene.MAX_LAZY_SCENE_LOAD_ATTEMPTS) {
+        this.sceneLoadingOverlay?.showError(
+          'Floor unavailable',
+          'Choose another floor',
+        );
+        this.retrySceneKey = null;
+      } else {
+        this.sceneLoadingOverlay?.showError(
+          'Could not load floor',
+          'Press Enter to retry',
+        );
+        this.retrySceneKey = sceneKey;
+      }
       this.isTransitioning = false;
       this.cameras.main.fadeIn(300, 0, 0, 0);
     }
+  }
+
+  private waitForProceduralAssetsReady(): Promise<void> {
+    if (this.registry.get('proceduralAssetsReady') === true) return Promise.resolve();
+
+    return new Promise<void>((resolve) => {
+      const waitForReady = () => {
+        if (this.registry.get('proceduralAssetsReady') === true) {
+          resolve();
+          return;
+        }
+        this.registry.events.once('changedata-proceduralAssetsReady', waitForReady);
+      };
+      this.registry.events.once('changedata-proceduralAssetsReady', waitForReady);
+    });
   }
 
   private waitMs(ms: number): Promise<void> {
