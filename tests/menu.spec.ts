@@ -23,7 +23,7 @@ test.describe('Menu scene', () => {
     errors.assertClean();
   });
 
-  test('keyboard Down Down Enter activates the third menu option', async ({ page }) => {
+  test('keyboard navigation activates the Settings menu option', async ({ page }) => {
     await clearStorage(page);
     const errors = attachErrorWatchers(page);
 
@@ -31,6 +31,8 @@ test.describe('Menu scene', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');

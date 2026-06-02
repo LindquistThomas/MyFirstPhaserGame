@@ -114,7 +114,8 @@ interface QuizStoreRecord {
 async function readQuizStore(page: import('@playwright/test').Page): Promise<Record<string, QuizStoreRecord>> {
   const raw = await page.evaluate(() => window.localStorage.getItem('architect_quiz_v1'));
   expect(raw).toBeTruthy();
-  return JSON.parse(raw!) as Record<string, QuizStoreRecord>;
+  const store = JSON.parse(raw!) as { slots?: Record<string, { quizzes?: Record<string, QuizStoreRecord> }> };
+  return store.slots?.slot1?.quizzes ?? {};
 }
 
 test.describe('Quiz flows', () => {

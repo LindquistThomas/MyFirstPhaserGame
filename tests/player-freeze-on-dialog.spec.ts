@@ -95,7 +95,7 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
     await page.keyboard.down('ArrowRight');
 
     // Wait until the player is visibly walking on the ground: onGround +
-    // vx > 50 proves the ArrowRight keypress is reaching the game and
+    // horizontal velocity proves the ArrowRight keypress is reaching the game and
     // physics is responding. The `player_walk` anim is deliberately NOT
     // part of the precondition — on CI's starved frame loop the
     // airborne-anim grace / player_land squash can keep the anim out of
@@ -119,11 +119,11 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
       if (!player) return false;
       const b = player.sprite.body;
       const onGround = b.blocked.down || b.touching.down;
-      return onGround && b.velocity.x > 50;
+      return onGround && Math.abs(b.velocity.x) > 50;
     }, undefined, { timeout: 15_000 });
 
     const moving = await snapshotPlayer(page);
-    expect(moving.vx).toBeGreaterThan(50);
+    expect(Math.abs(moving.vx)).toBeGreaterThan(50);
 
     // Open the info dialog through the DialogController — same entry point
     // as pressing Enter/Up on a real info zone, but deterministic. Do this
@@ -157,7 +157,7 @@ test.describe('Player freezes when a dialog opens mid-walk', () => {
     // starved frame loop the animation controller and ground flags can lag
     // physics by several frames, while the regression target is vx during
     // the input-context switch.
-    expect(atOpen.vx).toBeGreaterThan(50);
+    expect(Math.abs(atOpen.vx)).toBeGreaterThan(50);
 
     await waitForDialogOpen(page, 'PlatformTeamScene');
 

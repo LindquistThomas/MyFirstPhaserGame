@@ -279,6 +279,9 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
     stub.registry.events.once = vi.fn((_event: string, handler: () => void) => {
       markReady = handler;
     });
+    stub.time.delayedCall = vi.fn((ms, fn) => {
+      if (ms === 500) fn();
+    });
 
     const transition = stub.lazyStartScene('PlatformTeamScene');
     await Promise.resolve();
@@ -298,8 +301,8 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
     stub.registry.events.once = vi.fn((_event: string, handler: () => void) => {
       markReady = handler;
     });
-    stub.time.delayedCall = vi.fn((_ms, fn) => {
-      finishFade = fn;
+    stub.time.delayedCall = vi.fn((ms, fn) => {
+      if (ms === 500) finishFade = fn;
     });
 
     const transition = stub.lazyStartScene('PlatformTeamScene');
@@ -313,6 +316,27 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
     markReady?.();
     await transition;
     expect(stub.scene.start).toHaveBeenCalledWith('PlatformTeamScene');
+  });
+
+  it('continues after a bounded wait if procedural readiness never signals', async () => {
+    const delayedCallbacks: Array<() => void> = [];
+    stub.registry.get = vi.fn((key: string) => (key === 'proceduralAssetsReady' ? false : undefined));
+    stub.registry.events.once = vi.fn();
+    stub.time.delayedCall = vi.fn((_ms, fn) => {
+      delayedCallbacks.push(fn);
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const transition = stub.lazyStartScene('PlatformTeamScene');
+    await Promise.resolve();
+    delayedCallbacks.forEach((fn) => fn());
+    await transition;
+
+    expect(stub.scene.start).toHaveBeenCalledWith('PlatformTeamScene');
+    expect(warn).toHaveBeenCalledWith(
+      '[ElevatorScene] Continuing before proceduralAssetsReady after timeout',
+    );
+    warn.mockRestore();
   });
 
   it('retry prompt binds Confirm to reattempt lazyStartScene()', () => {

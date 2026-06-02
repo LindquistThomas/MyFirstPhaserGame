@@ -25,11 +25,12 @@ async function returnToElevator(page: import('@playwright/test').Page): Promise<
     const g = window.__game!;
     const scene = g.scene
       .getScenes(true)
-      .find((s) => s.sys.settings.key === 'PlatformTeamScene') as unknown as { scene: { start: (key: string) => void } };
+      .find((s) => s.sys.settings.key === 'PlatformTeamScene');
     if (!scene) throw new Error('PlatformTeamScene not active');
-    scene.scene.start('ElevatorScene');
+    g.scene.stop('PlatformTeamScene');
+    g.scene.start('ElevatorScene');
   });
-  await waitForScene(page, 'ElevatorScene');
+  await page.waitForFunction(() => window.__game?.scene.isActive('ElevatorScene') === true);
 }
 
 async function expectSingleVirtualTapAction(page: import('@playwright/test').Page): Promise<void> {
@@ -351,4 +352,3 @@ test.describe('@touch d-pad input', () => {
     errors.assertClean();
   });
 });
-
