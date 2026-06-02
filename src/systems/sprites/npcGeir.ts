@@ -12,6 +12,11 @@ import { theme } from '../../style/theme';
  * suit with a crisp white shirt and navy silk tie. Static upright idle.
  */
 export function generateGeirSprite(scene: Phaser.Scene): void {
+  if (scene.textures.exists('npc_geir')) {
+    ensureGeirAnimation(scene);
+    return;
+  }
+
   const W = 64;
   const H = 128;
   const FRAMES = 2;
@@ -105,7 +110,10 @@ export function generateGeirSprite(scene: Phaser.Scene): void {
     { frameWidth: W, frameHeight: H },
   );
 
-  // Register a two-frame idle-walk animation. Scenes call sprite.play('geir_walk').
+  ensureGeirAnimation(scene);
+}
+
+function ensureGeirAnimation(scene: Phaser.Scene): void {
   if (!scene.anims.exists('geir_walk')) {
     scene.anims.create({
       key: 'geir_walk',

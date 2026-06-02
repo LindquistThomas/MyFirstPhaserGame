@@ -309,6 +309,10 @@ export class InputService extends Phaser.Plugins.ScenePlugin {
 
   private onShutdown(): void {
     liveInputServices.delete(this);
+    if (liveInputServices.size === 0) {
+      virtualButtonsDown.clear();
+      virtualJustPressedQueue.clear();
+    }
     const kb = this.scene?.input.keyboard;
     if (kb && this.keyDownListener) kb.off('keydown', this.keyDownListener);
     this.keyDownListener = undefined;

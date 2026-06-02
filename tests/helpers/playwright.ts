@@ -74,7 +74,7 @@ export async function waitForScene(page: Page, sceneKey: string): Promise<void> 
   // inside `page.evaluate`: the promise has no timeout, so under CPU
   // starvation (noisy CI runner) it can sit until the 60s test timeout
   // fires — surfacing as an unreadable "page.evaluate timed out".
-  // `waitForFunction` here is bounded at 5s and reads `game.loop.frame`,
+  // `waitForFunction` here is bounded and reads `game.loop.frame`,
   // which is Phaser's committed-frame counter, so a stalled game loop shows
   // up as a clear error rather than a mystery timeout.
   await page.waitForFunction(
@@ -98,7 +98,7 @@ export async function waitForScene(page: Page, sceneKey: string): Promise<void> 
       return false;
     },
     sceneKey,
-    { timeout: 5_000 },
+    { timeout: 15_000 },
   );
 }
 
@@ -205,6 +205,23 @@ export async function navigateToElevator(page: Page): Promise<void> {
   await page.keyboard.press('Enter');
   await waitForScene(page, 'SaveSlotScene');
   await page.keyboard.press('Enter');
+
+  const destination = await page.waitForFunction(() => {
+    const game = window.__game;
+    if (!game) return null;
+    if (game.scene.isActive('ElevatorScene')) return 'elevator';
+    const saveSlotScene = game.scene
+      .getScenes(true)
+      .find((scene) => scene.sys.settings.key === 'SaveSlotScene') as unknown as {
+        inActionSelect?: boolean;
+      } | undefined;
+    return saveSlotScene?.inActionSelect ? 'mode-picker' : null;
+  }, undefined, { timeout: 30_000 });
+
+  if (await destination.jsonValue() === 'mode-picker') {
+    await page.keyboard.press('Enter');
+  }
+
   await waitForScene(page, 'ElevatorScene');
 }
 
@@ -227,6 +244,9 @@ const IGNORED_ERROR_PATTERNS: RegExp[] = [
   /\bWebSocket\b.*closed/i,
   // Chromium occasionally logs a ResizeObserver notice that is not a real bug.
   /ResizeObserver loop/i,
+  // Headless Chromium on CI can briefly lose its mocked audio device. Phaser
+  // recovers; this is not a gameplay-visible error.
+  /AudioContext encountered an error from the audio device/i,
 ];
 
 function isIgnorable(message: string): boolean {

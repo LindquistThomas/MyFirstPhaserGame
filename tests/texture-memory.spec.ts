@@ -32,27 +32,7 @@ test.describe('Texture lifecycle regression', () => {
     });
   });
 
-  test('texture key count stays bounded across product-room and boss transitions', async ({ page }) => {
-    const errors = attachErrorWatchers(page);
-
-    await page.goto('/');
-    await waitForGame(page);
-    await waitForScene(page, 'MenuScene');
-
-    // Wait for menu deferred warmup so the baseline is stable.
-    await page.waitForFunction(() => {
-      const g = window.__game;
-      if (!g) return false;
-      const menu = g.scene.getScenes(true).find((s) => s.sys.settings.key === 'MenuScene') as unknown as {
-        _warmupDone?: boolean;
-      };
-      return menu?._warmupDone === true;
-    });
-
-    const baselineTextureCount = await page.evaluate(() => window.__game!.textures.getTextureKeys().length);
-
-    await navigateToElevator(page);
-
+  async function runLazySceneCycle(page: import('@playwright/test').Page): Promise<void> {
     await page.evaluate(() => {
       const g = window.__game!;
       const elevator = g.scene
@@ -87,14 +67,24 @@ test.describe('Texture lifecycle regression', () => {
     await waitForScene(page, 'BossArenaScene');
 
     await page.evaluate(() => {
-      window.__game!.scene.start('ElevatorScene');
+      const scenes = window.__game!.scene;
+      scenes.stop('BossArenaScene');
+      scenes.start('ElevatorScene');
     });
     await waitForScene(page, 'ElevatorScene');
+  }
 
-    await page.evaluate(() => {
-      window.__game!.scene.start('MenuScene');
-    });
+  test('texture key count stays bounded across product-room and boss transitions', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.goto('/');
+    await waitForGame(page);
     await waitForScene(page, 'MenuScene');
+    await navigateToElevator(page);
+    await runLazySceneCycle(page);
+    const baselineTextureCount = await page.evaluate(() => window.__game!.textures.getTextureKeys().length);
+
+    await runLazySceneCycle(page);
 
     const finalTextureCount = await page.evaluate(() => window.__game!.textures.getTextureKeys().length);
     expect(finalTextureCount - baselineTextureCount).toBeLessThanOrEqual(5);

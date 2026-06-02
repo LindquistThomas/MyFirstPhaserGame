@@ -104,6 +104,7 @@ export class ElevatorScene extends Phaser.Scene {
   private static readonly LOADING_OVERLAY_DELAY_MS = 250;
   private static readonly LOADING_OVERLAY_MIN_VISIBLE_MS = 150;
   private static readonly MAX_LAZY_SCENE_LOAD_ATTEMPTS = 3;
+  private static readonly PROCEDURAL_ASSET_READY_TIMEOUT_MS = 3_000;
   private readonly lazySceneLoadAttempts = new Map<string, number>();
 
   constructor() {
@@ -737,14 +738,26 @@ export class ElevatorScene extends Phaser.Scene {
     if (this.registry.get('proceduralAssetsReady') === true) return Promise.resolve();
 
     return new Promise<void>((resolve) => {
+      let settled = false;
+      const complete = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
       const waitForReady = () => {
+        if (settled) return;
         if (this.registry.get('proceduralAssetsReady') === true) {
-          resolve();
+          complete();
           return;
         }
         this.registry.events.once('changedata-proceduralAssetsReady', waitForReady);
       };
       this.registry.events.once('changedata-proceduralAssetsReady', waitForReady);
+      this.time.delayedCall(ElevatorScene.PROCEDURAL_ASSET_READY_TIMEOUT_MS, () => {
+        if (settled) return;
+        console.warn('[ElevatorScene] Continuing before proceduralAssetsReady after timeout');
+        complete();
+      });
     });
   }
 

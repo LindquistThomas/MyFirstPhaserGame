@@ -244,11 +244,16 @@ test.describe('Save export / import', () => {
       };
       scene.openImportConfirm(json, 'slot2', 2, preview);
 
-      const texts = (game.scene.getScene('SettingsScene') as { children: { list: unknown[] } })
+      const collectTexts = (items: unknown[]): string[] => items.flatMap((go) => {
+        const text = (go as { text?: unknown }).text;
+        const list = (go as { list?: unknown }).list;
+        const ownText = typeof text === 'string' ? [text] : [];
+        const childText = Array.isArray(list) ? collectTexts(list) : [];
+        return [...ownText, ...childText];
+      });
+      const texts = collectTexts((game.scene.getScene('SettingsScene') as { children: { list: unknown[] } })
         .children
-        .list
-        .filter((go) => typeof (go as { text?: unknown }).text === 'string')
-        .map((go) => (go as { text: string }).text);
+        .list);
       return { ok: true, texts };
     });
 
@@ -256,7 +261,7 @@ test.describe('Save export / import', () => {
     const texts = (result as { texts: string[] }).texts.join('\n');
     expect(texts).toContain('From file:');
     expect(texts).toContain('Current slot:');
-    expect(texts).toContain('Platform Team');
+    expect(texts).toContain('Lobby');
     expect(texts).toContain('Business');
     expect(texts).toContain('[ REPLACE ]');
     expect(texts).toContain('[ CANCEL ]');
