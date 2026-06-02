@@ -675,7 +675,8 @@ export class ElevatorScene extends Phaser.Scene {
     this.sceneLoadingOverlay?.hide();
 
     try {
-      await this.waitForProceduralAssetsReady();
+      const fadeDelay = this.waitMs(ElevatorScene.TRANSITION_FADE_MS);
+      const proceduralAssetsReady = this.waitForProceduralAssetsReady();
       const loader = LAZY_SCENE_LOADERS.get(sceneKey);
       if (loader && !this.scene.get(sceneKey)) {
         let loaderSettled = false;
@@ -683,7 +684,7 @@ export class ElevatorScene extends Phaser.Scene {
           .then((cls) => { this.scene.add(sceneKey, cls, false); })
           .finally(() => { loaderSettled = true; });
 
-        await this.waitMs(ElevatorScene.TRANSITION_FADE_MS);
+        await fadeDelay;
 
         let overlayShownAt: number | null = null;
         if (!loaderSettled) {
@@ -704,8 +705,9 @@ export class ElevatorScene extends Phaser.Scene {
           );
         }
       } else {
-        await this.waitMs(ElevatorScene.TRANSITION_FADE_MS);
+        await fadeDelay;
       }
+      await proceduralAssetsReady;
       this.sceneLoadingOverlay?.hide();
       this.lazySceneLoadAttempts.delete(sceneKey);
       this.scene.start(sceneKey);
