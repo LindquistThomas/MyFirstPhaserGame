@@ -102,7 +102,6 @@ function makeFakeLoader(): FakeLoader {
       for (const fn of (loader.onceHandlers[ev] ?? [])) fn();
       delete loader.onceHandlers[ev];
     },
-<<<<<<< HEAD
     triggerError(key: string, src = `music/${key}.ogg`) {
       const handlers = (loader.onHandlers['loaderror'] ?? []).slice();
       for (const fn of handlers) fn({ key, src });
