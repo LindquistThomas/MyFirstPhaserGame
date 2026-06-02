@@ -290,6 +290,31 @@ describe('ElevatorScene.lazyStartScene() — isTransitioning guard', () => {
     expect(stub.scene.start).toHaveBeenCalledWith('PlatformTeamScene');
   });
 
+  it('starts the fade delay immediately while procedural assets are pending', async () => {
+    let ready = false;
+    let markReady: (() => void) | undefined;
+    let finishFade: (() => void) | undefined;
+    stub.registry.get = vi.fn((key: string) => (key === 'proceduralAssetsReady' ? ready : undefined));
+    stub.registry.events.once = vi.fn((_event: string, handler: () => void) => {
+      markReady = handler;
+    });
+    stub.time.delayedCall = vi.fn((_ms, fn) => {
+      finishFade = fn;
+    });
+
+    const transition = stub.lazyStartScene('PlatformTeamScene');
+
+    expect(stub.time.delayedCall).toHaveBeenCalledWith(500, expect.any(Function));
+    finishFade?.();
+    await Promise.resolve();
+    expect(stub.scene.start).not.toHaveBeenCalled();
+
+    ready = true;
+    markReady?.();
+    await transition;
+    expect(stub.scene.start).toHaveBeenCalledWith('PlatformTeamScene');
+  });
+
   it('retry prompt binds Confirm to reattempt lazyStartScene()', () => {
     stub.retrySceneKey = 'PlatformTeamScene';
     stub.inputs.justPressed = vi.fn((action: string) => action === 'Confirm');
