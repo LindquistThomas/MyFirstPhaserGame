@@ -305,6 +305,27 @@ describe('MusicPlugin', () => {
       expect(fakeScene.load.start).not.toHaveBeenCalled();
       expect(spy).toHaveBeenCalledTimes(1);
     });
+
+    it('emits music:load-error for failed prewarm loads and removes the error handler after completion', () => {
+      const { plugin, fakeScene } = mountPlugin('MenuScene');
+      const spy = vi.fn();
+      eventBus.on('music:load-error', spy);
+
+      plugin.preloadIdle(['music_quiz']);
+      fakeScene.load.triggerError('music_quiz', 'music/hostile_territory-loop1.ogg');
+
+      expect(spy).toHaveBeenCalledWith({
+        key: 'music_quiz',
+        url: 'music/hostile_territory-loop1.ogg',
+      });
+      expect(fakeScene.load.off).not.toHaveBeenCalledWith('loaderror', expect.any(Function));
+
+      fakeScene.load.triggerEvent('complete');
+      expect(fakeScene.load.off).toHaveBeenCalledWith('loaderror', expect.any(Function));
+
+      fakeScene.load.triggerError('music_quiz', 'music/hostile_territory-loop1.ogg');
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('music:request event — scene-lifecycle subscription', () => {
