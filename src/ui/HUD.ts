@@ -14,7 +14,6 @@ import { ProgressStripController } from './hud/ProgressStripController';
 import { CaffeineRingController } from './hud/CaffeineRingController';
 import { AchievementBadgeController } from './hud/AchievementBadgeController';
 import { settingsStore } from '../systems/SettingsStore';
-import { isReducedMotion } from '../systems/MotionPreference';
 import { ObjectiveBanner } from './ObjectiveBanner';
 
 const HUD_HEIGHT = 44;
@@ -56,6 +55,7 @@ export class HUD {
   private readonly isObjectiveHidden: () => boolean;
   private lastAU = 0;
   private lastFloor: FloorId | -1 = -1;
+  private lastRunTimerSecond: number | null = null;
   private sizeClass: SizeClass = 'wide';
   private tokens: LayoutTokens = getLayoutTokens('wide');
   private destroyed = false;
@@ -252,7 +252,11 @@ export class HUD {
     // Update run timer.
     if (this.playtime !== null) {
       const runMs = this.playtime.getRunElapsedMs();
-      this.timerText.setText(formatPlaytime(runMs));
+      const runSecond = Math.floor(runMs / 1000);
+      if (runSecond !== this.lastRunTimerSecond) {
+        this.lastRunTimerSecond = runSecond;
+        this.timerText.setText(formatPlaytime(runMs));
+      }
     }
   }
 

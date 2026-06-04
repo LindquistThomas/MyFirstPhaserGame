@@ -74,6 +74,8 @@ npm run build    # Production build → dist/
 | `VITE_EXPOSE_TEST_HOOKS` | `true` (unset) | Attaches `window.__game` and `window.__testHooks` to the browser global. Required by the Playwright E2E suite. Set to `false` to produce a security-hardened bundle where neither global is present. |
 | `VITE_ANALYTICS_ENDPOINT` | unset | URL of the analytics ingestion endpoint (e.g. `https://collect.example.com/events`). When unset, the analytics system is structurally disabled and **zero network requests are ever made**, regardless of the in-game toggle. When set, the player must also enable **Settings → Send analytics** before any data is forwarded. |
 
+`vite-plugin-pwa` generates the service worker during `npm run build` (used by preview/production output). In this repository config, the Vite dev server does **not** register a service worker by default. For a clean no-service-worker run (including unregister + cache cleanup when one exists), open the app with `?nosw=1` (for example, `http://localhost:3000/?nosw=1`).
+
 Example — hardened build without test globals:
 
 ```bash
@@ -123,7 +125,7 @@ To install the Claude GitHub App on a personal account:
 
 ## Privacy
 
-When the **Send anonymous gameplay data** toggle is enabled in Settings *and* the game is deployed with a configured analytics endpoint (`VITE_ANALYTICS_ENDPOINT`), the game sends anonymous telemetry to help us understand the player progression funnel. The data collected is strictly limited to:
+When the **Send analytics** toggle is enabled in Settings *and* the game is deployed with a configured analytics endpoint (`VITE_ANALYTICS_ENDPOINT`), the game sends anonymous telemetry to help us understand the player progression funnel. The data collected is strictly limited to:
 
 - **Event names** — which floors were entered, when a quiz was passed or failed, which achievements were unlocked, when a session started and ended.
 - **Aggregate numbers** — AU totals at milestone thresholds (sampled every 25 AU), quiz scores (pass/fail, not individual answers).

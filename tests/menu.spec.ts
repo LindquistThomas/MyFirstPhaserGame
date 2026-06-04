@@ -23,7 +23,7 @@ test.describe('Menu scene', () => {
     errors.assertClean();
   });
 
-  test('keyboard navigation can open settings from the menu list', async ({ page }) => {
+  test('keyboard navigation activates the Settings menu option', async ({ page }) => {
     await clearStorage(page);
     const errors = attachErrorWatchers(page);
 

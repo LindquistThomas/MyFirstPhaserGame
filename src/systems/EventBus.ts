@@ -32,6 +32,8 @@ export interface GameEvents {
    * for non-eager tracks.
    */
   'music:request-push': [key: string];
+  /** Menu idle prewarm for lazy tracks has completed (loaded or skipped). */
+  'music:prewarm-complete': [];
   /**
    * A lazy-loaded music track failed to load (404, CORS error, network issue).
    * Emitted by `MusicPlugin` from `playOrLoad` and `loadAndEmitPush` when the

@@ -13,6 +13,8 @@ import * as Phaser from 'phaser';
  * at S=3). Origin defaults to 0.5/0.5 on placement.
  */
 export function generateReceptionistSprite(scene: Phaser.Scene): void {
+  if (scene.textures.exists('receptionist')) return;
+
   const S = 3;
   const W = 16 * S;
   const H = 24 * S;

@@ -74,6 +74,8 @@ interface FakeLoader {
   triggerComplete: (key: string) => void;
   /** Helper: fire the loaderror event for a key (simulates Phaser failing to load). */
   triggerError: (key: string, src?: string) => void;
+  /** Helper: fire a raw loader event (e.g. 'complete'). */
+  triggerEvent: (event: string) => void;
 }
 
 function makeFakeLoader(): FakeLoader {
@@ -103,6 +105,10 @@ function makeFakeLoader(): FakeLoader {
     triggerError(key: string, src = `music/${key}.ogg`) {
       const handlers = (loader.onHandlers['loaderror'] ?? []).slice();
       for (const fn of handlers) fn({ key, src });
+    },
+    triggerEvent(event: string) {
+      for (const fn of (loader.onceHandlers[event] ?? [])) fn();
+      delete loader.onceHandlers[event];
     },
   };
   return loader;
@@ -251,6 +257,74 @@ describe('MusicPlugin', () => {
         'music_quiz',
         expect.stringContaining('hostile_territory-loop1.ogg'),
       );
+    });
+  });
+
+  describe('preloadIdle()', () => {
+    it('dedupes keys and ignores unknown/cached keys before queueing loader audio calls', () => {
+      const { plugin, fakeScene } = mountPlugin('MenuScene', ['music_quiz']);
+      plugin.preloadIdle(['music_quiz', 'music_platform', 'music_platform', 'music_unknown_xyz']);
+      expect(fakeScene.load.audio).toHaveBeenCalledTimes(1);
+      expect(fakeScene.load.audio).toHaveBeenCalledWith(
+        'music_platform',
+        expect.stringContaining('shadow_operations-loop1.ogg'),
+      );
+      expect(fakeScene.load.start).toHaveBeenCalledTimes(1);
+    });
+
+    it('queues at most two tracks per loader burst', () => {
+      const { plugin, fakeScene } = mountPlugin('MenuScene');
+      plugin.preloadIdle(['music_platform', 'music_quiz', 'music_executive']);
+
+      expect(fakeScene.load.audio).toHaveBeenCalledTimes(2);
+
+      fakeScene.load.triggerEvent('complete');
+      expect(fakeScene.load.audio).toHaveBeenCalledTimes(3);
+    });
+
+    it('emits music:prewarm-complete after queued loads complete', () => {
+      const { plugin, fakeScene } = mountPlugin('MenuScene');
+      const spy = vi.fn();
+      eventBus.on('music:prewarm-complete', spy);
+
+      plugin.preloadIdle(['music_quiz']);
+      expect(spy).not.toHaveBeenCalled();
+
+      fakeScene.load.triggerEvent('complete');
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits music:prewarm-complete immediately when every key is cached', () => {
+      const { plugin, fakeScene } = mountPlugin('MenuScene', ['music_quiz']);
+      const spy = vi.fn();
+      eventBus.on('music:prewarm-complete', spy);
+
+      plugin.preloadIdle(['music_quiz']);
+
+      expect(fakeScene.load.audio).not.toHaveBeenCalled();
+      expect(fakeScene.load.start).not.toHaveBeenCalled();
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits music:load-error for failed prewarm loads and removes the error handler after completion', () => {
+      const { plugin, fakeScene } = mountPlugin('MenuScene');
+      const spy = vi.fn();
+      eventBus.on('music:load-error', spy);
+
+      plugin.preloadIdle(['music_quiz']);
+      fakeScene.load.triggerError('music_quiz', 'music/hostile_territory-loop1.ogg');
+
+      expect(spy).toHaveBeenCalledWith({
+        key: 'music_quiz',
+        url: 'music/hostile_territory-loop1.ogg',
+      });
+      expect(fakeScene.load.off).not.toHaveBeenCalledWith('loaderror', expect.any(Function));
+
+      fakeScene.load.triggerEvent('complete');
+      expect(fakeScene.load.off).toHaveBeenCalledWith('loaderror', expect.any(Function));
+
+      fakeScene.load.triggerError('music_quiz', 'music/hostile_territory-loop1.ogg');
+      expect(spy).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -9,6 +9,8 @@ import * as Phaser from 'phaser';
  * Texture key: `npc_rubber_duck`.
  */
 export function generateRubberDuckSprite(scene: Phaser.Scene): void {
+  if (scene.textures.exists('npc_rubber_duck')) return;
+
   const S = 4;
   const W = 12 * S; // 48 px
   const H = 10 * S; // 40 px
