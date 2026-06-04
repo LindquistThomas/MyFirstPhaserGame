@@ -73,6 +73,50 @@ describe('PerfReporter', () => {
     expect(samples[0]).toMatchObject({ scene: 'MenuScene', samples: 1, ua_hint: 'test' });
   });
 
+  it('does not attribute transition gaps to the new scene', () => {
+    let now = 0;
+    let scene = 'MenuScene';
+    const { sink, samples } = makeSink();
+    const reporter = new PerfReporter({
+      sink,
+      uaHint: 'test',
+      getSceneKey: () => scene,
+      now: () => now,
+      rollingWindowMs: 100,
+      flushIntervalMs: 60_000,
+    });
+
+    const frame = (dt: number) => {
+      now += dt;
+      reporter.onFrame();
+    };
+
+    frame(16);
+    frame(100);
+    scene = 'BossArenaScene';
+    frame(5_000);
+    reporter.flush();
+
+    expect(samples).toHaveLength(1);
+    expect(samples[0]).toMatchObject({
+      scene: 'MenuScene',
+      samples: 1,
+      long_frames: 1,
+    });
+
+    frame(16);
+    frame(100);
+    reporter.flush();
+
+    expect(samples).toHaveLength(2);
+    expect(samples[1]).toMatchObject({
+      scene: 'BossArenaScene',
+      samples: 1,
+      long_frames: 1,
+    });
+    expect(samples[1]!.mean_fps).toBeGreaterThan(8);
+  });
+
   it('caps emitted perf samples per session', () => {
     let now = 0;
     const { sink, samples } = makeSink();

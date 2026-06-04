@@ -72,6 +72,8 @@ export class PerfReporter {
       this.finalizeWindow();
       this.flush();
       this.activeScene = currentScene;
+      this.lastFrameAt = t;
+      return;
     }
 
     if (this.lastFrameAt !== null) {
