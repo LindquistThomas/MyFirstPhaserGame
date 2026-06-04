@@ -8,6 +8,7 @@ A one-page map of the codebase. For setup and conventions see
 ```
 src/
 ├── main.ts                   Phaser game bootstrap; scene registration.
+├── pwa.ts                    Service-worker registration via `virtual:pwa-register`; `?nosw=1` unregisters existing registrations and caches.
 ├── config/                   Shared constants + back-compat barrels.
 │   ├── achievements.ts       Achievement definitions catalogue — id, label, description, and secret flag per achievement.
 │   ├── audioConfig.ts        SFX key ↔ event-name map; music track list.
@@ -520,7 +521,7 @@ automatically.
   35% functions / 40% statements on `src/scenes/**`; 45% / 40% / 40% /
   45% on `src/features/floors/**`; 75% / 60% / 70% / 75% on
   `src/features/floors/boss/**`.
-  `src/**/*.test.ts`, `src/main.ts`, `src/plugins/**`,
+  `src/**/*.test.ts`, `src/main.ts`, `src/pwa.ts`, `src/plugins/**`,
   `src/features/floors/boss/BossArenaScene.ts`,
   `src/systems/SpriteGenerator.ts`, `src/systems/sprites/**`,
   `src/systems/SoundGenerator.ts`, `src/systems/sounds/**`, and
@@ -565,3 +566,7 @@ automatically.
   via `LAZY_SCENE_LOADERS` in `lazySceneLoaders.ts` (built from the internal
   `LOADERS` array — that is the edit target). The elevator fade acts as the
   loading screen.
+- **PWA-first deploy defaults.** `vite-plugin-pwa` + `workbox-build`
+  generate/register a service worker for build/preview output via `src/pwa.ts`
+  (dev server registration is off in current config);
+  `?nosw=1` is an explicit opt-out that unregisters the worker and clears caches.

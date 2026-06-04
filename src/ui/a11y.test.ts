@@ -78,4 +78,35 @@ describe('applyModalA11y', () => {
     dispose();
     expect(document.activeElement).toBe(trigger);
   });
+
+  it('removes aria-describedby when no descId is provided and keeps existing tabindex', () => {
+    const root = document.createElement('div');
+    root.setAttribute('aria-describedby', 'stale');
+    root.setAttribute('tabindex', '0');
+    const title = document.createElement('h2');
+    title.id = 'title';
+    root.append(title);
+    document.body.appendChild(root);
+
+    const dispose = applyModalA11y(root, { titleId: title.id });
+    expect(root.hasAttribute('aria-describedby')).toBe(false);
+    expect(root.getAttribute('tabindex')).toBe('0');
+    dispose();
+  });
+
+  it('focuses root when no focusable exists and traps tab to root', () => {
+    const root = document.createElement('div');
+    const title = document.createElement('h2');
+    title.id = 'title';
+    root.append(title);
+    document.body.appendChild(root);
+
+    const dispose = applyModalA11y(root, { titleId: title.id });
+    expect(document.activeElement).toBe(root);
+
+    pressTab();
+    expect(document.activeElement).toBe(root);
+
+    dispose();
+  });
 });

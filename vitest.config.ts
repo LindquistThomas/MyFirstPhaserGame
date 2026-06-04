@@ -12,6 +12,7 @@ export default defineConfig({
       exclude: [
         'src/**/*.test.ts',
         'src/main.ts',
+        'src/pwa.ts',
         'src/plugins/**',
         'src/features/floors/boss/BossArenaScene.ts',
         'src/systems/SpriteGenerator.ts',
