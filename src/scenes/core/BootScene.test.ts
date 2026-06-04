@@ -157,6 +157,17 @@ describe('BootScene — perf telemetry wiring', () => {
     expect(scene.registry.set).toHaveBeenCalledWith('perfReporter', expect.objectContaining({ destroy: expect.any(Function) }));
   });
 
+  it('does not create perfReporter when analytics is structurally disabled', () => {
+    vi.spyOn(AnalyticsModule, 'createAnalyticsService').mockReturnValue(null);
+    vi.mocked(PerfReporterModule.createGamePerfReporter).mockClear();
+    scene = new BootScene();
+
+    scene.create();
+
+    expect(PerfReporterModule.createGamePerfReporter).not.toHaveBeenCalled();
+    expect(scene.registry.set).not.toHaveBeenCalledWith('perfReporter', expect.anything());
+  });
+
   it('destroys perfReporter and unbinds analytics on destroy', () => {
     const analytics = { unbind: vi.fn(), capturePerfSample: vi.fn() } as unknown as AnalyticsModule.AnalyticsService;
     const perfHandle = { destroy: vi.fn() };
