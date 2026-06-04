@@ -156,4 +156,47 @@ describe('ControlHintsOverlay', () => {
     lifecycleDisposers[0]?.();
     expect(destroySpy).toHaveBeenCalledTimes(1);
   });
+
+  it('(f) update() dismisses a chip via animated tween when its action fires', () => {
+    const scene = makeScene();
+    const overlay = new ControlHintsOverlay(scene as unknown as Phaser.Scene);
+
+    // Make 'Interact' fire (non-MoveLeft path) so dismissChip(chip, true) runs
+    (scene.inputs.justPressed as ReturnType<typeof vi.fn>).mockImplementation(
+      (action: string) => action === 'Interact',
+    );
+    overlay.update();
+
+    // The animate=true path calls tweens.add once for the Interact chip
+    expect(scene.tweens.add).toHaveBeenCalledTimes(1);
+
+    // A second update() hits the chip.dismissed=true → continue branch
+    overlay.update();
+    expect(scene.tweens.add).toHaveBeenCalledTimes(1); // still only 1, skipped
+  });
+
+  it('(g) MoveLeft chip dismisses on MoveRight action (shared hint)', () => {
+    const scene = makeScene();
+    const overlay = new ControlHintsOverlay(scene as unknown as Phaser.Scene);
+
+    // MoveRight triggers the MoveLeft chip dismissal (ternary true branch)
+    (scene.inputs.justPressed as ReturnType<typeof vi.fn>).mockImplementation(
+      (action: string) => action === 'MoveRight',
+    );
+    overlay.update();
+
+    expect(scene.tweens.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('(h) update() calls destroy() once all chips are dismissed', () => {
+    const scene = makeScene();
+    const overlay = new ControlHintsOverlay(scene as unknown as Phaser.Scene);
+    const destroySpy = vi.spyOn(overlay, 'destroy');
+
+    // All actions fire → all four chips dismissed → every() true → destroy()
+    (scene.inputs.justPressed as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    overlay.update();
+
+    expect(destroySpy).toHaveBeenCalledTimes(1);
+  });
 });
