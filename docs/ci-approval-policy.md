@@ -5,7 +5,7 @@
 `ci.yml` uses `on: pull_request`. This means:
 
 - Check runs are posted to the **PR head SHA**, so they appear on the PR Checks tab and can gate merges.
-- Copilot coding-agent PRs open branches inside this repo (not forks), so no approval step is required before the workflow starts.
+- Copilot coding-agent PRs normally open branches inside this repo (not forks), so they do not need the external-fork approval path; workflow-file changes or org/repo policies can still require **Approve and run**.
 - The `auto-approve-bot-ci.yml` workflow was removed; it is no longer needed.
 
 ## Security tradeoff decision for PR CI
