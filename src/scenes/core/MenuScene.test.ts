@@ -225,6 +225,7 @@ describe('MenuScene.idlePreloadMusic', () => {
     scene.idlePreloadMusic();
     expect(getPreloadedKeys()).toHaveLength(0);
     expect(getPreloadCalls()).toHaveLength(0);
+    expect(eventBus.emit).toHaveBeenCalledWith('music:prewarm-complete');
   });
 
   it('does not skip on 3g or faster connections', () => {

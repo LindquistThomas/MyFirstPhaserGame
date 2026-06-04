@@ -145,10 +145,18 @@ export class MusicPlugin extends Phaser.Plugins.ScenePlugin {
       return;
     }
     const BATCH_SIZE = 2;
+    const queuedKeys = new Set(queue);
     let cursor = 0;
+    const onError = (file: { key: string; src: string }): void => {
+      if (!queuedKeys.has(file.key)) return;
+      eventBus.emit('music:load-error', { key: file.key, url: file.src ?? '' });
+    };
+    scene.load.on('loaderror', onError);
+
     const loadBatch = (): void => {
       const batch = queue.slice(cursor, cursor + BATCH_SIZE);
       if (batch.length === 0) {
+        scene.load.off('loaderror', onError);
         eventBus.emit('music:prewarm-complete');
         return;
       }
