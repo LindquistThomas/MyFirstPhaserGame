@@ -8,6 +8,15 @@
 - Copilot coding-agent PRs open branches inside this repo (not forks), so no approval step is required before the workflow starts.
 - The `auto-approve-bot-ci.yml` workflow was removed; it is no longer needed.
 
+## Security tradeoff decision for PR CI
+
+Team decision: **Option C** (no `pull_request_target` execution of PR head code).
+
+- CI runs only from `pull_request` / `push` / `merge_group`.
+- We do **not** run untrusted PR code with a base-branch token.
+- This removes the `pull_request_target` + checkout(PR head SHA) token-exfiltration risk class from normal PR CI.
+- If external fork contributors are needed later, prefer a two-stage model (`pull_request` build/test + `workflow_run` privileged follow-up) instead of reintroducing `pull_request_target` test execution.
+
 ## Required branch-protection checks for `main`
 
 Configure in **Settings → Branches → `main` → Require status checks to pass**:

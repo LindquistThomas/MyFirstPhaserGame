@@ -19,7 +19,12 @@ function getJobBlock(jobId: string): string {
   return jobLines.join('\n');
 }
 
-describe('CI required-check job names', () => {
+describe('CI workflow policy and required-check names', () => {
+  it('uses pull_request trigger and avoids pull_request_target', () => {
+    expect(ciWorkflow).toContain('pull_request:');
+    expect(ciWorkflow).not.toContain('pull_request_target:');
+  });
+
   it('keeps the lint/unit required check name stable', () => {
     expect(workflowNameValues).toContain('Lint + typecheck + unit tests');
   });
@@ -36,6 +41,12 @@ describe('CI required-check job names', () => {
     expect(workflowNameValues).not.toContain('Playwright E2E (shard 2/4)');
     expect(workflowNameValues).not.toContain('Playwright E2E (shard 3/4)');
     expect(workflowNameValues).not.toContain('Playwright E2E (shard 4/4)');
+  });
+
+  it('keys non-PR concurrency by merge-group head SHA or push SHA', () => {
+    expect(ciWorkflow).toContain("github.event_name == 'merge_group'");
+    expect(ciWorkflow).toContain("format('ci-mq-{0}', github.event.merge_group.head_sha)");
+    expect(ciWorkflow).toContain("format('ci-push-{0}', github.sha)");
   });
 
   it('allows doc-only changes to skip shards while keeping fan-in green', () => {
