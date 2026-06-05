@@ -94,6 +94,9 @@ vi.mock('../../style/theme', () => ({ theme: { color: { ui: { accent: 0xffffff }
 vi.mock('../../config/info', () => ({ preloadInfoFor: vi.fn(() => Promise.resolve()) }));
 vi.mock('../../config/quiz', () => ({ preloadQuizFor: vi.fn(() => Promise.resolve()) }));
 vi.mock('../../systems/WorldModifiers', () => ({ getWorldModifiers: vi.fn(() => ({})) }));
+vi.mock('../../systems/PerfReporter', () => ({
+  createGamePerfReporter: vi.fn(() => ({ destroy: vi.fn() })),
+}));
 
 // isPersistenceAvailable is the module under test — NOT mocked by default.
 // Individual tests that need to control the return value use vi.spyOn.
@@ -103,6 +106,8 @@ import { BootScene, deriveBootBudget } from './BootScene';
 import * as PersistedStore from '../../systems/PersistedStore';
 import * as InfoModule from '../../config/info';
 import * as QuizModule from '../../config/quiz';
+import * as AnalyticsModule from '../../systems/Analytics';
+import * as PerfReporterModule from '../../systems/PerfReporter';
 
 describe('BootScene — persistenceAvailable registry flag', () => {
   let scene: BootScene;
@@ -127,6 +132,59 @@ describe('BootScene — persistenceAvailable registry flag', () => {
     vi.spyOn(PersistedStore, 'isPersistenceAvailable').mockReturnValue(false);
     scene.create();
     expect(scene.registry.set).toHaveBeenCalledWith('persistenceAvailable', false);
+  });
+});
+
+describe('BootScene — perf telemetry wiring', () => {
+  let scene: BootScene | undefined;
+
+  afterEach(() => {
+    if (scene) {
+      (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
+    }
+    scene = undefined;
+    vi.restoreAllMocks();
+  });
+
+  it('creates and stores perfReporter when analytics service exists', () => {
+    const analytics = { unbind: vi.fn(), capturePerfSample: vi.fn() } as unknown as AnalyticsModule.AnalyticsService;
+    vi.spyOn(AnalyticsModule, 'createAnalyticsService').mockReturnValue(analytics);
+    scene = new BootScene();
+
+    scene.create();
+
+    expect(PerfReporterModule.createGamePerfReporter).toHaveBeenCalledWith(scene.game, analytics);
+    expect(scene.registry.set).toHaveBeenCalledWith('perfReporter', expect.objectContaining({ destroy: expect.any(Function) }));
+  });
+
+  it('does not create perfReporter when analytics is structurally disabled', () => {
+    vi.spyOn(AnalyticsModule, 'createAnalyticsService').mockReturnValue(null);
+    vi.mocked(PerfReporterModule.createGamePerfReporter).mockClear();
+    scene = new BootScene();
+
+    scene.create();
+
+    expect(PerfReporterModule.createGamePerfReporter).not.toHaveBeenCalled();
+    expect(scene.registry.set).not.toHaveBeenCalledWith('perfReporter', expect.anything());
+  });
+
+  it('destroys perfReporter and unbinds analytics on destroy', () => {
+    const analytics = { unbind: vi.fn(), capturePerfSample: vi.fn() } as unknown as AnalyticsModule.AnalyticsService;
+    const perfHandle = { destroy: vi.fn() };
+    vi.spyOn(AnalyticsModule, 'createAnalyticsService').mockReturnValue(analytics);
+    vi.mocked(PerfReporterModule.createGamePerfReporter).mockReturnValue(perfHandle);
+    scene = new BootScene();
+
+    scene.create();
+    scene.registry.get = vi.fn((key: string) => {
+      if (key === 'perfReporter') return perfHandle;
+      if (key === 'analytics') return analytics;
+      return undefined;
+    });
+    (scene.events as unknown as { emit: (ev: string) => void }).emit('destroy');
+
+    expect(perfHandle.destroy).toHaveBeenCalledTimes(1);
+    expect(analytics.unbind).toHaveBeenCalledTimes(1);
   });
 });
 
