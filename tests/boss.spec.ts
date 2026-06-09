@@ -89,14 +89,14 @@ test.describe('Boss arena — CEO showdown', () => {
     await waitForScene(page, 'MenuScene');
     await navigateToElevator(page);
 
-    await page.evaluate(() => {
+    await page.evaluate((bossFloorId) => {
       const g = window.__game!;
       const scene = g.scene
         .getScenes(true)
         .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
       if (!scene) throw new Error('ElevatorScene not active');
-      (scene['enterFloor'] as (id: number) => void)(BOSS_FLOOR_ID);
-    });
+      (scene['enterFloor'] as (id: number) => void)(bossFloorId);
+    }, BOSS_FLOOR_ID);
     await waitForScene(page, 'BossArenaScene');
   }
 
@@ -250,14 +250,14 @@ test.describe('Boss arena — CEO showdown', () => {
     await navigateToElevator(page);
 
     // enterFloor bypasses the elevator's own AU gate, testing only the scene gate
-    await page.evaluate(() => {
+    await page.evaluate((bossFloorId) => {
       const g = window.__game!;
       const scene = g.scene.getScenes(true).find(
         (s) => s.sys.settings.key === 'ElevatorScene',
       ) as unknown as Record<string, unknown>;
       if (!scene) throw new Error('ElevatorScene not active');
-      (scene['enterFloor'] as (id: number) => void)(BOSS_FLOOR_ID);
-    });
+      (scene['enterFloor'] as (id: number) => void)(bossFloorId);
+    }, BOSS_FLOOR_ID);
     await waitForScene(page, 'BossArenaScene');
 
     // Scene detects insufficient AU and calls scene.start('ElevatorScene') after 2500ms
