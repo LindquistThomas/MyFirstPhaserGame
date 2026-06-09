@@ -18,6 +18,31 @@ import {
  * FLOORS.BOSS = 6 (src/config/gameConfig.ts).
  */
 
+const BOSS_FLOOR_ID = 6;
+
+interface BossArenaSceneHandle {
+  scene?: { start: (key: string, data?: unknown) => void };
+  children?: { list?: Array<{ text?: string }> };
+}
+
+async function startElevatorAfterVictoryOverlay(
+  page: Parameters<typeof waitForGame>[0],
+): Promise<void> {
+  await page.waitForFunction((bossFloorId) => {
+    const g = window.__game;
+    if (!g) return false;
+    const scene = g.scene.getScenes(true).find(
+      (s) => s.sys.settings.key === 'BossArenaScene',
+    ) as unknown as BossArenaSceneHandle | undefined;
+    const hasVictoryOverlay = scene?.children?.list?.some(
+      (child) => child.text?.includes('ARCHITECT APPROVED'),
+    ) ?? false;
+    if (!hasVictoryOverlay || !scene?.scene) return false;
+    scene.scene.start('ElevatorScene', { fromFloor: bossFloorId, spawnSide: 'left' });
+    return true;
+  }, BOSS_FLOOR_ID, { timeout: 90_000 });
+}
+
 test.describe('Boss arena — CEO showdown', () => {
   test.beforeEach(async ({ page }) => {
     await clearStorage(page);
@@ -55,7 +80,7 @@ test.describe('Boss arena — CEO showdown', () => {
         .getScenes(true)
         .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
       if (!scene) throw new Error('ElevatorScene not active');
-      (scene['enterFloor'] as (id: number) => void)(6); // FLOORS.BOSS
+      (scene['enterFloor'] as (id: number) => void)(BOSS_FLOOR_ID);
     });
     await waitForScene(page, 'BossArenaScene');
   }
@@ -181,21 +206,7 @@ test.describe('Boss arena — CEO showdown', () => {
       await page.waitForTimeout(250);
     }
 
-    await page.waitForFunction(() => {
-      const g = window.__game;
-      if (!g) return false;
-      const scene = g.scene.getScenes(true).find(
-        (s) => s.sys.settings.key === 'BossArenaScene',
-      ) as unknown as { scene?: { start: (key: string, data?: unknown) => void } } | undefined;
-      const children = (scene as unknown as { children?: { list?: Array<{ text?: string }> } })
-        ?.children;
-      const hasVictoryOverlay = children?.list?.some(
-        (child) => child.text?.includes('ARCHITECT APPROVED'),
-      ) ?? false;
-      if (!hasVictoryOverlay || !scene?.scene) return false;
-      scene.scene.start('ElevatorScene', { fromFloor: 6, spawnSide: 'left' });
-      return true;
-    }, undefined, { timeout: 90_000 });
+    await startElevatorAfterVictoryOverlay(page);
     await waitForScene(page, 'ElevatorScene');
 
     errors.assertClean();
@@ -230,7 +241,7 @@ test.describe('Boss arena — CEO showdown', () => {
         (s) => s.sys.settings.key === 'ElevatorScene',
       ) as unknown as Record<string, unknown>;
       if (!scene) throw new Error('ElevatorScene not active');
-      (scene['enterFloor'] as (id: number) => void)(6);
+      (scene['enterFloor'] as (id: number) => void)(BOSS_FLOOR_ID);
     });
     await waitForScene(page, 'BossArenaScene');
 
