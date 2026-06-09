@@ -19,8 +19,9 @@ import {
  */
 
 const BOSS_FLOOR_ID = 6;
+const VICTORY_OVERLAY_TEXT = 'ARCHITECT APPROVED';
 
-interface BossArenaSceneHandle {
+interface BossArenaSceneShape {
   scene?: { start: (key: string, data?: unknown) => void };
   children?: { list?: Array<{ text?: string }> };
 }
@@ -28,19 +29,19 @@ interface BossArenaSceneHandle {
 async function startElevatorAfterVictoryOverlay(
   page: Parameters<typeof waitForGame>[0],
 ): Promise<void> {
-  await page.waitForFunction((bossFloorId) => {
+  await page.waitForFunction(({ bossFloorId, victoryText }) => {
     const g = window.__game;
     if (!g) return false;
     const scene = g.scene.getScenes(true).find(
       (s) => s.sys.settings.key === 'BossArenaScene',
-    ) as unknown as BossArenaSceneHandle | undefined;
+    ) as unknown as BossArenaSceneShape | undefined;
     const hasVictoryOverlay = scene?.children?.list?.some(
-      (child) => child.text?.includes('ARCHITECT APPROVED'),
+      (child) => child.text?.includes(victoryText),
     ) ?? false;
     if (!hasVictoryOverlay || !scene?.scene) return false;
     scene.scene.start('ElevatorScene', { fromFloor: bossFloorId, spawnSide: 'left' });
     return true;
-  }, BOSS_FLOOR_ID, { timeout: 90_000 });
+  }, { bossFloorId: BOSS_FLOOR_ID, victoryText: VICTORY_OVERLAY_TEXT }, { timeout: 90_000 });
 }
 
 test.describe('Boss arena — CEO showdown', () => {
