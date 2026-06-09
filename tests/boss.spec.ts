@@ -168,8 +168,10 @@ test.describe('Boss arena — CEO showdown', () => {
         ) as unknown as Record<string, unknown> | undefined;
         if (!scene) return false;
         const inputs = scene['inputs'] as { handlers?: Map<string, Set<() => void>> } | undefined;
-        const handler = inputs?.handlers?.get('Interact')?.values().next().value;
-        if (!handler) return false;
+        const handlers = inputs?.handlers?.get('Interact');
+        if (!handlers || handlers.size === 0) return false;
+        const handler = handlers.values().next().value as (() => void) | undefined;
+        if (typeof handler !== 'function') return false;
         handler();
         return true;
       });
