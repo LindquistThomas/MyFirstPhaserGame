@@ -156,9 +156,9 @@ test.describe('Boss arena — CEO showdown', () => {
 
     // Advance defeat dialogue deterministically by invoking the bound Interact
     // handler directly. Keyboard events can occasionally miss focus in CI.
-    // Defeat dialogues currently have 3 lines; this upper bound gives a small
-    // safety margin while keeping the loop bounded if content changes.
-    const maxDialogueAdvanceAttempts = 8;
+    // Defeat dialogues currently have 3 lines; keep a small bounded buffer for
+    // any timing/content drift while still avoiding an unbounded loop.
+    const maxDialogueAdvanceAttempts = 5;
     for (let i = 0; i < maxDialogueAdvanceAttempts; i++) {
       const hasInteractHandler = await page.evaluate(() => {
         const g = window.__game;
@@ -167,13 +167,16 @@ test.describe('Boss arena — CEO showdown', () => {
           (s) => s.sys.settings.key === 'BossArenaScene',
         ) as unknown as Record<string, unknown> | undefined;
         if (!scene) return false;
-        const inputs = scene['inputs'] as { handlers?: Map<string, Set<() => void>> } | undefined;
+        const inputs = scene['inputs'] as { handlers?: Map<string, Set<unknown>> } | undefined;
         const handlers = inputs?.handlers?.get('Interact');
         if (!handlers || handlers.size === 0) return false;
-        const handler = handlers.values().next().value as (() => void) | undefined;
-        if (typeof handler !== 'function') return false;
-        handler();
-        return true;
+        let invoked = false;
+        for (const handler of handlers) {
+          if (typeof handler !== 'function') continue;
+          (handler as () => void)();
+          invoked = true;
+        }
+        return invoked;
       });
       if (!hasInteractHandler) break;
       await page.waitForTimeout(250);
