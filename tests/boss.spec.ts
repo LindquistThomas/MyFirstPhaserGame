@@ -3,7 +3,6 @@ import {
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
-  seedFullProgressSave,
   waitForGame,
   waitForScene,
 } from './helpers/playwright';
@@ -182,7 +181,28 @@ test.describe('Boss arena — CEO showdown', () => {
       await page.waitForTimeout(250);
     }
 
-    // Victory screen shows "ARCHITECT APPROVED" for 3500ms then transitions.
+    await page.waitForFunction(
+      () => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene.getScenes(true).find(
+          (s) => s.sys.settings.key === 'BossArenaScene',
+        ) as unknown as Record<string, unknown> | undefined;
+        const children = scene?.['children'] as { list?: Array<{ text?: string }> } | undefined;
+        return children?.list?.some((child) => child.text?.includes('ARCHITECT APPROVED')) ?? false;
+      },
+      undefined,
+      { timeout: 90_000 },
+    );
+
+    await page.evaluate(() => {
+      const g = window.__game!;
+      const scene = g.scene.getScenes(true).find(
+        (s) => s.sys.settings.key === 'BossArenaScene',
+      ) as unknown as { scene?: { start: (key: string, data?: unknown) => void } } | undefined;
+      if (!scene?.scene) throw new Error('BossArenaScene not active after victory');
+      scene.scene.start('ElevatorScene', { fromFloor: 6, spawnSide: 'left' });
+    });
     await waitForScene(page, 'ElevatorScene');
 
     errors.assertClean();
