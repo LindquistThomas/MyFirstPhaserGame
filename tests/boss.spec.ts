@@ -19,15 +19,21 @@ import {
  */
 
 const BOSS_FLOOR_ID = 6;
+const BOSS_RETURN_SPAWN_SIDE = 'left';
 const VICTORY_OVERLAY_TEXT = 'ARCHITECT APPROVED';
 
+/**
+ * Minimal runtime shape for the active BossArenaScene obtained through
+ * `window.__game`; importing the full Phaser scene would couple this E2E spec
+ * to production internals beyond the fields it actually exercises.
+ */
 interface BossArenaSceneShape {
   scene?: { start: (key: string, data?: unknown) => void };
   children?: { list?: Array<{ text?: string }> };
 }
 
-async function transitionToElevatorOnVictory(page: Page): Promise<void> {
-  await page.waitForFunction(({ bossFloorId, victoryText }) => {
+async function waitForVictoryAndTransitionToElevator(page: Page): Promise<void> {
+  await page.waitForFunction(({ bossFloorId, spawnSide, victoryText }) => {
     const g = window.__game;
     if (!g) return false;
     const scene = g.scene.getScenes(true).find(
@@ -37,9 +43,13 @@ async function transitionToElevatorOnVictory(page: Page): Promise<void> {
       (child) => child.text?.includes(victoryText),
     ) ?? false;
     if (!hasVictoryOverlay || !scene?.scene) return false;
-    scene.scene.start('ElevatorScene', { fromFloor: bossFloorId, spawnSide: 'left' });
+    scene.scene.start('ElevatorScene', { fromFloor: bossFloorId, spawnSide });
     return true;
-  }, { bossFloorId: BOSS_FLOOR_ID, victoryText: VICTORY_OVERLAY_TEXT }, { timeout: 90_000 });
+  }, {
+    bossFloorId: BOSS_FLOOR_ID,
+    spawnSide: BOSS_RETURN_SPAWN_SIDE,
+    victoryText: VICTORY_OVERLAY_TEXT,
+  }, { timeout: 90_000 });
 }
 
 test.describe('Boss arena — CEO showdown', () => {
@@ -205,7 +215,7 @@ test.describe('Boss arena — CEO showdown', () => {
       await page.waitForTimeout(250);
     }
 
-    await transitionToElevatorOnVictory(page);
+    await waitForVictoryAndTransitionToElevator(page);
     await waitForScene(page, 'ElevatorScene');
 
     errors.assertClean();
