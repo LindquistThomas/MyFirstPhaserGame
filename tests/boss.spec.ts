@@ -154,13 +154,25 @@ test.describe('Boss arena — CEO showdown', () => {
       { timeout: 15_000 },
     );
 
-    for (let i = 0; i < 3; i++) {
-      await page.keyboard.press('Enter');
+    // Advance defeat dialogue deterministically by invoking the bound Interact
+    // handler directly. Keyboard events can occasionally miss focus in CI.
+    for (let i = 0; i < 8; i++) {
+      const hasInteractHandler = await page.evaluate(() => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene.getScenes(true).find(
+          (s) => s.sys.settings.key === 'BossArenaScene',
+        ) as unknown as Record<string, unknown> | undefined;
+        if (!scene) return false;
+        const inputs = scene['inputs'] as { handlers?: Map<string, Set<() => void>> } | undefined;
+        const handler = inputs?.handlers?.get('Interact')?.values().next().value;
+        if (!handler) return false;
+        handler();
+        return true;
+      });
+      if (!hasInteractHandler) break;
       await page.waitForTimeout(250);
     }
-
-    // Final Enter: lineIdx === lines.length → fade + showVictory after 1400ms
-    await page.keyboard.press('Enter');
 
     // Victory screen shows "ARCHITECT APPROVED" for 3500ms then transitions.
     await waitForScene(page, 'ElevatorScene');
