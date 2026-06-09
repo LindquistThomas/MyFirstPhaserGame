@@ -103,6 +103,36 @@ async function forceGamepad(page: import('@playwright/test').Page, visible: bool
   }, visible);
 }
 
+interface VirtualButtonRect {
+  actions: string;
+  width: number;
+  height: number;
+  visualWidth: number;
+  visualHeight: number;
+  top: number;
+  bottom: number;
+}
+
+async function getVirtualButtonRects(page: import('@playwright/test').Page): Promise<VirtualButtonRect[]> {
+  return page.evaluate(() => {
+    return Array.from(document.querySelectorAll<HTMLElement>('#virtual-pad .vpad-btn')).map((btn) => {
+      const rect = btn.getBoundingClientRect();
+      const style = window.getComputedStyle(btn);
+      const paddingX = Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.paddingRight);
+      const paddingY = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+      return {
+        actions: btn.getAttribute('data-actions') ?? '',
+        width: rect.width,
+        height: rect.height,
+        visualWidth: rect.width - paddingX,
+        visualHeight: rect.height - paddingY,
+        top: rect.top,
+        bottom: rect.bottom,
+      };
+    });
+  });
+}
+
 test.describe('Touch controls lifecycle', () => {
   test.beforeEach(async ({ page }) => {
     await clearStorage(page);
@@ -194,6 +224,96 @@ test.describe('@visual Touch gamepad snapshots', () => {
     await page.waitForTimeout(200);
 
     await expect(page).toHaveScreenshot('touch-gamepad-platform-team.png', TOUCH_SNAPSHOT_OPTS);
+    errors.assertClean();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Accessibility: virtual gamepad touch targets
+// ---------------------------------------------------------------------------
+
+test.describe('Virtual gamepad touch targets', () => {
+  test('375px viewport keeps every virtual button at least 44×44 CSS px and hint clears the pad', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.setViewportSize({ width: 375, height: 667 });
+    await clearStorage(page);
+    await seedFullProgressSave(page);
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await forceGamepad(page, true);
+    await page.waitForSelector('#touch-hint-overlay', { state: 'attached', timeout: 5_000 });
+
+    const rects = await getVirtualButtonRects(page);
+    expect(rects.length).toBeGreaterThan(0);
+    for (const rect of rects) {
+      expect(rect.width, `${rect.actions} width`).toBeGreaterThanOrEqual(44);
+      expect(rect.height, `${rect.actions} height`).toBeGreaterThanOrEqual(44);
+    }
+
+    const clearance = await page.evaluate(() => {
+      const message = document.getElementById('touch-hint-message');
+      const buttons = Array.from(document.querySelectorAll<HTMLElement>('#virtual-pad .vpad-btn'));
+      if (!message || buttons.length === 0) {
+        throw new Error('Touch hint overlay or virtual pad buttons missing');
+      }
+      const messageRect = message.getBoundingClientRect();
+      const topButton = Math.min(...buttons.map((btn) => btn.getBoundingClientRect().top));
+      return { messageBottom: messageRect.bottom, topButton };
+    });
+    expect(
+      clearance.topButton - clearance.messageBottom,
+      'touch hint should stay visually clear of the virtual pad',
+    ).toBeGreaterThanOrEqual(3);
+
+    errors.assertClean();
+  });
+
+  test('1280px viewport keeps desktop visual button size unchanged', async ({ page }) => {
+    const errors = attachErrorWatchers(page);
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await clearStorage(page);
+    await seedFullProgressSave(page);
+    await page.addInitScript(() => {
+      try {
+        window.localStorage.setItem('architect_touch_hint_seen_v1', JSON.stringify(true));
+      } catch {
+        /* noop */
+      }
+    });
+
+    await page.goto('/');
+    await waitForGame(page);
+    await waitForScene(page, 'MenuScene');
+
+    await forceGamepad(page, true);
+    await page.waitForTimeout(200);
+
+    const rects = await getVirtualButtonRects(page);
+    const actionRects = rects.filter((rect) => rect.actions === 'Jump' || rect.actions === 'Interact Confirm');
+    const dpadRects = rects.filter((rect) => !actionRects.includes(rect));
+
+    expect(dpadRects.length).toBe(4);
+    expect(actionRects.length).toBe(2);
+
+    for (const rect of dpadRects) {
+      expect(rect.visualWidth, `${rect.actions} visual width`).toBeGreaterThanOrEqual(50);
+      expect(rect.visualWidth, `${rect.actions} visual width`).toBeLessThanOrEqual(54);
+      expect(rect.visualHeight, `${rect.actions} visual height`).toBeGreaterThanOrEqual(50);
+      expect(rect.visualHeight, `${rect.actions} visual height`).toBeLessThanOrEqual(54);
+    }
+
+    for (const rect of actionRects) {
+      expect(rect.visualWidth, `${rect.actions} visual width`).toBeGreaterThanOrEqual(58);
+      expect(rect.visualWidth, `${rect.actions} visual width`).toBeLessThanOrEqual(62);
+      expect(rect.visualHeight, `${rect.actions} visual height`).toBeGreaterThanOrEqual(58);
+      expect(rect.visualHeight, `${rect.actions} visual height`).toBeLessThanOrEqual(62);
+    }
+
     errors.assertClean();
   });
 });

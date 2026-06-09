@@ -14,7 +14,7 @@ vi.mock('../systems/MotionPreference', () => ({
   isReducedMotion: vi.fn(() => false),
 }));
 
-import { showTouchHintIfNeeded, showTouchHintForced } from './TouchHintOverlay';
+import { showTouchHintIfNeeded, showTouchHintForced, showTouchHintForcedWithPersist, showTouchHintIfNotSeen } from './TouchHintOverlay';
 import * as TouchHintStore from '../systems/TouchHintStore';
 import * as touchPrimary from './touchPrimary';
 import * as MotionPreference from '../systems/MotionPreference';
@@ -191,6 +191,64 @@ describe('showTouchHintForced', () => {
     showTouchHintForced(pad);
     expect(pad.querySelector('.vpad-dpad')?.classList.contains('vpad-hint-pulse')).toBe(true);
     expect(pad.querySelector('[data-actions~="Jump"]')?.classList.contains('vpad-hint-pulse')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('showTouchHintForcedWithPersist', () => {
+  let storage: ReturnType<typeof memStorage>;
+  let pad: HTMLDivElement;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    storage = memStorage();
+    TouchHintStore.setStorage(storage);
+    pad = makePad();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    document.getElementById('touch-hint-overlay')?.remove();
+    pad.remove();
+  });
+
+  it('marks seen when dismissed after timeout', async () => {
+    showTouchHintForcedWithPersist(pad);
+    await vi.advanceTimersByTimeAsync(6_000);
+    expect(TouchHintStore.hasSeen()).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('showTouchHintIfNotSeen', () => {
+  let storage: ReturnType<typeof memStorage>;
+  let pad: HTMLDivElement;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    storage = memStorage();
+    TouchHintStore.setStorage(storage);
+    pad = makePad();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    document.getElementById('touch-hint-overlay')?.remove();
+    pad.remove();
+  });
+
+  it('shows the hint even when isTouchPrimary = false if unseen', () => {
+    vi.spyOn(touchPrimary, 'isTouchPrimary').mockReturnValue(false);
+    showTouchHintIfNotSeen(pad);
+    expect(document.getElementById('touch-hint-overlay')).not.toBeNull();
+  });
+
+  it('does nothing when the hint has already been seen', () => {
+    TouchHintStore.markSeen();
+    showTouchHintIfNotSeen(pad);
+    expect(document.getElementById('touch-hint-overlay')).toBeNull();
   });
 });
 

@@ -1,9 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import {
   attachErrorWatchers,
   clearStorage,
   navigateToElevator,
-  seedFullProgressSave,
   waitForGame,
   waitForScene,
 } from './helpers/playwright';
@@ -18,6 +17,49 @@ import {
  *
  * FLOORS.BOSS = 6 (src/config/gameConfig.ts).
  */
+
+const BOSS_FLOOR_ID = 6;
+const BOSS_RETURN_SPAWN_SIDE = 'left';
+const VICTORY_TIMEOUT_MS = 90_000;
+const VICTORY_OVERLAY_TEXT = 'ARCHITECT APPROVED';
+
+/**
+ * Minimal runtime shape for the active BossArenaScene obtained through
+ * `window.__game`; importing the full Phaser scene would couple this E2E spec
+ * to production internals beyond the fields it actually exercises.
+ * `children.list` mirrors Phaser.Scene's display-list storage for Text objects,
+ * and the fields stay optional because the scene may still be initializing
+ * while Playwright polls.
+ */
+interface MinimalBossArenaScene {
+  /** Phaser.Scene's transition manager; optional until the scene is fully initialized. */
+  scene?: { start: (key: string, data?: unknown) => void };
+  /** Phaser.Scene's display list; optional while Playwright polls during scene startup. */
+  children?: { list?: Array<{ text?: string; type?: string }> };
+}
+
+async function waitForVictoryAndTransitionToElevator(page: Page): Promise<void> {
+  const bossSceneHandle = await page.waitForFunction((victoryText) => {
+    const g = window.__game;
+    if (!g) return null;
+    const scene = g.scene.getScenes(true).find(
+      (s) => s.sys.settings.key === 'BossArenaScene',
+    ) as unknown as MinimalBossArenaScene | undefined;
+    const hasVictoryOverlay = scene?.children?.list?.some(
+      (child) => child.type === 'Text' && child.text?.includes(victoryText),
+    ) ?? false;
+    return hasVictoryOverlay ? scene : null;
+  }, VICTORY_OVERLAY_TEXT, { timeout: VICTORY_TIMEOUT_MS });
+
+  await bossSceneHandle.evaluate((scene, { bossFloorId, spawnSide }) => {
+    if (!scene?.scene) throw new Error('BossArenaScene not active after victory');
+    scene.scene.start('ElevatorScene', { fromFloor: bossFloorId, spawnSide });
+  }, {
+    bossFloorId: BOSS_FLOOR_ID,
+    spawnSide: BOSS_RETURN_SPAWN_SIDE,
+  });
+  await bossSceneHandle.dispose();
+}
 
 test.describe('Boss arena — CEO showdown', () => {
   test.beforeEach(async ({ page }) => {
@@ -44,20 +86,20 @@ test.describe('Boss arena — CEO showdown', () => {
   });
 
   /** Navigate from menu → elevator → boss arena, returning when BossArenaScene is RUNNING. */
-  async function goToBossArena(page: Parameters<typeof waitForGame>[0]): Promise<void> {
+  async function goToBossArena(page: Page): Promise<void> {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
     await navigateToElevator(page);
 
-    await page.evaluate(() => {
+    await page.evaluate((bossFloorId) => {
       const g = window.__game!;
       const scene = g.scene
         .getScenes(true)
         .find((s) => s.sys.settings.key === 'ElevatorScene') as unknown as Record<string, unknown>;
       if (!scene) throw new Error('ElevatorScene not active');
-      (scene['enterFloor'] as (id: number) => void)(6); // FLOORS.BOSS
-    });
+      (scene['enterFloor'] as (id: number) => void)(bossFloorId);
+    }, BOSS_FLOOR_ID);
     await waitForScene(page, 'BossArenaScene');
   }
 
@@ -154,15 +196,35 @@ test.describe('Boss arena — CEO showdown', () => {
       { timeout: 15_000 },
     );
 
-    for (let i = 0; i < 3; i++) {
-      await page.keyboard.press('Enter');
+    // Advance defeat dialogue deterministically by invoking the bound Interact
+    // handler directly. Keyboard events can occasionally miss focus in CI.
+    // Defeat dialogues currently have 3 lines; keep a small bounded buffer for
+    // any timing/content drift while still avoiding an unbounded loop.
+    const maxDialogueAdvanceAttempts = 5;
+    for (let i = 0; i < maxDialogueAdvanceAttempts; i++) {
+      const hasInteractHandler = await page.evaluate(() => {
+        const g = window.__game;
+        if (!g) return false;
+        const scene = g.scene.getScenes(true).find(
+          (s) => s.sys.settings.key === 'BossArenaScene',
+        ) as unknown as Record<string, unknown> | undefined;
+        if (!scene) return false;
+        const inputs = scene['inputs'] as { handlers?: Map<string, Set<unknown>> } | undefined;
+        const handlers = inputs?.handlers?.get('Interact');
+        if (!handlers || handlers.size === 0) return false;
+        let invoked = false;
+        for (const handler of handlers) {
+          if (typeof handler !== 'function') continue;
+          (handler as () => void)();
+          invoked = true;
+        }
+        return invoked;
+      });
+      if (!hasInteractHandler) break;
       await page.waitForTimeout(250);
     }
 
-    // Final Enter: lineIdx === lines.length → fade + showVictory after 1400ms
-    await page.keyboard.press('Enter');
-
-    // Victory screen shows "ARCHITECT APPROVED" for 3500ms then transitions.
+    await waitForVictoryAndTransitionToElevator(page);
     await waitForScene(page, 'ElevatorScene');
 
     errors.assertClean();
@@ -191,14 +253,14 @@ test.describe('Boss arena — CEO showdown', () => {
     await navigateToElevator(page);
 
     // enterFloor bypasses the elevator's own AU gate, testing only the scene gate
-    await page.evaluate(() => {
+    await page.evaluate((bossFloorId) => {
       const g = window.__game!;
       const scene = g.scene.getScenes(true).find(
         (s) => s.sys.settings.key === 'ElevatorScene',
       ) as unknown as Record<string, unknown>;
       if (!scene) throw new Error('ElevatorScene not active');
-      (scene['enterFloor'] as (id: number) => void)(6);
-    });
+      (scene['enterFloor'] as (id: number) => void)(bossFloorId);
+    }, BOSS_FLOOR_ID);
     await waitForScene(page, 'BossArenaScene');
 
     // Scene detects insufficient AU and calls scene.start('ElevatorScene') after 2500ms

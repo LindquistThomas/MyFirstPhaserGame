@@ -31,10 +31,24 @@ test.describe('Menu scene', () => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
+    const settingsIndex = await page.evaluate(() => {
+      const game = window.__game as unknown as {
+        scene: {
+          getScenes: (active?: boolean) => Array<{ sys: { settings: { key: string } } }>;
+        };
+      };
+      const scene = game.scene
+        .getScenes(true)
+        .find((s) => s.sys.settings.key === 'MenuScene') as unknown as {
+          ['menuButtons']?: Array<{ btn?: { text?: string } }>;
+        } | undefined;
+      if (!scene?.['menuButtons']) throw new Error('Menu buttons not found');
+      return scene['menuButtons'].findIndex((entry) => entry.btn?.text === '[ SETTINGS ]');
+    });
+    expect(settingsIndex).toBeGreaterThanOrEqual(0);
+    for (let i = 0; i < settingsIndex; i += 1) {
+      await page.keyboard.press('ArrowDown');
+    }
     await page.keyboard.press('Enter');
 
     await waitForScene(page, 'SettingsScene');
@@ -93,5 +107,4 @@ test.describe('Menu scene', () => {
     expect(stillCached).toBe(true);
     errors.assertClean();
   });
-
 });
