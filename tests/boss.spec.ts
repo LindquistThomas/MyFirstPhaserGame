@@ -20,6 +20,7 @@ import {
 
 const BOSS_FLOOR_ID = 6;
 const BOSS_RETURN_SPAWN_SIDE = 'left';
+const VICTORY_TIMEOUT_MS = 90_000;
 const VICTORY_OVERLAY_TEXT = 'ARCHITECT APPROVED';
 
 /**
@@ -31,7 +32,9 @@ const VICTORY_OVERLAY_TEXT = 'ARCHITECT APPROVED';
  * while Playwright polls.
  */
 interface MinimalBossArenaScene {
+  /** Phaser.Scene's transition manager; optional until the scene is fully initialized. */
   scene?: { start: (key: string, data?: unknown) => void };
+  /** Phaser.Scene's display list; optional while Playwright polls during scene startup. */
   children?: { list?: Array<{ text?: string; type?: string }> };
 }
 
@@ -46,7 +49,7 @@ async function waitForVictoryAndTransitionToElevator(page: Page): Promise<void> 
       (child) => child.type === 'Text' && child.text?.includes(victoryText),
     ) ?? false;
     return hasVictoryOverlay ? scene : null;
-  }, VICTORY_OVERLAY_TEXT, { timeout: 90_000 });
+  }, VICTORY_OVERLAY_TEXT, { timeout: VICTORY_TIMEOUT_MS });
 
   await bossSceneHandle.evaluate((scene, { bossFloorId, spawnSide }) => {
     if (!scene?.scene) throw new Error('BossArenaScene not active after victory');
