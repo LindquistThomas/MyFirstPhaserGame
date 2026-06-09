@@ -156,7 +156,10 @@ test.describe('Boss arena — CEO showdown', () => {
 
     // Advance defeat dialogue deterministically by invoking the bound Interact
     // handler directly. Keyboard events can occasionally miss focus in CI.
-    for (let i = 0; i < 8; i++) {
+    // Defeat dialogues currently have 3 lines; this upper bound gives a small
+    // safety margin while keeping the loop bounded if content changes.
+    const maxDialogueAdvanceAttempts = 8;
+    for (let i = 0; i < maxDialogueAdvanceAttempts; i++) {
       const hasInteractHandler = await page.evaluate(() => {
         const g = window.__game;
         if (!g) return false;
