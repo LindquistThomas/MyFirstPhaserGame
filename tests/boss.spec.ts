@@ -26,35 +26,36 @@ const VICTORY_OVERLAY_TEXT = 'ARCHITECT APPROVED';
  * Minimal runtime shape for the active BossArenaScene obtained through
  * `window.__game`; importing the full Phaser scene would couple this E2E spec
  * to production internals beyond the fields it actually exercises.
+ * `children.list` mirrors Phaser.Scene's display-list storage for Text objects,
+ * and the fields stay optional because the scene may still be initializing
+ * while Playwright polls.
  */
 interface MinimalBossArenaScene {
   scene?: { start: (key: string, data?: unknown) => void };
-  children?: { list?: Array<{ text?: string }> };
+  children?: { list?: Array<{ text?: string; type?: string }> };
 }
 
 async function waitForVictoryAndTransitionToElevator(page: Page): Promise<void> {
-  await page.waitForFunction((victoryText) => {
+  const bossSceneHandle = await page.waitForFunction((victoryText) => {
     const g = window.__game;
-    if (!g) return false;
+    if (!g) return null;
     const scene = g.scene.getScenes(true).find(
       (s) => s.sys.settings.key === 'BossArenaScene',
     ) as unknown as MinimalBossArenaScene | undefined;
-    return scene?.children?.list?.some(
-      (child) => child.text?.includes(victoryText),
+    const hasVictoryOverlay = scene?.children?.list?.some(
+      (child) => child.type === 'Text' && child.text?.includes(victoryText),
     ) ?? false;
+    return hasVictoryOverlay ? scene : null;
   }, VICTORY_OVERLAY_TEXT, { timeout: 90_000 });
 
-  await page.evaluate(({ bossFloorId, spawnSide }) => {
-    const g = window.__game;
-    const scene = g?.scene.getScenes(true).find(
-      (s) => s.sys.settings.key === 'BossArenaScene',
-    ) as unknown as MinimalBossArenaScene | undefined;
+  await bossSceneHandle.evaluate((scene, { bossFloorId, spawnSide }) => {
     if (!scene?.scene) throw new Error('BossArenaScene not active after victory');
     scene.scene.start('ElevatorScene', { fromFloor: bossFloorId, spawnSide });
   }, {
     bossFloorId: BOSS_FLOOR_ID,
     spawnSide: BOSS_RETURN_SPAWN_SIDE,
   });
+  await bossSceneHandle.dispose();
 }
 
 test.describe('Boss arena — CEO showdown', () => {
