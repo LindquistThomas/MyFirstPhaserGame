@@ -27,29 +27,34 @@ const VICTORY_OVERLAY_TEXT = 'ARCHITECT APPROVED';
  * `window.__game`; importing the full Phaser scene would couple this E2E spec
  * to production internals beyond the fields it actually exercises.
  */
-interface BossArenaSceneShape {
+interface MinimalBossArenaScene {
   scene?: { start: (key: string, data?: unknown) => void };
   children?: { list?: Array<{ text?: string }> };
 }
 
 async function waitForVictoryAndTransitionToElevator(page: Page): Promise<void> {
-  await page.waitForFunction(({ bossFloorId, spawnSide, victoryText }) => {
+  await page.waitForFunction((victoryText) => {
     const g = window.__game;
     if (!g) return false;
     const scene = g.scene.getScenes(true).find(
       (s) => s.sys.settings.key === 'BossArenaScene',
-    ) as unknown as BossArenaSceneShape | undefined;
-    const hasVictoryOverlay = scene?.children?.list?.some(
+    ) as unknown as MinimalBossArenaScene | undefined;
+    return scene?.children?.list?.some(
       (child) => child.text?.includes(victoryText),
     ) ?? false;
-    if (!hasVictoryOverlay || !scene?.scene) return false;
+  }, VICTORY_OVERLAY_TEXT, { timeout: 90_000 });
+
+  await page.evaluate(({ bossFloorId, spawnSide }) => {
+    const g = window.__game;
+    const scene = g?.scene.getScenes(true).find(
+      (s) => s.sys.settings.key === 'BossArenaScene',
+    ) as unknown as MinimalBossArenaScene | undefined;
+    if (!scene?.scene) throw new Error('BossArenaScene not active after victory');
     scene.scene.start('ElevatorScene', { fromFloor: bossFloorId, spawnSide });
-    return true;
   }, {
     bossFloorId: BOSS_FLOOR_ID,
     spawnSide: BOSS_RETURN_SPAWN_SIDE,
-    victoryText: VICTORY_OVERLAY_TEXT,
-  }, { timeout: 90_000 });
+  });
 }
 
 test.describe('Boss arena — CEO showdown', () => {
