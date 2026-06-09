@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import {
   attachErrorWatchers,
   clearStorage,
@@ -26,9 +26,7 @@ interface BossArenaSceneShape {
   children?: { list?: Array<{ text?: string }> };
 }
 
-async function startElevatorAfterVictoryOverlay(
-  page: Parameters<typeof waitForGame>[0],
-): Promise<void> {
+async function transitionToElevatorOnVictory(page: Page): Promise<void> {
   await page.waitForFunction(({ bossFloorId, victoryText }) => {
     const g = window.__game;
     if (!g) return false;
@@ -69,7 +67,7 @@ test.describe('Boss arena — CEO showdown', () => {
   });
 
   /** Navigate from menu → elevator → boss arena, returning when BossArenaScene is RUNNING. */
-  async function goToBossArena(page: Parameters<typeof waitForGame>[0]): Promise<void> {
+  async function goToBossArena(page: Page): Promise<void> {
     await page.goto('/');
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
@@ -207,7 +205,7 @@ test.describe('Boss arena — CEO showdown', () => {
       await page.waitForTimeout(250);
     }
 
-    await startElevatorAfterVictoryOverlay(page);
+    await transitionToElevatorOnVictory(page);
     await waitForScene(page, 'ElevatorScene');
 
     errors.assertClean();
