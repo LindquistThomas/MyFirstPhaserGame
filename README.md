@@ -49,11 +49,13 @@ The CI `size-budget` job (`npm run size`) runs `scripts/check-size.cjs` after ev
 |-------|-------|-----------|
 | `dist/assets/index-*.js` (app chunk, gzipped) | 150 KB | App logic; well under today's size. |
 | `dist/assets/phaser-*.js` (engine chunk, gzipped) | 400 KB | Phaser 3.90 gzips to ~330 KB; guards against accidental engine duplication. |
-| Total `dist/` excluding `dist/music/**` (gzipped) | 700 KB | JS + HTML payload, minus streamed audio. |
-| Eager music assets (raw, from `STATIC_MUSIC_ASSETS`) | 700 KB | First-load audio; currently `music_menu` + `music_elevator_jazz` are eager (~size measured by `npm run size`). Remaining headroom shown by the size budget. |
-| **Total music assets** (raw, all `dist/music/**`) | **6.5 MB** | Guards against audio bloat; ~6.0 MB today after orphan cleanup. |
+| Total `dist/` excluding `dist/music/**` and `*.map` (gzipped) | 700 KB | JS + HTML payload, minus streamed audio and private diagnostic sourcemaps. |
+| Eager music assets (raw, from `STATIC_MUSIC_ASSETS`) | 750 KB | First-load audio; currently `music_menu` + `music_elevator_jazz` are eager (~size measured by `npm run size`). Remaining headroom shown by the size budget. |
+| **Total music assets** (raw, all `dist/music/**`) | **4 MB** | Guards against audio bloat after OGG re-encoding and orphan cleanup. |
 
 In addition to size budgets, the check fails if any audio file in `dist/music/` is **not declared** in `STATIC_MUSIC_ASSETS` (`src/config/audioConfig.ts`). This prevents orphaned tracks from accumulating unnoticed.
+
+Production builds emit hidden sourcemaps (`dist/assets/*.js.map`) so minified error stacks can be resolved during incident review. The deploy workflow uploads those maps as a private workflow artifact and removes them before publishing the GitHub Pages artifact; `npm run size` excludes `*.map` from player-facing payload budgets.
 
 If a PR genuinely needs more weight, raise the appropriate limit in `scripts/check-size.cjs` with a comment explaining why.
 

@@ -38,7 +38,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: false,
+    sourcemap: 'hidden',
     target: 'es2020',
     rollupOptions: {
       output: {

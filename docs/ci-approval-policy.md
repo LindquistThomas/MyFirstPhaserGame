@@ -52,7 +52,7 @@ In **Settings → Branches → `main` → Require status checks to pass before m
 Per-shard names are implementation details and can change over time. Branch protection
 must require only stable fan-in checks.
 
-For a docs-only PR (`docs/**` only), the shard jobs are intentionally skipped by `ci.yml` and `Playwright E2E complete` reports success via fan-in. This is expected and should still allow merge when required checks above are configured correctly.
+For a docs/workflows-only PR (`docs/**` or `.github/workflows/**` only), the shard jobs are intentionally skipped by `ci.yml` and `Playwright E2E complete` reports success via fan-in. This is expected and should still allow merge when required checks above are configured correctly.
 
 ## Optional API command to set required checks (maintainer token required)
 
