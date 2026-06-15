@@ -11,9 +11,9 @@
  * Budgets (update with deliberate justification):
  *   App chunk (index-*.js)         150 KB gzipped
  *   Phaser chunk (phaser-*.js)     400 KB gzipped
- *   Total dist/ (excl. music)      700 KB gzipped
- *   Eager music assets               2 MB raw
- *   Total music assets (all)       6.5 MB raw   ← guards against audio bloat
+ *   Total dist/ (excl. music/maps) 700 KB gzipped
+ *   Eager music assets             750 KB raw
+ *   Total music assets (all)         4 MB raw   ← guards against audio bloat
  *
  * Orphan check: every file in dist/music/ must be declared in
  * STATIC_MUSIC_ASSETS (src/config/audioConfig.ts).  Any undeclared file
@@ -192,14 +192,18 @@ const BUDGETS = /** @type {const} */ ([
     },
   },
   {
-    label:    'Total dist/ (excl. music)',
+    label:    'Total dist/ (excl. music/maps)',
     limitKB:  700,
     raw:      false,
     required: false,
     measure() {
       if (!fs.existsSync(DIST)) return { bytes: 0, found: false };
-      // Normalise path separators for the exclude check.
-      const files = walk(DIST, (f) => !f.replace(/\\/g, '/').includes('/dist/music/'));
+      // Normalise path separators for the exclude checks. Hidden sourcemaps
+      // are uploaded as private workflow artifacts, not served player payload.
+      const files = walk(DIST, (f) => {
+        const normalised = f.replace(/\\/g, '/');
+        return !normalised.includes('/dist/music/') && !normalised.endsWith('.map');
+      });
       return { bytes: files.reduce((s, f) => s + gzipSize(f), 0), found: true };
     },
   },
